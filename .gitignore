@@ -1,0 +1,37 @@
+# ───────────────────────────── Gradle / Android build outputs ─────────────────
+*.iml
+.gradle/
+**/build/
+local.properties
+
+# Generated / cached
+.cxx/
+*.apk
+*.aab
+*.dex
+*.class
+*.ap_
+*.aar
+*.log
+*.hprof
+
+# ───────────────────────────── Android Studio / IntelliJ ──────────────────────
+.idea/
+captures/
+.externalNativeBuild/
+
+# Keystore / signing — DO NOT commit
+*.jks
+*.keystore
+keystore.properties
+
+# ───────────────────────────── OS / editor noise ──────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# ───────────────────────────── Project-local helpers ──────────────────────────
+# Claude Code session metadata + dev-server batch scripts (not source).
+.claude/
+</content>
