@@ -1,73 +1,154 @@
+<div align="center">
+
 # LSTN
 
-A hyper-minimal, elegant **YouTube Music** client for Android — built from scratch with Jetpack Compose, Media3/ExoPlayer, and NewPipeExtractor.
+### A hyper-minimal YouTube Music client for Android
 
-LSTN streams the full YouTube Music catalogue without ads, plays your real album art (not random video frames), supports offline downloads, lyrics, song radio, and seven themed palettes — including Material You dynamic colour on Android 12+.
+*Stream the full YouTube Music catalogue. Without ads, with real album art, with offline downloads, with synced lyrics, with eight themed palettes — built from scratch in Kotlin + Compose.*
+
+<br/>
+
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Android](https://img.shields.io/badge/Android-API%2026%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack-Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Material 3](https://img.shields.io/badge/Material-3-6750A4?style=for-the-badge&logo=materialdesign&logoColor=white)](https://m3.material.io/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)](LICENSE)
+
+<br/>
+
+<img src="docs/home.jpg" alt="LSTN home page" width="270"/>&nbsp;&nbsp;<img src="docs/now-playing.jpg" alt="LSTN now playing" width="270"/>
+
+</div>
+
+---
+
+## At a glance
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### Music
+Full YouTube Music catalogue · No ads · Offline downloads · Song radio · Background playback · Lock-screen controls
+
+</td>
+<td width="33%" valign="top">
+
+### Discovery
+Personalised home feed · "Similar to" radios from your recent artists · Charts and trending tucked at the bottom
+
+</td>
+<td width="33%" valign="top">
+
+### Identity
+Eight color themes including **Material You** · Editorial typography · Soft-rounded Muse design language
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### Lyrics
+Free synced lyrics from LRCLIB · Line-by-line auto-scroll · Plain-text fallback
+
+</td>
+<td valign="top">
+
+### Library
+Local + server-side liked songs · Your YT playlists · Followed artists · Downloads tab · User-made playlists
+
+</td>
+<td valign="top">
+
+### Real album art
+Songs throughout the app pull the actual cover from iTunes Search — no more random music-video frames
+
+</td>
+</tr>
+</table>
 
 ---
 
 ## Screenshots
 
-<!-- Drop screenshots into a `docs/` folder and reference them here. -->
-<!-- e.g. ![Home](docs/home.png) ![Now Playing](docs/now_playing.png) -->
+<div align="center">
+<table>
+<tr>
+<td align="center">
+<img src="docs/home.jpg" alt="Home" width="280"/>
+<br/>
+<sub><b>Home</b> — personal-first feed with mixed section sizes</sub>
+</td>
+<td align="center">
+<img src="docs/now-playing.jpg" alt="Now Playing" width="280"/>
+<br/>
+<sub><b>Now Playing</b> — real album art, big accent play button, action row</sub>
+</td>
+</tr>
+</table>
+</div>
 
 ---
 
 ## Features
 
-### Music
-- **Full YouTube Music catalogue** via NewPipeExtractor — handles signature deciphering and the `n`-parameter rolling cipher so streams play on a clean install with no auth required.
-- **Account sign-in** (optional) for personalised home, your saved playlists, followed artists, server-side liked songs, and like-push back to your account.
+### Playback
+- **Full YouTube Music catalogue** via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) — handles signature deciphering and the `n`-parameter rolling cipher, so streams play on a clean install with no auth required.
+- **Account sign-in (optional)** unlocks your personalised home, your saved playlists, your followed artists, your server-side Liked Songs, and pushes likes back to your account.
 - **Offline downloads** — cached to app-private storage; the resolver prefers local files when available, so playback works without network once a track is downloaded.
-- **Song radio** — start an endless mix from any track (uses YouTube's `RDAMVM<videoId>` watch playlist).
-- **Synced lyrics** via the free [LRCLIB](https://lrclib.net) API — line-by-line auto-scroll for tracks with synced timestamps; falls back to plain lyrics.
-- **Real album art** — songs in the home feed, queue, library, search, and Now Playing pull the actual cover from the iTunes Search API rather than YouTube's video-frame thumbnails.
+- **Song radio** — start an endless mix from any track (YouTube `RDAMVM<videoId>` watch playlists).
+- **Audio quality** picker (Low / Medium / High) honoured by the stream resolver.
+- **Queue persistence** across cold starts — restores paused at the saved position so a process kill doesn't lose your session.
 
 ### Home page
-- **Personal-first composition** — Recently Played, Quick Picks, Your Daily Discover, Keep Listening, From Your Liked Songs, Your YouTube Playlists, Similar to *artist* sections; one consolidated *Browse charts and trending* row at the bottom for everything generic.
+- **Personal-first composition** — *Recently Played*, *Quick Picks*, *Your Daily Discover*, *Keep Listening*, *From Your Liked Songs*, *Your YouTube Playlists*, *Similar to <artist>* — with one consolidated *Browse charts and trending* row at the bottom for everything generic.
 - **Spotify-style mixed sizes** — large featured carousels, standard carousels, compact card rows, and a 4×2 non-scrolling dense grid mix so the page reads with rhythm and fits more content per screen.
+- **Genre chip row** at the top for the mood/genre filter, like the major apps.
 
 ### Search
-- Filter tabs (Songs / Albums / Artists / Playlists), as-you-type autocomplete suggestions, recent-search history chips.
+- Filter tabs — **Songs · Albums · Artists · Playlists**.
+- As-you-type autocomplete suggestions powered by YouTube Music's suggest endpoint.
+- Recent-search history chips with one-tap recall + Clear.
 
 ### Library
-- Recently played + locally liked (Room-backed) when offline.
-- Server-side Liked Songs + your YouTube playlists when signed in.
-- Followed artists tab.
-- Local downloads tab.
-- User-created playlists with create/rename/delete, "Add to playlist" sheet on any track.
+- **Recently played** + **Liked** (Room-backed, works fully offline).
+- **Downloaded** tab for tracks cached for offline playback.
+- **Playlists** tab — your local user-created playlists plus your saved YouTube Music playlists.
+- **Artists** tab for followed channels (signed-in).
+- *"Add to playlist"* sheet on any track from anywhere in the app via the row overflow menu.
 
 ### Now Playing
-- Big artwork with soft shadow, shuffle/prev/play/next/repeat, scrubbable progress bar, like, song radio, lyrics, an in-place "Up next" queue toggle.
-- Overflow menu: Share, Copy link, Lyrics, Start radio, Download / Remove download.
-- Queue rows are tappable to jump and removable.
+- Big artwork with soft shadow · shuffle · prev · big accent play button · next · repeat · scrubbable progress.
+- Action row: **Like · Radio · Lyrics · Queue** (toggles an in-place Up Next list).
+- Overflow ⋯ menu: Share, Copy link, Lyrics, Start radio, Download / Remove download.
 - Foreground media service with lock-screen / notification controls via Media3 `MediaLibrarySession`.
 
-### Player
-- Queue persistence across cold starts — restores paused at saved position so a process kill doesn't lose your session.
-- Audio quality preference (Low / Medium / High) — preferred bitrate honoured by the resolver.
-- Like/unlike pushes to your YouTube account when signed in.
+### Lyrics
+- **Synced (LRC) lyrics** with line-by-line auto-scrolling — the active line is bold and centred, others fade with `muted` alpha.
+- Falls back to plain-text lyrics when only those are available.
+- Caches per `(title, artist, duration)` so re-fetch doesn't fire while the playhead ticks.
 
 ### Theming
-- Seven hand-tuned themes: **Bauhaus**, **Malibu**, **Concrete**, **Noir**, **Ember**, **Acid**, **Magenta**.
-- **Material You** (Dynamic) theme on Android 12+ that derives a full M3 colour scheme from your wallpaper and follows system light/dark.
-- Custom `LstnExtendedColors` palette (`muted`, `glass`, `glassHeavy`, `borderGlass`, etc.) for surfaces M3 doesn't cover.
-- Soft-rounded **Muse** design language: Playfair Display serif for headlines, Inter for body, IBM Plex Mono reserved for timecodes.
+- Seven hand-tuned themes: **Bauhaus · Malibu · Concrete · Noir · Ember · Acid · Magenta**.
+- **Material You** (Dynamic) theme on Android 12+ derives a full M3 colour scheme from your wallpaper and follows system light/dark.
+- Custom `LstnExtendedColors` palette (`muted`, `glass`, `glassHeavy`, `borderGlass`, …) for surfaces M3 doesn't cover.
+- **Muse** design language — Playfair Display serif for headlines, Inter for body, IBM Plex Mono reserved for timecodes.
 
 ---
 
 ## Tech stack
 
-- **Language:** Kotlin 2.0
-- **UI:** Jetpack Compose + Material 3
-- **Playback:** Media3 / ExoPlayer with a custom `ResolvingDataSource` that swaps the `innertube://<videoId>` placeholder URI for a real stream URL just before ExoPlayer opens the connection
-- **Stream extraction:** [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) (bundled Mozilla Rhino for signature deciphering)
-- **HTTP:** Ktor for InnerTube requests, OkHttp shared across the app
-- **DI:** Hilt
-- **Storage:** Room for play history, likes, downloads, and local playlists; DataStore for preferences and queue persistence
-- **Image loading:** Coil 3 (OkHttp network fetcher)
-- **Serialization:** kotlinx.serialization
-- **Async:** Kotlin Coroutines + StateFlow
+| Layer | Tech |
+|---|---|
+| **Language** | Kotlin 2.0 |
+| **UI** | Jetpack Compose · Material 3 · Coil 3 |
+| **Playback** | Media3 / ExoPlayer · custom `ResolvingDataSource` |
+| **Stream extraction** | [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) (with Mozilla Rhino for the signature cipher) |
+| **HTTP** | Ktor for InnerTube · OkHttp shared across the app |
+| **DI** | Hilt |
+| **Persistence** | Room (history / likes / downloads / local playlists) · DataStore (preferences + queue) |
+| **Serialization** | kotlinx.serialization |
+| **Async** | Kotlin Coroutines + StateFlow |
 
 ---
 
@@ -77,19 +158,38 @@ LSTN is a three-module Android project:
 
 ```
 :app          Compose UI, ViewModels, Hilt graph, navigation
-:innertube    InnerTube API client, parsers (search/home/artist/etc.),
+:innertube    InnerTube API client, parsers (search / home / artist / …),
               and the NewPipe-backed stream resolver
 :player       Media3 MediaLibraryService + PlayerConnection
               (MediaController wrapper exposing PlaybackState)
 ```
 
-Key flow for playback:
-1. UI calls `PlaybackViewModel.playSongs(...)` with a list of `MusicItem`s.
-2. `PlayerConnection.setQueue(...)` builds `MediaItem`s with URIs of the form `innertube://<videoId>` and hands them to `MediaController`.
-3. The session's `onAddMediaItems` callback rebuilds the URIs after Media3's controller→session IPC strips them.
-4. When ExoPlayer opens an item, a `ResolvingDataSource` intercepts the placeholder URI:
-   - first checks Room for a local downloaded file → plays from disk;
-   - otherwise calls `InnerTube.resolveAudioStream(videoId)` → NewPipeExtractor → returns a deciphered googlevideo URL → ExoPlayer streams the bytes.
+### Playback flow
+
+```
+UI ──playSongs──▶ PlaybackViewModel ──setQueue──▶ MediaController
+                                                       │
+                                                       ▼
+                                          ┌────────────────────────┐
+                                          │ MediaLibrarySession     │
+                                          │ onAddMediaItems()       │
+                                          │ ──rebuilds URI──────▶   │  innertube://<videoId>
+                                          └────────────────────────┘
+                                                       │
+                                                       ▼
+                                          ┌────────────────────────┐
+                                          │ ExoPlayer + Resolving   │
+                                          │ DataSource              │
+                                          │                         │
+                                          │ 1. Local cached file?   │ ──▶ play from disk
+                                          │ 2. NewPipe resolve      │ ──▶ deciphered URL
+                                          └────────────────────────┘
+                                                       │
+                                                       ▼
+                                              ExoPlayer streams bytes
+```
+
+The Room `SongEntity.downloadPath` is queried via a small `DownloadLookup` interface in `:player` (implemented in `:app` to avoid a circular dependency), so the service can fall back to local files **before** hitting the network.
 
 ---
 
@@ -105,8 +205,8 @@ Key flow for playback:
 
 ```bash
 # Clone
-git clone https://github.com/<your-user>/lstn.git
-cd lstn
+git clone https://github.com/SambuddhaRoy/LSTN-Music.git
+cd LSTN-Music
 
 # Configure local SDK location
 echo "sdk.dir=/path/to/Android/Sdk" > local.properties
@@ -130,9 +230,9 @@ The in-app login uses a WebView aimed at Google's standard sign-in flow. The Web
 
 ## Disclaimer
 
-LSTN is an unofficial client. It uses public InnerTube endpoints and NewPipeExtractor — there is no ad bypass for premium content. Use at your own risk; behaviour may break at any time if YouTube changes its API or stream-resolution mechanism.
+LSTN is an unofficial client. It uses public InnerTube endpoints and NewPipeExtractor — there is no premium-tier bypass. Use at your own risk; behaviour may break at any time if YouTube changes its API or stream-resolution mechanism.
 
-This project is for educational and personal use. It is not affiliated with, sponsored by, or endorsed by Google or YouTube.
+This project is for educational and personal use. It is not affiliated with, sponsored by, or endorsed by Google, YouTube, or Apple.
 
 ---
 
@@ -140,9 +240,9 @@ This project is for educational and personal use. It is not affiliated with, spo
 
 LSTN stands on the shoulders of:
 
-- [**NewPipeExtractor**](https://github.com/TeamNewPipe/NewPipeExtractor) — handles the YouTube stream extraction, signature deciphering, and `n`-parameter rolling cipher.
-- [**InnerTune / OuterTune / SimpMusic**](https://github.com/z-huang/InnerTune) — Kotlin YouTube Music clients that pioneered much of the InnerTube-on-Android approach LSTN follows.
-- [**LRCLIB**](https://lrclib.net) — free, no-auth synced lyrics provider.
+- [**NewPipeExtractor**](https://github.com/TeamNewPipe/NewPipeExtractor) — YouTube stream extraction, signature deciphering, and the `n`-parameter rolling cipher.
+- [**InnerTune · OuterTune · SimpMusic**](https://github.com/z-huang/InnerTune) — Kotlin YouTube Music clients that pioneered the InnerTube-on-Android approach LSTN follows.
+- [**LRCLIB**](https://lrclib.net) — free, no-auth synced-lyrics provider.
 - [**iTunes Search API**](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/) — the source of real album art when YouTube serves a music-video frame.
 - [**Material 3**](https://m3.material.io/) — design system and the typography / shape / colour primitives.
 
@@ -154,7 +254,11 @@ This project is released under the **Apache License 2.0**. See [`LICENSE`](LICEN
 
 ---
 
-## Credits
+<div align="center">
 
-Designed and built by **Sambuddha Roy**.
+### Designed and built by [**Sambuddha Roy**](https://github.com/SambuddhaRoy)
+
+<sub>If LSTN made your music a little nicer, leaving a ⭐ on the repo means a lot.</sub>
+
+</div>
 </content>
