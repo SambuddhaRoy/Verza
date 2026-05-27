@@ -90,6 +90,38 @@ Songs throughout the app pull the actual cover from iTunes Search — no more ra
 
 ---
 
+## Install
+
+<div align="center">
+
+[![Latest Release](https://img.shields.io/github/v/release/SambuddhaRoy/LSTN-Music?style=for-the-badge&label=Download%20APK&color=7F52FF)](https://github.com/SambuddhaRoy/LSTN-Music/releases/latest)
+
+</div>
+
+1. Download the **latest `LSTN-vX.Y.Z.apk`** from the [Releases](https://github.com/SambuddhaRoy/LSTN-Music/releases) page on your Android phone.
+2. Open the downloaded file. Android will ask whether your browser is allowed to install apps — tap **Settings → Allow from this source**, then back out.
+3. Tap the APK again. Android will offer to install — tap **Install**.
+4. **A "Google Play Protect" warning will appear.** This is normal for any app not downloaded from the Play Store — keep reading.
+5. Tap **Install anyway** (sometimes shown as **More details → Install anyway** depending on your Android version).
+6. Done. Launch LSTN from your app drawer.
+
+> **Minimum requirements:** Android 8.0 Oreo (API 26) or newer. ~10 MB of storage. No special permissions other than internet and (optionally) notifications for the playback controls.
+
+### Why does Android show a "Play Protect" warning?
+
+Short answer: **because LSTN is not on the Google Play Store, and that's the only signal Play Protect can use.** It is **not** a sign that the app contains malware.
+
+Longer answer:
+
+- Google's *Play Protect* service runs on every Android phone and scans every app it sees. When an app isn't from the Play Store, Play Protect has no Google-verified record of it, so it shows a precautionary warning — **the same warning it shows for every sideloaded app**, from open-source music players to dev-built work apps.
+- LSTN isn't on the Play Store because **Google won't allow it there.** It's an unofficial YouTube Music client and depends on public YouTube endpoints — anything that streams YouTube content outside the official YouTube apps violates the Play Store's developer policies regardless of how clean the code is. Apps like NewPipe, OuterTune, and InnerTune all live off-Play for exactly the same reason.
+- **Every line of LSTN's code is open and inspectable in this very repository.** If you want to verify what the app does before installing, browse the `:app`, `:innertube`, and `:player` source directories. There's no obfuscation, no closed binary blob, no telemetry, no ads — just Kotlin source you can read.
+- Once you install LSTN once and Android's seen the signing certificate, future updates from the same signer trigger a much milder prompt, and eventually none at all.
+
+If you'd rather not see the warning at all on a phone you trust LSTN on, you can disable Play Protect's scanning under **Settings → Security → Google Play Protect → ⚙ → Scan apps with Play Protect**. Most users leave it on and just tap *Install anyway* the one time.
+
+---
+
 ## Features
 
 ### Playback
