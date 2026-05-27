@@ -1,0 +1,213 @@
+package com.lstn.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import com.lstn.innertube.models.CollectionDetail
+import com.lstn.innertube.models.MusicItem
+import com.lstn.ui.components.TrackActionsMenu
+import com.lstn.ui.components.rememberSongArtwork
+import com.lstn.ui.theme.LocalLstnExtendedColors
+
+@Composable
+fun CollectionScreen(
+    onBack: () -> Unit,
+    onPlayTracks: (List<MusicItem>, Int) -> Unit,
+    onShuffle: (List<MusicItem>) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: CollectionViewModel = hiltViewModel(),
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalLstnExtendedColors.current
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        when (val s = state) {
+            is CollectionUiState.Loading -> CircularProgressIndicator(
+                color = colors.primary,
+                modifier = Modifier.align(Alignment.Center),
+            )
+            is CollectionUiState.Error -> Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(s.message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
+                OutlinedButton(onClick = viewModel::load, shape = CircleShape) { Text("Retry") }
+            }
+            is CollectionUiState.Content -> CollectionContent(s.detail, onPlayTracks, onShuffle)
+        }
+
+        // Floating circular back affordance.
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp)
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(colors.surface),
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onSurface)
+        }
+    }
+}
+
+@Composable
+private fun CollectionContent(
+    detail: CollectionDetail,
+    onPlayTracks: (List<MusicItem>, Int) -> Unit,
+    onShuffle: (List<MusicItem>) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalLstnExtendedColors.current
+    val tracks = detail.tracks
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 64.dp, bottom = 16.dp),
+    ) {
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Album cover with soft shadow.
+                    Box(
+                        modifier = Modifier
+                            .size(140.dp)
+                            .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp), clip = false)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(colors.surfaceVariant),
+                    ) {
+                        if (detail.thumbnailUrl != null) {
+                            AsyncImage(
+                                model = detail.thumbnailUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .align(Alignment.CenterVertically),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = detail.title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = colors.onBackground,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (detail.subtitle.isNotBlank()) {
+                            Text(
+                                text = detail.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ext.muted,
+                            )
+                        }
+                        Text(
+                            text = "${tracks.size} tracks",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ext.muted,
+                        )
+                    }
+                }
+
+                // Action pills
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = { onPlayTracks(tracks, 0) },
+                        enabled = tracks.isNotEmpty(),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Play all")
+                    }
+                    OutlinedButton(
+                        onClick = { onShuffle(tracks) },
+                        enabled = tracks.isNotEmpty(),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
+                    ) {
+                        Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Shuffle")
+                    }
+                }
+            }
+        }
+
+        itemsIndexed(tracks) { index, track ->
+            TrackRow(index = index + 1, track = track) { onPlayTracks(tracks, index) }
+        }
+    }
+}
+
+@Composable
+private fun TrackRow(index: Int, track: MusicItem, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalLstnExtendedColors.current
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text(
+            text = index.toString().padStart(2, '0'),
+            style = MaterialTheme.typography.labelMedium,
+            color = ext.muted,
+            modifier = Modifier.width(24.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (track.artist.isNotBlank()) {
+                Text(
+                    text = track.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ext.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        TrackActionsMenu(item = track)
+    }
+}
