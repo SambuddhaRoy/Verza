@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LSTN"
+rootProject.name = "Verza"
 include(":app")
 include(":innertube")
 include(":player")

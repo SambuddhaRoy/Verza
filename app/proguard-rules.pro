@@ -1,4 +1,4 @@
-# ── LSTN ProGuard / R8 rules ──────────────────────────────────────────────────
+# ── Verza ProGuard / R8 rules ──────────────────────────────────────────────────
 
 # NewPipeExtractor performs YouTube stream extraction via heavy reflection and an
 # embedded Mozilla Rhino JS engine (for signature/n-parameter deciphering). Both must
@@ -23,7 +23,7 @@
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.**
 -keepclassmembers class **$$serializer { *; }
--keepclasseswithmembers class com.lstn.innertube.models.** {
+-keepclasseswithmembers class com.verza.innertube.models.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 
