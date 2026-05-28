@@ -1,6 +1,6 @@
 <div align="center">
 
-# LSTN
+# Verza
 
 ### A hyper-minimal YouTube Music client for Android
 
