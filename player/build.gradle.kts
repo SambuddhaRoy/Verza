@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lstn.player"
+    namespace = "com.verza.player"
     compileSdk = 35
 
     defaultConfig {

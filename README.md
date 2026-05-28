@@ -16,7 +16,7 @@
 
 <br/>
 
-<img src="docs/home.jpg" alt="LSTN home page" width="270"/>&nbsp;&nbsp;<img src="docs/now-playing.jpg" alt="LSTN now playing" width="270"/>
+<img src="docs/home.jpg" alt="Verza home page" width="270"/>&nbsp;&nbsp;<img src="docs/now-playing.jpg" alt="Verza now playing" width="270"/>
 
 </div>
 
@@ -94,31 +94,31 @@ Songs throughout the app pull the actual cover from iTunes Search — no more ra
 
 <div align="center">
 
-[![Latest Release](https://img.shields.io/github/v/release/SambuddhaRoy/LSTN-Music?style=for-the-badge&label=Download%20APK&color=7F52FF)](https://github.com/SambuddhaRoy/LSTN-Music/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/SambuddhaRoy/Verza-Music?style=for-the-badge&label=Download%20APK&color=7F52FF)](https://github.com/SambuddhaRoy/Verza-Music/releases/latest)
 
 </div>
 
-1. Download the **latest `LSTN-vX.Y.Z.apk`** from the [Releases](https://github.com/SambuddhaRoy/LSTN-Music/releases) page on your Android phone.
+1. Download the **latest `Verza-vX.Y.Z.apk`** from the [Releases](https://github.com/SambuddhaRoy/Verza-Music/releases) page on your Android phone.
 2. Open the downloaded file. Android will ask whether your browser is allowed to install apps — tap **Settings → Allow from this source**, then back out.
 3. Tap the APK again. Android will offer to install — tap **Install**.
 4. **A "Google Play Protect" warning will appear.** This is normal for any app not downloaded from the Play Store — keep reading.
 5. Tap **Install anyway** (sometimes shown as **More details → Install anyway** depending on your Android version).
-6. Done. Launch LSTN from your app drawer.
+6. Done. Launch Verza from your app drawer.
 
 > **Minimum requirements:** Android 8.0 Oreo (API 26) or newer. ~10 MB of storage. No special permissions other than internet and (optionally) notifications for the playback controls.
 
 ### Why does Android show a "Play Protect" warning?
 
-Short answer: **because LSTN is not on the Google Play Store, and that's the only signal Play Protect can use.** It is **not** a sign that the app contains malware.
+Short answer: **because Verza is not on the Google Play Store, and that's the only signal Play Protect can use.** It is **not** a sign that the app contains malware.
 
 Longer answer:
 
 - Google's *Play Protect* service runs on every Android phone and scans every app it sees. When an app isn't from the Play Store, Play Protect has no Google-verified record of it, so it shows a precautionary warning — **the same warning it shows for every sideloaded app**, from open-source music players to dev-built work apps.
-- LSTN isn't on the Play Store because **Google won't allow it there.** It's an unofficial YouTube Music client and depends on public YouTube endpoints — anything that streams YouTube content outside the official YouTube apps violates the Play Store's developer policies regardless of how clean the code is. Apps like NewPipe, OuterTune, and InnerTune all live off-Play for exactly the same reason.
-- **Every line of LSTN's code is open and inspectable in this very repository.** If you want to verify what the app does before installing, browse the `:app`, `:innertube`, and `:player` source directories. There's no obfuscation, no closed binary blob, no telemetry, no ads — just Kotlin source you can read.
-- Once you install LSTN once and Android's seen the signing certificate, future updates from the same signer trigger a much milder prompt, and eventually none at all.
+- Verza isn't on the Play Store because **Google won't allow it there.** It's an unofficial YouTube Music client and depends on public YouTube endpoints — anything that streams YouTube content outside the official YouTube apps violates the Play Store's developer policies regardless of how clean the code is. Apps like NewPipe, OuterTune, and InnerTune all live off-Play for exactly the same reason.
+- **Every line of Verza's code is open and inspectable in this very repository.** If you want to verify what the app does before installing, browse the `:app`, `:innertube`, and `:player` source directories. There's no obfuscation, no closed binary blob, no telemetry, no ads — just Kotlin source you can read.
+- Once you install Verza once and Android's seen the signing certificate, future updates from the same signer trigger a much milder prompt, and eventually none at all.
 
-If you'd rather not see the warning at all on a phone you trust LSTN on, you can disable Play Protect's scanning under **Settings → Security → Google Play Protect → ⚙ → Scan apps with Play Protect**. Most users leave it on and just tap *Install anyway* the one time.
+If you'd rather not see the warning at all on a phone you trust Verza on, you can disable Play Protect's scanning under **Settings → Security → Google Play Protect → ⚙ → Scan apps with Play Protect**. Most users leave it on and just tap *Install anyway* the one time.
 
 ---
 
@@ -163,7 +163,7 @@ If you'd rather not see the warning at all on a phone you trust LSTN on, you can
 ### Theming
 - Seven hand-tuned themes: **Bauhaus · Malibu · Concrete · Noir · Ember · Acid · Magenta**.
 - **Material You** (Dynamic) theme on Android 12+ derives a full M3 colour scheme from your wallpaper and follows system light/dark.
-- Custom `LstnExtendedColors` palette (`muted`, `glass`, `glassHeavy`, `borderGlass`, …) for surfaces M3 doesn't cover.
+- Custom `VerzaExtendedColors` palette (`muted`, `glass`, `glassHeavy`, `borderGlass`, …) for surfaces M3 doesn't cover.
 - **Muse** design language — Playfair Display serif for headlines, Inter for body, IBM Plex Mono reserved for timecodes.
 
 ---
@@ -186,7 +186,7 @@ If you'd rather not see the warning at all on a phone you trust LSTN on, you can
 
 ## Architecture
 
-LSTN is a three-module Android project:
+Verza is a three-module Android project:
 
 ```
 :app          Compose UI, ViewModels, Hilt graph, navigation
@@ -237,8 +237,8 @@ The Room `SongEntity.downloadPath` is queried via a small `DownloadLookup` inter
 
 ```bash
 # Clone
-git clone https://github.com/SambuddhaRoy/LSTN-Music.git
-cd LSTN-Music
+git clone https://github.com/SambuddhaRoy/Verza-Music.git
+cd Verza-Music
 
 # Configure local SDK location
 echo "sdk.dir=/path/to/Android/Sdk" > local.properties
@@ -262,7 +262,7 @@ The in-app login uses a WebView aimed at Google's standard sign-in flow. The Web
 
 ## Disclaimer
 
-LSTN is an unofficial client. It uses public InnerTube endpoints and NewPipeExtractor — there is no premium-tier bypass. Use at your own risk; behaviour may break at any time if YouTube changes its API or stream-resolution mechanism.
+Verza is an unofficial client. It uses public InnerTube endpoints and NewPipeExtractor — there is no premium-tier bypass. Use at your own risk; behaviour may break at any time if YouTube changes its API or stream-resolution mechanism.
 
 This project is for educational and personal use. It is not affiliated with, sponsored by, or endorsed by Google, YouTube, or Apple.
 
@@ -270,10 +270,10 @@ This project is for educational and personal use. It is not affiliated with, spo
 
 ## Acknowledgments
 
-LSTN stands on the shoulders of:
+Verza stands on the shoulders of:
 
 - [**NewPipeExtractor**](https://github.com/TeamNewPipe/NewPipeExtractor) — YouTube stream extraction, signature deciphering, and the `n`-parameter rolling cipher.
-- [**InnerTune · OuterTune · SimpMusic**](https://github.com/z-huang/InnerTune) — Kotlin YouTube Music clients that pioneered the InnerTube-on-Android approach LSTN follows.
+- [**InnerTune · OuterTune · SimpMusic**](https://github.com/z-huang/InnerTune) — Kotlin YouTube Music clients that pioneered the InnerTube-on-Android approach Verza follows.
 - [**LRCLIB**](https://lrclib.net) — free, no-auth synced-lyrics provider.
 - [**iTunes Search API**](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/) — the source of real album art when YouTube serves a music-video frame.
 - [**Material 3**](https://m3.material.io/) — design system and the typography / shape / colour primitives.
@@ -290,7 +290,7 @@ This project is released under the **Apache License 2.0**. See [`LICENSE`](LICEN
 
 ### Designed and built by [**Sambuddha Roy**](https://github.com/SambuddhaRoy)
 
-<sub>If LSTN made your music a little nicer, leaving a ⭐ on the repo means a lot.</sub>
+<sub>If Verza made your music a little nicer, leaving a ⭐ on the repo means a lot.</sub>
 
 </div>
 </content>
