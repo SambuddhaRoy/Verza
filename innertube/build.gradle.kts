@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lstn.innertube"
+    namespace = "com.verza.innertube"
     compileSdk = 35
 
     defaultConfig {
