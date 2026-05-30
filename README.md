@@ -2,9 +2,9 @@
 
 # Verza
 
-### A hyper-minimal YouTube Music client for Android
+### An editorial YouTube Music client for Android
 
-*Stream the full YouTube Music catalogue. Without ads, with real album art, with offline downloads, with synced lyrics, with eight themed palettes — built from scratch in Kotlin + Compose.*
+*Stream the full YouTube Music catalogue — no ads, real album art, offline downloads, synced lyrics, a living sound-reactive background, and a typographic design language — built from scratch in Kotlin + Compose.*
 
 <br/>
 
@@ -29,27 +29,27 @@
 <td width="33%" valign="top">
 
 ### Music
-Full YouTube Music catalogue · No ads · Offline downloads · Song radio · Background playback · Lock-screen controls
+Full YouTube Music catalogue · No ads · Offline downloads · Song radio · Background playback · Lock-screen controls · Sleep timer
 
 </td>
 <td width="33%" valign="top">
 
-### Discovery
-Personalised home feed · "Similar to" radios from your recent artists · Charts and trending tucked at the bottom
+### Living background
+A flowing, GPU-shaded **glow** that drifts behind the app, takes on each song's **cover colours**, and can **react to the music**
 
 </td>
 <td width="33%" valign="top">
 
 ### Identity
-Eight color themes including **Material You** · Editorial typography · Soft-rounded Muse design language
+**Material You** by default · nine curated palettes incl. the **Atelier** editorial pair · Cormorant Garamond display type
 
 </td>
 </tr>
 <tr>
 <td valign="top">
 
-### Lyrics
-Free synced lyrics from LRCLIB · Line-by-line auto-scroll · Plain-text fallback
+### Insights
+**Your Sound** — top tracks & artists by real listened time, totals, and a day streak, from a local play-event log
 
 </td>
 <td valign="top">
@@ -82,7 +82,7 @@ Songs throughout the app pull the actual cover from iTunes Search — no more ra
 <td align="center">
 <img src="docs/now-playing.jpg" alt="Now Playing" width="280"/>
 <br/>
-<sub><b>Now Playing</b> — real album art, big accent play button, action row</sub>
+<sub><b>Now Playing</b> — real album art, editorial type, live glow behind</sub>
 </td>
 </tr>
 </table>
@@ -94,18 +94,18 @@ Songs throughout the app pull the actual cover from iTunes Search — no more ra
 
 <div align="center">
 
-[![Latest Release](https://img.shields.io/github/v/release/SambuddhaRoy/Verza-Music?style=for-the-badge&label=Download%20APK&color=7F52FF)](https://github.com/SambuddhaRoy/Verza-Music/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/SambuddhaRoy/Verza?style=for-the-badge&label=Download%20APK&color=7F52FF)](https://github.com/SambuddhaRoy/Verza/releases/latest)
 
 </div>
 
-1. Download the **latest `Verza-vX.Y.Z.apk`** from the [Releases](https://github.com/SambuddhaRoy/Verza-Music/releases) page on your Android phone.
+1. Download the **latest `Verza-vX.Y.Z.apk`** from the [Releases](https://github.com/SambuddhaRoy/Verza/releases) page on your Android phone.
 2. Open the downloaded file. Android will ask whether your browser is allowed to install apps — tap **Settings → Allow from this source**, then back out.
 3. Tap the APK again. Android will offer to install — tap **Install**.
 4. **A "Google Play Protect" warning will appear.** This is normal for any app not downloaded from the Play Store — keep reading.
 5. Tap **Install anyway** (sometimes shown as **More details → Install anyway** depending on your Android version).
-6. Done. Launch Verza from your app drawer.
+6. Done. Launch Verza from your app drawer — a short first-run setup lets you choose your theme and glow.
 
-> **Minimum requirements:** Android 8.0 Oreo (API 26) or newer. ~10 MB of storage. No special permissions other than internet and (optionally) notifications for the playback controls.
+> **Minimum requirements:** Android 8.0 Oreo (API 26) or newer. ~10 MB of storage. The fluid shader background uses the GPU on Android 13+; older devices get a lighter gradient glow automatically.
 
 ### Why does Android show a "Play Protect" warning?
 
@@ -126,45 +126,53 @@ If you'd rather not see the warning at all on a phone you trust Verza on, you ca
 
 ### Playback
 - **Full YouTube Music catalogue** via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) — handles signature deciphering and the `n`-parameter rolling cipher, so streams play on a clean install with no auth required.
+- **Resilient stream resolver** — tries progressive HTTP audio, then DASH stream URLs, then a video-with-audio fallback, then the page-level DASH manifest, so playback survives YouTube's periodic format changes.
 - **Account sign-in (optional)** unlocks your personalised home, your saved playlists, your followed artists, your server-side Liked Songs, and pushes likes back to your account.
 - **Offline downloads** — cached to app-private storage; the resolver prefers local files when available, so playback works without network once a track is downloaded.
-- **Song radio** — start an endless mix from any track (YouTube `RDAMVM<videoId>` watch playlists).
-- **Audio quality** picker (Low / Medium / High) honoured by the stream resolver.
-- **Queue persistence** across cold starts — restores paused at the saved position so a process kill doesn't lose your session.
+- **Song radio** — start an endless mix from any track.
+- **Sleep timer** — 15 / 30 / 45 / 60 minutes or end-of-track, with a soft volume fade-out and a live countdown.
+- **Skip silence**, **audio-quality** picker (Low / Medium / High), and **queue persistence** across cold starts.
+
+### Living background glow
+- A flowing, domain-warped **fluid field** rendered with a real **AGSL `RuntimeShader`** on Android 13+, with a multi-gradient fallback on older devices.
+- **Album-art adaptive colours** — extracts a vibrant palette from the current cover (AndroidX Palette) and colours the glow with it.
+- **Sound reactivity (optional)** — an FFT visualizer drives the glow's motion and brightness with the music's bass/mid/treble (requires the audio permission, asked only when enabled).
+- Colour presets, three intensity stops, and a **de-monochrome** colour derivation that keeps even Material You's palette lively.
+
+### Identity & motion
+- **Material You (Dynamic)** is the default theme on Android 12+, colouring the whole app from your wallpaper; older devices fall back to **Atelier Dark**.
+- Nine curated palettes: the new **Atelier** light/dark editorial pair plus **Bauhaus · Malibu · Concrete · Noir · Ember · Acid · Magenta**.
+- **Cormorant Garamond** for display & headlines (bold, architectural), **Inter** for body/labels, **IBM Plex Mono** for numerals & timecodes — with hairline rules instead of heavy cards throughout.
+- **First-run onboarding**, a cold-launch **boot animation**, and the **"Fold"** launcher icon (with an Android-13 themed-icon variant).
+- Motion pass: directional page transitions, press-scale feedback, a spring-animated bottom nav, staggered home reveal, breathing album art, and a smoothly interpolated seek bar.
 
 ### Home page
-- **Personal-first composition** — *Recently Played*, *Quick Picks*, *Your Daily Discover*, *Keep Listening*, *From Your Liked Songs*, *Your YouTube Playlists*, *Similar to <artist>* — with one consolidated *Browse charts and trending* row at the bottom for everything generic.
-- **Spotify-style mixed sizes** — large featured carousels, standard carousels, compact card rows, and a 4×2 non-scrolling dense grid mix so the page reads with rhythm and fits more content per screen.
-- **Genre chip row** at the top for the mood/genre filter, like the major apps.
+- **Personal-first composition** — *Recently Played*, *Quick Picks*, *Your Daily Discover*, *Keep Listening*, *From Your Liked Songs*, *Your YouTube Playlists*, *Similar to <artist>* — with one consolidated *Browse charts and trending* row at the bottom.
+- **Mixed section sizes** — large featured carousels, standard carousels, compact card rows, and a 4×2 dense grid so the page reads with rhythm.
 
 ### Search
 - Filter tabs — **Songs · Albums · Artists · Playlists**.
-- As-you-type autocomplete suggestions powered by YouTube Music's suggest endpoint.
-- Recent-search history chips with one-tap recall + Clear.
+- As-you-type autocomplete from YouTube Music's suggest endpoint.
+- Recent-search history chips (toggleable + clearable in Settings).
 
 ### Library
-- **Recently played** + **Liked** (Room-backed, works fully offline).
-- **Downloaded** tab for tracks cached for offline playback.
-- **Playlists** tab — your local user-created playlists plus your saved YouTube Music playlists.
-- **Artists** tab for followed channels (signed-in).
-- *"Add to playlist"* sheet on any track from anywhere in the app via the row overflow menu.
+- **Recently played** + **Liked** (Room-backed, fully offline).
+- **Downloaded** tab for offline tracks, **Playlists** tab (local + saved YT playlists), and an **Artists** tab for followed channels.
+- *"Add to playlist"* sheet on any track from anywhere via the row overflow menu.
 
 ### Now Playing
-- Big artwork with soft shadow · shuffle · prev · big accent play button · next · repeat · scrubbable progress.
-- Action row: **Like · Radio · Lyrics · Queue** (toggles an in-place Up Next list).
-- Overflow ⋯ menu: Share, Copy link, Lyrics, Start radio, Download / Remove download.
+- Full-bleed artwork with a live glow behind it, editorial type, scrubbable progress, and the **Like · Radio · Lyrics · Queue** action row.
+- Overflow ⋯ menu: Share, Copy link, Lyrics, Start radio, **Sleep timer**, Download / Remove download.
 - Foreground media service with lock-screen / notification controls via Media3 `MediaLibrarySession`.
 
 ### Lyrics
-- **Synced (LRC) lyrics** with line-by-line auto-scrolling — the active line is bold and centred, others fade with `muted` alpha.
-- Falls back to plain-text lyrics when only those are available.
-- Caches per `(title, artist, duration)` so re-fetch doesn't fire while the playhead ticks.
+- **Synced (LRC) lyrics** from [LRCLIB](https://lrclib.net) with line-by-line auto-scroll; plain-text fallback; cached per `(title, artist, duration)`.
 
-### Theming
-- Seven hand-tuned themes: **Bauhaus · Malibu · Concrete · Noir · Ember · Acid · Magenta**.
-- **Material You** (Dynamic) theme on Android 12+ derives a full M3 colour scheme from your wallpaper and follows system light/dark.
-- Custom `VerzaExtendedColors` palette (`muted`, `glass`, `glassHeavy`, `borderGlass`, …) for surfaces M3 doesn't cover.
-- **Muse** design language — Playfair Display serif for headlines, Inter for body, IBM Plex Mono reserved for timecodes.
+### Your Sound (listening stats)
+- An editorial insights page built from a local **play-event log**: total time listened, tracks played, a **day streak**, and your **top artists & tracks** ranked by *real* engaged listening time (paused gaps excluded).
+
+### Settings
+- **General** (start screen), **Playback** (resume-on-open, skip silence, album-art motion), **Audio quality**, **Theme**, **Background glow** (enable / colour / intensity / reactivity), **Search** (save & clear history), and **Data** (reset listening stats).
 
 ---
 
@@ -173,12 +181,13 @@ If you'd rather not see the warning at all on a phone you trust Verza on, you ca
 | Layer | Tech |
 |---|---|
 | **Language** | Kotlin 2.0 |
-| **UI** | Jetpack Compose · Material 3 · Coil 3 |
+| **UI** | Jetpack Compose · Material 3 · Coil 3 · AGSL `RuntimeShader` |
 | **Playback** | Media3 / ExoPlayer · custom `ResolvingDataSource` |
 | **Stream extraction** | [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) (with Mozilla Rhino for the signature cipher) |
+| **Colour & audio FX** | AndroidX Palette (album colours) · `android.media.audiofx.Visualizer` (FFT reactivity) |
 | **HTTP** | Ktor for InnerTube · OkHttp shared across the app |
 | **DI** | Hilt |
-| **Persistence** | Room (history / likes / downloads / local playlists) · DataStore (preferences + queue) |
+| **Persistence** | Room (history / likes / downloads / local playlists / play events) · DataStore (preferences + queue) |
 | **Serialization** | kotlinx.serialization |
 | **Async** | Kotlin Coroutines + StateFlow |
 
@@ -189,12 +198,15 @@ If you'd rather not see the warning at all on a phone you trust Verza on, you ca
 Verza is a three-module Android project:
 
 ```
-:app          Compose UI, ViewModels, Hilt graph, navigation
+:app          Compose UI, ViewModels, Hilt graph, navigation, theming,
+              glow shader, audio visualizer, listening stats
 :innertube    InnerTube API client, parsers (search / home / artist / …),
               and the NewPipe-backed stream resolver
 :player       Media3 MediaLibraryService + PlayerConnection
               (MediaController wrapper exposing PlaybackState)
 ```
+
+Because `:player` can't depend on `:app`, two process-wide singletons bridge the gap: **`AudioSessionRegistry`** exposes the live ExoPlayer audio-session id (for the visualizer) and **`PlayerSettings`** carries playback options like skip-silence the other way.
 
 ### Playback flow
 
@@ -214,7 +226,8 @@ UI ──playSongs──▶ PlaybackViewModel ──setQueue──▶ MediaContr
                                           │ DataSource              │
                                           │                         │
                                           │ 1. Local cached file?   │ ──▶ play from disk
-                                          │ 2. NewPipe resolve      │ ──▶ deciphered URL
+                                          │ 2. NewPipe resolve      │ ──▶ progressive / DASH /
+                                          │    (4-strategy)         │     video / manifest URL
                                           └────────────────────────┘
                                                        │
                                                        ▼
@@ -237,8 +250,8 @@ The Room `SongEntity.downloadPath` is queried via a small `DownloadLookup` inter
 
 ```bash
 # Clone
-git clone https://github.com/SambuddhaRoy/Verza-Music.git
-cd Verza-Music
+git clone https://github.com/SambuddhaRoy/Verza.git
+cd Verza
 
 # Configure local SDK location
 echo "sdk.dir=/path/to/Android/Sdk" > local.properties
@@ -293,4 +306,3 @@ This project is released under the **Apache License 2.0**. See [`LICENSE`](LICEN
 <sub>If Verza made your music a little nicer, leaving a ⭐ on the repo means a lot.</sub>
 
 </div>
-</content>
