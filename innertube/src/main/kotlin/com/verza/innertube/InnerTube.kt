@@ -288,4 +288,12 @@ object InnerTube {
         withContext(Dispatchers.IO) {
             runCatching { NewPipeStreamResolver.resolve(videoId) }.getOrNull()
         }
+
+    /**
+     * Diagnostic summary of the most recent stream resolution attempt — exposed so the
+     * MusicService can surface it in a Toast when resolution fails. Shape is brief:
+     * `audio=N(nn=M,prog=K) video=N(nn=M) dash=Y/n hls=Y/n` or an exception class+message.
+     */
+    val lastResolveDiagnostic: String
+        get() = NewPipeStreamResolver.lastDiagnostic
 }

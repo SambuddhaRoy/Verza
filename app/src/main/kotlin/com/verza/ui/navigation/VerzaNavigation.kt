@@ -28,10 +28,19 @@ import com.verza.ui.components.TrackActions
 import com.verza.ui.screens.*
 
 @Composable
-fun VerzaNavigation(modifier: Modifier = Modifier) {
+fun VerzaNavigation(
+    modifier: Modifier = Modifier,
+    startDestination: String = Screen.Home.route,
+    postBootDestination: String = Screen.Home.route,
+) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
+    // Boot animation, Onboarding, and the WebView Login screen are all pre-app surfaces.
+    // The chrome (mini-player, bottom nav) should not appear on any of them.
+    val isChromeHidden = currentRoute == Screen.Boot.route ||
+        currentRoute == Screen.Onboarding.route ||
+        currentRoute == Screen.Login.route
 
     val playbackViewModel: PlaybackViewModel = hiltViewModel()
     val playback by playbackViewModel.playbackState.collectAsStateWithLifecycle()
@@ -39,6 +48,12 @@ fun VerzaNavigation(modifier: Modifier = Modifier) {
     val likedIds by playbackViewModel.likedIds.collectAsStateWithLifecycle()
     val downloadedIds by playbackViewModel.downloadedIds.collectAsStateWithLifecycle()
     val downloading by playbackViewModel.downloading.collectAsStateWithLifecycle()
+    val sleepTimerEndAt by playbackViewModel.sleepTimerEndAt.collectAsStateWithLifecycle()
+
+    // Activity-scoped settings VM (same instance MainActivity uses) for UI prefs the player VM
+    // doesn't own — e.g. the Now Playing album-art motion toggle.
+    val settingsVm: SettingsViewModel = hiltViewModel()
+    val albumArtMotion by settingsVm.albumArtMotion.collectAsStateWithLifecycle()
     val artworkOverride by playbackViewModel.currentArtworkOverride.collectAsStateWithLifecycle()
 
     val current = playback.currentItem
@@ -51,7 +66,7 @@ fun VerzaNavigation(modifier: Modifier = Modifier) {
     val currentDownloading = current?.mediaId?.let { it in downloading } ?: false
 
     val hasTrack = current != null
-    val showMiniPlayer = hasTrack && currentRoute != Screen.NowPlaying.route && currentRoute != null
+    val showMiniPlayer = hasTrack && currentRoute != Screen.NowPlaying.route && currentRoute != null && !isChromeHidden
 
     val context = LocalContext.current
 
@@ -108,7 +123,10 @@ fun VerzaNavigation(modifier: Modifier = Modifier) {
         modifier = modifier,
         containerColor = Color.Transparent,
         bottomBar = {
-            Column {
+            // Hide the entire bottom chrome (mini-player + nav) on Onboarding/Login so the
+            // pre-app screens get the full canvas. AnimatedVisibility on each piece keeps the
+            // re-appear smooth on exit from onboarding.
+            if (!isChromeHidden) Column {
                 AnimatedVisibility(
                     visible = showMiniPlayer,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
@@ -131,11 +149,17 @@ fun VerzaNavigation(modifier: Modifier = Modifier) {
                 VerzaBottomBar(
                     currentRoute = currentRoute,
                     onNavigate = { screen ->
-                        // Same-tab tap from a non-tab destination (Settings / NowPlaying /
-                        // Collection / Artist / Lyrics …) was the case that silently no-op'd —
-                        // we now always pop back to Home and then navigate to the requested tab,
-                        // which gives a deterministic stack regardless of how deep the user is.
                         if (currentRoute == screen.route) return@VerzaBottomBar
+                        // Two-phase nav for bottom-bar taps:
+                        // 1. If the target tab is already in the back stack (the common case for
+                        //    Home — it's the start destination, always present), pop straight back
+                        //    to it. This is the only path that reliably "goes home" from a deep
+                        //    destination like Settings or Now Playing; the previous navigate(…)
+                        //    + popUpTo + restoreState combo silently no-op'd in that case.
+                        // 2. Otherwise (e.g. tapping Search for the first time), navigate fresh,
+                        //    anchored under Home so the stack stays flat across tab switches.
+                        val popped = navController.popBackStack(screen.route, inclusive = false)
+                        if (popped) return@VerzaBottomBar
                         navController.navigate(screen.route) {
                             popUpTo(Screen.Home.route) {
                                 saveState = true
@@ -152,11 +176,62 @@ fun VerzaNavigation(modifier: Modifier = Modifier) {
       CompositionLocalProvider(LocalTrackActions provides trackActions) {
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding),
-            enterTransition = { fadeIn(tween(200)) },
-            exitTransition = { fadeOut(tween(200)) },
+            // Directional transitions: forward navigation slides in from the right + fades;
+            // back navigation slides in from the left + fades. Gives navigation a sense of
+            // physical direction without ever feeling slow (250 ms cap).
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { fullWidth -> fullWidth / 6 },
+                    animationSpec = tween(250),
+                ) + fadeIn(tween(200))
+            },
+            exitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { fullWidth -> -fullWidth / 12 },
+                    animationSpec = tween(250),
+                ) + fadeOut(tween(180))
+            },
+            popEnterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { fullWidth -> -fullWidth / 6 },
+                    animationSpec = tween(250),
+                ) + fadeIn(tween(200))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { fullWidth -> fullWidth / 12 },
+                    animationSpec = tween(250),
+                ) + fadeOut(tween(180))
+            },
         ) {
+            composable(Screen.Boot.route) {
+                BootScreen(
+                    onFinished = {
+                        navController.navigate(postBootDestination) {
+                            // Strip Boot from the back stack — once the animation has played,
+                            // a back-press from Home/Onboarding should exit the app rather than
+                            // re-trigger the boot reveal.
+                            popUpTo(Screen.Boot.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+            composable(Screen.Onboarding.route) {
+                OnboardingScreen(
+                    onSignIn = { navController.navigate(Screen.Login.route) },
+                    onFinished = {
+                        navController.navigate(Screen.Home.route) {
+                            // Strip onboarding from the back stack so a back-press from Home exits
+                            // the app rather than returning the user to onboarding.
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
             composable(Screen.Home.route) {
                 HomeScreen(
                     onItemClick = openItem,
@@ -195,7 +270,11 @@ fun VerzaNavigation(modifier: Modifier = Modifier) {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
                     onSignIn = { navController.navigate(Screen.Login.route) },
+                    onOpenStats = { navController.navigate(Screen.Stats.route) },
                 )
+            }
+            composable(Screen.Stats.route) {
+                StatsScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Login.route) {
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -265,6 +344,10 @@ fun VerzaNavigation(modifier: Modifier = Modifier) {
                     onCycleRepeat = { playbackViewModel.cycleRepeatMode() },
                     onPlayQueueItem = { playbackViewModel.playQueueItemAt(it) },
                     onRemoveQueueItem = { playbackViewModel.removeQueueItemAt(it) },
+                    sleepTimerEndAt = sleepTimerEndAt,
+                    onSetSleepTimer = { playbackViewModel.setSleepTimer(it) },
+                    onSleepTimerEndOfTrack = { playbackViewModel.setSleepTimerEndOfTrack() },
+                    albumArtMotion = albumArtMotion,
                 )
             }
             composable(Screen.Lyrics.route) {

@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,7 +21,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.innertube.models.HomeItem
@@ -66,6 +72,19 @@ private fun HomeContent(
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
 
+    // Stagger counter — advances one tick per ~40 ms when the sections list arrives.
+    // Each section row checks `index < visibleCount` to decide whether it's faded in.
+    var visibleCount by remember(sections) { mutableIntStateOf(0) }
+    LaunchedEffect(sections) {
+        for (i in sections.indices) {
+            delay(40)
+            visibleCount = i + 1
+        }
+    }
+    // 24 dp downward offset for the fade-up. Converting to px once here avoids LocalDensity
+    // lookups inside every item lambda.
+    val translateYPx = with(LocalDensity.current) { 24.dp.toPx() }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp),
@@ -110,13 +129,35 @@ private fun HomeContent(
         // Decorative genre chip row — visual filter affordance, not wired yet.
         item { GenreChipRow() }
 
-        items(items = sections, key = { it.title }) { section ->
-            SectionRow(
-                title = section.title,
-                items = section.items,
-                onItemClick = onItemClick,
-                style = styleFor(section.title),
+        itemsIndexed(items = sections, key = { _, s -> s.title }) { index, section ->
+            // Per-section stagger: each row's `visible` flips on 40 ms after the previous,
+            // driven by a single counter at HomeContent scope. Holding the counter at this
+            // scope (not per-item) means scrolling away and back doesn't re-trigger — items
+            // recycled by LazyColumn read the already-advanced counter and just appear.
+            val visible = index < visibleCount
+            val alpha by animateFloatAsState(
+                targetValue = if (visible) 1f else 0f,
+                animationSpec = tween(durationMillis = 280),
+                label = "homeRowAlpha",
             )
+            val translationY by animateFloatAsState(
+                targetValue = if (visible) 0f else translateYPx,
+                animationSpec = tween(durationMillis = 320),
+                label = "homeRowY",
+            )
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    this.alpha = alpha
+                    this.translationY = translationY
+                },
+            ) {
+                SectionRow(
+                    title = section.title,
+                    items = section.items,
+                    onItemClick = onItemClick,
+                    style = styleFor(section.title),
+                )
+            }
         }
     }
 }

@@ -4,6 +4,13 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -25,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -68,6 +76,10 @@ fun NowPlayingScreen(
     onCycleRepeat: () -> Unit,
     onPlayQueueItem: (Int) -> Unit,
     onRemoveQueueItem: (Int) -> Unit,
+    sleepTimerEndAt: Long?,
+    onSetSleepTimer: (Long?) -> Unit,
+    onSleepTimerEndOfTrack: () -> Unit,
+    albumArtMotion: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -76,26 +88,17 @@ fun NowPlayingScreen(
     val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     var showQueue by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
+    var showSleepSheet by remember { mutableStateOf(false) }
+    val sleepRemaining = rememberSleepCountdown(sleepTimerEndAt)
 
     val songUrl = videoId?.let { "https://music.youtube.com/watch?v=$it" }
 
+    // Transparent root so the app-wide flowing GlowBackground (rendered behind the NavHost in
+    // MainActivity) shows through on this screen too. The previous opaque background + local
+    // radial wash hid it entirely.
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background),
+        modifier = modifier.fillMaxSize(),
     ) {
-        // Soft accent wash behind the art.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(colors.primary.copy(alpha = 0.08f), Color.Transparent),
-                        radius = 900f,
-                    )
-                )
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -112,14 +115,35 @@ fun NowPlayingScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Close", tint = colors.onBackground)
                 }
-                // Decorative handle, like a sheet drag indicator.
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(ext.muted.copy(alpha = 0.3f)),
-                )
+                // When a sleep timer is armed, the centre shows a live countdown chip; otherwise
+                // the decorative drag handle.
+                if (sleepRemaining != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(colors.primary.copy(alpha = 0.14f))
+                            .clickable { showSleepSheet = true }
+                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.Bedtime,
+                            contentDescription = "Sleep timer",
+                            tint = colors.primary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(sleepRemaining, style = MaterialTheme.typography.labelMedium, color = colors.primary)
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(ext.muted.copy(alpha = 0.3f)),
+                    )
+                }
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(Icons.Outlined.MoreVert, contentDescription = "More", tint = colors.onBackground)
@@ -152,6 +176,10 @@ fun NowPlayingScreen(
                             text = { Text("Start radio") },
                             onClick = { menuOpen = false; onStartRadio() },
                         )
+                        DropdownMenuItem(
+                            text = { Text(if (sleepRemaining != null) "Sleep timer · $sleepRemaining" else "Sleep timer") },
+                            onClick = { menuOpen = false; showSleepSheet = true },
+                        )
                         HorizontalDivider()
                         if (isDownloaded) {
                             DropdownMenuItem(
@@ -170,11 +198,27 @@ fun NowPlayingScreen(
             }
 
             // ── Artwork ────────────────────────────────────────────────────
+            // "Breathing" scale: 1.0 ↔ 1.012 on a 3-second loop while playback is active.
+            // Drives the entire artwork box (shadow + clip + image) via a single graphicsLayer
+            // so the shadow scales with the art instead of staying static under it. When paused
+            // the infinite transition pauses too — Compose stops emitting values, the scale
+            // freezes at whatever frame it was on.
+            val breathing = rememberInfiniteTransition(label = "artBreath")
+            val artScale by breathing.animateFloat(
+                initialValue = 1f,
+                targetValue = if (isPlaying && albumArtMotion) 1.012f else 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 3000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "artScale",
+            )
             Box(
                 modifier = Modifier
                     .padding(top = 24.dp, bottom = 20.dp)
                     .size(280.dp)
                     .align(Alignment.CenterHorizontally)
+                    .graphicsLayer { scaleX = artScale; scaleY = artScale }
                     .shadow(elevation = 24.dp, shape = RoundedCornerShape(24.dp), clip = false)
                     .clip(RoundedCornerShape(24.dp))
                     .background(colors.surfaceVariant),
@@ -245,9 +289,18 @@ fun NowPlayingScreen(
                             }
                         },
                 ) {
+                    // Smooth progress interpolation: the underlying `progress` value updates in
+                    // discrete ~500 ms steps from the playback service, which used to make the
+                    // bar visibly tick. Animating the visible width with a linear 500 ms tween
+                    // makes the fill glide continuously between updates.
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = progress,
+                        animationSpec = tween(durationMillis = 500, easing = LinearEasing),
+                        label = "seekBarFill",
+                    )
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(progress)
+                            .fillMaxWidth(animatedProgress)
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(2.dp))
                             .background(colors.primary),
@@ -375,6 +428,101 @@ fun NowPlayingScreen(
             Spacer(Modifier.height(16.dp))
         }
     }
+
+    if (showSleepSheet) {
+        SleepTimerSheet(
+            active = sleepTimerEndAt != null,
+            remaining = sleepRemaining,
+            onPick = { minutes ->
+                onSetSleepTimer(minutes * 60_000L)
+                showSleepSheet = false
+            },
+            onEndOfTrack = {
+                onSleepTimerEndOfTrack()
+                showSleepSheet = false
+            },
+            onCancel = {
+                onSetSleepTimer(null)
+                showSleepSheet = false
+            },
+            onDismiss = { showSleepSheet = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SleepTimerSheet(
+    active: Boolean,
+    remaining: String?,
+    onPick: (Int) -> Unit,
+    onEndOfTrack: () -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text("Sleep timer", style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
+            Text(
+                text = if (active && remaining != null) "Pausing in $remaining" else "Fade out and pause after…",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ext.muted,
+            )
+            Spacer(Modifier.height(12.dp))
+            listOf(15, 30, 45, 60).forEach { minutes ->
+                SleepOption(label = "$minutes minutes", onClick = { onPick(minutes) })
+            }
+            SleepOption(label = "End of track", onClick = onEndOfTrack)
+            if (active) {
+                Spacer(Modifier.height(4.dp))
+                SleepOption(label = "Turn off timer", tint = colors.primary, onClick = onCancel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SleepOption(label: String, tint: Color? = null, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleMedium,
+        color = tint ?: colors.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp, horizontal = 4.dp),
+    )
+}
+
+/**
+ * Ticks once a second while a sleep timer is armed, returning the remaining time formatted as
+ * "m:ss" (or "h:mm:ss" past an hour). Returns null when no timer is set.
+ */
+@Composable
+private fun rememberSleepCountdown(endAt: Long?): String? {
+    if (endAt == null) return null
+    var now by remember(endAt) { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(endAt) {
+        while (true) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
+    val remainingMs = (endAt - now).coerceAtLeast(0L)
+    val totalSec = remainingMs / 1000
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
 @Composable

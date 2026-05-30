@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher icon background — deep Noir blue -->
+<!--
+  Launcher icon background — warm-bone "page" colour from the Atelier palette.
+  Reads as the page on which the two ink rectangles of "The Fold" mark sit.
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#0D0D1A"/>
+    <solid android:color="#F5F1EA"/>
 </shape>

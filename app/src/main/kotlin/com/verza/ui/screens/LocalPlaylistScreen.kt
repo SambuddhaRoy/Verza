@@ -28,6 +28,7 @@ import coil3.compose.AsyncImage
 import com.verza.data.db.SongEntity
 import com.verza.innertube.models.MusicItem
 import com.verza.ui.components.TrackActionsMenu
+import com.verza.ui.components.pressableScale
 import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.theme.LocalVerzaExtendedColors
 
@@ -188,49 +189,56 @@ private fun LocalPlaylistTrackRow(
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Text(
-            text = index.toString().padStart(2, '0'),
-            style = MaterialTheme.typography.labelMedium,
-            color = ext.muted,
-            modifier = Modifier.width(24.dp),
-        )
-        val art = rememberSongArtwork(track.title, track.artist, track.thumbnailUrl)
-        Box(
+    Column {
+        Row(
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(colors.surfaceVariant),
+                .fillMaxWidth()
+                .pressableScale(onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            if (art != null) {
-                AsyncImage(model = art, contentDescription = null, modifier = Modifier.fillMaxSize())
-            }
-        }
-        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = track.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                text = index.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.labelMedium,
+                color = ext.muted,
+                modifier = Modifier.width(24.dp),
             )
-            if (track.artist.isNotBlank()) {
+            val art = rememberSongArtwork(track.title, track.artist, track.thumbnailUrl)
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.surfaceVariant),
+            ) {
+                if (art != null) {
+                    AsyncImage(model = art, contentDescription = null, modifier = Modifier.fillMaxSize())
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = track.artist,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ext.muted,
+                    text = track.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onBackground,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (track.artist.isNotBlank()) {
+                    Text(
+                        text = track.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ext.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            TrackActionsMenu(item = track.toMusicItem())
         }
-        TrackActionsMenu(item = track.toMusicItem())
+        HorizontalDivider(
+            thickness = 0.5.dp,
+            color = ext.borderGlass,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp),
+        )
     }
 }

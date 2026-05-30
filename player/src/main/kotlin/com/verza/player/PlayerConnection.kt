@@ -48,6 +48,9 @@ class PlayerConnection(context: Context) {
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    /** Audio session id of the currently-playing ExoPlayer; 0 when no session is active. */
+    val audioSessionId: StateFlow<Int> = AudioSessionRegistry.audioSessionId
+
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) = syncState()
         override fun onIsPlayingChanged(isPlaying: Boolean) = syncState()
@@ -93,6 +96,8 @@ class PlayerConnection(context: Context) {
 
     fun play() = controller?.play()
     fun pause() = controller?.pause()
+    /** Sets output volume 0f..1f — used by the sleep-timer fade-out. */
+    fun setVolume(volume: Float) { controller?.volume = volume.coerceIn(0f, 1f) }
     fun togglePlay() { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
     fun seekTo(positionMs: Long) = controller?.seekTo(positionMs)
     fun seekToNext() = controller?.seekToNext()

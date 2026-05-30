@@ -16,6 +16,8 @@ serialization-json  = "1.7.3"
 coil                = "3.0.4"
 google-fonts        = "1.7.6"
 datastore           = "1.1.1"
+splashscreen        = "1.0.1"
+palette             = "1.0.0"
 junit               = "4.13.2"
 newpipe             = "v0.26.1"
 
@@ -33,6 +35,8 @@ androidx-compose-animation          = { group = "androidx.compose.animation", na
 androidx-activity-compose           = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 androidx-core-ktx                   = { group = "androidx.core", name = "core-ktx", version = "1.15.0" }
 androidx-datastore-prefs            = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+androidx-core-splashscreen          = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
+androidx-palette                    = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
 
 # ── Navigation ─────────────────────────────────────────────────────────────────
 androidx-navigation-compose         = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }

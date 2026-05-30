@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.verza.innertube.models.HomeItem
+import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.LocalVerzaExtendedColors
 
 /**
@@ -56,22 +57,37 @@ fun SectionRow(
 @Composable
 private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?) {
     val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(
-            text = title,
-            style = if (large) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
-            color = colors.onBackground,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
+        // Short accent rule sets the editorial mood — same idiom as Settings/EditorialSectionHeader.
+        Box(
+            Modifier
+                .width(28.dp)
+                .height(1.dp)
+                .clip(RoundedCornerShape(0.5.dp))
+                .background(colors.primary),
         )
-        if (onSeeAll != null) {
-            TextButton(onClick = onSeeAll) {
-                Text("See all", style = MaterialTheme.typography.labelLarge, color = colors.primary)
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                text = title,
+                style = if (large) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
+                color = colors.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (onSeeAll != null) {
+                TextButton(onClick = onSeeAll) {
+                    // Italic serif "see all" reads as an editor's note rather than a button.
+                    Text("see all", style = CaptionItalic, color = colors.primary)
+                }
             }
         }
     }
@@ -135,7 +151,7 @@ private fun CompactTrackCell(item: HomeItem, modifier: Modifier, onClick: () -> 
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .background(colors.surface)
-            .clickable(onClick = onClick)
+            .pressableScale(onClick = onClick)
             .padding(end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -192,7 +208,7 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit) {
             .width(width)
             .clip(shape)
             .background(colors.surface)
-            .clickable(onClick = onClick),
+            .pressableScale(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
