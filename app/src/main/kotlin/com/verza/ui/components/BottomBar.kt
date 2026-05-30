@@ -1,6 +1,9 @@
 package com.verza.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -72,6 +76,17 @@ fun VerzaBottomBar(
                     animationSpec = tween(180),
                     label = "navLabel",
                 )
+                // Active-state icon spring: the selected icon scales up to 1.10× via a
+                // medium-bouncy spring, so tapping a tab gives kinetic confirmation on top
+                // of the colour change. Inactive icons stay at 1.0× (no return spring).
+                val iconScale by animateFloatAsState(
+                    targetValue = if (active) 1.10f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium,
+                    ),
+                    label = "navIconScale",
+                )
 
                 Column(
                     modifier = Modifier
@@ -95,7 +110,9 @@ fun VerzaBottomBar(
                         imageVector = item.icon,
                         contentDescription = item.label,
                         tint = tint,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier
+                            .size(22.dp)
+                            .graphicsLayer { scaleX = iconScale; scaleY = iconScale },
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(

@@ -1,35 +1,48 @@
 package com.verza.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.verza.data.StartScreen
 import com.verza.innertube.AudioQuality
+import com.verza.ui.components.EditorialSectionHeader
+import com.verza.ui.components.pressableScale
+import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.DynamicColorSupported
+import com.verza.ui.theme.GlowColorPreset
+import com.verza.ui.theme.GlowIntensity
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaTheme
+import com.verza.ui.theme.resolveColor
 import com.verza.ui.theme.toColorScheme
 
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onSignIn: () -> Unit,
+    onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -38,6 +51,17 @@ fun SettingsScreen(
     val currentTheme by viewModel.theme.collectAsStateWithLifecycle()
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
     val audioQuality by viewModel.audioQuality.collectAsStateWithLifecycle()
+    val glowEnabled by viewModel.glowEnabled.collectAsStateWithLifecycle()
+    val glowColor by viewModel.glowColor.collectAsStateWithLifecycle()
+    val glowIntensity by viewModel.glowIntensity.collectAsStateWithLifecycle()
+    val glowReactive by viewModel.glowReactive.collectAsStateWithLifecycle()
+    val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
+    val resumeOnOpen by viewModel.resumeOnOpen.collectAsStateWithLifecycle()
+    val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
+    val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
+    val saveSearchHistory by viewModel.saveSearchHistory.collectAsStateWithLifecycle()
+    val isDarkTheme = !currentTheme.isLight
+    var showResetStatsDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -103,7 +127,7 @@ fun SettingsScreen(
                             "Your home feed, recommendations and library are personalised."
                         else
                             "Sign in to get your personal YT Music feed and library.",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = CaptionItalic,
                         color = ext.muted,
                     )
                     if (isSignedIn) {
@@ -123,13 +147,77 @@ fun SettingsScreen(
             }
         }
 
+        // ── Insights ─────────────────────────────────────────────────────────
+        item { SectionHeader("Insights") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pressableScale(onClick = onOpenStats)
+                        .padding(vertical = 14.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Your Sound", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+                        Text("Listening stats — top tracks, artists, streaks", style = CaptionItalic, color = ext.muted)
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = ext.muted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
+            }
+        }
+
+        // ── General ──────────────────────────────────────────────────────────
+        item { SectionHeader("General") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Start screen", style = CaptionItalic, color = ext.muted)
+                SegmentedChoice(
+                    options = StartScreen.entries,
+                    selected = startScreen,
+                    label = { it.label },
+                    onSelect = viewModel::setStartScreen,
+                )
+            }
+        }
+
+        // ── Playback ─────────────────────────────────────────────────────────
+        item { SectionHeader("Playback") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                ToggleRow(
+                    title = "Resume on open",
+                    subtitle = "Pick up where you left off when the app reopens",
+                    checked = resumeOnOpen,
+                    onToggle = viewModel::setResumeOnOpen,
+                )
+                ToggleRow(
+                    title = "Skip silence",
+                    subtitle = "Trim silent gaps within tracks",
+                    checked = skipSilence,
+                    onToggle = viewModel::setSkipSilence,
+                )
+                ToggleRow(
+                    title = "Album art motion",
+                    subtitle = "Gently animate the cover while playing",
+                    checked = albumArtMotion,
+                    onToggle = viewModel::setAlbumArtMotion,
+                    divider = false,
+                )
+            }
+        }
+
         // ── Audio quality ──────────────────────────────────────────────────────
         item { SectionHeader("Audio quality") }
         item {
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            // Flat list with continuous hairlines — no inter-row gap so dividers form one rule.
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                 AudioQualityRow(AudioQuality.HIGH, "High", "Best available bitrate", audioQuality == AudioQuality.HIGH) { viewModel.setAudioQuality(AudioQuality.HIGH) }
                 AudioQualityRow(AudioQuality.MEDIUM, "Medium", "About 128 kbps", audioQuality == AudioQuality.MEDIUM) { viewModel.setAudioQuality(AudioQuality.MEDIUM) }
                 AudioQualityRow(AudioQuality.LOW, "Low", "Data saver", audioQuality == AudioQuality.LOW) { viewModel.setAudioQuality(AudioQuality.LOW) }
@@ -140,6 +228,72 @@ fun SettingsScreen(
         item { SectionHeader("Theme") }
         items(VerzaTheme.entries.filter { it != VerzaTheme.DYNAMIC || DynamicColorSupported }) { theme ->
             ThemeRow(theme = theme, selected = theme == currentTheme) { viewModel.setTheme(theme) }
+        }
+
+        // ── Background glow ────────────────────────────────────────────────────
+        // Glow lives only in dark themes by design. We still show the toggle row in light
+        // themes (with a muted explanation) so users can discover the feature; the colour
+        // and intensity controls collapse to avoid empty real-estate.
+        item { SectionHeader("Background glow") }
+        item {
+            GlowToggleRow(
+                enabled = glowEnabled,
+                onToggle = viewModel::setGlowEnabled,
+                availableInTheme = isDarkTheme,
+            )
+        }
+        if (isDarkTheme && glowEnabled) {
+            item {
+                GlowColorRow(
+                    selected = glowColor,
+                    onSelect = viewModel::setGlowColor,
+                )
+            }
+            item {
+                GlowIntensityRow(
+                    selected = glowIntensity,
+                    onSelect = viewModel::setGlowIntensity,
+                )
+            }
+            item {
+                GlowReactivityRow(
+                    enabled = glowReactive,
+                    onToggle = viewModel::setGlowReactive,
+                )
+            }
+        }
+
+        // ── Search ───────────────────────────────────────────────────────────
+        item { SectionHeader("Search") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                ToggleRow(
+                    title = "Save search history",
+                    subtitle = "Remember recent searches for quick access",
+                    checked = saveSearchHistory,
+                    onToggle = viewModel::setSaveSearchHistory,
+                )
+                ActionRow(
+                    title = "Clear search history",
+                    subtitle = "Remove all remembered searches",
+                    onClick = viewModel::clearSearchHistory,
+                    divider = false,
+                )
+            }
+        }
+
+        // ── Data ─────────────────────────────────────────────────────────────
+        item { SectionHeader("Data") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                ActionRow(
+                    title = "Reset listening stats",
+                    subtitle = "Wipe the play history behind Your Sound",
+                    tint = colors.error,
+                    onClick = { showResetStatsDialog = true },
+                    divider = false,
+                )
+            }
         }
 
         // ── Credits ────────────────────────────────────────────────────────────
@@ -164,7 +318,7 @@ fun SettingsScreen(
                     Text("Verza", style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
                     Text(
                         "A YouTube Music client",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = CaptionItalic,
                         color = ext.muted,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -182,17 +336,122 @@ fun SettingsScreen(
             }
         }
     }
+
+    if (showResetStatsDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetStatsDialog = false },
+            title = { Text("Reset listening stats?") },
+            text = { Text("This permanently clears the play history behind Your Sound. Your liked songs and playlists are untouched.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.resetListeningStats()
+                    showResetStatsDialog = false
+                }) { Text("Reset", color = colors.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetStatsDialog = false }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
 @Composable
 private fun SectionHeader(title: String) {
+    EditorialSectionHeader(title = title)
+}
+
+/** Title + subtitle row with a trailing Switch, hairline rule below (unless [divider] is false). */
+@Composable
+private fun ToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+    divider: Boolean = true,
+) {
+    val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelSmall,
-        color = ext.muted,
-        modifier = Modifier.padding(start = 24.dp),
-    )
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+                Text(subtitle, style = CaptionItalic, color = ext.muted)
+            }
+            Switch(checked = checked, onCheckedChange = onToggle)
+        }
+        if (divider) HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
+    }
+}
+
+/** Tappable title + subtitle row (for one-shot actions like clear/reset). */
+@Composable
+private fun ActionRow(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    tint: Color? = null,
+    divider: Boolean = true,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Column {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .pressableScale(onClick = onClick)
+                .padding(vertical = 12.dp, horizontal = 4.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = tint ?: colors.onBackground)
+            Text(subtitle, style = CaptionItalic, color = ext.muted)
+        }
+        if (divider) HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
+    }
+}
+
+/** Horizontal segmented selector — a tracked row of pill options with one active. */
+@Composable
+private fun <T> SegmentedChoice(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { option ->
+            val isSelected = option == selected
+            Surface(
+                onClick = { onSelect(option) },
+                shape = RoundedCornerShape(10.dp),
+                color = if (isSelected) colors.primaryContainer.copy(alpha = 0.4f) else Color.Transparent,
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = if (isSelected) colors.primary else ext.borderGlass,
+                ),
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = label(option),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isSelected) colors.onBackground else ext.muted,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -205,24 +464,269 @@ private fun AudioQualityRow(
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = if (selected) colors.primaryContainer.copy(alpha = 0.5f) else colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        onClick = onClick,
-    ) {
+    // Hairline-rule treatment: no card, no fill. Selected state is communicated by a small
+    // filled primary bullet on the left and the title shifting to primary; cleaner and more
+    // editorial than a tinted background.
+    Column {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .pressableScale(onClick = onClick)
+                .padding(horizontal = 4.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            // Bullet — 6 dp filled primary circle when selected, hollow outline otherwise.
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) colors.primary else Color.Transparent)
+                    .border(
+                        width = if (selected) 0.dp else 1.dp,
+                        color = ext.muted,
+                        shape = CircleShape,
+                    ),
+            )
             Column(modifier = Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = ext.muted)
+                Text(
+                    label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (selected) colors.primary else colors.onBackground,
+                )
+                Text(description, style = CaptionItalic, color = ext.muted)
             }
-            if (selected) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = "Selected", tint = colors.primary, modifier = Modifier.size(20.dp))
+        }
+        HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
+    }
+}
+
+// ── Glow rows ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun GlowToggleRow(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+    availableInTheme: Boolean,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Ambient glow",
+                style = MaterialTheme.typography.titleMedium,
+                color = if (availableInTheme) colors.onBackground else ext.muted,
+            )
+            Text(
+                text = if (availableInTheme)
+                    "Soft warm halo behind the content."
+                else
+                    "Only visible on dark themes.",
+                style = CaptionItalic,
+                color = ext.muted,
+            )
+        }
+        Switch(
+            checked = enabled,
+            enabled = availableInTheme,
+            onCheckedChange = onToggle,
+        )
+    }
+}
+
+@Composable
+private fun GlowReactivityRow(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // We re-check the permission every recomposition rather than caching it, so a user who
+    // grants the permission via system settings while this screen is open sees the toggle
+    // light up immediately.
+    val hasPermission = remember(enabled) {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.RECORD_AUDIO,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    // Launcher for the runtime permission ask. If granted, persist the toggle; if denied,
+    // surface a brief Toast so the user knows why nothing changed and where to flip it on.
+    val permLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            onToggle(true)
+        } else {
+            android.widget.Toast.makeText(
+                context,
+                "Sound reactivity needs the audio permission. You can grant it later in system settings.",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Sound reactivity",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.onBackground,
+            )
+            Text(
+                text = "Glow moves and brightens with the music. Requires audio permission.",
+                style = CaptionItalic,
+                color = ext.muted,
+            )
+        }
+        Switch(
+            checked = enabled && hasPermission,
+            onCheckedChange = { newState ->
+                if (newState) {
+                    if (hasPermission) onToggle(true)
+                    else permLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                } else {
+                    onToggle(false)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun GlowColorRow(
+    selected: GlowColorPreset,
+    onSelect: (GlowColorPreset) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    val available = GlowColorPreset.entries.filter {
+        it != GlowColorPreset.SYSTEM || com.verza.ui.theme.DynamicColorSupported
+    }
+    Column(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            "Glow color",
+            style = MaterialTheme.typography.labelSmall,
+            color = ext.muted,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            available.forEach { preset ->
+                val swatch = preset.resolveColor()
+                val isSelected = preset == selected
+                // "From album art" has no fixed colour — show a multi-hue sweep so the swatch
+                // reads as "adaptive" rather than a single flat colour.
+                val swatchModifier = if (preset == GlowColorPreset.ALBUM_ART) {
+                    Modifier.background(
+                        androidx.compose.ui.graphics.Brush.sweepGradient(
+                            listOf(
+                                androidx.compose.ui.graphics.Color(0xFFE0556E),
+                                androidx.compose.ui.graphics.Color(0xFFE8B14A),
+                                androidx.compose.ui.graphics.Color(0xFF5A8068),
+                                androidx.compose.ui.graphics.Color(0xFF6B8BA8),
+                                androidx.compose.ui.graphics.Color(0xFFE0556E),
+                            )
+                        )
+                    )
+                } else {
+                    Modifier.background(swatch)
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onSelect(preset) }
+                        .padding(6.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .then(swatchModifier)
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) colors.onBackground else ext.borderGlass,
+                                shape = CircleShape,
+                            ),
+                    )
+                    Text(
+                        preset.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isSelected) colors.onBackground else ext.muted,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GlowIntensityRow(
+    selected: GlowIntensity,
+    onSelect: (GlowIntensity) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Column(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            "Intensity",
+            style = MaterialTheme.typography.labelSmall,
+            color = ext.muted,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            GlowIntensity.entries.forEach { intensity ->
+                val isSelected = intensity == selected
+                Surface(
+                    onClick = { onSelect(intensity) },
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isSelected) colors.primaryContainer.copy(alpha = 0.4f) else Color.Transparent,
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
+                        color = if (isSelected) colors.primary else ext.borderGlass,
+                    ),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = intensity.displayName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isSelected) colors.onBackground else ext.muted,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
             }
         }
     }
@@ -234,42 +738,53 @@ private fun ThemeRow(theme: VerzaTheme, selected: Boolean, onClick: () -> Unit) 
     val ext = LocalVerzaExtendedColors.current
     val scheme = remember(theme) { theme.toColorScheme() }
 
-    Card(
-        modifier = Modifier
-            .padding(horizontal = 20.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = if (selected) colors.primaryContainer.copy(alpha = 0.5f) else colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        onClick = onClick,
-    ) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .pressableScale(onClick = onClick)
+                .padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Swatch trio for the theme.
-            Row(modifier = Modifier.clip(RoundedCornerShape(8.dp))) {
-                Box(Modifier.size(24.dp).background(scheme.background))
-                Box(Modifier.size(24.dp).background(scheme.primary))
-                Box(Modifier.size(24.dp).background(scheme.secondary))
-                Box(Modifier.size(24.dp).background(scheme.tertiary))
+            // Swatch trio — kept; this is the only place the theme is *visible* in the row.
+            Row(modifier = Modifier.clip(RoundedCornerShape(6.dp))) {
+                Box(Modifier.size(20.dp).background(scheme.background))
+                Box(Modifier.size(20.dp).background(scheme.primary))
+                Box(Modifier.size(20.dp).background(scheme.secondary))
+                Box(Modifier.size(20.dp).background(scheme.tertiary))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(theme.displayName, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    theme.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (selected) colors.primary else colors.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     when {
                         theme == VerzaTheme.DYNAMIC -> "Follows system"
                         theme.isLight -> "Light"
                         else -> "Dark"
                     },
-                    style = MaterialTheme.typography.bodySmall,
+                    style = CaptionItalic,
                     color = ext.muted,
                 )
             }
-            if (selected) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = "Selected", tint = colors.primary, modifier = Modifier.size(20.dp))
-            }
+            // Quiet 6-dp bullet selected state, matching AudioQualityRow.
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) colors.primary else Color.Transparent)
+                    .border(
+                        width = if (selected) 0.dp else 1.dp,
+                        color = ext.muted,
+                        shape = CircleShape,
+                    ),
+            )
         }
+        HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
     }
 }

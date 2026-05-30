@@ -10,19 +10,23 @@ import com.verza.data.MusicRepository
 import com.verza.data.PreferencesRepository
 import com.verza.data.SavedQueue
 import com.verza.data.SavedTrack
+import com.verza.data.StatsRepository
 import com.verza.data.db.SongEntity
 import com.verza.innertube.models.HomeItem
 import com.verza.innertube.models.MusicItem
 import com.verza.player.PlaybackState
 import com.verza.player.PlayerConnection
+import com.verza.player.PlayerSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
@@ -42,10 +46,14 @@ class PlaybackViewModel @Inject constructor(
     private val prefs: PreferencesRepository,
     private val downloadManager: DownloadManager,
     private val artworkRepository: ArtworkRepository,
+    private val statsRepository: StatsRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     val playbackState: StateFlow<PlaybackState> = playerConnection.playbackState
+
+    /** Active audio session id; piped to the visualizer engine when glow reactivity is on. */
+    val audioSessionId: StateFlow<Int> = playerConnection.audioSessionId
 
     private val _positionMs = MutableStateFlow(0L)
     val positionMs: StateFlow<Long> = _positionMs.asStateFlow()
@@ -69,6 +77,20 @@ class PlaybackViewModel @Inject constructor(
     private val _currentArtworkOverride = MutableStateFlow<String?>(null)
     val currentArtworkOverride: StateFlow<String?> = _currentArtworkOverride.asStateFlow()
 
+    /** Epoch-millis at which the sleep timer will pause playback, or null when no timer is set. */
+    private val _sleepTimerEndAt = MutableStateFlow<Long?>(null)
+    val sleepTimerEndAt: StateFlow<Long?> = _sleepTimerEndAt.asStateFlow()
+    private var sleepJob: Job? = null
+
+    // ── Listen-time accumulation (powers "Your Sound" stats) ───────────────────
+    // We tally the real time the user spends listening to each track (only while actually
+    // playing) using elapsedRealtime deltas from the polling loop, then flush a PlayEvent
+    // when the track changes or the VM clears. Approximating with track duration would have
+    // over-counted skips; this measures actual engaged listening.
+    private var accumTrackId: String? = null
+    private var accumMs = 0L
+    private var lastTickElapsed = 0L
+
     init {
         playerConnection.connect(context) {
             // On (re)connect, restore the persisted queue only if the service isn't already
@@ -82,6 +104,7 @@ class PlaybackViewModel @Inject constructor(
             var tick = 0
             while (isActive) {
                 _positionMs.value = playerConnection.currentPositionMs
+                accumulateListen(android.os.SystemClock.elapsedRealtime())
                 // Persist position roughly every 10s while something is queued.
                 if (++tick % 20 == 0) snapshotQueue()?.let { prefs.saveQueue(it) }
                 delay(500)
@@ -96,6 +119,11 @@ class PlaybackViewModel @Inject constructor(
                     currentSongEntity()?.let { libraryRepository.recordPlayed(it) }
                     snapshotQueue()?.let { prefs.saveQueue(it) }
                 }
+        }
+
+        // Mirror the skip-silence preference into the player module (applied by MusicService).
+        viewModelScope.launch {
+            prefs.skipSilenceFlow.collect { PlayerSettings.setSkipSilence(it) }
         }
 
         // Look up real album art for the current track via iTunes, falling back to the YT thumb.
@@ -125,6 +153,8 @@ class PlaybackViewModel @Inject constructor(
             PlayerConnection.buildMediaItem(it.videoId, it.title, it.artist, it.artworkUrl)
         }
         playerConnection.restoreQueue(mediaItems, saved.index, saved.positionMs)
+        // "Resume on open" — pick up where the user left off instead of restoring paused.
+        if (prefs.resumeOnOpenFlow.first()) playerConnection.play()
     }
 
     private fun snapshotQueue(): SavedQueue? {
@@ -261,7 +291,78 @@ class PlaybackViewModel @Inject constructor(
     fun toggleShuffle() = playerConnection.setShuffleEnabled(!playbackState.value.shuffleEnabled)
     fun cycleRepeatMode() = playerConnection.cycleRepeatMode()
 
+    // ── Listen accumulation ────────────────────────────────────────────────────
+
+    /** Called every polling tick. Adds engaged-listen time to the current track, flushing on change. */
+    private fun accumulateListen(nowElapsed: Long) {
+        val st = playbackState.value
+        val id = st.currentItem?.mediaId
+        if (id != accumTrackId) {
+            flushListen()
+            accumTrackId = id
+            accumMs = 0L
+            lastTickElapsed = if (st.isPlaying) nowElapsed else 0L
+            return
+        }
+        if (st.isPlaying) {
+            if (lastTickElapsed != 0L) accumMs += (nowElapsed - lastTickElapsed)
+            lastTickElapsed = nowElapsed
+        } else {
+            // Paused — stop counting and reset the delta anchor so the paused gap isn't tallied.
+            lastTickElapsed = 0L
+        }
+    }
+
+    /** Writes the accumulated listen for the current track to the stats log (if substantial). */
+    private fun flushListen() {
+        val id = accumTrackId
+        val ms = accumMs
+        accumMs = 0L
+        lastTickElapsed = 0L
+        if (id != null && ms >= 5_000) {
+            viewModelScope.launch { statsRepository.record(id, ms) }
+        }
+    }
+
+    // ── Sleep timer ─────────────────────────────────────────────────────────────
+
+    /**
+     * Arms a sleep timer that pauses playback after [durationMs], fading the volume down over the
+     * final few seconds. Pass null (or <= 0) to cancel any active timer.
+     */
+    fun setSleepTimer(durationMs: Long?) {
+        sleepJob?.cancel()
+        playerConnection.setVolume(1f) // undo any in-progress fade from a prior timer
+        if (durationMs == null || durationMs <= 0) {
+            _sleepTimerEndAt.value = null
+            return
+        }
+        _sleepTimerEndAt.value = System.currentTimeMillis() + durationMs
+        sleepJob = viewModelScope.launch {
+            val fadeMs = 4_000L
+            delay((durationMs - fadeMs).coerceAtLeast(0L))
+            // Soft volume ramp so the music dissolves rather than cutting out.
+            val steps = 16
+            for (i in steps downTo 0) {
+                playerConnection.setVolume(i / steps.toFloat())
+                delay(fadeMs / steps)
+            }
+            playerConnection.pause()
+            playerConnection.setVolume(1f)
+            _sleepTimerEndAt.value = null
+        }
+    }
+
+    /** Convenience: pause when the current track ends (computed from its remaining time). */
+    fun setSleepTimerEndOfTrack() {
+        val remaining = (playerConnection.currentDurationMs - playerConnection.currentPositionMs)
+            .coerceAtLeast(0L)
+        if (remaining > 0L) setSleepTimer(remaining)
+    }
+
     override fun onCleared() {
+        flushListen()
+        sleepJob?.cancel()
         playerConnection.disconnect()
     }
 }

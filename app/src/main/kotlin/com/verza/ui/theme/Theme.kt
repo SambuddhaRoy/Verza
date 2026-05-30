@@ -15,27 +15,90 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 enum class VerzaTheme(val displayName: String, val isLight: Boolean) {
-    DYNAMIC ("Dynamic (Material You)", isLight = false),  // colors derived from the system wallpaper
-    BAUHAUS ("Bauhaus",  isLight = true),
-    MALIBU  ("Malibu",  isLight = true),
-    CONCRETE("Concrete", isLight = true),
-    NOIR    ("Noir",    isLight = false),
-    EMBER   ("Ember",   isLight = false),
-    ACID    ("Acid",    isLight = false),
-    MAGENTA ("Magenta", isLight = false),
+    // ATELIER pair is the editorial default; dark first so it's the launch experience.
+    ATELIER_DARK  ("Atelier",       isLight = false),
+    ATELIER_LIGHT ("Atelier Light", isLight = true),
+    DYNAMIC       ("Dynamic (Material You)", isLight = false),
+    BAUHAUS       ("Bauhaus",  isLight = true),
+    MALIBU        ("Malibu",   isLight = true),
+    CONCRETE      ("Concrete", isLight = true),
+    NOIR          ("Noir",     isLight = false),
+    EMBER         ("Ember",    isLight = false),
+    ACID          ("Acid",     isLight = false),
+    MAGENTA       ("Magenta",  isLight = false),
 }
 
 /** True when this device can produce dynamic (Material You) color schemes. */
 val DynamicColorSupported: Boolean
     get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-val LocalVerzaTheme = staticCompositionLocalOf { VerzaTheme.NOIR }
+val LocalVerzaTheme = staticCompositionLocalOf { VerzaTheme.ATELIER_DARK }
 
 // ── ColorScheme builders ───────────────────────────────────────────────────────
 
 fun VerzaTheme.toColorScheme(): ColorScheme = when (this) {
+    VerzaTheme.ATELIER_DARK -> darkColorScheme(
+        primary              = AtelierDarkPrimary,
+        onPrimary            = Color(0xFF1A0F08),
+        primaryContainer     = Color(0xFF4A2010),
+        onPrimaryContainer   = Color(0xFFFFD7C2),
+        secondary            = AtelierDarkSecondary,
+        onSecondary          = Color(0xFF1A1714),
+        secondaryContainer   = Color(0xFF2E2A22),
+        onSecondaryContainer = Color(0xFFE5DCC8),
+        tertiary             = AtelierDarkTertiary,
+        onTertiary           = Color(0xFF1A1408),
+        tertiaryContainer    = Color(0xFF463A22),
+        onTertiaryContainer  = Color(0xFFEFD8AC),
+        background           = AtelierDarkBackground,
+        onBackground         = AtelierDarkOnBackground,
+        surface              = AtelierDarkSurface,
+        onSurface            = AtelierDarkOnSurface,
+        surfaceVariant       = AtelierDarkSurfaceVariant,
+        onSurfaceVariant     = AtelierDarkOnSurfaceVariant,
+        outline              = AtelierDarkOutline,
+        outlineVariant       = AtelierDarkOutlineVariant,
+        scrim                = Color.Black,
+        inverseSurface       = AtelierDarkOnBackground,
+        inverseOnSurface     = AtelierDarkBackground,
+        inversePrimary       = Color(0xFF8C3A1C),
+        error                = Color(0xFFFFB4AB),
+        onError              = Color(0xFF690005),
+        errorContainer       = Color(0xFF93000A),
+        onErrorContainer     = Color(0xFFFFDAD6),
+    )
+    VerzaTheme.ATELIER_LIGHT -> lightColorScheme(
+        primary              = AtelierLightPrimary,
+        onPrimary            = Color.White,
+        primaryContainer     = Color(0xFFFFD7C2),
+        onPrimaryContainer   = Color(0xFF3A1505),
+        secondary            = AtelierLightSecondary,
+        onSecondary          = Color.White,
+        secondaryContainer   = Color(0xFFE6DFCF),
+        onSecondaryContainer = Color(0xFF26221F),
+        tertiary             = AtelierLightTertiary,
+        onTertiary           = Color.White,
+        tertiaryContainer    = Color(0xFFEFE0BE),
+        onTertiaryContainer  = Color(0xFF231C0A),
+        background           = AtelierLightBackground,
+        onBackground         = AtelierLightOnBackground,
+        surface              = AtelierLightSurface,
+        onSurface            = AtelierLightOnSurface,
+        surfaceVariant       = AtelierLightSurfaceVariant,
+        onSurfaceVariant     = AtelierLightOnSurfaceVariant,
+        outline              = AtelierLightOutline,
+        outlineVariant       = AtelierLightOutlineVariant,
+        scrim                = Color.Black,
+        inverseSurface       = Color(0xFF2A2724),
+        inverseOnSurface     = AtelierLightBackground,
+        inversePrimary       = Color(0xFFFFB39A),
+        error                = Color(0xFFBA1A1A),
+        onError              = Color.White,
+        errorContainer       = Color(0xFFFFDAD6),
+        onErrorContainer     = Color(0xFF410002),
+    )
     // DYNAMIC is resolved at runtime inside [VerzaTheme]; this is just a swatch fallback.
-    VerzaTheme.DYNAMIC -> VerzaTheme.NOIR.toColorScheme()
+    VerzaTheme.DYNAMIC -> VerzaTheme.ATELIER_DARK.toColorScheme()
     VerzaTheme.BAUHAUS -> lightColorScheme(
         primary              = BauhausPrimary,
         onPrimary            = Color.White,
@@ -249,7 +312,9 @@ fun VerzaTheme.toColorScheme(): ColorScheme = when (this) {
 }
 
 fun VerzaTheme.toExtendedColors(): VerzaExtendedColors = when (this) {
-    VerzaTheme.DYNAMIC  -> VerzaTheme.NOIR.toExtendedColors() // overridden at runtime
+    VerzaTheme.ATELIER_DARK  -> VerzaExtendedColors(AtelierDarkMuted,  AtelierDarkGlass,  AtelierDarkGlassHeavy,  AtelierDarkBorderGlass,  AtelierDarkBrutalBlock,  AtelierDarkSecondary,  AtelierDarkTertiary)
+    VerzaTheme.ATELIER_LIGHT -> VerzaExtendedColors(AtelierLightMuted, AtelierLightGlass, AtelierLightGlassHeavy, AtelierLightBorderGlass, AtelierLightBrutalBlock, AtelierLightSecondary, AtelierLightTertiary)
+    VerzaTheme.DYNAMIC  -> VerzaTheme.ATELIER_DARK.toExtendedColors() // overridden at runtime
     VerzaTheme.BAUHAUS  -> VerzaExtendedColors(BauhausMuted,   BauhausGlass,   BauhausGlassHeavy,   BauhausBorderGlass,   BauhausBrutalBlock,   BauhausSecondary,  BauhausTertiary)
     VerzaTheme.MALIBU   -> VerzaExtendedColors(MalibuMuted,    MalibuGlass,    MalibuGlassHeavy,    MalibuBorderGlass,    MalibuBrutalBlock,    MalibuSecondary,   MalibuTertiary)
     VerzaTheme.CONCRETE -> VerzaExtendedColors(ConcreteMuted,  ConcreteGlass,  ConcreteGlassHeavy,  ConcreteBorderGlass,  ConcreteBrutalBlock,  ConcreteSecondary, ConcreteTertiary)
@@ -263,7 +328,7 @@ fun VerzaTheme.toExtendedColors(): VerzaExtendedColors = when (this) {
 
 @Composable
 fun VerzaTheme(
-    theme: VerzaTheme = VerzaTheme.NOIR,
+    theme: VerzaTheme = VerzaTheme.ATELIER_DARK,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -272,7 +337,7 @@ fun VerzaTheme(
     val colorScheme: ColorScheme = when {
         theme == VerzaTheme.DYNAMIC && DynamicColorSupported ->
             if (isSystemDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        theme == VerzaTheme.DYNAMIC -> VerzaTheme.NOIR.toColorScheme() // older OS fallback
+        theme == VerzaTheme.DYNAMIC -> VerzaTheme.ATELIER_DARK.toColorScheme() // older OS fallback
         else -> theme.toColorScheme()
     }
 

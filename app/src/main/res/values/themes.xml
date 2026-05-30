@@ -1,8 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Transparent Activity theme — Compose draws everything -->
+    <!-- Main Activity theme — Compose draws everything, so it's just a transparent shell. -->
     <style name="Theme.Verza" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!--
+        System splash theme (Android 12+ SplashScreen API, back-ported to older versions
+        by androidx.core:core-splashscreen). Holds from launcher tap until MainActivity is
+        ready to render, then hands off to Theme.Verza via postSplashScreenTheme.
+
+        Background matches the Atelier dark theme (#0C0B0A) so the handoff to the in-app
+        boot reveal is seamless — no colour flip between system splash and Compose.
+    -->
+    <style name="Theme.Verza.Starting" parent="Theme.SplashScreen">
+        <!--
+            Splash background matches the new "Fold" icon's page colour (warm bone) so
+            the icon reads naturally on the splash. The Compose BootScreen that follows
+            picks up the user's chosen theme — Atelier-dark users see a deliberate
+            "lights down" transition into the dark boot reveal.
+        -->
+        <item name="windowSplashScreenBackground">#F5F1EA</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Verza</item>
     </style>
 </resources>

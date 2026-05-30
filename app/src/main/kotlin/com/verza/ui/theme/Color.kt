@@ -148,6 +148,45 @@ val AcidGlassHeavy           = Color(0xD10C1410)
 val AcidBorderGlass          = Color(0x2EE2ECE2)
 val AcidBrutalBlock          = Color(0x0AE2ECE2)
 
+// ── ATELIER LIGHT — warm bone + ink + burnt amber ─────────────────────────────
+// Editorial palette pair: this is the daytime variant. Pairs with ATELIER_DARK
+// which uses the same accent on a deep coffee-black background.
+val AtelierLightPrimary           = Color(0xFFC2502E) // burnt amber
+val AtelierLightSecondary         = Color(0xFF7A6F60) // muted warm gray
+val AtelierLightTertiary          = Color(0xFF8C7A4A) // bronze
+val AtelierLightBackground        = Color(0xFFF5F1EA) // warm bone
+val AtelierLightOnBackground      = Color(0xFF1A1817) // ink
+val AtelierLightSurface           = Color(0xFFEEE7D9) // paper-shadow
+val AtelierLightSurfaceVariant    = Color(0xFFE6DFCF)
+val AtelierLightOnSurface         = Color(0xFF1A1817)
+val AtelierLightOnSurfaceVariant  = Color(0xFF7A6F60)
+val AtelierLightOutline           = Color(0xFF2A2724) // hairlines — strong on light
+val AtelierLightOutlineVariant    = Color(0xFFD8D0BE) // soft rules
+val AtelierLightMuted             = Color(0xFF7A6F60)
+val AtelierLightGlass             = Color(0x80EEE7D9)
+val AtelierLightGlassHeavy        = Color(0xD9E6DFCF)
+val AtelierLightBorderGlass       = Color(0x1F1A1817)
+val AtelierLightBrutalBlock       = Color(0x0F1A1817)
+
+// ── ATELIER DARK — ink black + warm cream + burnt amber ───────────────────────
+// New default. Same accent as ATELIER_LIGHT for tonal continuity across the pair.
+val AtelierDarkPrimary           = Color(0xFFD67950) // warmer amber on dark
+val AtelierDarkSecondary         = Color(0xFF8C8273) // muted warm gray
+val AtelierDarkTertiary          = Color(0xFFC4A878) // soft bronze
+val AtelierDarkBackground        = Color(0xFF0C0B0A) // deep black-coffee
+val AtelierDarkOnBackground      = Color(0xFFEAE2D2) // warm cream
+val AtelierDarkSurface           = Color(0xFF16140F) // espresso
+val AtelierDarkSurfaceVariant    = Color(0xFF1F1C16)
+val AtelierDarkOnSurface         = Color(0xFFEAE2D2)
+val AtelierDarkOnSurfaceVariant  = Color(0xFF8C8273)
+val AtelierDarkOutline           = Color(0xFFEAE2D2) // hairlines — bright on dark
+val AtelierDarkOutlineVariant    = Color(0xFF3A342B) // soft rules
+val AtelierDarkMuted             = Color(0xFF8C8273)
+val AtelierDarkGlass             = Color(0x8C16140F)
+val AtelierDarkGlassHeavy        = Color(0xD112100C)
+val AtelierDarkBorderGlass       = Color(0x2EEAE2D2)
+val AtelierDarkBrutalBlock       = Color(0x0AEAE2D2)
+
 // ── MAGENTA — neon magenta, dark ──────────────────────────────────────────────
 // c1 oklch(62% 0.24 330), c2 oklch(65% 0.18 190), c3 oklch(70% 0.2 85)
 val MagentaPrimary           = Color(0xFFCF39C9) // oklch(62% 0.24 330) magenta

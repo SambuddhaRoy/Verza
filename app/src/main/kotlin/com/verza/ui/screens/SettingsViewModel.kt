@@ -3,7 +3,11 @@ package com.verza.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verza.data.PreferencesRepository
+import com.verza.data.StartScreen
+import com.verza.data.StatsRepository
 import com.verza.innertube.AudioQuality
+import com.verza.ui.theme.GlowColorPreset
+import com.verza.ui.theme.GlowIntensity
 import com.verza.ui.theme.VerzaTheme
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,10 +20,11 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val prefs: PreferencesRepository,
+    private val stats: StatsRepository,
 ) : ViewModel() {
 
     val theme: StateFlow<VerzaTheme> = prefs.themeFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, VerzaTheme.NOIR)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, VerzaTheme.ATELIER_DARK)
 
     val isSignedIn: StateFlow<Boolean> = prefs.cookieFlow
         .map { !it.isNullOrBlank() }
@@ -28,12 +33,88 @@ class SettingsViewModel @Inject constructor(
     val audioQuality: StateFlow<AudioQuality> = prefs.audioQualityFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, AudioQuality.HIGH)
 
+    val glowEnabled: StateFlow<Boolean> = prefs.glowEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    val glowColor: StateFlow<GlowColorPreset> = prefs.glowColorFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, GlowColorPreset.WARM_AMBER)
+
+    val glowIntensity: StateFlow<GlowIntensity> = prefs.glowIntensityFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, GlowIntensity.MEDIUM)
+
+    /** Null while DataStore is still loading; non-null once we know whether onboarding has run. */
+    val onboardingCompleted: StateFlow<Boolean?> = prefs.onboardingCompletedFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val glowReactive: StateFlow<Boolean> = prefs.glowReactiveFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    // ── Behaviour / customization ───────────────────────────────────────────────
+    val startScreen: StateFlow<StartScreen> = prefs.startScreenFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, StartScreen.HOME)
+    val resumeOnOpen: StateFlow<Boolean> = prefs.resumeOnOpenFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val skipSilence: StateFlow<Boolean> = prefs.skipSilenceFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val saveSearchHistory: StateFlow<Boolean> = prefs.saveSearchHistoryFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val albumArtMotion: StateFlow<Boolean> = prefs.albumArtMotionFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     fun setTheme(theme: VerzaTheme) {
         viewModelScope.launch { prefs.setTheme(theme) }
     }
 
     fun setAudioQuality(quality: AudioQuality) {
         viewModelScope.launch { prefs.setAudioQuality(quality) }
+    }
+
+    fun setGlowEnabled(enabled: Boolean) {
+        viewModelScope.launch { prefs.setGlowEnabled(enabled) }
+    }
+
+    fun setGlowColor(preset: GlowColorPreset) {
+        viewModelScope.launch { prefs.setGlowColor(preset) }
+    }
+
+    fun setGlowIntensity(intensity: GlowIntensity) {
+        viewModelScope.launch { prefs.setGlowIntensity(intensity) }
+    }
+
+    fun setOnboardingCompleted() {
+        viewModelScope.launch { prefs.setOnboardingCompleted(true) }
+    }
+
+    fun setGlowReactive(reactive: Boolean) {
+        viewModelScope.launch { prefs.setGlowReactive(reactive) }
+    }
+
+    fun setStartScreen(screen: StartScreen) {
+        viewModelScope.launch { prefs.setStartScreen(screen) }
+    }
+
+    fun setResumeOnOpen(enabled: Boolean) {
+        viewModelScope.launch { prefs.setResumeOnOpen(enabled) }
+    }
+
+    fun setSkipSilence(enabled: Boolean) {
+        viewModelScope.launch { prefs.setSkipSilence(enabled) }
+    }
+
+    fun setSaveSearchHistory(enabled: Boolean) {
+        viewModelScope.launch { prefs.setSaveSearchHistory(enabled) }
+    }
+
+    fun setAlbumArtMotion(enabled: Boolean) {
+        viewModelScope.launch { prefs.setAlbumArtMotion(enabled) }
+    }
+
+    fun clearSearchHistory() {
+        viewModelScope.launch { prefs.clearSearchHistory() }
+    }
+
+    fun resetListeningStats() {
+        viewModelScope.launch { stats.reset() }
     }
 
     fun onSignedIn(cookie: String) {

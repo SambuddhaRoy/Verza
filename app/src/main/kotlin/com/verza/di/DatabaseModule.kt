@@ -6,6 +6,8 @@ import com.verza.data.RoomDownloadLookup
 import com.verza.data.db.VerzaDatabase
 import com.verza.data.db.MIGRATION_1_2
 import com.verza.data.db.MIGRATION_2_3
+import com.verza.data.db.MIGRATION_3_4
+import com.verza.data.db.PlayEventDao
 import com.verza.data.db.PlaylistDao
 import com.verza.data.db.SongDao
 import com.verza.player.DownloadLookup
@@ -32,7 +34,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VerzaDatabase =
         Room.databaseBuilder(context, VerzaDatabase::class.java, "verza.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             // Last-resort: if a future schema change ships without a migration we drop tables
             // rather than crash; users only lose their local likes/history.
             .fallbackToDestructiveMigration(dropAllTables = true)
@@ -43,4 +45,7 @@ object DatabaseModule {
 
     @Provides
     fun providePlaylistDao(db: VerzaDatabase): PlaylistDao = db.playlistDao()
+
+    @Provides
+    fun providePlayEventDao(db: VerzaDatabase): PlayEventDao = db.playEventDao()
 }

@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+        Required by android.media.audiofx.Visualizer for reading FFT data from ExoPlayer's audio
+        session. The Visualizer is used purely for the background-glow sound-reactivity feature;
+        the app never records audio from the microphone. Permission is only requested at runtime
+        when the user explicitly enables "Sound reactivity" in Settings.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".VerzaApp"
@@ -19,6 +26,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:theme="@style/Theme.Verza.Starting"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

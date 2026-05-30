@@ -3,6 +3,7 @@ package com.verza.ui.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
@@ -15,12 +16,20 @@ private val provider = GoogleFont.Provider(
     certificates      = R.array.com_google_android_gms_fonts_certs,
 )
 
-// Playfair Display — serif for display/headline/title (editorial feel).
-private val playfairDisplay = GoogleFont("Playfair Display")
+// Cormorant Garamond — heavier editorial serif. Replaces Playfair Display for the
+// big, bold, sophisticated voice on display/headline/title text. The five variants
+// cover every weight×style combination the typography theme reaches for:
+//  - Regular / Bold for upright titles
+//  - Regular Italic / SemiBold Italic for serif "deck" captions
+//  - Medium kept as a middle weight for occasional accent use
+private val cormorant = GoogleFont("Cormorant Garamond")
 val FontDisplay = FontFamily(
-    Font(googleFont = playfairDisplay, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = playfairDisplay, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = playfairDisplay, fontProvider = provider, weight = FontWeight.SemiBold),
+    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.Normal),
+    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.Medium),
+    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.SemiBold),
+    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.Bold),
+    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.Normal, style = FontStyle.Italic),
+    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.SemiBold, style = FontStyle.Italic),
 )
 
 // Inter — clean grotesque sans for body/label (the Söhne stand-in).
@@ -42,36 +51,47 @@ val FontMono = FontFamily(
 // Display/Headline/Title → serif (Playfair). Body/Label → sans (Inter).
 // Tight, optical letter-spacing on the serif; clean defaults on Inter.
 
+// Tabular numerals — applied to any text style that frequently contains numbers
+// (durations, kbps, version codes). Keeps "1:24" and "3:09" the same width so
+// progress bars and time chips don't jitter as the seconds tick over.
+private const val FEAT_TABULAR = "tnum"
+
 val VerzaTypography = Typography(
+    // Display + headline + titleLarge are all Bold in Cormorant Garamond. The font's
+    // bold weight reads as architectural rather than shouty — slightly larger sizes
+    // are forgiving of the heavier stroke without feeling crammed.
     displayLarge = TextStyle(
-        fontFamily = FontDisplay, fontWeight = FontWeight.Normal,
-        fontSize = 48.sp, lineHeight = 52.sp, letterSpacing = (-0.02).sp,
+        fontFamily = FontDisplay, fontWeight = FontWeight.Bold,
+        fontSize = 52.sp, lineHeight = 56.sp, letterSpacing = (-0.025).sp,
+        fontFeatureSettings = FEAT_TABULAR,
     ),
     displayMedium = TextStyle(
-        fontFamily = FontDisplay, fontWeight = FontWeight.Normal,
-        fontSize = 36.sp, lineHeight = 40.sp, letterSpacing = (-0.015).sp,
+        fontFamily = FontDisplay, fontWeight = FontWeight.Bold,
+        fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = (-0.02).sp,
     ),
     displaySmall = TextStyle(
-        fontFamily = FontDisplay, fontWeight = FontWeight.Normal,
-        fontSize = 28.sp, lineHeight = 32.sp, letterSpacing = (-0.01).sp,
+        fontFamily = FontDisplay, fontWeight = FontWeight.Bold,
+        fontSize = 32.sp, lineHeight = 36.sp, letterSpacing = (-0.015).sp,
     ),
 
     headlineLarge = TextStyle(
-        fontFamily = FontDisplay, fontWeight = FontWeight.Normal,
-        fontSize = 28.sp, lineHeight = 32.sp, letterSpacing = (-0.01).sp,
+        fontFamily = FontDisplay, fontWeight = FontWeight.Bold,
+        fontSize = 30.sp, lineHeight = 34.sp, letterSpacing = (-0.015).sp,
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontDisplay, fontWeight = FontWeight.Normal,
-        fontSize = 24.sp, lineHeight = 28.sp, letterSpacing = (-0.01).sp,
+        fontFamily = FontDisplay, fontWeight = FontWeight.Bold,
+        fontSize = 26.sp, lineHeight = 30.sp, letterSpacing = (-0.012).sp,
     ),
     headlineSmall = TextStyle(
-        fontFamily = FontDisplay, fontWeight = FontWeight.Normal,
-        fontSize = 20.sp, lineHeight = 24.sp, letterSpacing = (-0.005).sp,
+        fontFamily = FontDisplay, fontWeight = FontWeight.Bold,
+        fontSize = 22.sp, lineHeight = 26.sp, letterSpacing = (-0.008).sp,
     ),
 
+    // titleLarge keeps SemiBold — the credit line ("Sambuddha Roy") and similar
+    // attribution-style text shouldn't read as heavy as a page headline.
     titleLarge = TextStyle(
-        fontFamily = FontDisplay, fontWeight = FontWeight.Normal,
-        fontSize = 20.sp, lineHeight = 24.sp, letterSpacing = (-0.005).sp,
+        fontFamily = FontDisplay, fontWeight = FontWeight.SemiBold,
+        fontSize = 22.sp, lineHeight = 26.sp, letterSpacing = (-0.005).sp,
     ),
     titleMedium = TextStyle(
         fontFamily = FontBody, fontWeight = FontWeight.SemiBold,
@@ -93,6 +113,7 @@ val VerzaTypography = Typography(
     bodySmall = TextStyle(
         fontFamily = FontBody, fontWeight = FontWeight.Normal,
         fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.sp,
+        fontFeatureSettings = FEAT_TABULAR,
     ),
 
     labelLarge = TextStyle(
@@ -102,10 +123,38 @@ val VerzaTypography = Typography(
     labelMedium = TextStyle(
         fontFamily = FontBody, fontWeight = FontWeight.Medium,
         fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.02.sp,
+        fontFeatureSettings = FEAT_TABULAR,
     ),
     // Reserved for the eyebrow accents ("Good evening", section labels) — small, slightly tracked.
     labelSmall = TextStyle(
         fontFamily = FontBody, fontWeight = FontWeight.Medium,
         fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.08.sp,
+        fontFeatureSettings = FEAT_TABULAR,
     ),
+)
+
+// ── Editorial extras (used directly via the style refs below) ─────────────────
+// These don't belong in the M3 Typography slots — they're used at point-of-use
+// in screens that want the editorial italic voice or tabular monospace timecode.
+
+/** Serif italic, the "deck" voice for short captions and descriptive subtitles. */
+val CaptionItalic = TextStyle(
+    fontFamily = FontDisplay,
+    fontWeight = FontWeight.Normal,
+    fontStyle = FontStyle.Italic,
+    fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = 0.sp,
+)
+
+/** Monospace timecode — for the Now Playing position/duration readout. */
+val MonoTimecode = TextStyle(
+    fontFamily = FontMono,
+    fontWeight = FontWeight.Normal,
+    fontSize = 12.sp, lineHeight = 16.sp,
+    fontFeatureSettings = FEAT_TABULAR,
+)
+
+/** Small-caps-feel eyebrow label — used by [EditorialSectionHeader]. */
+val EditorialEyebrow = TextStyle(
+    fontFamily = FontBody, fontWeight = FontWeight.Medium,
+    fontSize = 10.sp, lineHeight = 12.sp, letterSpacing = 1.6.sp,
 )

@@ -26,6 +26,7 @@ import coil3.compose.AsyncImage
 import com.verza.innertube.models.CollectionDetail
 import com.verza.innertube.models.MusicItem
 import com.verza.ui.components.TrackActionsMenu
+import com.verza.ui.components.pressableScale
 import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.theme.LocalVerzaExtendedColors
 
@@ -176,38 +177,46 @@ private fun TrackRow(index: Int, track: MusicItem, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Text(
-            text = index.toString().padStart(2, '0'),
-            style = MaterialTheme.typography.labelMedium,
-            color = ext.muted,
-            modifier = Modifier.width(24.dp),
-        )
-        Column(modifier = Modifier.weight(1f)) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .pressableScale(onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             Text(
-                text = track.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                text = index.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.labelMedium,
+                color = ext.muted,
+                modifier = Modifier.width(24.dp),
             )
-            if (track.artist.isNotBlank()) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = track.artist,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ext.muted,
+                    text = track.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onBackground,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (track.artist.isNotBlank()) {
+                    Text(
+                        text = track.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ext.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            TrackActionsMenu(item = track)
         }
-        TrackActionsMenu(item = track)
+        // Hairline between tracks — reads as a magazine track listing rather than a tile stack.
+        HorizontalDivider(
+            thickness = 0.5.dp,
+            color = ext.borderGlass,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp),
+        )
     }
 }

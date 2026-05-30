@@ -14,8 +14,11 @@ sealed class Screen(val route: String) {
         const val ARG = "browseId"
         fun create(browseId: String) = "artist/$browseId"
     }
-    data object Settings : Screen("settings")
-    data object Login     : Screen("login")
+    data object Settings   : Screen("settings")
+    data object Login      : Screen("login")
+    data object Onboarding : Screen("onboarding")
+    data object Boot       : Screen("boot")
+    data object Stats      : Screen("stats")
     data object Lyrics    : Screen("lyrics")
     data object LocalPlaylist : Screen("local_playlist/{playlistId}") {
         const val ARG = "playlistId"
