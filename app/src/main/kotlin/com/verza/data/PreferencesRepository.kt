@@ -57,7 +57,9 @@ class PreferencesRepository @Inject constructor(
     private val albumArtMotionKey = booleanPreferencesKey("album_art_motion")
 
     val themeFlow: Flow<VerzaTheme> = store.data.map { prefs ->
-        prefs[themeKey]?.let { runCatching { VerzaTheme.valueOf(it) }.getOrNull() } ?: VerzaTheme.ATELIER_DARK
+        // Default to Material You (Dynamic). On pre-Android-12 devices the theme layer falls back
+        // to the Atelier dark scheme automatically, so this is a safe default everywhere.
+        prefs[themeKey]?.let { runCatching { VerzaTheme.valueOf(it) }.getOrNull() } ?: VerzaTheme.DYNAMIC
     }
 
     val cookieFlow: Flow<String?> = store.data.map { it[cookieKey] }
@@ -73,7 +75,8 @@ class PreferencesRepository @Inject constructor(
     // ── Background glow (dark themes only; the UI is rendered regardless and short-circuits in light themes)
     val glowEnabledFlow: Flow<Boolean> = store.data.map { it[glowEnabledKey] ?: true }
     val glowColorFlow: Flow<GlowColorPreset> = store.data.map { prefs ->
-        prefs[glowColorKey]?.let { runCatching { GlowColorPreset.valueOf(it) }.getOrNull() } ?: GlowColorPreset.WARM_AMBER
+        // Default the glow to adapt to album-cover colours.
+        prefs[glowColorKey]?.let { runCatching { GlowColorPreset.valueOf(it) }.getOrNull() } ?: GlowColorPreset.ALBUM_ART
     }
     val glowIntensityFlow: Flow<GlowIntensity> = store.data.map { prefs ->
         prefs[glowIntensityKey]?.let { runCatching { GlowIntensity.valueOf(it) }.getOrNull() } ?: GlowIntensity.MEDIUM

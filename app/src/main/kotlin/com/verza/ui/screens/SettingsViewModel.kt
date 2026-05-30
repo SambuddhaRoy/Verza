@@ -24,7 +24,7 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val theme: StateFlow<VerzaTheme> = prefs.themeFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, VerzaTheme.ATELIER_DARK)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, VerzaTheme.DYNAMIC)
 
     val isSignedIn: StateFlow<Boolean> = prefs.cookieFlow
         .map { !it.isNullOrBlank() }
@@ -37,7 +37,7 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val glowColor: StateFlow<GlowColorPreset> = prefs.glowColorFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, GlowColorPreset.WARM_AMBER)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, GlowColorPreset.ALBUM_ART)
 
     val glowIntensity: StateFlow<GlowIntensity> = prefs.glowIntensityFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, GlowIntensity.MEDIUM)
