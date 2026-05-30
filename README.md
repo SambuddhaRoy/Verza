@@ -77,12 +77,12 @@ Songs throughout the app pull the actual cover from iTunes Search — no more ra
 <td align="center">
 <img src="docs/home.jpg" alt="Home" width="280"/>
 <br/>
-<sub><b>Home</b> — personal-first feed with mixed section sizes</sub>
+<sub><b>Home</b> — personal "For You" feed, mixed section sizes, Material You accent, soft glow behind</sub>
 </td>
 <td align="center">
 <img src="docs/now-playing.jpg" alt="Now Playing" width="280"/>
 <br/>
-<sub><b>Now Playing</b> — real album art, editorial type, live glow behind</sub>
+<sub><b>Now Playing</b> — real album art with the glow picking up the cover's colour</sub>
 </td>
 </tr>
 </table>
