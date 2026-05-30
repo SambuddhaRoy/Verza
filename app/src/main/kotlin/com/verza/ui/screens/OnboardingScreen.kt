@@ -24,10 +24,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.os.Build
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.platform.LocalContext
 import com.verza.ui.theme.CaptionItalic
+import com.verza.ui.theme.DynamicColorSupported
 import com.verza.ui.theme.FontDisplay
+import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaTheme
+import com.verza.ui.theme.resolveColor
 import com.verza.ui.theme.toColorScheme
 
 /**
@@ -66,7 +72,7 @@ fun OnboardingScreen(
                 .padding(horizontal = 28.dp, vertical = 32.dp),
         ) {
             // Progress dots — a quiet header signalling there are a few steps.
-            StepDots(current = step, total = 4)
+            StepDots(current = step, total = 5)
             Spacer(Modifier.height(40.dp))
 
             AnimatedContent(
@@ -88,13 +94,17 @@ fun OnboardingScreen(
                         onContinue = { step = 2 },
                     )
                     2 -> StepTheme(
-                        onPickLight = {
-                            viewModel.setTheme(VerzaTheme.ATELIER_LIGHT)
+                        dynamicSupported = DynamicColorSupported,
+                        onPick = { theme ->
+                            viewModel.setTheme(theme)
                             step = 3
                         },
-                        onPickDark = {
-                            viewModel.setTheme(VerzaTheme.ATELIER_DARK)
-                            step = 3
+                    )
+                    3 -> StepGlow(
+                        onPick = { enabled, preset ->
+                            viewModel.setGlowEnabled(enabled)
+                            if (preset != null) viewModel.setGlowColor(preset)
+                            step = 4
                         },
                     )
                     else -> StepDone(
@@ -144,7 +154,7 @@ private fun StepWelcome(onContinue: () -> Unit) {
         )
         Spacer(Modifier.height(48.dp))
         Text(
-            text = "Two short questions and you're in.",
+            text = "A few quick choices and you're in.",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.onBackground,
         )
@@ -200,8 +210,8 @@ private fun StepSignIn(
 
 @Composable
 private fun StepTheme(
-    onPickLight: () -> Unit,
-    onPickDark: () -> Unit,
+    dynamicSupported: Boolean,
+    onPick: (VerzaTheme) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
@@ -209,34 +219,84 @@ private fun StepTheme(
         Eyebrow(text = "STEP 02")
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "Light or dark?",
+            text = "Choose your look",
             style = MaterialTheme.typography.displaySmall,
             color = colors.onBackground,
         )
         Spacer(Modifier.height(14.dp))
         Text(
             text = "Pick the mood you want to read in. You can change this anytime — and there are " +
-                  "six more palettes in Settings if you want to dig in.",
+                  "more palettes in Settings.",
             style = MaterialTheme.typography.bodyLarge,
             color = ext.muted,
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(24.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            ThemePreviewCard(
-                theme = VerzaTheme.ATELIER_LIGHT,
-                label = "Light",
-                modifier = Modifier.weight(1f),
-                onClick = onPickLight,
-            )
-            ThemePreviewCard(
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Material You leads (and is the default) on Android 12+; hidden where unsupported.
+            if (dynamicSupported) {
+                ThemeOptionRow(
+                    theme = VerzaTheme.DYNAMIC,
+                    label = "Material You",
+                    subtitle = "Colours from your wallpaper",
+                    onClick = { onPick(VerzaTheme.DYNAMIC) },
+                )
+            }
+            ThemeOptionRow(
                 theme = VerzaTheme.ATELIER_DARK,
-                label = "Dark",
-                modifier = Modifier.weight(1f),
-                onClick = onPickDark,
+                label = "Atelier Dark",
+                subtitle = "Warm ink on coffee-black",
+                onClick = { onPick(VerzaTheme.ATELIER_DARK) },
+            )
+            ThemeOptionRow(
+                theme = VerzaTheme.ATELIER_LIGHT,
+                label = "Atelier Light",
+                subtitle = "Ink on warm bone",
+                onClick = { onPick(VerzaTheme.ATELIER_LIGHT) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun StepGlow(onPick: (Boolean, GlowColorPreset?) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Column(modifier = Modifier.fillMaxSize()) {
+        Eyebrow(text = "STEP 03")
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Set the mood",
+            style = MaterialTheme.typography.displaySmall,
+            color = colors.onBackground,
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = "A soft glow drifts behind the app and can take on each song's colours. " +
+                  "It appears on dark themes; tweak it anytime in Settings.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = ext.muted,
+        )
+        Spacer(Modifier.height(24.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            GlowOptionRow(
+                label = "Album colours",
+                subtitle = "Glow adapts to the cover art",
+                swatch = GlowSwatch.Album,
+                onClick = { onPick(true, GlowColorPreset.ALBUM_ART) },
+            )
+            GlowOptionRow(
+                label = "Warm amber",
+                subtitle = "A fixed, warm ambient glow",
+                swatch = GlowSwatch.Solid(GlowColorPreset.WARM_AMBER.resolveColor()),
+                onClick = { onPick(true, GlowColorPreset.WARM_AMBER) },
+            )
+            GlowOptionRow(
+                label = "Off",
+                subtitle = "No background glow",
+                swatch = GlowSwatch.None,
+                onClick = { onPick(false, null) },
             )
         }
     }
@@ -351,69 +411,99 @@ private fun TextActionButton(text: String, onClick: () -> Unit) {
     }
 }
 
+/** Compact, full-width theme option: a swatch quartet + label/subtitle, tappable. */
 @Composable
-private fun ThemePreviewCard(
+private fun ThemeOptionRow(
     theme: VerzaTheme,
     label: String,
-    modifier: Modifier = Modifier,
+    subtitle: String,
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    val scheme = remember(theme) { theme.toColorScheme() }
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .border(width = 1.dp, color = ext.borderGlass, shape = RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick),
+    val context = LocalContext.current
+    // For Material You, show the actual wallpaper-derived colours; otherwise the theme's own scheme.
+    val scheme = remember(theme) {
+        if (theme == VerzaTheme.DYNAMIC && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            dynamicDarkColorScheme(context)
+        else
+            theme.toColorScheme()
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(width = 1.dp, color = ext.borderGlass, shape = RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // Stylised page rather than a screenshot: a colored panel + accent rule + miniature type.
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-                .background(scheme.background)
-                .padding(16.dp),
-        ) {
-            Box(
-                Modifier
-                    .width(24.dp)
-                    .height(2.dp)
-                    .clip(RoundedCornerShape(1.dp))
-                    .background(scheme.primary),
-            )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "Verza",
-                style = TextStyle(
-                    fontFamily = FontDisplay,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp,
-                ),
-                color = scheme.onBackground,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "A quieter way to listen.",
-                style = CaptionItalic.copy(fontSize = 12.sp),
-                color = scheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.weight(1f))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(16.dp).clip(CircleShape).background(scheme.primary))
-                Box(Modifier.size(16.dp).clip(CircleShape).background(scheme.secondary))
-                Box(Modifier.size(16.dp).clip(CircleShape).background(scheme.tertiary))
-            }
+        Row(modifier = Modifier.clip(RoundedCornerShape(8.dp))) {
+            Box(Modifier.size(28.dp).background(scheme.background))
+            Box(Modifier.size(28.dp).background(scheme.primary))
+            Box(Modifier.size(28.dp).background(scheme.secondary))
+            Box(Modifier.size(28.dp).background(scheme.tertiary))
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(text = label, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
-            Text(text = "Tap", style = CaptionItalic, color = ext.muted)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+            Text(subtitle, style = CaptionItalic, color = ext.muted)
+        }
+    }
+}
+
+/** Visual hint for a glow option row. */
+private sealed interface GlowSwatch {
+    data object Album : GlowSwatch
+    data object None : GlowSwatch
+    data class Solid(val color: androidx.compose.ui.graphics.Color) : GlowSwatch
+}
+
+/** Compact, full-width glow option: a representative swatch + label/subtitle, tappable. */
+@Composable
+private fun GlowOptionRow(
+    label: String,
+    subtitle: String,
+    swatch: GlowSwatch,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(width = 1.dp, color = ext.borderGlass, shape = RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        val swatchModifier = when (swatch) {
+            is GlowSwatch.Album -> Modifier.background(
+                androidx.compose.ui.graphics.Brush.sweepGradient(
+                    listOf(
+                        androidx.compose.ui.graphics.Color(0xFFE0556E),
+                        androidx.compose.ui.graphics.Color(0xFFE8B14A),
+                        androidx.compose.ui.graphics.Color(0xFF5A8068),
+                        androidx.compose.ui.graphics.Color(0xFF6B8BA8),
+                        androidx.compose.ui.graphics.Color(0xFFE0556E),
+                    )
+                )
+            )
+            is GlowSwatch.Solid -> Modifier.background(swatch.color)
+            is GlowSwatch.None -> Modifier.background(ext.muted.copy(alpha = 0.25f))
+        }
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .then(swatchModifier)
+                .border(width = 1.dp, color = ext.borderGlass, shape = CircleShape),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+            Text(subtitle, style = CaptionItalic, color = ext.muted)
         }
     }
 }

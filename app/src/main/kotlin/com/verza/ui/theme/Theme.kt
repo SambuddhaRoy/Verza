@@ -32,7 +32,7 @@ enum class VerzaTheme(val displayName: String, val isLight: Boolean) {
 val DynamicColorSupported: Boolean
     get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-val LocalVerzaTheme = staticCompositionLocalOf { VerzaTheme.ATELIER_DARK }
+val LocalVerzaTheme = staticCompositionLocalOf { VerzaTheme.DYNAMIC }
 
 // ── ColorScheme builders ───────────────────────────────────────────────────────
 
@@ -328,7 +328,7 @@ fun VerzaTheme.toExtendedColors(): VerzaExtendedColors = when (this) {
 
 @Composable
 fun VerzaTheme(
-    theme: VerzaTheme = VerzaTheme.ATELIER_DARK,
+    theme: VerzaTheme = VerzaTheme.DYNAMIC,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
