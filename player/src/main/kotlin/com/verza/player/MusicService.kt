@@ -21,6 +21,7 @@ import androidx.media3.session.MediaSession
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.verza.innertube.InnerTube
+import com.verza.player.BuildConfig
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,16 +62,16 @@ class MusicService : MediaLibraryService() {
         // resolved stream URL right before ExoPlayer opens the connection. Resolution
         // runs on ExoPlayer's loader thread (never the main thread), so blocking is fine.
         //
-        // DIAGNOSTIC (temporary): wrap the whole thing in a try/catch that surfaces the
-        // failure as a Toast and a Log line tagged "VerzaPlayback". Once we know what's
-        // failing in release builds, the Toast goes away and the IOException re-throw is
-        // the only thing the user perceives (via the player's error state).
+        // On failure the user sees a short generic toast and the player surfaces an error state.
+        // Detailed diagnostics (videoId, stream URL, resolver breakdown) are logged ONLY in debug
+        // builds — logcat is readable over ADB / by privileged apps, so we don't leak what the
+        // user is playing in release.
         val mainHandler = Handler(Looper.getMainLooper())
         val resolver = ResolvingDataSource.Resolver { dataSpec ->
             val raw = dataSpec.uri.toString()
             if (!raw.startsWith(INNERTUBE_SCHEME)) return@Resolver dataSpec
             val videoId = raw.removePrefix(INNERTUBE_SCHEME)
-            Log.i("VerzaPlayback", "Resolving $videoId …")
+            if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Resolving $videoId …")
 
             try {
                 // Prefer a downloaded copy if one exists — instant start, works offline.
@@ -78,29 +79,25 @@ class MusicService : MediaLibraryService() {
                 if (!cached.isNullOrBlank()) {
                     val file = File(cached)
                     if (file.exists()) {
-                        Log.i("VerzaPlayback", "Using cached file: ${file.absolutePath}")
+                        if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Using cached file: ${file.absolutePath}")
                         return@Resolver dataSpec.withUri(Uri.fromFile(file))
                     }
                 }
 
                 val stream = runBlocking { InnerTube.resolveAudioStream(videoId) }
                 if (stream == null) {
-                    // Pull the resolver's per-attempt diagnostic so the Toast tells us WHY:
-                    // count of streams found, how many had non-null content, DASH/HLS presence.
-                    val diag = InnerTube.lastResolveDiagnostic
-                    val msg = "No stream for $videoId\n$diag"
-                    Log.e("VerzaPlayback", msg)
-                    mainHandler.post { Toast.makeText(this, msg, Toast.LENGTH_LONG).show() }
-                    throw IOException(msg)
+                    if (BuildConfig.DEBUG) {
+                        Log.e("VerzaPlayback", "No stream for $videoId — ${InnerTube.lastResolveDiagnostic}")
+                    }
+                    showPlaybackToast(mainHandler, debugDetail = "No stream for $videoId\n${InnerTube.lastResolveDiagnostic}")
+                    throw IOException("No playable audio stream for $videoId")
                 }
-                Log.i("VerzaPlayback", "Resolved $videoId → ${stream.url.take(120)}…")
+                if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Resolved $videoId → ${stream.url.take(120)}…")
                 dataSpec.withUri(Uri.parse(stream.url))
             } catch (t: Throwable) {
-                val name = t.javaClass.simpleName
-                val msg = "Playback failed: $name: ${t.message?.take(200) ?: "(no message)"}"
-                Log.e("VerzaPlayback", msg, t)
-                mainHandler.post { Toast.makeText(this, msg, Toast.LENGTH_LONG).show() }
-                throw if (t is IOException) t else IOException(msg, t)
+                if (BuildConfig.DEBUG) Log.e("VerzaPlayback", "Resolve failed for $videoId", t)
+                showPlaybackToast(mainHandler, debugDetail = "Playback failed: ${t.javaClass.simpleName}: ${t.message}")
+                throw if (t is IOException) t else IOException("Playback failed for $videoId", t)
             }
         }
         val dataSourceFactory = ResolvingDataSource.Factory(httpFactory, resolver)
@@ -138,6 +135,12 @@ class MusicService : MediaLibraryService() {
         session = MediaLibrarySession.Builder(this, player, LibrarySessionCallback())
             .also { builder -> activityIntent?.let { builder.setSessionActivity(it) } }
             .build()
+    }
+
+    /** Shows the full diagnostic in debug builds; a short, non-revealing message in release. */
+    private fun showPlaybackToast(handler: Handler, debugDetail: String) {
+        val text = if (BuildConfig.DEBUG) debugDetail else "Couldn't play this track"
+        handler.post { Toast.makeText(this, text, Toast.LENGTH_LONG).show() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = session

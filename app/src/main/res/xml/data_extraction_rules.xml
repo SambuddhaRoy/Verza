@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ backup / device-transfer rules.
+
+    The DataStore Preferences file (filesDir/datastore/verza_settings.preferences_pb) holds the
+    YouTube Music account cookie — a full session credential. Excluding the datastore directory
+    keeps that credential out of both cloud backups (Google Drive Auto Backup) and device-to-device
+    transfers, so a copied backup can't be used to impersonate the signed-in account.
+
+    The Room database (likes / playlists / history / stats) is non-credential listening data and is
+    left eligible for backup to the user's own account.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/" />
+    </device-transfer>
+</data-extraction-rules>

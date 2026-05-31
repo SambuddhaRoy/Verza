@@ -20,6 +20,11 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    buildFeatures {
+        // Generates BuildConfig.DEBUG so diagnostic logging can be stripped from release builds.
+        buildConfig = true
+    }
 }
 
 dependencies {
