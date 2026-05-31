@@ -332,6 +332,26 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.titleLarge,
                         color = colors.primary,
                     )
+                    Spacer(Modifier.height(12.dp))
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    Text(
+                        "Privacy policy",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.primary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                runCatching {
+                                    ctx.startActivity(
+                                        android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse("https://github.com/SambuddhaRoy/Verza/blob/main/PRIVACY.md"),
+                                        ),
+                                    )
+                                }
+                            }
+                            .padding(8.dp),
+                    )
                 }
             }
         }
@@ -590,7 +610,7 @@ private fun GlowReactivityRow(
                 color = colors.onBackground,
             )
             Text(
-                text = "Glow moves and brightens with the music. Requires audio permission.",
+                text = "Glow moves with the music. Reads playback audio only — never the microphone. Needs the audio permission.",
                 style = CaptionItalic,
                 color = ext.muted,
             )

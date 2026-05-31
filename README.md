@@ -273,6 +273,16 @@ The in-app login uses a WebView aimed at Google's standard sign-in flow. The Web
 
 ---
 
+## Privacy
+
+Verza has **no backend, no analytics, no tracking, and no ads** — nothing about your usage is ever sent to the developer. See [**`PRIVACY.md`**](PRIVACY.md) for the full policy. In short:
+
+- **On-device only** — liked songs, playlists, history, stats, queue, and downloads stay on your phone. The optional sign-in cookie is **encrypted with a hardware-backed Android Keystore key** and excluded from backups.
+- **Third-party requests are minimal and anonymous** — YouTube/Google for the catalogue (and your account cookie *only if you sign in*, *only* to Google); Apple iTunes Search receives a track's title/artist to fetch real cover art; LRCLIB receives title/artist/duration for lyrics. None of these carry a user identifier.
+- **The microphone permission is optional and never records you.** It's requested only if you enable the *Sound reactivity* glow, and is used solely to read a frequency snapshot of the music Verza is already playing (via Android's `Visualizer` API) to animate the background. No audio is captured, stored, or transmitted. Android labels this capability "Microphone" because the API is gated by `RECORD_AUDIO`, even though no mic input is used.
+
+---
+
 ## Disclaimer
 
 Verza is an unofficial client. It uses public InnerTube endpoints and NewPipeExtractor — there is no premium-tier bypass. Use at your own risk; behaviour may break at any time if YouTube changes its API or stream-resolution mechanism.
