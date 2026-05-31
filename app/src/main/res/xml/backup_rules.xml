@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Legacy (Android 11 and below) full-backup rules. Mirrors data_extraction_rules.xml:
+    exclude the DataStore directory so the account cookie is never written to a backup.
+-->
+<full-backup-content>
+    <exclude domain="file" path="datastore/" />
+</full-backup-content>

@@ -41,7 +41,10 @@ class PreferencesRepository @Inject constructor(
     private val json = Json { ignoreUnknownKeys = true }
 
     private val themeKey = stringPreferencesKey("theme")
+    // Legacy plaintext cookie key (pre-0.4.1). Migrated to the encrypted key on first launch.
     private val cookieKey = stringPreferencesKey("account_cookie")
+    // Cookie ciphertext (AES/GCM via the Android Keystore — see CookieCrypto).
+    private val cookieEncKey = stringPreferencesKey("account_cookie_enc")
     private val historyKey = stringPreferencesKey("search_history")
     private val queueKey = stringPreferencesKey("saved_queue")
     private val audioQualityKey = stringPreferencesKey("audio_quality")
@@ -62,7 +65,10 @@ class PreferencesRepository @Inject constructor(
         prefs[themeKey]?.let { runCatching { VerzaTheme.valueOf(it) }.getOrNull() } ?: VerzaTheme.DYNAMIC
     }
 
-    val cookieFlow: Flow<String?> = store.data.map { it[cookieKey] }
+    // Prefer the encrypted cookie; fall back to any not-yet-migrated legacy plaintext value.
+    val cookieFlow: Flow<String?> = store.data.map { prefs ->
+        prefs[cookieEncKey]?.let { CookieCrypto.decrypt(it) } ?: prefs[cookieKey]
+    }
 
     val audioQualityFlow: Flow<AudioQuality> = store.data.map { prefs ->
         prefs[audioQualityKey]?.let { runCatching { AudioQuality.valueOf(it) }.getOrNull() } ?: AudioQuality.HIGH
@@ -107,6 +113,20 @@ class PreferencesRepository @Inject constructor(
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
 
     init {
+        // One-time migration: if an old plaintext cookie exists, re-store it encrypted and drop
+        // the plaintext copy. Runs before/independently of the collectors below.
+        scope.launch {
+            val prefs = store.data.first()
+            val legacy = prefs[cookieKey]
+            if (!legacy.isNullOrBlank() && prefs[cookieEncKey] == null) {
+                runCatching { CookieCrypto.encrypt(legacy) }.getOrNull()?.let { enc ->
+                    store.edit {
+                        it[cookieEncKey] = enc
+                        it.remove(cookieKey)
+                    }
+                }
+            }
+        }
         // Mirror the persisted cookie + audio quality into the InnerTube client for the app lifetime.
         scope.launch { cookieFlow.collect { InnerTube.cookie = it } }
         scope.launch { audioQualityFlow.collect { InnerTube.audioQuality = it } }
@@ -161,8 +181,11 @@ class PreferencesRepository @Inject constructor(
     }
 
     suspend fun setCookie(cookie: String?) {
+        // Always clear any legacy plaintext value; store the new cookie encrypted.
+        val encrypted = cookie?.takeIf { it.isNotBlank() }?.let { runCatching { CookieCrypto.encrypt(it) }.getOrNull() }
         store.edit { prefs ->
-            if (cookie.isNullOrBlank()) prefs.remove(cookieKey) else prefs[cookieKey] = cookie
+            prefs.remove(cookieKey)
+            if (encrypted == null) prefs.remove(cookieEncKey) else prefs[cookieEncKey] = encrypted
         }
     }
 

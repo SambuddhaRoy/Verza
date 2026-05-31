@@ -2,6 +2,7 @@ package com.verza.audio
 
 import android.media.audiofx.Visualizer
 import android.util.Log
+import com.verza.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,7 +60,7 @@ class AudioVisualizer(private val audioSessionId: Int) {
     /** Starts the visualizer. Safe to call repeatedly; only the first call has effect. */
     fun start() {
         if (audioSessionId == 0) {
-            Log.w(TAG, "Not starting visualizer: audioSessionId is 0")
+            if (BuildConfig.DEBUG) Log.w(TAG, "Not starting visualizer: audioSessionId is 0")
             return
         }
         if (visualizer != null) return
@@ -92,13 +93,13 @@ class AudioVisualizer(private val audioSessionId: Int) {
                 )
                 enabled = true
             }
-            Log.i(TAG, "Visualizer started for session $audioSessionId")
+            if (BuildConfig.DEBUG) Log.i(TAG, "Visualizer started for session $audioSessionId")
         } catch (t: Throwable) {
             // Most common reasons:
             //   - RECORD_AUDIO not granted (UnsupportedOperationException / RuntimeException)
             //   - Audio session id no longer valid (IllegalArgumentException)
             //   - Another process holds the Visualizer for this session
-            Log.e(TAG, "Visualizer init failed: ${t.javaClass.simpleName}: ${t.message}", t)
+            if (BuildConfig.DEBUG) Log.e(TAG, "Visualizer init failed: ${t.javaClass.simpleName}: ${t.message}", t)
             release()
         }
     }

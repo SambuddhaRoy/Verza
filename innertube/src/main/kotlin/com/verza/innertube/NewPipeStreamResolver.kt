@@ -43,12 +43,12 @@ internal object NewPipeStreamResolver {
                 resolveOnce(videoId)?.let { return it }
             } catch (t: Throwable) {
                 lastError = t
-                Log.e("VerzaPlayback", "resolveOnce threw on attempt $attempt for $videoId", t)
+                if (BuildConfig.DEBUG) Log.e("VerzaPlayback", "resolveOnce threw on attempt $attempt for $videoId", t)
             }
         }
         lastError?.let {
             lastDiagnostic = "${it.javaClass.simpleName}: ${it.message ?: "(no msg)"}"
-            Log.e("VerzaPlayback", "NewPipe resolve failed: $lastDiagnostic")
+            if (BuildConfig.DEBUG) Log.e("VerzaPlayback", "NewPipe resolve failed: $lastDiagnostic")
         }
         return null
     }
@@ -71,12 +71,14 @@ internal object NewPipeStreamResolver {
         lastDiagnostic = "audio=${audioStreams.size}(nn=$audioNonNull,prog=$audioProgressive) " +
             "video=${videoStreams.size}(nn=$videoNonNull) " +
             "dash=${if (dashUrl != null) "Y" else "n"} hls=${if (hlsUrl != null) "Y" else "n"}"
-        Log.i("VerzaPlayback", "resolveOnce($videoId): $lastDiagnostic")
-        audioStreams.forEachIndexed { i, s ->
-            Log.i(
-                "VerzaPlayback",
-                "  audio[$i] fmt=${s.format} br=${s.averageBitrate} delivery=${s.deliveryMethod} nullContent=${s.content == null}",
-            )
+        if (BuildConfig.DEBUG) {
+            Log.i("VerzaPlayback", "resolveOnce($videoId): $lastDiagnostic")
+            audioStreams.forEachIndexed { i, s ->
+                Log.i(
+                    "VerzaPlayback",
+                    "  audio[$i] fmt=${s.format} br=${s.averageBitrate} delivery=${s.deliveryMethod} nullContent=${s.content == null}",
+                )
+            }
         }
 
         // ── Strategy 1: progressive HTTP audio — works with vanilla DefaultMediaSourceFactory.
@@ -96,7 +98,7 @@ internal object NewPipeStreamResolver {
         if (videoWithAudio.isNotEmpty()) {
             val best = videoWithAudio.maxByOrNull { it.bitrate.takeIf { b -> b > 0 } ?: 0 }
             if (best != null) {
-                Log.w("VerzaPlayback", "Falling back to video stream with audio for $videoId")
+                if (BuildConfig.DEBUG) Log.w("VerzaPlayback", "Falling back to video stream with audio for $videoId")
                 return StreamInfo(
                     url = best.content!!,
                     mimeType = best.format?.mimeType ?: "video/mp4",
@@ -108,7 +110,7 @@ internal object NewPipeStreamResolver {
 
         // ── Strategy 4: DASH manifest URL at the page level (some videos only expose this).
         if (dashUrl != null) {
-            Log.w("VerzaPlayback", "Falling back to page-level DASH manifest for $videoId")
+            if (BuildConfig.DEBUG) Log.w("VerzaPlayback", "Falling back to page-level DASH manifest for $videoId")
             return StreamInfo(
                 url = dashUrl,
                 mimeType = "application/dash+xml",
@@ -129,7 +131,7 @@ internal object NewPipeStreamResolver {
             AudioQuality.LOW -> minByOrNull { it.averageBitrate }
             AudioQuality.MEDIUM -> minByOrNull { kotlin.math.abs(it.averageBitrate - 128) }
         } ?: return null
-        Log.i("VerzaPlayback", "$strategy → ${best.format} ${best.averageBitrate}kbps")
+        if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "$strategy → ${best.format} ${best.averageBitrate}kbps")
         return StreamInfo(
             url = best.content!!,
             mimeType = best.format?.mimeType ?: "audio/mp4",

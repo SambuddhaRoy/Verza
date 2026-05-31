@@ -2,6 +2,8 @@ package com.verza.ui.screens
 
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
+import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
@@ -32,6 +34,20 @@ private fun WebView.deWebViewUserAgent(): String =
         .replace("; wv", "")
         .replace(Regex("Version/[0-9.]+ "), "")
 
+/**
+ * The sign-in flow only ever touches Google / YouTube origins. Restricting navigation to those
+ * hosts means a hijacked redirect can't load an arbitrary, attacker-controlled page inside this
+ * cookie-bearing, JavaScript-enabled WebView.
+ */
+private val ALLOWED_LOGIN_HOSTS = listOf(
+    "google", "youtube", "gstatic", "ggpht", "ytimg", "googleusercontent", "googleapis",
+)
+
+private fun isAllowedLoginHost(host: String?): Boolean {
+    if (host.isNullOrBlank()) return false
+    return ALLOWED_LOGIN_HOSTS.any { host.contains(it, ignoreCase = true) }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun LoginScreen(
@@ -44,6 +60,19 @@ fun LoginScreen(
     var captured by remember { mutableStateOf(false) }
     var showManual by remember { mutableStateOf(false) }
     var manualCookie by remember { mutableStateOf("") }
+
+    // Leave no logged-in Google web session behind in the app's WebView once we leave this screen.
+    // The account cookie we actually use is copied to DataStore via onSignedIn and sent through our
+    // own HTTP header, so wiping the WebView's cookie/storage here costs nothing and reduces the
+    // on-device credential footprint.
+    DisposableEffect(Unit) {
+        onDispose {
+            val cm = CookieManager.getInstance()
+            cm.removeAllCookies(null)
+            cm.flush()
+            WebStorage.getInstance().deleteAllData()
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         // ── Header ─────────────────────────────────────────────────────────
@@ -96,6 +125,14 @@ fun LoginScreen(
                         settings.userAgentString = deWebViewUserAgent()
 
                         webViewClient = object : WebViewClient() {
+                            // Block navigation to any non-Google/YouTube origin.
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                            ): Boolean {
+                                return !isAllowedLoginHost(request?.url?.host)
+                            }
+
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 if (captured) return
                                 val cookie = cookieManager.getCookie("https://music.youtube.com")
