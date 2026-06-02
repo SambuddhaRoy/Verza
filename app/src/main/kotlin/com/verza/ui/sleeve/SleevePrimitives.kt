@@ -35,16 +35,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -158,28 +152,6 @@ fun Eyebrow(
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
-}
-
-/**
- * Builds a serif headline with a small superscript monospace numeral/label trailing it — the
- * reference's signature "Cinder⁰⁴⁴" / "Umbra ᴱᴰ·⁰⁴" treatment.
- */
-fun supLabel(
-    main: String,
-    sup: String,
-    supColor: Color,
-    supSize: TextUnit = 11.sp,
-): AnnotatedString = buildAnnotatedString {
-    append(main)
-    withStyle(
-        SpanStyle(
-            fontFamily = FontMono,
-            fontSize = supSize,
-            baselineShift = BaselineShift(0.42f),
-            letterSpacing = 0.04.em,
-            color = supColor,
-        ),
-    ) { append(sup) }
 }
 
 /**
