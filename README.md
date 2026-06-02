@@ -4,7 +4,7 @@
 
 ### An editorial YouTube Music client for Android
 
-*Stream the full YouTube Music catalogue — no ads, real album art, offline downloads, synced lyrics, a living sound-reactive background, and a typographic design language — built from scratch in Kotlin + Compose.*
+*Stream the full YouTube Music catalogue — no ads, real album art, offline downloads, synced lyrics, a living sound-reactive background, and **Sleeve**, a cover-driven editorial appearance — built from scratch in Kotlin + Compose.*
 
 <br/>
 
@@ -16,7 +16,9 @@
 
 <br/>
 
-<img src="docs/home.jpg" alt="Verza home page" width="270"/>&nbsp;&nbsp;<img src="docs/now-playing.jpg" alt="Verza now playing" width="270"/>
+<img src="docs/sleeve-home.jpg" alt="Verza — Sleeve home" width="270"/>&nbsp;&nbsp;<img src="docs/sleeve-now-playing.jpg" alt="Verza — Sleeve now playing" width="270"/>
+
+<sub><i>The <b>Sleeve</b> appearance — every surface is sampled from the cover art and floats over the live reactive glow.</i></sub>
 
 </div>
 
@@ -41,7 +43,7 @@ A flowing, GPU-shaded **glow** that drifts behind the app, takes on each song's 
 <td width="33%" valign="top">
 
 ### Identity
-**Material You** by default · nine curated palettes incl. the **Atelier** editorial pair · Cormorant Garamond display type
+**Material You** by default, plus **Sleeve** — a cover-driven editorial mode (Newsreader type, film grain, poster Now Playing) · nine curated palettes incl. the **Atelier** pair
 
 </td>
 </tr>
@@ -70,6 +72,27 @@ Songs throughout the app pull the actual cover from iTunes Search — no more ra
 ---
 
 ## Screenshots
+
+**Sleeve** — the cover-driven editorial appearance
+
+<div align="center">
+<table>
+<tr>
+<td align="center">
+<img src="docs/sleeve-home.jpg" alt="Sleeve — Home" width="280"/>
+<br/>
+<sub><b>Home</b> — mono dateline masthead, Newsreader titles, cover-tinted cards, film grain over the live glow</sub>
+</td>
+<td align="center">
+<img src="docs/sleeve-now-playing.jpg" alt="Sleeve — Now Playing" width="280"/>
+<br/>
+<sub><b>Now Playing</b> — a full-bleed poster whose cover dissolves into the reactive glow, with a flowing tracklist</sub>
+</td>
+</tr>
+</table>
+</div>
+
+**Default** — Material You, with the album-coloured glow
 
 <div align="center">
 <table>
@@ -139,12 +162,19 @@ If you'd rather not see the warning at all on a phone you trust Verza on, you ca
 - **Sound reactivity (optional)** — an FFT visualizer drives the glow's motion and brightness with the music's bass/mid/treble (requires the audio permission, asked only when enabled).
 - Colour presets, three intensity stops, and a **de-monochrome** colour derivation that keeps even Material You's palette lively.
 
+### Sleeve — editorial appearance
+- An opt-in **cover-driven editorial mode** (Settings → Appearance) inspired by record-label landing pages. Every surface — background, cards, chrome, type — is recoloured from the **current cover art** and floats over the live, reactive glow.
+- **Newsreader** serif at a light regular weight with tight tracking for all titles; **IBM Plex Mono** for wide-tracked eyebrows, track indices, and timecodes.
+- A **poster Now Playing**: the full-bleed cover **dissolves into the reactive glow at its edges** (no hard frame, no seam), beneath a flowing numbered tracklist and a hairline transport.
+- **Film grain, an edge vignette, chromatic-aberration headlines**, mono superscript numerals, and moody cover-colour backdrops give it a printed, photographic feel — carried through Home, Album, Playlist, and the library.
+- The standalone **"Adaptive · cover"** theme brings the same cover-sampled colour scheme to the standard (non-Sleeve) UI.
+
 ### Identity & motion
 - **Material You (Dynamic)** is the default theme on Android 12+, colouring the whole app from your wallpaper; older devices fall back to **Atelier Dark**.
 - Nine curated palettes: the new **Atelier** light/dark editorial pair plus **Bauhaus · Malibu · Concrete · Noir · Ember · Acid · Magenta**.
-- **Cormorant Garamond** for display & headlines (bold, architectural), **Inter** for body/labels, **IBM Plex Mono** for numerals & timecodes — with hairline rules instead of heavy cards throughout.
+- **Cormorant Garamond** for display & headlines (bold, architectural), **Inter** for body/labels, **IBM Plex Mono** for numerals & timecodes — with hairline rules instead of heavy cards throughout. (Sleeve swaps the display face to **Newsreader**.)
 - **First-run onboarding**, a cold-launch **boot animation**, and the **"Fold"** launcher icon (with an Android-13 themed-icon variant).
-- Motion pass: directional page transitions, press-scale feedback, a spring-animated bottom nav, staggered home reveal, breathing album art, and a smoothly interpolated seek bar.
+- Motion pass: **Material fade-through** between bottom-bar tabs and a **shared-axis** slide + fade for push / pop (emphasized easing), press-scale feedback, a spring-animated bottom nav, staggered home reveal, breathing album art, and a smoothly interpolated seek bar.
 
 ### Home page
 - **Personal-first composition** — *Recently Played*, *Quick Picks*, *Your Daily Discover*, *Keep Listening*, *From Your Liked Songs*, *Your YouTube Playlists*, *Similar to <artist>* — with one consolidated *Browse charts and trending* row at the bottom.
@@ -172,7 +202,7 @@ If you'd rather not see the warning at all on a phone you trust Verza on, you ca
 - An editorial insights page built from a local **play-event log**: total time listened, tracks played, a **day streak**, and your **top artists & tracks** ranked by *real* engaged listening time (paused gaps excluded).
 
 ### Settings
-- **General** (start screen), **Playback** (resume-on-open, skip silence, album-art motion), **Audio quality**, **Theme**, **Background glow** (enable / colour / intensity / reactivity), **Search** (save & clear history), and **Data** (reset listening stats).
+- **General** (start screen), **Appearance** (Sleeve mode), **Playback** (resume-on-open, skip silence, album-art motion), **Audio quality**, **Theme**, **Background glow** (enable / colour / intensity / reactivity), **Search** (save & clear history), and **Data** (reset listening stats).
 
 ---
 
