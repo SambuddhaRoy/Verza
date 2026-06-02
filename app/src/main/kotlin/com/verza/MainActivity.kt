@@ -124,7 +124,6 @@ class MainActivity : ComponentActivity() {
                     visualizerSignalFlow.value = VisualizerSignal()
                 }
             }
-            val visualizerSignal by visualizerSignalFlow.collectAsStateWithLifecycle()
             // The instant DataStore tells us the flag value, lower the splash-screen gate so
             // the OS animates out and Compose takes over with the Boot route as start dest.
             LaunchedEffect(onboardingCompleted) {
@@ -172,7 +171,7 @@ class MainActivity : ComponentActivity() {
                         enabled = glowEnabled || sleeveMode,
                         triad = glowTriad,
                         intensity = glowIntensity,
-                        signal = if (shouldVisualize) visualizerSignal else null,
+                        signalFlow = if (shouldVisualize) visualizerSignalFlow else null,
                         forceDark = sleeveMode,
                         modifier = Modifier
                             .fillMaxSize()
