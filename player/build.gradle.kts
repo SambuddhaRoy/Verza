@@ -38,7 +38,6 @@ dependencies {
     implementation(libs.androidx.media3.common)
     implementation(libs.androidx.media3.datasource.okhttp)
 
-    implementation(libs.androidx.lifecycle.service)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 

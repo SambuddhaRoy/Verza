@@ -77,11 +77,13 @@ dependencies {
     // Compose BOM
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.androidx.compose.animation)
+    // Preview tooling is only needed for @Preview authoring in debug builds — no @Preview ships
+    // in the main source set, so it stays out of the release classpath.
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.tooling.preview)
 
     // Core
     implementation(libs.androidx.core.ktx)

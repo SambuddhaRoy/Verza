@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.platform.LocalContext
 import com.verza.audio.VisualizerSignal
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -179,7 +181,10 @@ fun GlowBackground(
     triad: GlowTriad,
     intensity: GlowIntensity,
     modifier: Modifier = Modifier,
-    signal: VisualizerSignal? = null,
+    // The reactive signal is passed as a *flow*, not a value, and collected deep inside the glow
+    // (below) — so the visualizer's ~30 Hz updates only re-draw the shader, never recompose the
+    // whole app tree (which a value read at the call site would have triggered).
+    signalFlow: StateFlow<VisualizerSignal>? = null,
     forceDark: Boolean = false,
     content: @Composable () -> Unit,
 ) {
@@ -200,9 +205,9 @@ fun GlowBackground(
                 else null
             }
             if (shader != null) {
-                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signal)
+                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow)
             } else {
-                GradientGlowFallback(triad, bg, intensity, signal)
+                GradientGlowFallback(triad, bg, intensity, signalFlow)
             }
         }
         content()
@@ -234,14 +239,15 @@ private fun FluidShaderGlow(
     colorC: Color,
     bg: Color,
     strength: Float,
-    signal: VisualizerSignal?,
+    signalFlow: StateFlow<VisualizerSignal>?,
 ) {
     val brush = remember(shader) { ShaderBrush(shader) }
     val time by rememberFrameTimeSeconds()
 
+    // Collected here (not at the call site) so the ~30 Hz signal only recomposes this composable.
     // One last smoothing layer on top of the AudioVisualizer's own filtering, so percussive
     // transients glide rather than snap.
-    val safe = signal ?: VisualizerSignal()
+    val safe = signalFlow?.collectAsState()?.value ?: VisualizerSignal()
     val bass by animateFloatAsState(safe.bass, tween(120), label = "fluidBass")
     val mid by animateFloatAsState(safe.mid, tween(160), label = "fluidMid")
     val treble by animateFloatAsState(safe.treble, tween(100), label = "fluidTreble")
@@ -274,10 +280,10 @@ private fun GradientGlowFallback(
     triad: GlowTriad,
     bg: Color,
     intensity: GlowIntensity,
-    signal: VisualizerSignal?,
+    signalFlow: StateFlow<VisualizerSignal>?,
 ) {
     val time by rememberFrameTimeSeconds()
-    val safe = signal ?: VisualizerSignal()
+    val safe = signalFlow?.collectAsState()?.value ?: VisualizerSignal()
     val bass by animateFloatAsState(safe.bass, tween(120), label = "fbBass")
     val mid by animateFloatAsState(safe.mid, tween(160), label = "fbMid")
     val treble by animateFloatAsState(safe.treble, tween(100), label = "fbTreble")
