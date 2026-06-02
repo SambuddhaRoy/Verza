@@ -2,6 +2,8 @@ package com.verza.ui.navigation
 
 import android.content.Intent
 import androidx.compose.animation.*
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Scaffold
@@ -54,6 +56,9 @@ fun VerzaNavigation(
     // doesn't own — e.g. the Now Playing album-art motion toggle.
     val settingsVm: SettingsViewModel = hiltViewModel()
     val albumArtMotion by settingsVm.albumArtMotion.collectAsStateWithLifecycle()
+    val sleeveMode by settingsVm.sleeveMode.collectAsStateWithLifecycle()
+    // Sleeve mode wants an immersive, edge-to-edge Now Playing, so the bottom chrome hides there.
+    val immersiveNowPlaying = sleeveMode && currentRoute == Screen.NowPlaying.route
     val artworkOverride by playbackViewModel.currentArtworkOverride.collectAsStateWithLifecycle()
 
     val current = playback.currentItem
@@ -126,7 +131,7 @@ fun VerzaNavigation(
             // Hide the entire bottom chrome (mini-player + nav) on Onboarding/Login so the
             // pre-app screens get the full canvas. AnimatedVisibility on each piece keeps the
             // re-appear smooth on exit from onboarding.
-            if (!isChromeHidden) Column {
+            if (!isChromeHidden && !immersiveNowPlaying) Column {
                 AnimatedVisibility(
                     visible = showMiniPlayer,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
@@ -178,32 +183,47 @@ fun VerzaNavigation(
             navController = navController,
             startDestination = startDestination,
             modifier = Modifier.padding(innerPadding),
-            // Directional transitions: forward navigation slides in from the right + fades;
-            // back navigation slides in from the left + fades. Gives navigation a sense of
-            // physical direction without ever feeling slow (250 ms cap).
+            // Two motion idioms, chosen per-navigation (see helpers at the bottom of the file):
+            //  • Switching between the bottom-bar tabs uses Material **fade-through** — the
+            //    outgoing screen dissolves to reveal the live glow, then the new one fades and
+            //    eases up. No directional slide, so lateral moves feel calm and seamless.
+            //  • Pushing into / out of a detail screen uses a **shared-axis** slide + fade with
+            //    emphasized easing, giving hierarchy a gentle sense of direction.
             enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { fullWidth -> fullWidth / 6 },
-                    animationSpec = tween(250),
-                ) + fadeIn(tween(200))
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                when {
+                    from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeIn(tween(320))
+                    from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughIn()
+                    else -> sharedAxisIn(forward = true)
+                }
             },
             exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { fullWidth -> -fullWidth / 12 },
-                    animationSpec = tween(250),
-                ) + fadeOut(tween(180))
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                when {
+                    from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeOut(tween(220))
+                    from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughOut()
+                    else -> sharedAxisOut(forward = true)
+                }
             },
             popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { fullWidth -> -fullWidth / 6 },
-                    animationSpec = tween(250),
-                ) + fadeIn(tween(200))
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                when {
+                    from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeIn(tween(320))
+                    from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughIn()
+                    else -> sharedAxisIn(forward = false)
+                }
             },
             popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { fullWidth -> fullWidth / 12 },
-                    animationSpec = tween(250),
-                ) + fadeOut(tween(180))
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                when {
+                    from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeOut(tween(220))
+                    from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughOut()
+                    else -> sharedAxisOut(forward = false)
+                }
             },
         ) {
             composable(Screen.Boot.route) {
@@ -348,6 +368,7 @@ fun VerzaNavigation(
                     onSetSleepTimer = { playbackViewModel.setSleepTimer(it) },
                     onSleepTimerEndOfTrack = { playbackViewModel.setSleepTimerEndOfTrack() },
                     albumArtMotion = albumArtMotion,
+                    sleeveMode = sleeveMode,
                 )
             }
             composable(Screen.Lyrics.route) {
@@ -368,4 +389,46 @@ fun VerzaNavigation(
     pendingAdd?.let { item ->
         AddToPlaylistSheet(item = item, onDismiss = { pendingAdd = null })
     }
+}
+
+// ── Navigation motion ────────────────────────────────────────────────────────────
+// Tuned to feel like the transitions in design-forward apps: nothing ever just "cuts",
+// lateral moves dissolve through the ambient glow, and hierarchy slides with a confident,
+// emphasized decelerate rather than a linear shove.
+
+/** Material 3 "emphasized" easing — a strong, natural decelerate with no overshoot. */
+private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+/** The four bottom-bar tabs — switching between any of these uses fade-through. */
+private val TAB_ROUTES = setOf(
+    Screen.Home.route, Screen.Search.route, Screen.Library.route, Screen.NowPlaying.route,
+)
+
+/** Pre-app surfaces (boot / onboarding / login) — kept to a plain, quiet crossfade. */
+private val PREAPP_ROUTES = setOf(
+    Screen.Boot.route, Screen.Onboarding.route, Screen.Login.route,
+)
+
+/** Fade-through enter: a beat after the old screen clears, the new one fades + eases up to scale. */
+private fun fadeThroughIn(): EnterTransition =
+    fadeIn(tween(280, delayMillis = 90, easing = Emphasized)) +
+        scaleIn(initialScale = 0.94f, animationSpec = tween(280, delayMillis = 90, easing = Emphasized))
+
+/** Fade-through exit: the outgoing screen quickly dissolves + eases down, revealing the glow. */
+private fun fadeThroughOut(): ExitTransition =
+    fadeOut(tween(90, easing = LinearOutSlowInEasing)) +
+        scaleOut(targetScale = 0.96f, animationSpec = tween(90))
+
+/** Shared-axis (X) enter — a small directional slide + fade for push (forward) / pop (back). */
+private fun sharedAxisIn(forward: Boolean): EnterTransition {
+    val dir = if (forward) 1 else -1
+    return slideInHorizontally(tween(340, easing = Emphasized)) { full -> dir * full / 10 } +
+        fadeIn(tween(220, delayMillis = 40, easing = Emphasized))
+}
+
+/** Shared-axis (X) exit — the counterpart slide + fade for the departing screen. */
+private fun sharedAxisOut(forward: Boolean): ExitTransition {
+    val dir = if (forward) 1 else -1
+    return slideOutHorizontally(tween(340, easing = Emphasized)) { full -> -dir * full / 10 } +
+        fadeOut(tween(150, easing = LinearOutSlowInEasing))
 }

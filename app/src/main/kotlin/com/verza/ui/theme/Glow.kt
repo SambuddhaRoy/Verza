@@ -180,12 +180,15 @@ fun GlowBackground(
     intensity: GlowIntensity,
     modifier: Modifier = Modifier,
     signal: VisualizerSignal? = null,
+    forceDark: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val isLight = LocalVerzaTheme.current.isLight
-    val show = enabled && !isLight
+    // forceDark (used by Sleeve) renders the reactive glow over a guaranteed-dark canvas regardless
+    // of the chosen theme's lightness, so the editorial surfaces always have a dark context.
+    val show = enabled && (forceDark || !isLight)
     val scheme = MaterialTheme.colorScheme
-    val bg = scheme.background
+    val bg = if (forceDark) Color(0xFF09090C) else scheme.background
 
     Box(modifier = modifier.fillMaxSize()) {
         if (show) {

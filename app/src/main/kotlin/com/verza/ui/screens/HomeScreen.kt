@@ -21,9 +21,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +35,10 @@ import com.verza.innertube.models.HomeItem
 import com.verza.innertube.models.HomeSection
 import com.verza.ui.components.SectionRow
 import com.verza.ui.components.SectionStyle
+import com.verza.ui.sleeve.Eyebrow
+import com.verza.ui.sleeve.LocalSleeveMode
+import com.verza.ui.theme.FontMono
+import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import java.util.Calendar
 
@@ -71,6 +79,8 @@ private fun HomeContent(
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
+    val sleeve = LocalSleeveMode.current
+    val cover = LocalCoverColors.current
 
     // Stagger counter — advances one tick per ~40 ms when the sections list arrives.
     // Each section row checks `index < visibleCount` to decide whether it's faded in.
@@ -98,22 +108,28 @@ private fun HomeContent(
                 verticalAlignment = Alignment.Top,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    // Accent "flourish" bar.
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(colors.primary),
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = greeting(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.primary,
-                        letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
-                    )
-                    Spacer(Modifier.height(4.dp))
+                    if (sleeve) {
+                        // Editorial masthead — a wide-tracked mono dateline above a serif title.
+                        Eyebrow(text = "${greeting()} · ${dateline()}", color = cover.sub)
+                        Spacer(Modifier.height(8.dp))
+                    } else {
+                        // Accent "flourish" bar.
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(colors.primary),
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = greeting(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.primary,
+                            letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
                     Text(
                         text = "For You",
                         style = MaterialTheme.typography.displaySmall,
@@ -121,7 +137,7 @@ private fun HomeContent(
                     )
                 }
                 IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = ext.muted)
+                    Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = if (sleeve) cover.sub else ext.muted)
                 }
             }
         }
@@ -179,7 +195,8 @@ private fun styleFor(title: String): SectionStyle = when {
 @Composable
 private fun GenreChipRow() {
     val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
+    val sleeve = LocalSleeveMode.current
+    val cover = LocalCoverColors.current
     val genres = listOf("All", "Electronic", "Indie", "Jazz", "Lo-fi", "Ambient", "Classical")
     var active by remember { mutableStateOf(genres.first()) }
 
@@ -192,16 +209,36 @@ private fun GenreChipRow() {
     ) {
         genres.forEach { g ->
             val selected = g == active
-            val bg = if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f)
-            val fg = if (selected) colors.onPrimary else colors.primary
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(bg)
-                    .clickable(onClick = { active = g })
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
-            ) {
-                Text(g, style = MaterialTheme.typography.labelLarge, color = fg)
+            if (sleeve) {
+                // Mono nav-pills, matching the reference's filter row.
+                val bg = if (selected) cover.ink.copy(alpha = 0.92f) else Color.Transparent
+                val fg = if (selected) cover.bg else cover.sub
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(bg)
+                        .then(if (selected) Modifier else Modifier.border(1.dp, cover.line, CircleShape))
+                        .clickable(onClick = { active = g })
+                        .padding(horizontal = 16.dp, vertical = 7.dp),
+                ) {
+                    Text(
+                        g,
+                        style = TextStyle(fontFamily = FontMono, fontSize = 12.5.sp, letterSpacing = 0.02.em),
+                        color = fg,
+                    )
+                }
+            } else {
+                val bg = if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f)
+                val fg = if (selected) colors.onPrimary else colors.primary
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(bg)
+                        .clickable(onClick = { active = g })
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                ) {
+                    Text(g, style = MaterialTheme.typography.labelLarge, color = fg)
+                }
             }
         }
     }
@@ -227,5 +264,19 @@ private fun greeting(): String {
         in 12..16 -> "Good afternoon"
         in 17..21 -> "Good evening"
         else -> "Late night"
+    }
+}
+
+/** Weekday name for the Sleeve masthead dateline (e.g. "Saturday"). */
+private fun dateline(): String {
+    val cal = Calendar.getInstance()
+    return when (cal.get(Calendar.DAY_OF_WEEK)) {
+        Calendar.MONDAY -> "Monday"
+        Calendar.TUESDAY -> "Tuesday"
+        Calendar.WEDNESDAY -> "Wednesday"
+        Calendar.THURSDAY -> "Thursday"
+        Calendar.FRIDAY -> "Friday"
+        Calendar.SATURDAY -> "Saturday"
+        else -> "Sunday"
     }
 }
