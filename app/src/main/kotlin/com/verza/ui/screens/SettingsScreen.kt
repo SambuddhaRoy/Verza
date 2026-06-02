@@ -60,6 +60,7 @@ fun SettingsScreen(
     val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
     val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
     val saveSearchHistory by viewModel.saveSearchHistory.collectAsStateWithLifecycle()
+    val sleeveMode by viewModel.sleeveMode.collectAsStateWithLifecycle()
     val isDarkTheme = !currentTheme.isLight
     var showResetStatsDialog by remember { mutableStateOf(false) }
 
@@ -277,6 +278,21 @@ fun SettingsScreen(
                     title = "Clear search history",
                     subtitle = "Remove all remembered searches",
                     onClick = viewModel::clearSearchHistory,
+                    divider = false,
+                )
+            }
+        }
+
+        // ── Appearance ───────────────────────────────────────────────────────
+        item { SectionHeader("Appearance") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                ToggleRow(
+                    title = "Sleeve mode",
+                    subtitle = "Editorial look — full-bleed poster player, translucent surfaces, " +
+                        "all over the live cover-coloured glow",
+                    checked = sleeveMode,
+                    onToggle = viewModel::setSleeveMode,
                     divider = false,
                 )
             }

@@ -2,7 +2,12 @@ package com.verza.ui.theme
 
 import android.content.Context
 import android.graphics.Color as AndroidColor
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.palette.graphics.Palette
 import coil3.BitmapImage
@@ -66,15 +71,16 @@ private fun floorSaturation(color: Color, floor: Float = 0.42f): Color {
  *
  * `allowHardware(false)` is required: Palette must read pixels, which hardware bitmaps forbid.
  */
-suspend fun extractAlbumTriad(context: Context, url: String): GlowTriad? {
+// Shared cover-bitmap loader (software bitmap so Palette can read pixels; reuses Coil's cache).
+private suspend fun loadCoverBitmap(context: Context, url: String): android.graphics.Bitmap? {
     val loader = SingletonImageLoader.get(context)
-    val request = ImageRequest.Builder(context)
-        .data(url)
-        .allowHardware(false)
-        .size(160)
-        .build()
+    val request = ImageRequest.Builder(context).data(url).allowHardware(false).size(160).build()
     val result = runCatching { loader.execute(request) }.getOrNull() as? SuccessResult ?: return null
-    val bitmap = (result.image as? BitmapImage)?.bitmap ?: return null
+    return (result.image as? BitmapImage)?.bitmap
+}
+
+suspend fun extractAlbumTriad(context: Context, url: String): GlowTriad? {
+    val bitmap = loadCoverBitmap(context, url) ?: return null
 
     val palette = runCatching {
         Palette.from(bitmap).maximumColorCount(24).generate()
@@ -98,3 +104,91 @@ suspend fun extractAlbumTriad(context: Context, url: String): GlowTriad? {
 
     return GlowTriad(floorSaturation(a), floorSaturation(b), floorSaturation(c))
 }
+
+// ── Cover-derived full palette ────────────────────────────────────────────────
+// A complete set of editorial tones sampled from the cover art: a near-black canvas
+// *tinted* by the cover's dark tones, a warm near-white ink, and the vibrant accent.
+// Used by the Sleeve appearance for every surface, and as the basis of the Adaptive theme.
+data class CoverColors(
+    val accent: Color,
+    val bg: Color,
+    val ink: Color,
+    val sub: Color,
+    val faint: Color,
+    val line: Color,
+)
+
+/** UMBRA "Terracotta"-style defaults, used until a cover resolves. */
+val DefaultCoverColors = CoverColors(
+    accent = Color(0xFFCF6A3C),
+    bg = Color(0xFF0B0705),
+    ink = Color(0xFFF2E9DD),
+    sub = Color(0xFFF2E9DD).copy(alpha = 0.62f),
+    faint = Color(0xFFF2E9DD).copy(alpha = 0.34f),
+    line = Color(0xFFF2E9DD).copy(alpha = 0.16f),
+)
+
+val LocalCoverColors = staticCompositionLocalOf { DefaultCoverColors }
+
+/** A near-black canvas that keeps a faint hint of the cover's hue. */
+private fun darkCanvasFrom(c: Color): Color {
+    val hsv = FloatArray(3)
+    AndroidColor.colorToHSV(c.toArgb(), hsv)
+    return Color(AndroidColor.HSVToColor(floatArrayOf(hsv[0], (hsv[1] * 0.6f).coerceAtMost(0.5f), 0.07f)))
+}
+
+/**
+ * Builds a full [CoverColors] palette from the cover at [url]: vibrant swatch → accent,
+ * a dark swatch → tinted near-black canvas, warm near-white ink. Returns null on failure.
+ */
+suspend fun extractCoverColors(context: Context, url: String): CoverColors? {
+    val bitmap = loadCoverBitmap(context, url) ?: return null
+    val palette = runCatching { Palette.from(bitmap).maximumColorCount(24).generate() }.getOrNull() ?: return null
+
+    val accentSwatch = palette.vibrantSwatch ?: palette.lightVibrantSwatch
+        ?: palette.darkVibrantSwatch ?: palette.dominantSwatch ?: return null
+    val darkSwatch = palette.darkMutedSwatch ?: palette.darkVibrantSwatch
+        ?: palette.mutedSwatch ?: palette.dominantSwatch ?: accentSwatch
+
+    val accent = floorSaturation(Color(accentSwatch.rgb))
+    val bg = darkCanvasFrom(Color(darkSwatch.rgb))
+    val ink = Color(0xFFF2E9DD)
+    return CoverColors(
+        accent = accent,
+        bg = bg,
+        ink = ink,
+        sub = ink.copy(alpha = 0.62f),
+        faint = ink.copy(alpha = 0.34f),
+        line = ink.copy(alpha = 0.16f),
+    )
+}
+
+/** Best-contrast on-colour (black or white) for text/icons drawn on [bg]. */
+private fun onColorFor(bg: Color): Color = if (bg.luminance() > 0.5f) Color(0xFF120A06) else Color.White
+
+/**
+ * A full dark M3 [ColorScheme] derived from [c] — the engine behind the "Adaptive · cover" theme.
+ * Every role (background, surfaces, primary, text) is sampled from or tuned against the cover.
+ */
+fun coverColorScheme(c: CoverColors): ColorScheme = darkColorScheme(
+    primary = c.accent,
+    onPrimary = onColorFor(c.accent),
+    primaryContainer = lerp(c.bg, c.accent, 0.30f),
+    onPrimaryContainer = c.ink,
+    secondary = c.accent,
+    onSecondary = onColorFor(c.accent),
+    secondaryContainer = lerp(c.bg, c.accent, 0.22f),
+    onSecondaryContainer = c.ink,
+    tertiary = c.accent,
+    onTertiary = onColorFor(c.accent),
+    background = c.bg,
+    onBackground = c.ink,
+    surface = lerp(c.bg, Color.White, 0.05f),
+    onSurface = c.ink,
+    surfaceVariant = lerp(c.bg, Color.White, 0.09f),
+    onSurfaceVariant = c.sub,
+    outline = c.line,
+    outlineVariant = lerp(c.bg, Color.White, 0.12f),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+)

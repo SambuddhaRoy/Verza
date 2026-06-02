@@ -21,11 +21,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import com.verza.ui.navigation.Screen
+import com.verza.ui.sleeve.LocalSleeveMode
+import com.verza.ui.theme.FontMono
+import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
 
 private data class NavItem(
@@ -50,8 +57,22 @@ fun VerzaBottomBar(
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
 
-    Column(modifier = modifier.fillMaxWidth().background(colors.surface)) {
-        HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant)
+    // Sleeve dresses the nav as a translucent dark bar (so the reactive glow shows through),
+    // with the cover accent marking the active tab.
+    val sleeve = LocalSleeveMode.current
+    val cover = LocalCoverColors.current
+    val activeColor = if (sleeve) cover.accent else colors.primary
+    val inactiveColor = if (sleeve) cover.faint else ext.muted
+    val labelActiveColor = if (sleeve) cover.ink else colors.onSurface
+    val barBackground = if (sleeve) {
+        Modifier.background(Color.Black.copy(alpha = 0.34f))
+    } else {
+        Modifier.background(colors.surface)
+    }
+    val dividerColor = if (sleeve) Color.White.copy(alpha = 0.12f) else colors.outlineVariant
+
+    Column(modifier = modifier.fillMaxWidth().then(barBackground)) {
+        HorizontalDivider(thickness = 1.dp, color = dividerColor)
         Row(
             // windowInsetsPadding *before* height — so the 72 dp content sits ABOVE the system
             // gesture inset instead of being eaten by it. Otherwise the label clips on devices
@@ -67,12 +88,12 @@ fun VerzaBottomBar(
             navItems.forEach { item ->
                 val active = currentRoute == item.screen.route
                 val tint by animateColorAsState(
-                    targetValue = if (active) colors.primary else ext.muted,
+                    targetValue = if (active) activeColor else inactiveColor,
                     animationSpec = tween(180),
                     label = "navTint",
                 )
                 val labelColor by animateColorAsState(
-                    targetValue = if (active) colors.onSurface else ext.muted,
+                    targetValue = if (active) labelActiveColor else inactiveColor,
                     animationSpec = tween(180),
                     label = "navLabel",
                 )
@@ -103,7 +124,7 @@ fun VerzaBottomBar(
                             .width(20.dp)
                             .height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(if (active) colors.primary else androidx.compose.ui.graphics.Color.Transparent),
+                            .background(if (active) activeColor else Color.Transparent),
                     )
                     Spacer(Modifier.height(4.dp))
                     Icon(
@@ -114,11 +135,14 @@ fun VerzaBottomBar(
                             .size(22.dp)
                             .graphicsLayer { scaleX = iconScale; scaleY = iconScale },
                     )
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(if (sleeve) 4.dp else 2.dp))
                     Text(
-                        text = item.label,
+                        text = if (sleeve) item.label.uppercase() else item.label,
                         color = labelColor,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = if (sleeve)
+                            TextStyle(fontFamily = FontMono, fontSize = 8.5.sp, letterSpacing = 0.1.em)
+                        else
+                            MaterialTheme.typography.labelSmall,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                     )

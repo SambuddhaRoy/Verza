@@ -80,8 +80,31 @@ fun NowPlayingScreen(
     onSetSleepTimer: (Long?) -> Unit,
     onSleepTimerEndOfTrack: () -> Unit,
     albumArtMotion: Boolean = true,
+    sleeveMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    // Editorial "Sleeve" poster surface fully replaces the standard layout when enabled.
+    if (sleeveMode) {
+        com.verza.ui.sleeve.SleevePlayer(
+            onBack = onBack,
+            title = title,
+            artist = artist,
+            artworkUrl = artworkUrl,
+            isPlaying = isPlaying,
+            positionMs = positionMs,
+            durationMs = durationMs,
+            queue = queue,
+            currentIndex = currentIndex,
+            onTogglePlay = onTogglePlay,
+            onNext = onNext,
+            onPrevious = onPrevious,
+            onSeek = onSeek,
+            onPlayQueueItem = onPlayQueueItem,
+            onOpenLyrics = onOpenLyrics,
+            modifier = modifier,
+        )
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     val context = LocalContext.current
