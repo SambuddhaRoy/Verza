@@ -11,10 +11,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,13 +26,18 @@ import com.verza.playback.PlaybackViewModel
 import com.verza.ui.navigation.Screen
 import com.verza.ui.navigation.VerzaNavigation
 import com.verza.ui.screens.SettingsViewModel
+import com.verza.ui.theme.DefaultCoverColors
 import com.verza.ui.theme.GlowBackground
 import com.verza.ui.theme.GlowColorPreset
-import com.verza.ui.theme.GlowTriad
+import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.VerzaTheme
+import com.verza.ui.theme.coverColorScheme
 import com.verza.ui.theme.deriveGlowTriad
-import com.verza.ui.theme.extractAlbumTriad
+import com.verza.ui.theme.extractCoverColors
 import com.verza.ui.theme.resolveColor
+import com.verza.ui.sleeve.LocalSleeveMode
+import com.verza.ui.sleeve.grain
+import com.verza.ui.sleeve.vignette
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +77,7 @@ class MainActivity : ComponentActivity() {
             val glowReactive by settingsViewModel.glowReactive.collectAsStateWithLifecycle()
             val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle()
             val startScreen by settingsViewModel.startScreen.collectAsStateWithLifecycle()
+            val sleeveMode by settingsViewModel.sleeveMode.collectAsStateWithLifecycle()
 
             // ── Visualizer lifecycle ─────────────────────────────────────────────
             // PlaybackViewModel here just for audioSessionId + isPlaying — same VM is used by the
@@ -123,47 +131,56 @@ class MainActivity : ComponentActivity() {
                 if (onboardingCompleted != null) splashReady = true
             }
 
-            VerzaTheme(theme = theme) {
-                // Resolve the glow colour triad inside the theme scope so resolveColor() and the
-                // album-art fallback can read the active colour scheme.
-                val seed = glowColor.resolveColor()
-                // Album-art extraction runs off the main thread via produceState, re-keyed on the
-                // cover URL and the selected preset. Null while loading / unavailable.
-                val albumTriad by produceState<GlowTriad?>(null, glowColor, artworkUrl) {
-                    value = if (glowColor == GlowColorPreset.ALBUM_ART && !artworkUrl.isNullOrBlank())
-                        extractAlbumTriad(context, artworkUrl!!)
-                    else null
-                }
-                // Non-album presets (and album fallback) derive a vibrant hue-spread triad from a
-                // single seed — this is also what de-monochromes the Material You glow.
-                val glowTriad = albumTriad ?: deriveGlowTriad(seed)
+            // Cover-derived palette (sampled from the current art) drives both the Adaptive theme's
+            // colour scheme and every Sleeve surface. Extracted off the main thread; computed here
+            // so it can feed VerzaTheme's scheme as well as LocalCoverColors below.
+            val wantCover = sleeveMode || theme == VerzaTheme.ADAPTIVE || glowColor == GlowColorPreset.ALBUM_ART
+            val coverColors by produceState(DefaultCoverColors, wantCover, artworkUrl) {
+                value = if (wantCover && !artworkUrl.isNullOrBlank())
+                    (extractCoverColors(context, artworkUrl!!) ?: DefaultCoverColors)
+                else DefaultCoverColors
+            }
+            // Sleeve forces the cover scheme app-wide; the Adaptive theme uses it directly.
+            val coverScheme = if (theme == VerzaTheme.ADAPTIVE || sleeveMode) coverColorScheme(coverColors) else null
 
-                GlowBackground(
-                    enabled = glowEnabled,
-                    triad = glowTriad,
-                    intensity = glowIntensity,
-                    signal = if (shouldVisualize) visualizerSignal else null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                ) {
-                    // Hold off rendering the NavHost until DataStore tells us whether onboarding
-                    // has been completed. The system splash is still on screen during this gap
-                    // (held by setKeepOnScreenCondition), so the user sees no blank frame.
+            VerzaTheme(theme = theme, coverScheme = coverScheme, sleeve = sleeveMode) {
+                val seed = glowColor.resolveColor()
+                // The glow uses the cover accent whenever we're sampling it; otherwise the preset.
+                val glowTriad = if (wantCover && !artworkUrl.isNullOrBlank())
+                    deriveGlowTriad(coverColors.accent)
+                else
+                    deriveGlowTriad(seed)
+
+                val navContent: @Composable () -> Unit = {
                     val completed = onboardingCompleted
                     if (completed != null) {
-                        // Always start at Boot. Boot's onFinished callback decides Onboarding
-                        // vs Home so the post-boot landing reflects the onboarding flag at the
-                        // moment the animation ends (which catches edge cases where DataStore
-                        // updates mid-animation).
                         VerzaNavigation(
                             modifier = Modifier.fillMaxSize(),
                             startDestination = Screen.Boot.route,
-                            // After boot: returning users land on their chosen start screen;
-                            // first-timers go through onboarding.
                             postBootDestination = if (completed) startScreen.route else Screen.Onboarding.route,
                         )
                     }
+                }
+
+                CompositionLocalProvider(
+                    LocalSleeveMode provides sleeveMode,
+                    LocalCoverColors provides coverColors,
+                ) {
+                    // The reactive, album-coloured glow is the backdrop in every mode. In Sleeve it's
+                    // forced on over a guaranteed-dark canvas so the editorial surfaces always read.
+                    GlowBackground(
+                        enabled = glowEnabled || sleeveMode,
+                        triad = glowTriad,
+                        intensity = glowIntensity,
+                        signal = if (shouldVisualize) visualizerSignal else null,
+                        forceDark = sleeveMode,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(if (sleeveMode) coverColors.bg else MaterialTheme.colorScheme.background)
+                            // Sleeve wraps the whole app in a faint, even film grain and a soft
+                            // edge vignette — the print/photographic finish from the UMBRA reference.
+                            .then(if (sleeveMode) Modifier.vignette(0.30f).grain(0.05f) else Modifier),
+                    ) { navContent() }
                 }
             }
         }

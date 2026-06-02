@@ -14,7 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.verza.ui.sleeve.LocalSleeveMode
+import com.verza.ui.sleeve.SleeveEyebrow
 import com.verza.ui.theme.EditorialEyebrow
+import com.verza.ui.theme.LocalCoverColors
 
 /**
  * Editorial section header — replaces the older `SectionHeader` lozenge.
@@ -35,19 +38,22 @@ fun EditorialSectionHeader(
     accentWidth: Int = 24,
 ) {
     val colors = MaterialTheme.colorScheme
+    val sleeve = LocalSleeveMode.current
+    val cover = LocalCoverColors.current
     Column(modifier = modifier.padding(horizontal = 24.dp)) {
         Box(
             Modifier
                 .width(accentWidth.dp)
                 .height(1.dp)
                 .clip(RoundedCornerShape(0.5.dp))
-                .background(colors.primary),
+                .background(if (sleeve) cover.accent else colors.primary),
         )
         Spacer(Modifier.height(8.dp))
         Text(
             text = title.uppercase(),
-            style = EditorialEyebrow,
-            color = colors.onBackground,
+            // Sleeve speaks in IBM Plex Mono with wide tracking; otherwise the Inter eyebrow.
+            style = if (sleeve) SleeveEyebrow else EditorialEyebrow,
+            color = if (sleeve) cover.sub else colors.onBackground,
         )
     }
 }

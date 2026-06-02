@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.verza.R
 
@@ -38,6 +39,21 @@ val FontBody = FontFamily(
     Font(googleFont = inter, fontProvider = provider, weight = FontWeight.Normal),
     Font(googleFont = inter, fontProvider = provider, weight = FontWeight.Medium),
     Font(googleFont = inter, fontProvider = provider, weight = FontWeight.SemiBold),
+)
+
+// Newsreader — the Sleeve appearance's serif, exactly matching the UMBRA reference's lead
+// direction ("Terracotta"), which sets *every* serif at weight 400 (regular). The editorial,
+// high-style voice there comes from large sizes + thin regular weight + tight tracking, NOT from
+// bolding — so we deliberately keep Light/Regular variants and never reach for Bold in Sleeve.
+// A literary, newspaper-ish serif with a softer, warmer voice than Cormorant.
+private val newsreader = GoogleFont("Newsreader")
+val FontSleeve = FontFamily(
+    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Light),
+    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Normal),
+    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Medium),
+    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Light, style = FontStyle.Italic),
+    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Normal, style = FontStyle.Italic),
+    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Medium, style = FontStyle.Italic),
 )
 
 // IBM Plex Mono — reserved for numeric / timecode chrome (kept for accent details).
@@ -131,6 +147,33 @@ val VerzaTypography = Typography(
         fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.08.sp,
         fontFeatureSettings = FEAT_TABULAR,
     ),
+)
+
+/**
+ * Sleeve-appearance typography — a faithful port of the UMBRA "Terracotta" reference. Every serif
+ * slot is **Newsreader at weight 400 (regular)** with tight, optical em-tracking and near-1.0
+ * line-heights, so the look comes from scale + thin weight rather than bolding. The serif now
+ * reaches down through the *title* slots too (track titles, card titles, list rows) so enabling
+ * Sleeve re-sets the whole app as editorial type in one move. Body / label slots keep Inter;
+ * numeric chrome uses [FontMono] at point-of-use.
+ */
+private fun sleeveSerif(size: Int, line: Int, track: Float) = TextStyle(
+    fontFamily = FontSleeve, fontWeight = FontWeight.Normal,
+    fontSize = size.sp, lineHeight = line.sp, letterSpacing = track.em,
+)
+
+val VerzaSleeveTypography = VerzaTypography.copy(
+    displayLarge  = sleeveSerif(54, 54, -0.020f),
+    displayMedium = sleeveSerif(42, 44, -0.020f),
+    displaySmall  = sleeveSerif(33, 36, -0.018f),
+    headlineLarge  = sleeveSerif(30, 32, -0.016f),
+    headlineMedium = sleeveSerif(26, 29, -0.014f),
+    headlineSmall  = sleeveSerif(22, 26, -0.012f),
+    titleLarge  = sleeveSerif(22, 26, -0.010f),
+    // Track / card / list titles become editorial serif as well (reference sets these at ~21/15px,
+    // weight 400). Kept a touch larger than the Inter originals to carry the serif gracefully.
+    titleMedium = sleeveSerif(18, 23, -0.010f),
+    titleSmall  = sleeveSerif(16, 20, -0.008f),
 )
 
 // ── Editorial extras (used directly via the style refs below) ─────────────────

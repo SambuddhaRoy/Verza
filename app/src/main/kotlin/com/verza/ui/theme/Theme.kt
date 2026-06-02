@@ -18,6 +18,8 @@ enum class VerzaTheme(val displayName: String, val isLight: Boolean) {
     // ATELIER pair is the editorial default; dark first so it's the launch experience.
     ATELIER_DARK  ("Atelier",       isLight = false),
     ATELIER_LIGHT ("Atelier Light", isLight = true),
+    // ADAPTIVE builds its entire colour scheme from the current cover art at runtime.
+    ADAPTIVE      ("Adaptive · cover", isLight = false),
     DYNAMIC       ("Dynamic (Material You)", isLight = false),
     BAUHAUS       ("Bauhaus",  isLight = true),
     MALIBU        ("Malibu",   isLight = true),
@@ -37,6 +39,9 @@ val LocalVerzaTheme = staticCompositionLocalOf { VerzaTheme.DYNAMIC }
 // ── ColorScheme builders ───────────────────────────────────────────────────────
 
 fun VerzaTheme.toColorScheme(): ColorScheme = when (this) {
+    // Static fallback used for swatches / before a cover resolves; the live scheme is built
+    // from the actual cover art and injected via the VerzaTheme composable's coverScheme param.
+    VerzaTheme.ADAPTIVE -> coverColorScheme(DefaultCoverColors)
     VerzaTheme.ATELIER_DARK -> darkColorScheme(
         primary              = AtelierDarkPrimary,
         onPrimary            = Color(0xFF1A0F08),
@@ -314,6 +319,7 @@ fun VerzaTheme.toColorScheme(): ColorScheme = when (this) {
 fun VerzaTheme.toExtendedColors(): VerzaExtendedColors = when (this) {
     VerzaTheme.ATELIER_DARK  -> VerzaExtendedColors(AtelierDarkMuted,  AtelierDarkGlass,  AtelierDarkGlassHeavy,  AtelierDarkBorderGlass,  AtelierDarkBrutalBlock,  AtelierDarkSecondary,  AtelierDarkTertiary)
     VerzaTheme.ATELIER_LIGHT -> VerzaExtendedColors(AtelierLightMuted, AtelierLightGlass, AtelierLightGlassHeavy, AtelierLightBorderGlass, AtelierLightBrutalBlock, AtelierLightSecondary, AtelierLightTertiary)
+    VerzaTheme.ADAPTIVE -> toColorScheme().deriveExtendedColors() // overridden at runtime from the cover scheme
     VerzaTheme.DYNAMIC  -> VerzaTheme.ATELIER_DARK.toExtendedColors() // overridden at runtime
     VerzaTheme.BAUHAUS  -> VerzaExtendedColors(BauhausMuted,   BauhausGlass,   BauhausGlassHeavy,   BauhausBorderGlass,   BauhausBrutalBlock,   BauhausSecondary,  BauhausTertiary)
     VerzaTheme.MALIBU   -> VerzaExtendedColors(MalibuMuted,    MalibuGlass,    MalibuGlassHeavy,    MalibuBorderGlass,    MalibuBrutalBlock,    MalibuSecondary,   MalibuTertiary)
@@ -329,22 +335,28 @@ fun VerzaTheme.toExtendedColors(): VerzaExtendedColors = when (this) {
 @Composable
 fun VerzaTheme(
     theme: VerzaTheme = VerzaTheme.DYNAMIC,
+    coverScheme: ColorScheme? = null,
+    sleeve: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
     val isSystemDark = isSystemInDarkTheme()
 
     val colorScheme: ColorScheme = when {
+        // Sleeve forces the whole app onto the cover-derived scheme so every screen recolours.
+        sleeve && coverScheme != null -> coverScheme
+        // ADAPTIVE: the cover-derived scheme built at runtime (falls back to the static default).
+        theme == VerzaTheme.ADAPTIVE -> coverScheme ?: theme.toColorScheme()
         theme == VerzaTheme.DYNAMIC && DynamicColorSupported ->
             if (isSystemDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         theme == VerzaTheme.DYNAMIC -> VerzaTheme.ATELIER_DARK.toColorScheme() // older OS fallback
         else -> theme.toColorScheme()
     }
 
-    // Derive the extended (Verza-specific) colors. For DYNAMIC we synthesise them from the
-    // wallpaper-derived scheme so the whole UI stays on-palette.
+    // Derive the extended (Verza-specific) colors. For DYNAMIC / ADAPTIVE / Sleeve we synthesise
+    // them from the active scheme so the whole UI stays on-palette.
     val extended: VerzaExtendedColors =
-        if (theme == VerzaTheme.DYNAMIC) colorScheme.deriveExtendedColors()
+        if (sleeve || theme == VerzaTheme.DYNAMIC || theme == VerzaTheme.ADAPTIVE) colorScheme.deriveExtendedColors()
         else theme.toExtendedColors()
 
     CompositionLocalProvider(
@@ -353,7 +365,8 @@ fun VerzaTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = VerzaTypography,
+            // Sleeve re-types the whole app in Newsreader.
+            typography = if (sleeve) VerzaSleeveTypography else VerzaTypography,
             shapes = VerzaShapes,
             content = content,
         )

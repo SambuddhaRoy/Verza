@@ -16,12 +16,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.verza.innertube.models.HomeItem
+import com.verza.ui.sleeve.Eyebrow
+import com.verza.ui.sleeve.LocalSleeveMode
+import com.verza.ui.sleeve.sleeveSurface
 import com.verza.ui.theme.CaptionItalic
+import com.verza.ui.theme.FontMono
+import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
 
 /**
@@ -57,36 +65,57 @@ fun SectionRow(
 @Composable
 private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?) {
     val colors = MaterialTheme.colorScheme
+    val sleeve = LocalSleeveMode.current
+    val cover = LocalCoverColors.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // Short accent rule sets the editorial mood — same idiom as Settings/EditorialSectionHeader.
-        Box(
-            Modifier
-                .width(28.dp)
-                .height(1.dp)
-                .clip(RoundedCornerShape(0.5.dp))
-                .background(colors.primary),
-        )
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            Text(
-                text = title,
-                style = if (large) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
-                color = colors.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+        if (sleeve) {
+            // Reference Home sets section labels as small mono eyebrows over serif items.
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Eyebrow(text = title, color = cover.sub, modifier = Modifier.weight(1f))
+                if (onSeeAll != null) {
+                    TextButton(onClick = onSeeAll) {
+                        Text(
+                            "see all",
+                            style = TextStyle(fontFamily = FontMono, fontSize = 9.5.sp, letterSpacing = 0.08.em),
+                            color = cover.accent,
+                        )
+                    }
+                }
+            }
+        } else {
+            // Short accent rule sets the editorial mood — same idiom as Settings/EditorialSectionHeader.
+            Box(
+                Modifier
+                    .width(28.dp)
+                    .height(1.dp)
+                    .clip(RoundedCornerShape(0.5.dp))
+                    .background(colors.primary),
             )
-            if (onSeeAll != null) {
-                TextButton(onClick = onSeeAll) {
-                    // Italic serif "see all" reads as an editor's note rather than a button.
-                    Text("see all", style = CaptionItalic, color = colors.primary)
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Text(
+                    text = title,
+                    style = if (large) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
+                    color = colors.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (onSeeAll != null) {
+                    TextButton(onClick = onSeeAll) {
+                        // Italic serif "see all" reads as an editor's note rather than a button.
+                        Text("see all", style = CaptionItalic, color = colors.primary)
+                    }
                 }
             }
         }
@@ -147,10 +176,16 @@ private fun CompactTrackCell(item: HomeItem, modifier: Modifier, onClick: () -> 
     // Dense-grid cells are always songs (Recently played / Liked / Keep listening) — fetch the
     // real album art rather than the YT thumbnail.
     val art = rememberSongArtwork(item.title, item.subtitle, item.thumbnailUrl)
+    val sleeve = LocalSleeveMode.current
+    val cover = LocalCoverColors.current
+    val cellShape = RoundedCornerShape(10.dp)
+    val cellSurface = if (sleeve) Modifier.sleeveSurface(cellShape)
+                      else Modifier.clip(cellShape).background(colors.surface)
+    val titleColor = if (sleeve) cover.ink else colors.onSurface
+    val subtitleColor = if (sleeve) cover.faint else ext.muted
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(colors.surface)
+            .then(cellSurface)
             .pressableScale(onClick = onClick)
             .padding(end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -170,18 +205,28 @@ private fun CompactTrackCell(item: HomeItem, modifier: Modifier, onClick: () -> 
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.titleSmall,
-                color = colors.onSurface,
+                color = titleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (item.subtitle.isNotBlank()) {
-                Text(
-                    text = item.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ext.muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (sleeve) {
+                    Text(
+                        text = item.subtitle.uppercase(),
+                        style = TextStyle(fontFamily = FontMono, fontSize = 9.sp, letterSpacing = 0.05.em),
+                        color = subtitleColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else {
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subtitleColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
@@ -203,11 +248,17 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit) {
     val art = if (item.isSong) rememberSongArtwork(item.title, item.subtitle, item.thumbnailUrl)
               else item.thumbnailUrl
 
+    val sleeve = LocalSleeveMode.current
+    val cover = LocalCoverColors.current
+    val cardSurface = if (sleeve) Modifier.sleeveSurface(shape)
+                      else Modifier.clip(shape).background(colors.surface)
+    val titleColor = if (sleeve) cover.ink else colors.onSurface
+    val subtitleColor = if (sleeve) cover.faint else ext.muted
+
     Column(
         modifier = Modifier
             .width(width)
-            .clip(shape)
-            .background(colors.surface)
+            .then(cardSurface)
             .pressableScale(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -226,18 +277,28 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit) {
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.titleMedium,
-                color = colors.onSurface,
+                color = titleColor,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (item.subtitle.isNotBlank()) {
-                Text(
-                    text = item.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ext.muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (sleeve) {
+                    Text(
+                        text = item.subtitle.uppercase(),
+                        style = TextStyle(fontFamily = FontMono, fontSize = 9.5.sp, letterSpacing = 0.05.em),
+                        color = subtitleColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else {
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subtitleColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

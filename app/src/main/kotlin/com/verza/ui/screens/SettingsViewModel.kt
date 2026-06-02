@@ -60,6 +60,8 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val albumArtMotion: StateFlow<Boolean> = prefs.albumArtMotionFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val sleeveMode: StateFlow<Boolean> = prefs.sleeveModeFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     fun setTheme(theme: VerzaTheme) {
         viewModelScope.launch { prefs.setTheme(theme) }
@@ -107,6 +109,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setAlbumArtMotion(enabled: Boolean) {
         viewModelScope.launch { prefs.setAlbumArtMotion(enabled) }
+    }
+
+    fun setSleeveMode(enabled: Boolean) {
+        viewModelScope.launch { prefs.setSleeveMode(enabled) }
     }
 
     fun clearSearchHistory() {

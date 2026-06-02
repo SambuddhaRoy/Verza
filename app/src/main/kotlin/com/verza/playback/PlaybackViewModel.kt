@@ -285,6 +285,8 @@ class PlaybackViewModel @Inject constructor(
     fun removeQueueItemAt(index: Int) = playerConnection.removeAt(index)
 
     fun togglePlay() = playerConnection.togglePlay()
+    /** App playback volume 0f..1f — driven by the Console-mode volume knob. */
+    fun setVolume(volume: Float) = playerConnection.setVolume(volume)
     fun seekToNext() = playerConnection.seekToNext()
     fun seekToPrevious() = playerConnection.seekToPrevious()
     fun seekTo(positionMs: Long) = playerConnection.seekTo(positionMs)

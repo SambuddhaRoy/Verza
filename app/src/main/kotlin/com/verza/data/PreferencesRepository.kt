@@ -58,6 +58,7 @@ class PreferencesRepository @Inject constructor(
     private val skipSilenceKey = booleanPreferencesKey("skip_silence")
     private val saveSearchHistoryKey = booleanPreferencesKey("save_search_history")
     private val albumArtMotionKey = booleanPreferencesKey("album_art_motion")
+    private val sleeveModeKey = booleanPreferencesKey("sleeve_mode")
 
     val themeFlow: Flow<VerzaTheme> = store.data.map { prefs ->
         // Default to Material You (Dynamic). On pre-Android-12 devices the theme layer falls back
@@ -111,6 +112,9 @@ class PreferencesRepository @Inject constructor(
     val saveSearchHistoryFlow: Flow<Boolean> = store.data.map { it[saveSearchHistoryKey] ?: true }
     /** Whether the Now Playing album art gently "breathes" while playing. Default on. */
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
+
+    /** Editorial "Sleeve" appearance — poster Now Playing + translucent surfaces over the glow. */
+    val sleeveModeFlow: Flow<Boolean> = store.data.map { it[sleeveModeKey] ?: false }
 
     init {
         // One-time migration: if an old plaintext cookie exists, re-store it encrypted and drop
@@ -178,6 +182,10 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setAlbumArtMotion(enabled: Boolean) {
         store.edit { it[albumArtMotionKey] = enabled }
+    }
+
+    suspend fun setSleeveMode(enabled: Boolean) {
+        store.edit { it[sleeveModeKey] = enabled }
     }
 
     suspend fun setCookie(cookie: String?) {
