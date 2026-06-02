@@ -91,6 +91,9 @@ fun NowPlayingScreen(
             artist = artist,
             artworkUrl = artworkUrl,
             isPlaying = isPlaying,
+            isLiked = isLiked,
+            isDownloaded = isDownloaded,
+            isDownloading = isDownloading,
             positionMs = positionMs,
             durationMs = durationMs,
             queue = queue,
@@ -101,6 +104,10 @@ fun NowPlayingScreen(
             onSeek = onSeek,
             onPlayQueueItem = onPlayQueueItem,
             onOpenLyrics = onOpenLyrics,
+            onToggleLike = onToggleLike,
+            onStartRadio = onStartRadio,
+            onDownload = onDownload,
+            onRemoveDownload = onRemoveDownload,
             modifier = modifier,
         )
         return
