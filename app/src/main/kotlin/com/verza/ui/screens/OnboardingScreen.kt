@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.DynamicColorSupported
 import com.verza.ui.theme.FontDisplay
+import com.verza.ui.theme.FontSleeve
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaTheme
@@ -72,7 +73,7 @@ fun OnboardingScreen(
                 .padding(horizontal = 28.dp, vertical = 32.dp),
         ) {
             // Progress dots — a quiet header signalling there are a few steps.
-            StepDots(current = step, total = 5)
+            StepDots(current = step, total = 6)
             Spacer(Modifier.height(40.dp))
 
             AnimatedContent(
@@ -100,11 +101,18 @@ fun OnboardingScreen(
                             step = 3
                         },
                     )
-                    3 -> StepGlow(
-                        onPick = { enabled, preset ->
+                    3 -> StepAppearance(
+                        onPick = { sleeve ->
+                            viewModel.setSleeveMode(sleeve)
+                            step = 4
+                        },
+                    )
+                    4 -> StepGlow(
+                        onPick = { enabled, preset, reactive ->
                             viewModel.setGlowEnabled(enabled)
                             if (preset != null) viewModel.setGlowColor(preset)
-                            step = 4
+                            viewModel.setGlowReactive(reactive)
+                            step = 5
                         },
                     )
                     else -> StepDone(
@@ -259,11 +267,51 @@ private fun StepTheme(
 }
 
 @Composable
-private fun StepGlow(onPick: (Boolean, GlowColorPreset?) -> Unit) {
+private fun StepAppearance(onPick: (Boolean) -> Unit) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     Column(modifier = Modifier.fillMaxSize()) {
         Eyebrow(text = "STEP 03")
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Pick a layout",
+            style = MaterialTheme.typography.displaySmall,
+            color = colors.onBackground,
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = "Standard is a clean Material layout. Sleeve is an editorial mode that recolours " +
+                  "the whole app from the cover art, sets it in a serif, and turns Now Playing into " +
+                  "a poster. You can switch anytime in Settings.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = ext.muted,
+        )
+        Spacer(Modifier.height(24.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AppearanceOptionRow(
+                label = "Standard",
+                subtitle = "Clean Material cards",
+                serif = false,
+                onClick = { onPick(false) },
+            )
+            AppearanceOptionRow(
+                label = "Sleeve",
+                subtitle = "Editorial · cover-driven · poster Now Playing",
+                serif = true,
+                onClick = { onPick(true) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun StepGlow(onPick: (Boolean, GlowColorPreset?, Boolean) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    var reactive by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Eyebrow(text = "STEP 04")
         Spacer(Modifier.height(12.dp))
         Text(
             text = "Set the mood",
@@ -277,26 +325,30 @@ private fun StepGlow(onPick: (Boolean, GlowColorPreset?) -> Unit) {
             style = MaterialTheme.typography.bodyLarge,
             color = ext.muted,
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
+
+        // Sound-reactivity toggle — captured and applied when a glow option is chosen below.
+        ReactiveToggleRow(checked = reactive, onCheckedChange = { reactive = it })
+        Spacer(Modifier.height(16.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             GlowOptionRow(
                 label = "Album colours",
                 subtitle = "Glow adapts to the cover art",
                 swatch = GlowSwatch.Album,
-                onClick = { onPick(true, GlowColorPreset.ALBUM_ART) },
+                onClick = { onPick(true, GlowColorPreset.ALBUM_ART, reactive) },
             )
             GlowOptionRow(
                 label = "Warm amber",
                 subtitle = "A fixed, warm ambient glow",
                 swatch = GlowSwatch.Solid(GlowColorPreset.WARM_AMBER.resolveColor()),
-                onClick = { onPick(true, GlowColorPreset.WARM_AMBER) },
+                onClick = { onPick(true, GlowColorPreset.WARM_AMBER, reactive) },
             )
             GlowOptionRow(
                 label = "Off",
                 subtitle = "No background glow",
                 swatch = GlowSwatch.None,
-                onClick = { onPick(false, null) },
+                onClick = { onPick(false, null, false) },
             )
         }
     }
@@ -449,6 +501,82 @@ private fun ThemeOptionRow(
             Text(label, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
             Text(subtitle, style = CaptionItalic, color = ext.muted)
         }
+    }
+}
+
+/** Full-width appearance option: a small preview chip + label/subtitle, tappable. */
+@Composable
+private fun AppearanceOptionRow(
+    label: String,
+    subtitle: String,
+    serif: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(width = 1.dp, color = ext.borderGlass, shape = RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (serif) androidx.compose.ui.graphics.Color(0xFF0B0705) else colors.primary),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (serif) {
+                // A serif "Aa" on a dark chip hints at the editorial Sleeve look.
+                Text(
+                    text = "Aa",
+                    style = TextStyle(fontFamily = FontSleeve, fontWeight = FontWeight.Normal, fontSize = 20.sp),
+                    color = androidx.compose.ui.graphics.Color(0xFFF2E9DD),
+                )
+            } else {
+                Text(
+                    text = "Aa",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onPrimary,
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+            Text(subtitle, style = CaptionItalic, color = ext.muted)
+        }
+    }
+}
+
+/** Full-width toggle row for the optional sound-reactive glow. */
+@Composable
+private fun ReactiveToggleRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(width = 1.dp, color = ext.borderGlass, shape = RoundedCornerShape(16.dp))
+            .clickable { onCheckedChange(!checked) }
+            .padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text("React to the music", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+            Text(
+                "Glow pulses with the beat — reads playback only, never records",
+                style = CaptionItalic,
+                color = ext.muted,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

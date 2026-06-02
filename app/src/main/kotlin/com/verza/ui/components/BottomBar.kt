@@ -64,8 +64,10 @@ fun VerzaBottomBar(
     val activeColor = if (sleeve) cover.accent else colors.primary
     val inactiveColor = if (sleeve) cover.faint else ext.muted
     val labelActiveColor = if (sleeve) cover.ink else colors.onSurface
+    // Sleeve dresses the nav as translucent "glass" — the same low-opacity white wash the cards
+    // and mini-player use (sleeveSurface) — so the live reactive glow shows through it.
     val barBackground = if (sleeve) {
-        Modifier.background(Color.Black.copy(alpha = 0.34f))
+        Modifier.background(Color.White.copy(alpha = 0.06f))
     } else {
         Modifier.background(colors.surface)
     }

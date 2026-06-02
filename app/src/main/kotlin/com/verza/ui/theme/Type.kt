@@ -51,6 +51,9 @@ val FontSleeve = FontFamily(
     Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Light),
     Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Normal),
     Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Medium),
+    // Bold is reserved for deliberate emphasis (e.g. the currently-playing track in the queue),
+    // not the general UI voice — which stays at weight 400 per the reference.
+    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Bold),
     Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Light, style = FontStyle.Italic),
     Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Normal, style = FontStyle.Italic),
     Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Medium, style = FontStyle.Italic),
