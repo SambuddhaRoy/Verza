@@ -41,3 +41,9 @@ data class SongStat(
     @ColumnInfo("totalMs") val totalMs: Long,
     val plays: Int,
 )
+
+/** Aggregate projection: total listened time in a given hour-of-day bucket (0–23, local time). */
+data class HourStat(
+    val hour: Int,
+    @ColumnInfo("totalMs") val totalMs: Long,
+)

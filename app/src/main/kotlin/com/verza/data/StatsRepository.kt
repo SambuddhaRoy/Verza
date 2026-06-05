@@ -1,6 +1,7 @@
 package com.verza.data
 
 import com.verza.data.db.ArtistStat
+import com.verza.data.db.HourStat
 import com.verza.data.db.PlayEventDao
 import com.verza.data.db.PlayEventEntity
 import com.verza.data.db.SongStat
@@ -19,6 +20,9 @@ class StatsRepository @Inject constructor(
 
     fun topSongs(limit: Int = 10): Flow<List<SongStat>> = dao.topSongs(limit)
     fun topArtists(limit: Int = 8): Flow<List<ArtistStat>> = dao.topArtists(limit)
+    fun hourlyTotals(): Flow<List<HourStat>> = dao.hourlyTotals()
+    fun mostReplayed(limit: Int = 5): Flow<List<SongStat>> = dao.mostReplayed(limit)
+    val firstPlayedAt: Flow<Long?> = dao.firstPlayedAt()
 
     /** Wipes all listening stats. */
     suspend fun reset() = dao.clearAll()
