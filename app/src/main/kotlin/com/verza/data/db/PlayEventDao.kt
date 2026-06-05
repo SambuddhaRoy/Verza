@@ -14,6 +14,14 @@ interface PlayEventDao {
     @Query("DELETE FROM play_events")
     suspend fun clearAll()
 
+    // ── Backup / export ─────────────────────────────────────────────────────────
+    @Query("SELECT * FROM play_events")
+    suspend fun getAll(): List<PlayEventEntity>
+
+    /** True if an identical event already exists — keeps re-importing a backup from double-counting. */
+    @Query("SELECT EXISTS(SELECT 1 FROM play_events WHERE songId = :songId AND playedAt = :playedAt AND listenedMs = :listenedMs)")
+    suspend fun exists(songId: String, playedAt: Long, listenedMs: Long): Boolean
+
     @Query("SELECT COUNT(*) FROM play_events")
     fun totalPlays(): Flow<Int>
 

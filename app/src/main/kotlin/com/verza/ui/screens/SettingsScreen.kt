@@ -1,5 +1,8 @@
 package com.verza.ui.screens
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,10 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.verza.data.StartScreen
 import com.verza.innertube.AudioQuality
 import com.verza.ui.components.EditorialSectionHeader
@@ -63,6 +68,36 @@ fun SettingsScreen(
     val sleeveMode by viewModel.sleeveMode.collectAsStateWithLifecycle()
     val isDarkTheme = !currentTheme.isLight
     var showResetStatsDialog by remember { mutableStateOf(false) }
+
+    // ── Library backup (export / import) ────────────────────────────────────────
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            val ok = runCatching {
+                val data = viewModel.exportLibraryJson()
+                context.contentResolver.openOutputStream(uri)?.use { it.write(data.toByteArray()) }
+            }.isSuccess
+            Toast.makeText(context, if (ok) "Library exported" else "Export failed", Toast.LENGTH_SHORT).show()
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            runCatching {
+                val text = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    ?: error("empty file")
+                viewModel.importLibraryJson(text)
+            }.onSuccess { r ->
+                Toast.makeText(context, "Imported ${r.songs} songs · ${r.playlists} playlists", Toast.LENGTH_LONG).show()
+            }.onFailure {
+                Toast.makeText(context, "Couldn't read that backup", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -302,6 +337,16 @@ fun SettingsScreen(
         item { SectionHeader("Data") }
         item {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                ActionRow(
+                    title = "Export library",
+                    subtitle = "Save your playlists, likes & stats to a file you own",
+                    onClick = { exportLauncher.launch("verza-library-backup.json") },
+                )
+                ActionRow(
+                    title = "Import library",
+                    subtitle = "Merge a Verza backup from another device",
+                    onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                )
                 ActionRow(
                     title = "Reset listening stats",
                     subtitle = "Wipe the play history behind Your Sound",
