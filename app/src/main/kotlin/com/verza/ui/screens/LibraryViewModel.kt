@@ -3,6 +3,7 @@ package com.verza.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verza.data.LibraryRepository
+import com.verza.data.LocalMusicRepository
 import com.verza.data.MusicRepository
 import com.verza.data.PlaylistRepository
 import com.verza.data.PreferencesRepository
@@ -26,6 +27,7 @@ class LibraryViewModel @Inject constructor(
     libraryRepository: LibraryRepository,
     private val musicRepository: MusicRepository,
     private val playlistRepository: PlaylistRepository,
+    private val localMusicRepository: LocalMusicRepository,
     prefs: PreferencesRepository,
 ) : ViewModel() {
 
@@ -44,6 +46,23 @@ class LibraryViewModel @Inject constructor(
 
     fun createPlaylist(name: String) {
         viewModelScope.launch { playlistRepository.create(name) }
+    }
+
+    // ── On-device local music ────────────────────────────────────────────────────
+    /** null = not scanned yet; emptyList = scanned, nothing found; non-empty = the device library. */
+    private val _localSongs = MutableStateFlow<List<MusicItem>?>(null)
+    val localSongs: StateFlow<List<MusicItem>?> = _localSongs.asStateFlow()
+    private var localScanning = false
+
+    /** Scans on-device music via MediaStore. Caller must hold the audio read permission. */
+    fun loadLocalSongs(force: Boolean = false) {
+        if (localScanning) return
+        if (_localSongs.value != null && !force) return
+        localScanning = true
+        viewModelScope.launch {
+            _localSongs.value = localMusicRepository.scan()
+            localScanning = false
+        }
     }
 
     val isSignedIn: StateFlow<Boolean> = prefs.cookieFlow
