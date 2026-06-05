@@ -2,6 +2,8 @@ package com.verza.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.verza.data.ImportSummary
+import com.verza.data.LibraryBackupRepository
 import com.verza.data.PreferencesRepository
 import com.verza.data.StartScreen
 import com.verza.data.StatsRepository
@@ -21,6 +23,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val prefs: PreferencesRepository,
     private val stats: StatsRepository,
+    private val backup: LibraryBackupRepository,
 ) : ViewModel() {
 
     val theme: StateFlow<VerzaTheme> = prefs.themeFlow
@@ -122,6 +125,10 @@ class SettingsViewModel @Inject constructor(
     fun resetListeningStats() {
         viewModelScope.launch { stats.reset() }
     }
+
+    // ── Library backup (export / import) ────────────────────────────────────────
+    suspend fun exportLibraryJson(): String = backup.exportJson()
+    suspend fun importLibraryJson(text: String): ImportSummary = backup.importJson(text)
 
     fun onSignedIn(cookie: String) {
         viewModelScope.launch { prefs.setCookie(cookie) }

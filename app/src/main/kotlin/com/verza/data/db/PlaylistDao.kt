@@ -69,4 +69,14 @@ interface PlaylistDao {
 
     @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND songId = :songId")
     suspend fun removeTrack(playlistId: Long, songId: String)
+
+    // ── Backup / export ─────────────────────────────────────────────────────────
+    @Query("SELECT * FROM playlists ORDER BY createdAt ASC")
+    suspend fun allOnce(): List<PlaylistEntity>
+
+    @Query("SELECT * FROM playlist_tracks WHERE playlistId = :playlistId ORDER BY position ASC")
+    suspend fun trackEntriesOf(playlistId: Long): List<PlaylistTrackEntity>
+
+    @Query("SELECT id FROM playlists WHERE name = :name LIMIT 1")
+    suspend fun idByName(name: String): Long?
 }
