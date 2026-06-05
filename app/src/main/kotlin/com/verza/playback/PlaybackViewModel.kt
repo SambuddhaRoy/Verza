@@ -34,6 +34,15 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * A "Focus" (deep-work / flow) listening block. While one is active the queue is kept topped up
+ * so music never stops, and — for a timed block — playback gently fades and pauses when the time
+ * is up. [endAt] is null for an open-ended session.
+ */
+data class FocusSession(val startedAt: Long, val endAt: Long?) {
+    val openEnded: Boolean get() = endAt == null
+}
+
+/**
  * App-wide playback owner. Connects to [MusicService] via [PlayerConnection], exposes the
  * live [PlaybackState], and translates [MusicItem]s into queued media. Held once at the
  * navigation root so the MiniPlayer and NowPlaying screen share a single source of truth.
@@ -82,6 +91,22 @@ class PlaybackViewModel @Inject constructor(
     val sleepTimerEndAt: StateFlow<Long?> = _sleepTimerEndAt.asStateFlow()
     private var sleepJob: Job? = null
 
+    /** "Gentle start" — when on, resuming playback eases the volume up over a couple of seconds. */
+    private var gentleStart = false
+    private var rampJob: Job? = null
+
+    /** Active Focus/Flow session (null when none). The UI reads this for the live block indicator. */
+    private val _focusSession = MutableStateFlow<FocusSession?>(null)
+    val focusSession: StateFlow<FocusSession?> = _focusSession.asStateFlow()
+
+    /**
+     * One-shot: minutes focused when a session just ended (timed completion or manual stop), or null.
+     * The UI shows a brief "you focused for N min" summary, then calls [consumeFocusComplete].
+     */
+    private val _focusComplete = MutableStateFlow<Int?>(null)
+    val focusComplete: StateFlow<Int?> = _focusComplete.asStateFlow()
+    private var focusJob: Job? = null
+
     // ── Listen-time accumulation (powers "Your Sound" stats) ───────────────────
     // We tally the real time the user spends listening to each track (only while actually
     // playing) using elapsedRealtime deltas from the polling loop, then flush a PlayEvent
@@ -124,6 +149,11 @@ class PlaybackViewModel @Inject constructor(
         // Mirror the skip-silence preference into the player module (applied by MusicService).
         viewModelScope.launch {
             prefs.skipSilenceFlow.collect { PlayerSettings.setSkipSilence(it) }
+        }
+
+        // Track the gentle-start ("sunrise") preference.
+        viewModelScope.launch {
+            prefs.gentleStartFlow.collect { gentleStart = it }
         }
 
         // Look up real album art for the current track via iTunes, falling back to the YT thumb.
@@ -305,7 +335,25 @@ class PlaybackViewModel @Inject constructor(
     fun playQueueItemAt(index: Int) = playerConnection.playAt(index)
     fun removeQueueItemAt(index: Int) = playerConnection.removeAt(index)
 
-    fun togglePlay() = playerConnection.togglePlay()
+    fun togglePlay() {
+        val wasPlaying = playbackState.value.isPlaying
+        playerConnection.togglePlay()
+        if (wasPlaying) {
+            // Pausing — abandon any in-progress gentle ramp and restore full volume.
+            rampJob?.cancel()
+            playerConnection.setVolume(1f)
+        } else if (gentleStart) {
+            // Resuming with "gentle start" — ease the volume up from silence.
+            rampJob?.cancel()
+            rampJob = viewModelScope.launch {
+                val steps = 24
+                for (i in 0..steps) {
+                    playerConnection.setVolume(i / steps.toFloat())
+                    delay(2_500L / steps)
+                }
+            }
+        }
+    }
     /** App playback volume 0f..1f — driven by the Console-mode volume knob. */
     fun setVolume(volume: Float) = playerConnection.setVolume(volume)
     fun seekToNext() = playerConnection.seekToNext()
@@ -351,9 +399,10 @@ class PlaybackViewModel @Inject constructor(
 
     /**
      * Arms a sleep timer that pauses playback after [durationMs], fading the volume down over the
-     * final few seconds. Pass null (or <= 0) to cancel any active timer.
+     * final [fadeMs] ms. A short fade (the default) feels like a clean stop; a long fade is a gentle
+     * "wind-down" where the music dissolves over minutes. Pass null (or <= 0) to cancel.
      */
-    fun setSleepTimer(durationMs: Long?) {
+    fun setSleepTimer(durationMs: Long?, fadeMs: Long = 4_000L) {
         sleepJob?.cancel()
         playerConnection.setVolume(1f) // undo any in-progress fade from a prior timer
         if (durationMs == null || durationMs <= 0) {
@@ -362,18 +411,29 @@ class PlaybackViewModel @Inject constructor(
         }
         _sleepTimerEndAt.value = System.currentTimeMillis() + durationMs
         sleepJob = viewModelScope.launch {
-            val fadeMs = 4_000L
-            delay((durationMs - fadeMs).coerceAtLeast(0L))
-            // Soft volume ramp so the music dissolves rather than cutting out.
-            val steps = 16
+            val fade = fadeMs.coerceIn(1_000L, durationMs)
+            delay((durationMs - fade).coerceAtLeast(0L))
+            // Soft volume ramp so the music dissolves rather than cutting out — finer steps for the
+            // long wind-down so it's imperceptibly smooth.
+            val steps = (fade / 250L).toInt().coerceIn(16, 320)
             for (i in steps downTo 0) {
                 playerConnection.setVolume(i / steps.toFloat())
-                delay(fadeMs / steps)
+                delay(fade / steps)
             }
             playerConnection.pause()
             playerConnection.setVolume(1f)
             _sleepTimerEndAt.value = null
         }
+    }
+
+    /**
+     * "Wind down": like a sleep timer, but the music gently dissolves over the final stretch
+     * (~the last third, capped at 5 minutes) rather than a short fade — for drifting off.
+     */
+    fun setSleepTimerWindDown(durationMs: Long) {
+        if (durationMs <= 0) return
+        val fade = (durationMs / 3).coerceIn(60_000L, 5 * 60_000L)
+        setSleepTimer(durationMs, fadeMs = fade)
     }
 
     /** Convenience: pause when the current track ends (computed from its remaining time). */
@@ -383,9 +443,82 @@ class PlaybackViewModel @Inject constructor(
         if (remaining > 0L) setSleepTimer(remaining)
     }
 
+    /** Smoothly fades the output volume to silence over [fadeMs], pauses, then restores full volume. */
+    private suspend fun fadeAndPause(fadeMs: Long) {
+        val steps = 24
+        for (i in steps downTo 0) {
+            playerConnection.setVolume(i / steps.toFloat())
+            delay(fadeMs / steps)
+        }
+        playerConnection.pause()
+        playerConnection.setVolume(1f)
+    }
+
+    // ── Focus / Flow sessions ────────────────────────────────────────────────────
+
+    /**
+     * Begins a Focus block. [durationMs] null starts an open-ended session (ends only when the user
+     * stops it). While active, the queue is kept topped up with a radio continuation so a moment of
+     * silence never breaks concentration; a timed block gently fades out and pauses when time's up.
+     */
+    fun startFocusSession(durationMs: Long?) {
+        focusJob?.cancel()
+        val now = System.currentTimeMillis()
+        _focusSession.value = FocusSession(startedAt = now, endAt = durationMs?.let { now + it })
+        // Make sure something is actually playing when the block begins.
+        if (!playbackState.value.isPlaying && !playerConnection.isQueueEmpty) playerConnection.play()
+
+        var lastSeed: String? = null
+        focusJob = viewModelScope.launch {
+            while (isActive) {
+                val session = _focusSession.value ?: break
+                val st = playbackState.value
+
+                // Endless flow: when only a couple of tracks remain, extend the queue with a radio
+                // mix seeded from the current track. Skips local files (no radio) and de-dupes.
+                val upcoming = st.queue.size - 1 - st.currentIndex
+                val seed = st.currentItem?.mediaId
+                if (upcoming in 0..2 && seed != null && !seed.startsWith("content://") && seed != lastSeed) {
+                    lastSeed = seed
+                    repository.radio(seed).onSuccess { tracks ->
+                        val existing = st.queue.map { it.mediaId }.toHashSet()
+                        val fresh = tracks.filter { it.id !in existing }
+                        if (fresh.isNotEmpty()) enqueueAll(fresh)
+                    }
+                }
+
+                // Timed block complete → fade, pause, surface a summary.
+                val endAt = session.endAt
+                if (endAt != null && System.currentTimeMillis() >= endAt) {
+                    val minutes = ((System.currentTimeMillis() - session.startedAt) / 60_000L).toInt()
+                    fadeAndPause(2_500L)
+                    _focusSession.value = null
+                    _focusComplete.value = minutes.coerceAtLeast(1)
+                    break
+                }
+                delay(4_000L)
+            }
+        }
+    }
+
+    /** Ends the current Focus block early (music keeps playing); surfaces a summary if it was meaningful. */
+    fun endFocusSession() {
+        focusJob?.cancel()
+        val session = _focusSession.value
+        _focusSession.value = null
+        if (session != null) {
+            val minutes = ((System.currentTimeMillis() - session.startedAt) / 60_000L).toInt()
+            if (minutes >= 1) _focusComplete.value = minutes
+        }
+    }
+
+    /** Clears the one-shot Focus-complete summary after the UI has shown it. */
+    fun consumeFocusComplete() { _focusComplete.value = null }
+
     override fun onCleared() {
         flushListen()
         sleepJob?.cancel()
+        focusJob?.cancel()
         playerConnection.disconnect()
     }
 }

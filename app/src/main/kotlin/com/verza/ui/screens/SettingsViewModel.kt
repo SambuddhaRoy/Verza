@@ -65,6 +65,10 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val sleeveMode: StateFlow<Boolean> = prefs.sleeveModeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val hapticsEnabled: StateFlow<Boolean> = prefs.hapticsEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val gentleStart: StateFlow<Boolean> = prefs.gentleStartFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     fun setTheme(theme: VerzaTheme) {
         viewModelScope.launch { prefs.setTheme(theme) }
@@ -116,6 +120,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setSleeveMode(enabled: Boolean) {
         viewModelScope.launch { prefs.setSleeveMode(enabled) }
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) {
+        viewModelScope.launch { prefs.setHapticsEnabled(enabled) }
+    }
+
+    fun setGentleStart(enabled: Boolean) {
+        viewModelScope.launch { prefs.setGentleStart(enabled) }
     }
 
     fun clearSearchHistory() {

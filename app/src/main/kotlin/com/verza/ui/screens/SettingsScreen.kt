@@ -66,6 +66,8 @@ fun SettingsScreen(
     val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
     val saveSearchHistory by viewModel.saveSearchHistory.collectAsStateWithLifecycle()
     val sleeveMode by viewModel.sleeveMode.collectAsStateWithLifecycle()
+    val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
+    val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
     val isDarkTheme = !currentTheme.isLight
     var showResetStatsDialog by remember { mutableStateOf(false) }
 
@@ -244,6 +246,12 @@ fun SettingsScreen(
                     subtitle = "Gently animate the cover while playing",
                     checked = albumArtMotion,
                     onToggle = viewModel::setAlbumArtMotion,
+                )
+                ToggleRow(
+                    title = "Gentle start",
+                    subtitle = "Ease the volume up when you resume — a soft sunrise",
+                    checked = gentleStart,
+                    onToggle = viewModel::setGentleStart,
                     divider = false,
                 )
             }
@@ -295,6 +303,12 @@ fun SettingsScreen(
                 GlowReactivityRow(
                     enabled = glowReactive,
                     onToggle = viewModel::setGlowReactive,
+                )
+            }
+            item {
+                MusicHapticsRow(
+                    enabled = hapticsEnabled,
+                    onToggle = viewModel::setHapticsEnabled,
                 )
             }
         }
@@ -672,6 +686,65 @@ private fun GlowReactivityRow(
             )
             Text(
                 text = "Glow moves with the music. Reads playback audio only — never the microphone. Needs the audio permission.",
+                style = CaptionItalic,
+                color = ext.muted,
+            )
+        }
+        Switch(
+            checked = enabled && hasPermission,
+            onCheckedChange = { newState ->
+                if (newState) {
+                    if (hasPermission) onToggle(true)
+                    else permLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                } else {
+                    onToggle(false)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun MusicHapticsRow(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    val context = LocalContext.current
+
+    val hasPermission = remember(enabled) {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.RECORD_AUDIO,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+    val permLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) onToggle(true)
+        else Toast.makeText(
+            context,
+            "Music haptics needs the audio permission. You can grant it later in system settings.",
+            Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Feel the beat",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.onBackground,
+            )
+            Text(
+                text = "Subtle vibration in time with the bass. Reads playback audio only — never the microphone. Needs the audio permission.",
                 style = CaptionItalic,
                 color = ext.muted,
             )
