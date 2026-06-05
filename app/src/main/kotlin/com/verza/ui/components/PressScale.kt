@@ -3,8 +3,9 @@ package com.verza.ui.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
@@ -26,10 +27,12 @@ import androidx.compose.ui.graphics.graphicsLayer
  * Choosing 0.97× rather than the more common 0.95× because Verza's editorial mood reads
  * better with restrained kinetics — a sharper press would feel arcade-y.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Modifier.pressableScale(
     pressedScale: Float = 0.97f,
     enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ): Modifier = composed {
     val interactionSource = remember { MutableInteractionSource() }
@@ -47,10 +50,13 @@ fun Modifier.pressableScale(
             scaleX = scale
             scaleY = scale
         }
-        .clickable(
+        // combinedClickable adds the long-press gesture (with the system long-press haptic) while
+        // still feeding press interactions to [interactionSource] so the scale animation works.
+        .combinedClickable(
             interactionSource = interactionSource,
             indication = LocalIndication.current,
             enabled = enabled,
             onClick = onClick,
+            onLongClick = onLongClick,
         )
 }
