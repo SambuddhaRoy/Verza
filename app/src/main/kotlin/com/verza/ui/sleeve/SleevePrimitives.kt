@@ -1,7 +1,6 @@
 package com.verza.ui.sleeve
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.verza.ui.theme.CoverColors
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
+import com.verza.ui.theme.VerzaShape
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Sleeve's atmospheric primitives — a Compose port of the UMBRA reference's
@@ -188,7 +188,8 @@ fun ChromaticText(
 
 // ── Chrome controls ──────────────────────────────────────────────────────────────
 
-/** A rounded mono pill — used for the tab affordances at the top of the poster Now Playing. */
+/** A rounded mono pill — used for the tab affordances at the top of the poster Now Playing. The
+ *  active pill is an ink-filled solid; the rest are the translucent "glass" button wash. */
 @Composable
 fun SleevePill(
     text: String,
@@ -196,13 +197,12 @@ fun SleevePill(
     cover: CoverColors,
     filled: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(50)
     val base = if (filled) {
-        Modifier.clip(shape).background(cover.ink.copy(alpha = 0.92f))
+        Modifier.clip(VerzaShape).background(cover.ink.copy(alpha = 0.92f))
     } else {
-        Modifier.clip(shape).border(1.dp, cover.line, shape)
+        Modifier.sleeveButton(VerzaShape)
     }
-    Box(modifier = base.clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 7.dp)) {
+    Box(modifier = base.clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
             text,
             style = TextStyle(fontFamily = FontMono, fontSize = 12.5.sp, letterSpacing = 0.02.em),
@@ -237,7 +237,8 @@ fun SleeveAccentPlay(
     }
 }
 
-/** A thin-outlined circular icon button, mono/secondary toned — the reference's quiet actions. */
+/** A translucent circular icon button, mono/secondary toned — the quiet secondary actions that sit
+ *  beside the accent play control. Filled with the glass wash (no outline) so it reads on its own. */
 @Composable
 fun SleeveOutlineAction(
     cover: CoverColors,
@@ -246,12 +247,10 @@ fun SleeveOutlineAction(
     contentDescription: String?,
     size: Int = 44,
 ) {
-    val shape = RoundedCornerShape(50)
     Box(
         modifier = Modifier
             .size(size.dp)
-            .clip(shape)
-            .border(1.dp, cover.line, shape)
+            .sleeveButton(RoundedCornerShape(50))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

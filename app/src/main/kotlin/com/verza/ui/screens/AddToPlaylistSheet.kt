@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.verza.innertube.models.MusicItem
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.theme.VerzaShape
 
 /**
  * Modal bottom sheet listing the user's local playlists; tapping one adds [item] to it. Also has
@@ -81,7 +82,7 @@ fun AddToPlaylistSheet(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(VerzaShape)
                         .background(colors.primaryContainer.copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -129,7 +130,7 @@ fun AddToPlaylistSheet(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(VerzaShape)
                                     .background(colors.surfaceVariant),
                                 contentAlignment = Alignment.Center,
                             ) {
