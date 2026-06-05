@@ -31,6 +31,8 @@ import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.theme.VerzaCorner
+import com.verza.ui.theme.VerzaShape
 
 /**
  * The visual style of a Home section. Spotify-inspired mix so the page reads with rhythm rather
@@ -48,16 +50,17 @@ fun SectionRow(
     items: List<HomeItem>,
     onItemClick: (HomeItem) -> Unit,
     modifier: Modifier = Modifier,
+    onItemLongPress: ((HomeItem) -> Unit)? = null,
     style: SectionStyle = SectionStyle.STANDARD,
     onSeeAll: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = title, large = style == SectionStyle.LARGE, onSeeAll = onSeeAll)
         when (style) {
-            SectionStyle.LARGE -> CardRow(items = items, cardWidth = 220.dp, onItemClick = onItemClick)
-            SectionStyle.STANDARD -> CardRow(items = items, cardWidth = 170.dp, onItemClick = onItemClick)
-            SectionStyle.DENSE_CARDS -> CardRow(items = items, cardWidth = 124.dp, onItemClick = onItemClick)
-            SectionStyle.DENSE_GRID -> DenseGrid(items = items, onItemClick = onItemClick)
+            SectionStyle.LARGE -> CardRow(items, 220.dp, onItemClick, onItemLongPress)
+            SectionStyle.STANDARD -> CardRow(items, 170.dp, onItemClick, onItemLongPress)
+            SectionStyle.DENSE_CARDS -> CardRow(items, 124.dp, onItemClick, onItemLongPress)
+            SectionStyle.DENSE_GRID -> DenseGrid(items, onItemClick, onItemLongPress)
         }
     }
 }
@@ -123,7 +126,12 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
 }
 
 @Composable
-private fun CardRow(items: List<HomeItem>, cardWidth: Dp, onItemClick: (HomeItem) -> Unit) {
+private fun CardRow(
+    items: List<HomeItem>,
+    cardWidth: Dp,
+    onItemClick: (HomeItem) -> Unit,
+    onItemLongPress: ((HomeItem) -> Unit)? = null,
+) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 20.dp),
@@ -133,7 +141,14 @@ private fun CardRow(items: List<HomeItem>, cardWidth: Dp, onItemClick: (HomeItem
         items(
             items = items,
             key = { it.videoId ?: it.browseId ?: it.playlistId ?: it.title },
-        ) { item -> MediaCard(item = item, width = cardWidth, onClick = { onItemClick(item) }) }
+        ) { item ->
+            MediaCard(
+                item = item,
+                width = cardWidth,
+                onClick = { onItemClick(item) },
+                onLongClick = onItemLongPress?.let { { it(item) } },
+            )
+        }
     }
 }
 
@@ -142,7 +157,11 @@ private fun CardRow(items: List<HomeItem>, cardWidth: Dp, onItemClick: (HomeItem
  * the user sees most of their recent / liked / queue at a glance instead of scrolling sideways.
  */
 @Composable
-private fun DenseGrid(items: List<HomeItem>, onItemClick: (HomeItem) -> Unit) {
+private fun DenseGrid(
+    items: List<HomeItem>,
+    onItemClick: (HomeItem) -> Unit,
+    onItemLongPress: ((HomeItem) -> Unit)? = null,
+) {
     val display = items.take(8)
     Column(
         modifier = Modifier
@@ -160,6 +179,7 @@ private fun DenseGrid(items: List<HomeItem>, onItemClick: (HomeItem) -> Unit) {
                         item = item,
                         modifier = Modifier.weight(1f),
                         onClick = { onItemClick(item) },
+                        onLongClick = onItemLongPress?.let { { it(item) } },
                     )
                 }
                 // Keep the trailing cell aligned when the row has only one item.
@@ -170,7 +190,12 @@ private fun DenseGrid(items: List<HomeItem>, onItemClick: (HomeItem) -> Unit) {
 }
 
 @Composable
-private fun CompactTrackCell(item: HomeItem, modifier: Modifier, onClick: () -> Unit) {
+private fun CompactTrackCell(
+    item: HomeItem,
+    modifier: Modifier,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     // Dense-grid cells are always songs (Recently played / Liked / Keep listening) — fetch the
@@ -178,7 +203,7 @@ private fun CompactTrackCell(item: HomeItem, modifier: Modifier, onClick: () -> 
     val art = rememberSongArtwork(item.title, item.subtitle, item.thumbnailUrl)
     val sleeve = LocalSleeveMode.current
     val cover = LocalCoverColors.current
-    val cellShape = RoundedCornerShape(10.dp)
+    val cellShape = VerzaShape
     val cellSurface = if (sleeve) Modifier.sleeveSurface(cellShape)
                       else Modifier.clip(cellShape).background(colors.surface)
     val titleColor = if (sleeve) cover.ink else colors.onSurface
@@ -186,7 +211,7 @@ private fun CompactTrackCell(item: HomeItem, modifier: Modifier, onClick: () -> 
     Row(
         modifier = modifier
             .then(cellSurface)
-            .pressableScale(onClick = onClick)
+            .pressableScale(onLongClick = onLongClick, onClick = onClick)
             .padding(end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -194,7 +219,7 @@ private fun CompactTrackCell(item: HomeItem, modifier: Modifier, onClick: () -> 
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(VerzaShape)
                 .background(colors.surfaceVariant),
         ) {
             if (art != null) {
@@ -237,10 +262,10 @@ private fun CompactTrackCell(item: HomeItem, modifier: Modifier, onClick: () -> 
 fun MediaCard(item: HomeItem, onClick: () -> Unit) = MediaCard(item = item, width = 170.dp, onClick = onClick)
 
 @Composable
-fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit) {
+fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    val shape = RoundedCornerShape(16.dp)
+    val shape = VerzaShape
     // Deterministic gradient placeholder when no real artwork exists.
     val gradient = remember(item.title) { gradientFromKey(item.title) }
     // Songs: prefer the iTunes-resolved album cover over the YT video thumbnail.
@@ -259,14 +284,14 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit) {
         modifier = Modifier
             .width(width)
             .then(cardSurface)
-            .pressableScale(onClick = onClick),
+            .pressableScale(onLongClick = onLongClick, onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
+                .clip(RoundedCornerShape(topStart = VerzaCorner, topEnd = VerzaCorner, bottomStart = 0.dp, bottomEnd = 0.dp))
                 .background(gradient),
         ) {
             if (art != null) {
