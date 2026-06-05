@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
@@ -50,6 +51,7 @@ fun LocalPlaylistScreen(
     onBack: () -> Unit,
     onPlayTracks: (List<MusicItem>, Int) -> Unit,
     onShuffle: (List<MusicItem>) -> Unit,
+    onAddToQueue: (List<MusicItem>) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LocalPlaylistViewModel = hiltViewModel(),
 ) {
@@ -96,6 +98,12 @@ fun LocalPlaylistScreen(
                             onClick = { if (tracks.isNotEmpty()) onShuffle(tracks.map { it.toMusicItem() }) },
                             icon = Icons.Filled.Shuffle,
                             contentDescription = "Shuffle",
+                        )
+                        SleeveOutlineAction(
+                            cover = cover,
+                            onClick = { if (tracks.isNotEmpty()) onAddToQueue(tracks.map { it.toMusicItem() }) },
+                            icon = Icons.Filled.AddToQueue,
+                            contentDescription = "Add to queue",
                         )
                         SleeveOutlineAction(
                             cover = cover,
@@ -186,6 +194,14 @@ fun LocalPlaylistScreen(
                                 Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text("Shuffle")
+                            }
+                            OutlinedButton(
+                                onClick = { onAddToQueue(tracks.map { it.toMusicItem() }) },
+                                enabled = tracks.isNotEmpty(),
+                                shape = CircleShape,
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                            ) {
+                                Icon(Icons.Filled.AddToQueue, contentDescription = "Add to queue", modifier = Modifier.size(18.dp))
                             }
                             OutlinedButton(
                                 onClick = { showDeleteConfirm = true },

@@ -44,7 +44,9 @@ import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import com.verza.player.QueueItem
 import com.verza.ui.components.rememberSongArtwork
+import com.verza.ui.share.NowPlayingShareOverlay
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.theme.VerzaShape
 
 @Composable
 fun NowPlayingScreen(
@@ -76,6 +78,7 @@ fun NowPlayingScreen(
     onCycleRepeat: () -> Unit,
     onPlayQueueItem: (Int) -> Unit,
     onRemoveQueueItem: (Int) -> Unit,
+    onAddToPlaylist: () -> Unit,
     sleepTimerEndAt: Long?,
     onSetSleepTimer: (Long?) -> Unit,
     onSleepTimerEndOfTrack: () -> Unit,
@@ -83,33 +86,52 @@ fun NowPlayingScreen(
     sleeveMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    // Opens the "share this track as a poster" card; used from both Sleeve and standard layouts.
+    var showShareCard by remember { mutableStateOf(false) }
+
     // Editorial "Sleeve" poster surface fully replaces the standard layout when enabled.
     if (sleeveMode) {
-        com.verza.ui.sleeve.SleevePlayer(
-            onBack = onBack,
-            title = title,
-            artist = artist,
-            artworkUrl = artworkUrl,
-            isPlaying = isPlaying,
-            isLiked = isLiked,
-            isDownloaded = isDownloaded,
-            isDownloading = isDownloading,
-            positionMs = positionMs,
-            durationMs = durationMs,
-            queue = queue,
-            currentIndex = currentIndex,
-            onTogglePlay = onTogglePlay,
-            onNext = onNext,
-            onPrevious = onPrevious,
-            onSeek = onSeek,
-            onPlayQueueItem = onPlayQueueItem,
-            onOpenLyrics = onOpenLyrics,
-            onToggleLike = onToggleLike,
-            onStartRadio = onStartRadio,
-            onDownload = onDownload,
-            onRemoveDownload = onRemoveDownload,
-            modifier = modifier,
-        )
+        Box(modifier = modifier.fillMaxSize()) {
+            com.verza.ui.sleeve.SleevePlayer(
+                onBack = onBack,
+                title = title,
+                artist = artist,
+                artworkUrl = artworkUrl,
+                isPlaying = isPlaying,
+                isLiked = isLiked,
+                isDownloaded = isDownloaded,
+                isDownloading = isDownloading,
+                positionMs = positionMs,
+                durationMs = durationMs,
+                shuffleEnabled = shuffleEnabled,
+                repeatMode = repeatMode,
+                queue = queue,
+                currentIndex = currentIndex,
+                onTogglePlay = onTogglePlay,
+                onNext = onNext,
+                onPrevious = onPrevious,
+                onSeek = onSeek,
+                onToggleShuffle = onToggleShuffle,
+                onCycleRepeat = onCycleRepeat,
+                onPlayQueueItem = onPlayQueueItem,
+                onOpenLyrics = onOpenLyrics,
+                onToggleLike = onToggleLike,
+                onStartRadio = onStartRadio,
+                onDownload = onDownload,
+                onRemoveDownload = onRemoveDownload,
+                onAddToPlaylist = onAddToPlaylist,
+                onShare = { showShareCard = true },
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (showShareCard) {
+                NowPlayingShareOverlay(
+                    title = title,
+                    artist = artist,
+                    artworkUrl = artworkUrl,
+                    onDismiss = { showShareCard = false },
+                )
+            }
+        }
         return
     }
     val colors = MaterialTheme.colorScheme
@@ -199,8 +221,16 @@ fun NowPlayingScreen(
                             },
                         )
                         DropdownMenuItem(
+                            text = { Text("Share as image") },
+                            onClick = { menuOpen = false; showShareCard = true },
+                        )
+                        DropdownMenuItem(
                             text = { Text("Lyrics") },
                             onClick = { menuOpen = false; onOpenLyrics() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Add to playlist…") },
+                            onClick = { menuOpen = false; onAddToPlaylist() },
                         )
                         DropdownMenuItem(
                             text = { Text("Start radio") },
@@ -249,8 +279,8 @@ fun NowPlayingScreen(
                     .size(280.dp)
                     .align(Alignment.CenterHorizontally)
                     .graphicsLayer { scaleX = artScale; scaleY = artScale }
-                    .shadow(elevation = 24.dp, shape = RoundedCornerShape(24.dp), clip = false)
-                    .clip(RoundedCornerShape(24.dp))
+                    .shadow(elevation = 24.dp, shape = VerzaShape, clip = false)
+                    .clip(VerzaShape)
                     .background(colors.surfaceVariant),
             ) {
                 if (artworkUrl != null) {
@@ -457,6 +487,15 @@ fun NowPlayingScreen(
 
             Spacer(Modifier.height(16.dp))
         }
+
+        if (showShareCard) {
+            NowPlayingShareOverlay(
+                title = title,
+                artist = artist,
+                artworkUrl = artworkUrl,
+                onDismiss = { showShareCard = false },
+            )
+        }
     }
 
     if (showSleepSheet) {
@@ -605,7 +644,7 @@ private fun QueueRow(
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(VerzaShape)
                 .background(colors.surface),
         ) {
             if (art != null) {
