@@ -51,6 +51,8 @@ fun VerzaNavigation(
     val downloadedIds by playbackViewModel.downloadedIds.collectAsStateWithLifecycle()
     val downloading by playbackViewModel.downloading.collectAsStateWithLifecycle()
     val sleepTimerEndAt by playbackViewModel.sleepTimerEndAt.collectAsStateWithLifecycle()
+    val focusSession by playbackViewModel.focusSession.collectAsStateWithLifecycle()
+    val focusComplete by playbackViewModel.focusComplete.collectAsStateWithLifecycle()
 
     // Activity-scoped settings VM (same instance MainActivity uses) for UI prefs the player VM
     // doesn't own — e.g. the Now Playing album-art motion toggle.
@@ -79,6 +81,8 @@ fun VerzaNavigation(
     var pendingAdd by remember { mutableStateOf<com.verza.innertube.models.MusicItem?>(null) }
     // The Home card whose long-press context menu is open, or null when closed.
     var homeMenuItem by remember { mutableStateOf<HomeItem?>(null) }
+    // Whether the full-screen ambient ("lean-back") display is showing.
+    var ambientActive by remember { mutableStateOf(false) }
 
     // Per-track action menu wiring — provided once to every row composable via CompositionLocal.
     val trackActions = remember(playbackViewModel, navController, context) {
@@ -380,9 +384,17 @@ fun VerzaNavigation(
                             )
                         }
                     },
+                    onEnterAmbient = { ambientActive = true },
                     sleepTimerEndAt = sleepTimerEndAt,
                     onSetSleepTimer = { playbackViewModel.setSleepTimer(it) },
+                    onWindDown = { playbackViewModel.setSleepTimerWindDown(it) },
                     onSleepTimerEndOfTrack = { playbackViewModel.setSleepTimerEndOfTrack() },
+                    focusActive = focusSession != null,
+                    focusEndAt = focusSession?.endAt,
+                    onStartFocus = { playbackViewModel.startFocusSession(it) },
+                    onEndFocus = { playbackViewModel.endFocusSession() },
+                    focusCompleteMinutes = focusComplete,
+                    onConsumeFocusComplete = { playbackViewModel.consumeFocusComplete() },
                     albumArtMotion = albumArtMotion,
                     sleeveMode = sleeveMode,
                 )
@@ -406,6 +418,22 @@ fun VerzaNavigation(
     pendingAdd?.let { item ->
         AddToPlaylistSheet(item = item, onDismiss = { pendingAdd = null })
     }
+
+    // Full-screen ambient "lean-back" display — sits above the whole nav graph; exits on tap/back.
+    if (ambientActive && hasTrack) {
+        AmbientDisplay(
+            title = currentTitle,
+            artist = currentArtist,
+            artworkUrl = currentArtworkUrl,
+            isPlaying = playback.isPlaying,
+            positionMs = positionMs,
+            durationMs = playback.durationMs,
+            onTogglePlay = { playbackViewModel.togglePlay() },
+            onExit = { ambientActive = false },
+        )
+    }
+    // Auto-exit ambient if playback stops entirely (nothing left to display).
+    LaunchedEffect(hasTrack) { if (!hasTrack) ambientActive = false }
 
     // Long-press context menu for a Home feed card.
     homeMenuItem?.let { item ->

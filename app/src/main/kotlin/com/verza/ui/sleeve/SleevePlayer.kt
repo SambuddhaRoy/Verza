@@ -23,11 +23,13 @@ import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
@@ -103,6 +105,10 @@ fun SleevePlayer(
     onRemoveDownload: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onShare: () -> Unit,
+    onAmbient: () -> Unit,
+    onLinerNotes: () -> Unit,
+    onFocus: () -> Unit,
+    focusActive: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Colours come from the app-wide cover palette (sampled from this very art).
@@ -218,8 +224,9 @@ fun SleevePlayer(
             )
             Spacer(Modifier.height(8.dp))
             Eyebrow(
-                text = if (queue.size > 1) "Verza · ${currentIndex + 1} / ${queue.size}" else "Verza",
+                text = (if (queue.size > 1) "Verza · ${currentIndex + 1} / ${queue.size}" else "Verza") + "  ·  Liner notes",
                 color = sub,
+                modifier = Modifier.clickable(onClick = onLinerNotes),
             )
 
             Spacer(Modifier.height(14.dp))
@@ -244,9 +251,21 @@ fun SleevePlayer(
             // ── Secondary actions: Like · Radio · Download ────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                SleeveActionIcon(
+                    icon = Icons.Filled.SelfImprovement,
+                    contentDescription = "Focus session",
+                    tint = if (focusActive) accent else sub,
+                    onClick = onFocus,
+                )
+                SleeveActionIcon(
+                    icon = Icons.Filled.Fullscreen,
+                    contentDescription = "Ambient display",
+                    tint = sub,
+                    onClick = onAmbient,
+                )
                 SleeveActionIcon(
                     icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                     contentDescription = "Like",
