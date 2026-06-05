@@ -1,9 +1,10 @@
 package com.verza.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,7 +24,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.data.LyricLine
+import com.verza.ui.share.LyricShareOverlay
 import com.verza.ui.theme.LocalVerzaExtendedColors
+
+private data class ShareLine(val line: String, val prev: String?, val next: String?)
 
 @Composable
 fun LyricsScreen(
@@ -33,56 +37,77 @@ fun LyricsScreen(
     positionMs: Long,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    artworkUrl: String? = null,
     viewModel: LyricsViewModel = hiltViewModel(),
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var shareLine by remember { mutableStateOf<ShareLine?>(null) }
 
     LaunchedEffect(title, artist, durationMs) {
         viewModel.load(title, artist, durationMs)
     }
 
-    Column(modifier = modifier.fillMaxSize().background(colors.background)) {
-        // ── Header ─────────────────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Close", tint = colors.onBackground)
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().background(colors.background)) {
+            // ── Header ─────────────────────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Close", tint = colors.onBackground)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Lyrics", style = MaterialTheme.typography.labelSmall, color = colors.primary)
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colors.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ext.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Lyrics", style = MaterialTheme.typography.labelSmall, color = colors.primary)
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = colors.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = artist,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ext.muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+
+            Box(modifier = Modifier.weight(1f)) {
+                when (val s = state) {
+                    is LyricsUiState.Loading,
+                    LyricsUiState.Idle -> CircularProgressIndicator(
+                        color = colors.primary,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                    is LyricsUiState.None -> CenterHint("No lyrics available", ext.muted)
+                    is LyricsUiState.Error -> CenterHint(s.message, colors.error)
+                    is LyricsUiState.Plain -> PlainLyrics(s.text)
+                    is LyricsUiState.Synced -> SyncedLyrics(
+                        lines = s.lines,
+                        positionMs = positionMs,
+                        onShareLine = { line, prev, next -> shareLine = ShareLine(line, prev, next) },
+                    )
+                }
             }
         }
 
-        Box(modifier = Modifier.weight(1f)) {
-            when (val s = state) {
-                is LyricsUiState.Loading,
-                LyricsUiState.Idle -> CircularProgressIndicator(
-                    color = colors.primary,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-                is LyricsUiState.None -> CenterHint("No lyrics available", ext.muted)
-                is LyricsUiState.Error -> CenterHint(s.message, colors.error)
-                is LyricsUiState.Plain -> PlainLyrics(s.text)
-                is LyricsUiState.Synced -> SyncedLyrics(s.lines, positionMs)
-            }
+        // Tap a synced line → preview & share it as an editorial card.
+        shareLine?.let { sel ->
+            LyricShareOverlay(
+                line = sel.line,
+                prevLine = sel.prev,
+                nextLine = sel.next,
+                title = title,
+                artist = artist,
+                artworkUrl = artworkUrl,
+                onDismiss = { shareLine = null },
+            )
         }
     }
 }
@@ -109,7 +134,11 @@ private fun PlainLyrics(text: String) {
 }
 
 @Composable
-private fun SyncedLyrics(lines: List<LyricLine>, positionMs: Long) {
+private fun SyncedLyrics(
+    lines: List<LyricLine>,
+    positionMs: Long,
+    onShareLine: (line: String, prev: String?, next: String?) -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     val listState = rememberLazyListState()
@@ -139,8 +168,9 @@ private fun SyncedLyrics(lines: List<LyricLine>, positionMs: Long) {
         // Top spacer pushes the first line down to viewport centre.
         item { Spacer(Modifier.height(220.dp)) }
 
-        items(lines) { line ->
-            val isCurrent = lines.indexOf(line) == currentIndex
+        itemsIndexed(lines) { index, line ->
+            val isCurrent = index == currentIndex
+            val shareable = line.text.isNotBlank()
             Text(
                 text = line.text.ifBlank { "♪" },
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -148,7 +178,14 @@ private fun SyncedLyrics(lines: List<LyricLine>, positionMs: Long) {
                 ),
                 color = if (isCurrent) colors.onBackground else ext.muted.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        // Tap any line to turn it into a shareable card.
+                        if (shareable) Modifier.clickable {
+                            onShareLine(line.text, lines.getOrNull(index - 1)?.text, lines.getOrNull(index + 1)?.text)
+                        } else Modifier,
+                    ),
             )
         }
 

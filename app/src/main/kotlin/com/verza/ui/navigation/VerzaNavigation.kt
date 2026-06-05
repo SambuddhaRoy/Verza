@@ -77,6 +77,8 @@ fun VerzaNavigation(
 
     // The track currently being added to a playlist via the sheet picker, or null when closed.
     var pendingAdd by remember { mutableStateOf<com.verza.innertube.models.MusicItem?>(null) }
+    // The Home card whose long-press context menu is open, or null when closed.
+    var homeMenuItem by remember { mutableStateOf<HomeItem?>(null) }
 
     // Per-track action menu wiring — provided once to every row composable via CompositionLocal.
     val trackActions = remember(playbackViewModel, navController, context) {
@@ -255,6 +257,7 @@ fun VerzaNavigation(
             composable(Screen.Home.route) {
                 HomeScreen(
                     onItemClick = openItem,
+                    onItemLongPress = { homeMenuItem = it },
                     onOpenSettings = { navController.navigate(Screen.Settings.route) },
                 )
             }
@@ -275,6 +278,7 @@ fun VerzaNavigation(
                         playbackViewModel.playShuffled(tracks)
                         navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
                     },
+                    onAddToQueue = { tracks -> playbackViewModel.enqueueAll(tracks) },
                 )
             }
             composable(
@@ -332,6 +336,7 @@ fun VerzaNavigation(
                         playbackViewModel.playShuffled(tracks)
                         navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
                     },
+                    onAddToQueue = { tracks -> playbackViewModel.enqueueAll(tracks) },
                 )
             }
             composable(Screen.NowPlaying.route) {
@@ -364,6 +369,17 @@ fun VerzaNavigation(
                     onCycleRepeat = { playbackViewModel.cycleRepeatMode() },
                     onPlayQueueItem = { playbackViewModel.playQueueItemAt(it) },
                     onRemoveQueueItem = { playbackViewModel.removeQueueItemAt(it) },
+                    onAddToPlaylist = {
+                        current?.let { item ->
+                            pendingAdd = com.verza.innertube.models.MusicItem(
+                                id = item.mediaId,
+                                title = currentTitle,
+                                artist = currentArtist,
+                                thumbnailUrl = currentArtworkUrl,
+                                durationMs = playback.durationMs,
+                            )
+                        }
+                    },
                     sleepTimerEndAt = sleepTimerEndAt,
                     onSetSleepTimer = { playbackViewModel.setSleepTimer(it) },
                     onSleepTimerEndOfTrack = { playbackViewModel.setSleepTimerEndOfTrack() },
@@ -377,6 +393,7 @@ fun VerzaNavigation(
                     artist = currentArtist,
                     durationMs = playback.durationMs,
                     positionMs = positionMs,
+                    artworkUrl = currentArtworkUrl,
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -388,6 +405,31 @@ fun VerzaNavigation(
     // toggles `pendingAdd` opens it, regardless of which screen the action came from.
     pendingAdd?.let { item ->
         AddToPlaylistSheet(item = item, onDismiss = { pendingAdd = null })
+    }
+
+    // Long-press context menu for a Home feed card.
+    homeMenuItem?.let { item ->
+        HomeItemSheet(
+            item = item,
+            isLiked = item.videoId?.let { it in likedIds } ?: false,
+            onPlay = {
+                playbackViewModel.playHomeItem(item)
+                navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
+            },
+            onPlayNext = { playbackViewModel.playNext(item.toMusicItem()) },
+            onAddToQueue = { playbackViewModel.enqueueHomeItem(item) },
+            onStartRadio = {
+                item.videoId?.let { id ->
+                    playbackViewModel.startRadio(id)
+                    navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
+                }
+            },
+            onToggleLike = { playbackViewModel.toggleLike(item.toMusicItem()) },
+            onAddToPlaylist = { pendingAdd = item.toMusicItem() },
+            onGoToArtist = { trackActions.onGoToArtist(item.toMusicItem()) },
+            onOpen = { openItem(item) },
+            onDismiss = { homeMenuItem = null },
+        )
     }
 }
 
