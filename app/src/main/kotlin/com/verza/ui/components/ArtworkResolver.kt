@@ -30,6 +30,11 @@ interface ArtworkResolverEntryPoint {
  */
 @Composable
 fun rememberSongArtwork(title: String, artist: String, fallback: String?): String? {
+    // Local tracks carry their own embedded album-art content:// URI — use it directly and skip
+    // the iTunes lookup (which would be a wrong guess and a needless network call).
+    if (fallback != null && (fallback.startsWith("content://") || fallback.startsWith("file://"))) {
+        return fallback
+    }
     val context = LocalContext.current.applicationContext
     val repo = remember(context) {
         EntryPointAccessors.fromApplication(context, ArtworkResolverEntryPoint::class.java).artworkRepository()

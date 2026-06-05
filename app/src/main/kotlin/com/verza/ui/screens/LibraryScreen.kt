@@ -1,5 +1,10 @@
 package com.verza.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -16,6 +21,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,8 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -33,14 +42,23 @@ import com.verza.innertube.models.MusicItem
 import com.verza.ui.components.TrackActionsMenu
 import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.theme.VerzaShape
 
 private enum class LibraryTab(val label: String, val icon: ImageVector) {
     RECENT("Recent", Icons.Filled.History),
     LIKED("Liked", Icons.Filled.Favorite),
+    LOCAL("On device", Icons.Filled.PhoneAndroid),
     DOWNLOADED("Downloaded", Icons.Filled.Download),
     PLAYLISTS("Playlists", Icons.Filled.PlaylistPlay),
     ARTISTS("Artists", Icons.Filled.Person),
 }
+
+/** READ_MEDIA_AUDIO on Android 13+, READ_EXTERNAL_STORAGE below — for scanning on-device music. */
+private val audioReadPermission: String
+    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        Manifest.permission.READ_MEDIA_AUDIO
+    else
+        Manifest.permission.READ_EXTERNAL_STORAGE
 
 @Composable
 fun LibraryScreen(
@@ -60,9 +78,24 @@ fun LibraryScreen(
     val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle()
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
+    val localSongs by viewModel.localSongs.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(LibraryTab.RECENT) }
     var showCreatePlaylist by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
+
+    // On-device music needs a read permission; we track it here and (re)scan once it's granted.
+    val context = LocalContext.current
+    var hasAudioPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, audioReadPermission) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        hasAudioPermission = granted
+        if (granted) viewModel.loadLocalSongs()
+    }
 
     Column(
         modifier = modifier
@@ -107,6 +140,13 @@ fun LibraryScreen(
                         else liked.map { it.toMusicItem() }
                     SongList(likedItems, onPlaySongs, "Like songs to see them here")
                 }
+                LibraryTab.LOCAL -> LocalMusicContent(
+                    hasPermission = hasAudioPermission,
+                    songs = localSongs,
+                    onRequestPermission = { permissionLauncher.launch(audioReadPermission) },
+                    onScan = { viewModel.loadLocalSongs() },
+                    onPlaySongs = onPlaySongs,
+                )
                 LibraryTab.DOWNLOADED ->
                     SongList(
                         downloaded.map { it.toMusicItem() },
@@ -131,7 +171,7 @@ fun LibraryScreen(
                             Box(
                                 modifier = Modifier
                                     .size(52.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(VerzaShape)
                                     .background(colors.primaryContainer.copy(alpha = 0.5f)),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -267,6 +307,64 @@ private fun SongList(
     }
 }
 
+/**
+ * The "On device" tab: gates on the audio read permission, then scans MediaStore and lists local
+ * tracks. Each row reuses [SongList] so play / like / add-to-playlist all work via the shared menu.
+ */
+@Composable
+private fun LocalMusicContent(
+    hasPermission: Boolean,
+    songs: List<MusicItem>?,
+    onRequestPermission: () -> Unit,
+    onScan: () -> Unit,
+    onPlaySongs: (List<MusicItem>, Int) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+
+    if (!hasPermission) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                Icons.Filled.PhoneAndroid,
+                contentDescription = null,
+                tint = colors.primary,
+                modifier = Modifier.size(40.dp),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Play music stored on your device",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.onBackground,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Grant access to your audio files to see and play them here. Verza only reads them — it never changes or deletes anything.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ext.muted,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(20.dp))
+            Button(onClick = onRequestPermission, shape = CircleShape) { Text("Grant access") }
+        }
+        return
+    }
+
+    // Permission held — scan once on entry, then render.
+    LaunchedEffect(Unit) { onScan() }
+    when {
+        songs == null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = colors.primary)
+        }
+        songs.isEmpty() -> CenterHint("No music found on this device", ext.muted)
+        else -> SongList(songs, onPlaySongs, "")
+    }
+}
+
 @Composable
 private fun CollectionList(
     items: List<HomeItem>,
@@ -312,7 +410,7 @@ private fun LibraryRow(
         Box(
             modifier = Modifier
                 .size(52.dp)
-                .clip(if (circularThumb) CircleShape else RoundedCornerShape(8.dp))
+                .clip(if (circularThumb) CircleShape else VerzaShape)
                 .background(colors.surfaceVariant),
         ) {
             if (thumbnailUrl != null) {

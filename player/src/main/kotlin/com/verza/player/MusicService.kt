@@ -12,6 +12,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -69,6 +70,9 @@ class MusicService : MediaLibraryService() {
         val mainHandler = Handler(Looper.getMainLooper())
         val resolver = ResolvingDataSource.Resolver { dataSpec ->
             val raw = dataSpec.uri.toString()
+            // Only innertube:// placeholders need resolving. Local file:// / content:// URIs
+            // (on-device music, downloaded files) pass straight through to the upstream
+            // DefaultDataSource, which opens them natively.
             if (!raw.startsWith(INNERTUBE_SCHEME)) return@Resolver dataSpec
             val videoId = raw.removePrefix(INNERTUBE_SCHEME)
             if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Resolving $videoId …")
@@ -100,7 +104,11 @@ class MusicService : MediaLibraryService() {
                 throw if (t is IOException) t else IOException("Playback failed for $videoId", t)
             }
         }
-        val dataSourceFactory = ResolvingDataSource.Factory(httpFactory, resolver)
+        // Wrap the HTTP source in a DefaultDataSource so the player can also open file:// and
+        // content:// URIs (downloaded files and on-device local music) — DefaultDataSource picks
+        // the right sub-source by scheme and delegates http(s) to OkHttp.
+        val upstreamFactory = DefaultDataSource.Factory(this, httpFactory)
+        val dataSourceFactory = ResolvingDataSource.Factory(upstreamFactory, resolver)
 
         player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
@@ -158,8 +166,12 @@ class MusicService : MediaLibraryService() {
         /**
          * Media3 drops MediaItem.localConfiguration (the URI) when items cross the
          * controller → session IPC boundary, so the player would receive URI-less items
-         * and refuse to prepare. We rebuild each item's innertube:// URI from its mediaId
-         * (the videoId) here, before it reaches ExoPlayer's ResolvingDataSource.
+         * and refuse to prepare. We rebuild each item's URI from its mediaId here, before it
+         * reaches ExoPlayer's ResolvingDataSource.
+         *
+         * Local tracks carry a self-describing `content://` / `file://` mediaId (on-device music),
+         * which we keep verbatim so the file plays directly; everything else is a YouTube videoId
+         * and gets the innertube:// placeholder that the resolver swaps for a real stream URL.
          */
         override fun onAddMediaItems(
             mediaSession: MediaSession,
@@ -167,9 +179,10 @@ class MusicService : MediaLibraryService() {
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> {
             val resolved = mediaItems.map { item ->
-                item.buildUpon()
-                    .setUri("$INNERTUBE_SCHEME${item.mediaId}")
-                    .build()
+                val id = item.mediaId
+                val uri = if (id.startsWith("content://") || id.startsWith("file://")) id
+                          else "$INNERTUBE_SCHEME$id"
+                item.buildUpon().setUri(uri).build()
             }.toMutableList()
             return Futures.immediateFuture(resolved)
         }

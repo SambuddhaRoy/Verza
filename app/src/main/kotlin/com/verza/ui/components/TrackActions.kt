@@ -46,6 +46,9 @@ fun TrackActionsMenu(item: MusicItem, modifier: Modifier = Modifier) {
     val actions = LocalTrackActions.current
     val ext = LocalVerzaExtendedColors.current
     var open by remember { mutableStateOf(false) }
+    // On-device tracks have a content:// / file:// id. Download / Share / radio-style actions are
+    // YouTube-only, so we hide them for local files (Play next / queue / playlist / like still work).
+    val isLocal = item.id.startsWith("content://") || item.id.startsWith("file://")
 
     Box(modifier = modifier) {
         IconButton(onClick = { open = true }, modifier = Modifier.size(36.dp)) {
@@ -75,18 +78,20 @@ fun TrackActionsMenu(item: MusicItem, modifier: Modifier = Modifier) {
                 text = { Text("Like") },
                 onClick = { open = false; actions.onToggleLike(item) },
             )
-            DropdownMenuItem(
-                text = { Text("Download") },
-                onClick = { open = false; actions.onDownload(item) },
-            )
-            DropdownMenuItem(
-                text = { Text("Share") },
-                onClick = { open = false; actions.onShare(item) },
-            )
-            DropdownMenuItem(
-                text = { Text("Go to artist") },
-                onClick = { open = false; actions.onGoToArtist(item) },
-            )
+            if (!isLocal) {
+                DropdownMenuItem(
+                    text = { Text("Download") },
+                    onClick = { open = false; actions.onDownload(item) },
+                )
+                DropdownMenuItem(
+                    text = { Text("Share") },
+                    onClick = { open = false; actions.onShare(item) },
+                )
+                DropdownMenuItem(
+                    text = { Text("Go to artist") },
+                    onClick = { open = false; actions.onGoToArtist(item) },
+                )
+            }
         }
     }
 }
