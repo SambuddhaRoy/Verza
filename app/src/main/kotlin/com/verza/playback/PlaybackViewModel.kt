@@ -134,6 +134,9 @@ class PlaybackViewModel @Inject constructor(
                 .collect { id ->
                     _currentArtworkOverride.value = null
                     if (id == null) return@collect
+                    // Local tracks already carry their own album art — don't override with an
+                    // iTunes guess (which would be wrong and a needless network call).
+                    if (id.startsWith("content://") || id.startsWith("file://")) return@collect
                     val md = playbackState.value.currentItem?.mediaMetadata ?: return@collect
                     val title = md.title?.toString().orEmpty()
                     val artist = md.artist?.toString().orEmpty()
@@ -214,6 +217,24 @@ class PlaybackViewModel @Inject constructor(
 
     fun playNext(item: MusicItem) = playerConnection.addNext(item.toMediaItem())
     fun enqueue(item: MusicItem) = playerConnection.addToQueue(item.toMediaItem())
+
+    /** Appends an entire album/playlist to the end of the queue (plays after current content). */
+    fun enqueueAll(items: List<MusicItem>) {
+        if (items.isEmpty()) return
+        playerConnection.addToQueue(items.map { it.toMediaItem() })
+    }
+
+    /** Adds a home card to the queue: a song directly, or an album/playlist expanded into tracks. */
+    fun enqueueHomeItem(item: HomeItem) {
+        if (item.isSong && item.videoId != null) {
+            enqueue(MusicItem(id = item.videoId!!, title = item.title, artist = item.subtitle, thumbnailUrl = item.thumbnailUrl))
+        } else {
+            viewModelScope.launch {
+                repository.collectionTracks(item.browseId, item.playlistId)
+                    .onSuccess { tracks -> enqueueAll(tracks) }
+            }
+        }
+    }
 
     fun toggleLike(item: MusicItem) {
         viewModelScope.launch {
