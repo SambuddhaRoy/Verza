@@ -59,6 +59,8 @@ class PreferencesRepository @Inject constructor(
     private val saveSearchHistoryKey = booleanPreferencesKey("save_search_history")
     private val albumArtMotionKey = booleanPreferencesKey("album_art_motion")
     private val sleeveModeKey = booleanPreferencesKey("sleeve_mode")
+    private val hapticsKey = booleanPreferencesKey("music_haptics")
+    private val gentleStartKey = booleanPreferencesKey("gentle_start")
 
     val themeFlow: Flow<VerzaTheme> = store.data.map { prefs ->
         // Default to Material You (Dynamic). On pre-Android-12 devices the theme layer falls back
@@ -115,6 +117,12 @@ class PreferencesRepository @Inject constructor(
 
     /** Editorial "Sleeve" appearance — poster Now Playing + translucent surfaces over the glow. */
     val sleeveModeFlow: Flow<Boolean> = store.data.map { it[sleeveModeKey] ?: false }
+
+    /** Subtle vibration synced to the music's bass. Reads playback audio only (same as the glow). */
+    val hapticsEnabledFlow: Flow<Boolean> = store.data.map { it[hapticsKey] ?: false }
+
+    /** Ease the volume up over a couple of seconds when resuming playback — a soft "sunrise" start. */
+    val gentleStartFlow: Flow<Boolean> = store.data.map { it[gentleStartKey] ?: false }
 
     init {
         // One-time migration: if an old plaintext cookie exists, re-store it encrypted and drop
@@ -186,6 +194,14 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setSleeveMode(enabled: Boolean) {
         store.edit { it[sleeveModeKey] = enabled }
+    }
+
+    suspend fun setHapticsEnabled(enabled: Boolean) {
+        store.edit { it[hapticsKey] = enabled }
+    }
+
+    suspend fun setGentleStart(enabled: Boolean) {
+        store.edit { it[gentleStartKey] = enabled }
     }
 
     suspend fun setCookie(cookie: String?) {

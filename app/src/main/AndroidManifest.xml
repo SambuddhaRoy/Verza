@@ -13,6 +13,9 @@
     -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Music-synced haptics ("Feel the beat") — short vibration pulses on the bass. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!--
         Read on-device audio files for the local-library feature. READ_MEDIA_AUDIO is the
         granular media permission on Android 13+ (API 33); older versions fall back to
