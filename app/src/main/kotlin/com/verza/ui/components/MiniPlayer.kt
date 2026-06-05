@@ -3,7 +3,6 @@ package com.verza.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -27,6 +26,7 @@ import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.theme.VerzaShape
 
 @Composable
 fun MiniPlayer(
@@ -41,7 +41,7 @@ fun MiniPlayer(
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    val shape = RoundedCornerShape(16.dp)
+    val shape = VerzaShape
 
     // Sleeve renders the mini-player as a translucent editorial strip over the reactive glow,
     // recoloured to the cover and set in Newsreader.
@@ -69,7 +69,7 @@ fun MiniPlayer(
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(VerzaShape)
                 .background(artworkColor),
         ) {
             if (artworkUrl != null) {

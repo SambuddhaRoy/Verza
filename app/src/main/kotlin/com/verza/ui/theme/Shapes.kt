@@ -2,21 +2,27 @@ package com.verza.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The Muse shape scale — soft, rounded, editorial.
- * Replaces the previous brutalist RectangleShape everywhere through M3's shape system.
- *  extraSmall  — chips, small tags                    (8 dp)
- *  small       — list rows, thumbnails                (12 dp)
- *  medium      — cards, mini player, surfaces         (16 dp)
- *  large       — large cards, now-playing art         (24 dp)
- *  extraLarge  — full-bleed sheets / dialogs          (32 dp)
+ * Verza uses a **single corner radius** for every rounded rectangle in the app — cards,
+ * thumbnails, sheets, dialogs, buttons, chips and surfaces all share [VerzaCorner] so the UI
+ * reads as one consistent system. Genuinely circular elements (icon buttons, avatars, the play
+ * control) stay circular; everything else curves by exactly this much.
  */
+val VerzaCorner: Dp = 16.dp
+
+/** The one rounded-rectangle shape, derived from [VerzaCorner]. Use this anywhere you'd reach for
+ *  `RoundedCornerShape(...)` on a surface/card/button. */
+val VerzaShape = RoundedCornerShape(VerzaCorner)
+
+/** Every Material shape slot maps to the single [VerzaShape], so themed components (cards, sheets,
+ *  dialogs, menus) are uniform with our hand-styled surfaces. */
 val VerzaShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp),
+    extraSmall = VerzaShape,
+    small = VerzaShape,
+    medium = VerzaShape,
+    large = VerzaShape,
+    extraLarge = VerzaShape,
 )
