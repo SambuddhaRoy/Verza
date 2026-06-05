@@ -13,6 +13,17 @@
     -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!--
+        Read on-device audio files for the local-library feature. READ_MEDIA_AUDIO is the
+        granular media permission on Android 13+ (API 33); older versions fall back to
+        READ_EXTERNAL_STORAGE, capped at API 32 since 33+ ignores it. Read-only — the app
+        never writes to or deletes the user's media.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <application
         android:name=".VerzaApp"
         android:allowBackup="true"
@@ -45,6 +56,17 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Hands exported share-card images to other apps with a temporary read grant. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

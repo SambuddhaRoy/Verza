@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Exported share-card images live in cacheDir/shared and are handed to other apps via the
+         FileProvider with a temporary read grant. -->
+    <cache-path name="shared_images" path="shared/" />
+</paths>
