@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import com.verza.audio.VisualizerSignal
 import kotlinx.coroutines.flow.StateFlow
@@ -251,24 +252,45 @@ private fun FluidShaderGlow(
     val bass by animateFloatAsState(safe.bass, tween(120), label = "fluidBass")
     val mid by animateFloatAsState(safe.mid, tween(160), label = "fluidMid")
     val treble by animateFloatAsState(safe.treble, tween(100), label = "fluidTreble")
+    // Mood envelope: a slow (2.5 s) smoothing of overall energy. Drives the per-song "temperature"
+    // — energetic tracks warm + brighten the field, calm ones cool + settle it. Only meaningful
+    // when a live signal is present (reactivity / haptics running).
+    val mood by animateFloatAsState(safe.energy, tween(2500), label = "fluidMood")
 
     Box(
         Modifier
             .fillMaxSize()
             .drawBehind {
+                val adaptedStrength = strength * (0.72f + 0.56f * mood)
+                val cA = moodTint(colorA, mood)
+                val cB = moodTint(colorB, mood)
+                val cC = moodTint(colorC, mood)
                 shader.setFloatUniform("uResolution", size.width, size.height)
                 shader.setFloatUniform("uTime", time)
                 shader.setFloatUniform("uBass", bass)
                 shader.setFloatUniform("uMid", mid)
                 shader.setFloatUniform("uTreble", treble)
-                shader.setFloatUniform("uStrength", strength)
-                shader.setFloatUniform("uColorA", colorA.red, colorA.green, colorA.blue)
-                shader.setFloatUniform("uColorB", colorB.red, colorB.green, colorB.blue)
-                shader.setFloatUniform("uColorC", colorC.red, colorC.green, colorC.blue)
+                shader.setFloatUniform("uStrength", adaptedStrength)
+                shader.setFloatUniform("uColorA", cA.red, cA.green, cA.blue)
+                shader.setFloatUniform("uColorB", cB.red, cB.green, cB.blue)
+                shader.setFloatUniform("uColorC", cC.red, cC.green, cC.blue)
                 shader.setFloatUniform("uBg", bg.red, bg.green, bg.blue)
                 drawRect(brush = brush)
             },
     )
+}
+
+// ── Mood-adaptive theming ──────────────────────────────────────────────────────
+// A slow energy reading warms the glow toward amber on energetic passages and cools it toward
+// slate on calm ones, alongside an intensity lift — so the atmosphere tracks the song's feel, not
+// just its cover colour. Kept gentle (≤ ~22% tint) so it reads as a temperature shift, not a
+// recolour.
+private val MoodWarm = Color(0xFFFF8A3C)
+private val MoodCool = Color(0xFF5C84C0)
+
+private fun moodTint(c: Color, mood: Float): Color = when {
+    mood >= 0.5f -> lerp(c, MoodWarm, ((mood - 0.5f) * 2f).coerceIn(0f, 1f) * 0.22f)
+    else -> lerp(c, MoodCool, ((0.5f - mood) * 2f).coerceIn(0f, 1f) * 0.16f)
 }
 
 /**
@@ -287,16 +309,18 @@ private fun GradientGlowFallback(
     val bass by animateFloatAsState(safe.bass, tween(120), label = "fbBass")
     val mid by animateFloatAsState(safe.mid, tween(160), label = "fbMid")
     val treble by animateFloatAsState(safe.treble, tween(100), label = "fbTreble")
-
-    // Map the (now shader-tuned) strength back into gradient alphas, bumped ~2x vs the original
-    // static glow so the fallback is also visibly stronger.
-    val base = intensity.shaderStrength * 0.32f
+    val mood by animateFloatAsState(safe.energy, tween(2500), label = "fbMood")
 
     Box(
         Modifier
             .fillMaxSize()
             .drawBehind {
                 drawRect(bg)
+                // Map the (shader-tuned) strength into gradient alphas, lifted by the mood envelope.
+                val base = intensity.shaderStrength * 0.32f * (0.72f + 0.56f * mood)
+                val cA = moodTint(triad.a, mood)
+                val cB = moodTint(triad.b, mood)
+                val cC = moodTint(triad.c, mood)
                 val twoPi = (2.0 * Math.PI).toFloat()
                 val t = time * 0.18f * twoPi
 
@@ -307,7 +331,7 @@ private fun GradientGlowFallback(
                 val a1 = (base * (1.0f + 0.9f * bass)).coerceAtMost(0.6f)
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(triad.a.copy(alpha = a1), Color.Transparent),
+                        colors = listOf(cA.copy(alpha = a1), Color.Transparent),
                         center = Offset(cx1, cy1),
                         radius = r1,
                     ),
@@ -321,7 +345,7 @@ private fun GradientGlowFallback(
                 val a2 = (base * 0.7f * (0.7f + treble)).coerceAtMost(0.45f)
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(triad.b.copy(alpha = a2), Color.Transparent),
+                        colors = listOf(cB.copy(alpha = a2), Color.Transparent),
                         center = Offset(cx2, cy2),
                         radius = r2,
                     ),
@@ -335,7 +359,7 @@ private fun GradientGlowFallback(
                 val a3 = (base * 0.6f).coerceAtMost(0.4f)
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(triad.c.copy(alpha = a3), Color.Transparent),
+                        colors = listOf(cC.copy(alpha = a3), Color.Transparent),
                         center = Offset(cx3, cy3),
                         radius = r3,
                     ),

@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.audio.AudioVisualizer
+import com.verza.audio.HapticPlayer
 import com.verza.audio.VisualizerSignal
 import com.verza.playback.PlaybackViewModel
 import com.verza.ui.navigation.Screen
@@ -75,6 +76,7 @@ class MainActivity : ComponentActivity() {
             val glowColor by settingsViewModel.glowColor.collectAsStateWithLifecycle()
             val glowIntensity by settingsViewModel.glowIntensity.collectAsStateWithLifecycle()
             val glowReactive by settingsViewModel.glowReactive.collectAsStateWithLifecycle()
+            val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
             val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle()
             val startScreen by settingsViewModel.startScreen.collectAsStateWithLifecycle()
             val sleeveMode by settingsViewModel.sleeveMode.collectAsStateWithLifecycle()
@@ -104,7 +106,9 @@ class MainActivity : ComponentActivity() {
                 context,
                 Manifest.permission.RECORD_AUDIO,
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            val shouldVisualize = glowReactive && hasAudioPermission &&
+            // The visualizer feeds both the reactive glow and the music haptics, so either feature
+            // being on (plus permission + an active session) is enough to run it.
+            val shouldVisualize = (glowReactive || hapticsEnabled) && hasAudioPermission &&
                 audioSessionId != 0 && isPlaying
 
             // The signal flow is owned at the Activity composition scope so the GlowBackground
@@ -122,6 +126,27 @@ class MainActivity : ComponentActivity() {
                     collectorJob?.cancel()
                     engine?.stop()
                     visualizerSignalFlow.value = VisualizerSignal()
+                }
+            }
+
+            // ── Music-synced haptics ─────────────────────────────────────────────
+            // Reuses the same visualizer signal: a rising-edge detector on the bass band fires a
+            // short vibration tick on each kick (debounced). Active only when "Feel the beat" is
+            // on (and the visualizer is therefore running).
+            val hapticPlayer = remember { HapticPlayer(context) }
+            DisposableEffect(Unit) { onDispose { hapticPlayer.stop() } }
+            LaunchedEffect(hapticsEnabled, shouldVisualize) {
+                if (!(hapticsEnabled && shouldVisualize)) return@LaunchedEffect
+                var prevBass = 0f
+                var lastPulse = 0L
+                visualizerSignalFlow.collect { signal ->
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    val bass = signal.bass
+                    if (bass > 0.45f && prevBass <= 0.45f && now - lastPulse > 90L) {
+                        hapticPlayer.pulse(bass)
+                        lastPulse = now
+                    }
+                    prevBass = bass
                 }
             }
             // The instant DataStore tells us the flag value, lower the splash-screen gate so
