@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Downloading
@@ -25,6 +26,10 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
@@ -53,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import com.verza.player.QueueItem
 import com.verza.ui.theme.CoverColors
@@ -79,18 +85,24 @@ fun SleevePlayer(
     isDownloading: Boolean,
     positionMs: Long,
     durationMs: Long,
+    shuffleEnabled: Boolean,
+    repeatMode: Int,
     queue: List<QueueItem>,
     currentIndex: Int,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
+    onToggleShuffle: () -> Unit,
+    onCycleRepeat: () -> Unit,
     onPlayQueueItem: (Int) -> Unit,
     onOpenLyrics: () -> Unit,
     onToggleLike: () -> Unit,
     onStartRadio: () -> Unit,
     onDownload: () -> Unit,
     onRemoveDownload: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onShare: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Colours come from the app-wide cover palette (sampled from this very art).
@@ -242,6 +254,12 @@ fun SleevePlayer(
                     onClick = onToggleLike,
                 )
                 SleeveActionIcon(
+                    icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    contentDescription = "Add to playlist",
+                    tint = sub,
+                    onClick = onAddToPlaylist,
+                )
+                SleeveActionIcon(
                     icon = Icons.Filled.Radio,
                     contentDescription = "Start radio",
                     tint = sub,
@@ -259,55 +277,82 @@ fun SleevePlayer(
                     enabled = !isDownloading,
                     onClick = { if (isDownloaded) onRemoveDownload() else onDownload() },
                 )
+                SleeveActionIcon(
+                    icon = Icons.Filled.Share,
+                    contentDescription = "Share as image",
+                    tint = sub,
+                    onClick = onShare,
+                )
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // ── Progress ──────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(16.dp)
-                    .pointerInput(durationMs) {
-                        detectTapGestures { offset ->
-                            if (durationMs > 0) onSeek(((offset.x / size.width).coerceIn(0f, 1f) * durationMs).toLong())
-                        }
-                    },
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Box(Modifier.fillMaxWidth().height(1.5.dp).background(cover.line))
-                Box(Modifier.fillMaxWidth(progress).height(1.5.dp).background(ink))
-                Box(
-                    Modifier.fillMaxWidth(progress).height(7.dp),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(accent))
-                }
-            }
-            Spacer(Modifier.height(8.dp))
+            // ── Progress (with flanking times, reference layout) ──────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(fmtTime(positionMs), style = TextStyle(fontFamily = FontMono, fontSize = 10.5.sp), color = sub)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    IconButton(onClick = onPrevious) {
-                        Icon(Icons.Filled.SkipPrevious, "Previous", tint = ink, modifier = Modifier.size(28.dp))
-                    }
-                    IconButton(onClick = onTogglePlay) {
-                        Icon(
-                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            if (isPlaying) "Pause" else "Play",
-                            tint = ink,
-                            modifier = Modifier.size(40.dp),
-                        )
-                    }
-                    IconButton(onClick = onNext) {
-                        Icon(Icons.Filled.SkipNext, "Next", tint = ink, modifier = Modifier.size(28.dp))
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(16.dp)
+                        .pointerInput(durationMs) {
+                            detectTapGestures { offset ->
+                                if (durationMs > 0) onSeek(((offset.x / size.width).coerceIn(0f, 1f) * durationMs).toLong())
+                            }
+                        },
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Box(Modifier.fillMaxWidth().height(1.5.dp).background(cover.line))
+                    Box(Modifier.fillMaxWidth(progress).height(1.5.dp).background(ink))
+                    Box(
+                        Modifier.fillMaxWidth(progress).height(7.dp),
+                        contentAlignment = Alignment.CenterEnd,
+                    ) {
+                        Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(accent))
                     }
                 }
                 Text(fmtTime(durationMs), style = TextStyle(fontFamily = FontMono, fontSize = 10.5.sp), color = sub)
+            }
+            Spacer(Modifier.height(6.dp))
+            // ── Transport: shuffle · prev · play · next · repeat ──────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                IconButton(onClick = onToggleShuffle) {
+                    Icon(
+                        Icons.Filled.Shuffle,
+                        "Shuffle",
+                        tint = if (shuffleEnabled) accent else sub,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                IconButton(onClick = onPrevious) {
+                    Icon(Icons.Filled.SkipPrevious, "Previous", tint = ink, modifier = Modifier.size(28.dp))
+                }
+                IconButton(onClick = onTogglePlay) {
+                    Icon(
+                        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        if (isPlaying) "Pause" else "Play",
+                        tint = ink,
+                        modifier = Modifier.size(40.dp),
+                    )
+                }
+                IconButton(onClick = onNext) {
+                    Icon(Icons.Filled.SkipNext, "Next", tint = ink, modifier = Modifier.size(28.dp))
+                }
+                IconButton(onClick = onCycleRepeat) {
+                    Icon(
+                        if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                        "Repeat",
+                        tint = if (repeatMode != Player.REPEAT_MODE_OFF) accent else sub,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
         }
     }

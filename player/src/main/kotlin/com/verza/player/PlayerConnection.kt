@@ -123,6 +123,11 @@ class PlayerConnection(context: Context) {
 
     fun addToQueue(item: MediaItem) = controller?.addMediaItem(item)
 
+    /** Appends a batch (e.g. a whole album/playlist) to the end of the queue. */
+    fun addToQueue(items: List<MediaItem>) {
+        if (items.isNotEmpty()) controller?.addMediaItems(items)
+    }
+
     /** Inserts [item] directly after the current track, so it plays next. */
     fun addNext(item: MediaItem) {
         controller?.let {

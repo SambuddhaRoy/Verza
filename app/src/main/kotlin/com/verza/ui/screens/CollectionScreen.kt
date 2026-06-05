@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
@@ -52,6 +53,7 @@ fun CollectionScreen(
     onBack: () -> Unit,
     onPlayTracks: (List<MusicItem>, Int) -> Unit,
     onShuffle: (List<MusicItem>) -> Unit,
+    onAddToQueue: (List<MusicItem>) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: CollectionViewModel = hiltViewModel(),
 ) {
@@ -73,7 +75,7 @@ fun CollectionScreen(
                 Text(s.message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
                 OutlinedButton(onClick = viewModel::load, shape = CircleShape) { Text("Retry") }
             }
-            is CollectionUiState.Content -> CollectionContent(s.detail, onPlayTracks, onShuffle)
+            is CollectionUiState.Content -> CollectionContent(s.detail, onPlayTracks, onShuffle, onAddToQueue)
         }
 
         // Floating circular back affordance.
@@ -96,6 +98,7 @@ private fun CollectionContent(
     detail: CollectionDetail,
     onPlayTracks: (List<MusicItem>, Int) -> Unit,
     onShuffle: (List<MusicItem>) -> Unit,
+    onAddToQueue: (List<MusicItem>) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
@@ -139,6 +142,12 @@ private fun CollectionContent(
                         onClick = { if (tracks.isNotEmpty()) onShuffle(tracks) },
                         icon = Icons.Filled.Shuffle,
                         contentDescription = "Shuffle",
+                    )
+                    SleeveOutlineAction(
+                        cover = cover,
+                        onClick = { if (tracks.isNotEmpty()) onAddToQueue(tracks) },
+                        icon = Icons.Filled.AddToQueue,
+                        contentDescription = "Add to queue",
                     )
                 }
             }
@@ -228,6 +237,14 @@ private fun CollectionContent(
                             Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("Shuffle")
+                        }
+                        OutlinedButton(
+                            onClick = { onAddToQueue(tracks) },
+                            enabled = tracks.isNotEmpty(),
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Icon(Icons.Filled.AddToQueue, contentDescription = "Add to queue", modifier = Modifier.size(18.dp))
                         }
                     }
                 }
