@@ -3,7 +3,6 @@ package com.verza.ui.screens
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -37,14 +35,17 @@ import com.verza.ui.components.SectionRow
 import com.verza.ui.components.SectionStyle
 import com.verza.ui.sleeve.Eyebrow
 import com.verza.ui.sleeve.LocalSleeveMode
+import com.verza.ui.sleeve.sleeveButton
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.theme.VerzaShape
 import java.util.Calendar
 
 @Composable
 fun HomeScreen(
     onItemClick: (HomeItem) -> Unit,
+    onItemLongPress: (HomeItem) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -66,7 +67,7 @@ fun HomeScreen(
                 color = ext.muted,
                 modifier = Modifier.align(Alignment.Center),
             )
-            is HomeUiState.Content -> HomeContent(s.sections, onItemClick, onOpenSettings)
+            is HomeUiState.Content -> HomeContent(s.sections, onItemClick, onItemLongPress, onOpenSettings)
         }
     }
 }
@@ -75,6 +76,7 @@ fun HomeScreen(
 private fun HomeContent(
     sections: List<HomeSection>,
     onItemClick: (HomeItem) -> Unit,
+    onItemLongPress: (HomeItem) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -171,6 +173,7 @@ private fun HomeContent(
                     title = section.title,
                     items = section.items,
                     onItemClick = onItemClick,
+                    onItemLongPress = onItemLongPress,
                     style = styleFor(section.title),
                 )
             }
@@ -210,16 +213,15 @@ private fun GenreChipRow() {
         genres.forEach { g ->
             val selected = g == active
             if (sleeve) {
-                // Mono nav-pills, matching the reference's filter row.
-                val bg = if (selected) cover.ink.copy(alpha = 0.92f) else Color.Transparent
+                // Mono filter pills: the active one is ink-filled, the rest use the translucent
+                // glass wash (slightly lighter than the background, no outline).
+                val base = if (selected) Modifier.clip(VerzaShape).background(cover.ink.copy(alpha = 0.92f))
+                           else Modifier.sleeveButton(VerzaShape)
                 val fg = if (selected) cover.bg else cover.sub
                 Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(bg)
-                        .then(if (selected) Modifier else Modifier.border(1.dp, cover.line, CircleShape))
+                    modifier = base
                         .clickable(onClick = { active = g })
-                        .padding(horizontal = 16.dp, vertical = 7.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Text(
                         g,
