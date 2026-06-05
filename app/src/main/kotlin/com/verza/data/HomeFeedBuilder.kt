@@ -34,6 +34,7 @@ import javax.inject.Singleton
 @Singleton
 class HomeFeedBuilder @Inject constructor(
     private val library: LibraryRepository,
+    private val stats: StatsRepository,
 ) {
     suspend fun build(): Result<List<HomeSection>> = runCatching {
         coroutineScope {
@@ -45,6 +46,27 @@ class HomeFeedBuilder @Inject constructor(
             }
             val recent = library.recentlyPlayed().first().take(20)
             val liked = library.liked().first()
+
+            // On-device recommendations with zero tracking: blend NewPipe "related" results seeded
+            // by the user's *most-listened* tracks (by real time), so it reflects taste rather than
+            // just recency. Local-only tracks (content:// ids) can't seed YT related.
+            val topSeeds = stats.topSongs(8).first()
+                .filter { !it.id.startsWith("content://") && it.artist.isNotBlank() }
+                .distinctBy { it.artist.trim().lowercase() }
+                .take(2)
+            val recommendedAsync = async(Dispatchers.IO) {
+                val recentIds = recent.mapTo(mutableSetOf()) { it.id }
+                val seedIds = topSeeds.mapTo(mutableSetOf()) { it.id }
+                topSeeds
+                    .flatMap { seed ->
+                        runCatching { InnerTube.radio(seed.id).drop(1).take(12) }.getOrDefault(emptyList())
+                    }
+                    .map { it.toHomeSong() }
+                    .filter { it.videoId != null && it.videoId !in recentIds && it.videoId !in seedIds }
+                    .distinctBy { it.videoId }
+                    .shuffled()
+                    .take(15)
+            }
 
             // Pick up to two distinct recent artists; fetch a radio mix for each in parallel so
             // the user sees both "Similar to A" and "Similar to B" rather than just one.
@@ -64,11 +86,12 @@ class HomeFeedBuilder @Inject constructor(
 
             val yt = ytAsync.await()
             val ytPl = ytPlaylistsAsync.await()
+            val recommended = recommendedAsync.await()
             val similarSections = similarAsyncs.awaitAll()
                 .filter { it.first.isNotEmpty() }
                 .map { (items, artist) -> HomeSection("Similar to $artist", items) }
 
-            compose(yt, ytPl, recent, liked, similarSections)
+            compose(yt, ytPl, recent, liked, similarSections, recommended)
         }
     }
 
@@ -78,6 +101,7 @@ class HomeFeedBuilder @Inject constructor(
         recent: List<SongEntity>,
         liked: List<SongEntity>,
         similarSections: List<HomeSection>,
+        recommended: List<HomeItem>,
     ): List<HomeSection> {
         val out = mutableListOf<HomeSection>()
         val consumed = mutableSetOf<String>()
@@ -90,6 +114,12 @@ class HomeFeedBuilder @Inject constructor(
         // 1. Recently played — from Room (no network).
         if (recent.isNotEmpty()) {
             out += HomeSection("Recently played", recent.take(15).map { it.toHomeSong() })
+        }
+
+        // 1.5 More like your week — a private, on-device blend of related tracks seeded by the
+        //     songs you've actually listened to most. No account, no tracking.
+        if (recommended.isNotEmpty()) {
+            out += HomeSection("More like your week", recommended)
         }
 
         // 2. Quick picks — YT personalised home shelf, present when signed in.
