@@ -61,4 +61,35 @@ interface PlayEventDao {
         "SELECT DISTINCT date(playedAt / 1000, 'unixepoch', 'localtime') FROM play_events ORDER BY 1 DESC"
     )
     fun distinctPlayDays(): Flow<List<String>>
+
+    /** Listened time bucketed by local hour-of-day (0–23) — powers the "when you listen" chart. */
+    @Query(
+        """
+        SELECT CAST(strftime('%H', playedAt / 1000, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+               SUM(listenedMs) AS totalMs
+        FROM play_events
+        GROUP BY hour
+        ORDER BY hour
+        """
+    )
+    fun hourlyTotals(): Flow<List<HourStat>>
+
+    /** Tracks you keep coming back to — ranked by play *count* (then time). "Comfort songs." */
+    @Query(
+        """
+        SELECT s.id AS id, s.title AS title, s.artist AS artist, s.thumbnailUrl AS thumbnailUrl,
+               SUM(e.listenedMs) AS totalMs, COUNT(*) AS plays
+        FROM play_events e
+        JOIN songs s ON s.id = e.songId
+        GROUP BY e.songId
+        HAVING plays >= 2
+        ORDER BY plays DESC, totalMs DESC
+        LIMIT :limit
+        """
+    )
+    fun mostReplayed(limit: Int): Flow<List<SongStat>>
+
+    /** Epoch-millis of the very first logged play, for the "listening since …" line. */
+    @Query("SELECT MIN(playedAt) FROM play_events")
+    fun firstPlayedAt(): Flow<Long?>
 }

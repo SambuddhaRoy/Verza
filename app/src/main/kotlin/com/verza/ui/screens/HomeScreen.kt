@@ -190,6 +190,7 @@ private fun styleFor(title: String): SectionStyle = when {
     title.equals("Keep listening", ignoreCase = true) -> SectionStyle.DENSE_GRID
     title.equals("From your liked songs", ignoreCase = true) -> SectionStyle.DENSE_GRID
     title.equals("Your daily discover", ignoreCase = true) -> SectionStyle.LARGE
+    title.equals("More like your week", ignoreCase = true) -> SectionStyle.LARGE
     title.startsWith("Similar to", ignoreCase = true) -> SectionStyle.LARGE
     title.equals("Browse charts and trending", ignoreCase = true) -> SectionStyle.DENSE_CARDS
     else -> SectionStyle.STANDARD

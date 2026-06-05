@@ -39,6 +39,9 @@ fun StatsScreen(
     val topSongs by viewModel.topSongs.collectAsStateWithLifecycle()
     val topArtists by viewModel.topArtists.collectAsStateWithLifecycle()
     val streak by viewModel.dayStreak.collectAsStateWithLifecycle()
+    val fingerprint by viewModel.fingerprint.collectAsStateWithLifecycle()
+    val comfortSongs by viewModel.comfortSongs.collectAsStateWithLifecycle()
+    val firstPlayedAt by viewModel.firstPlayedAt.collectAsStateWithLifecycle()
 
     val isEmpty = totalPlays == 0
 
@@ -75,6 +78,15 @@ fun StatsScreen(
                     color = colors.onBackground,
                     modifier = Modifier.padding(start = 8.dp),
                 )
+                firstPlayedAt?.let { since ->
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Listening since ${formatSince(since)}",
+                        style = CaptionItalic,
+                        color = ext.muted,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
             }
         }
 
@@ -104,6 +116,18 @@ fun StatsScreen(
             }
         }
 
+        // ── When you listen (fingerprint) ────────────────────────────────────
+        if (fingerprint.hasData) {
+            item { EditorialSectionHeader("When you listen") }
+            item { ListeningChart(fingerprint) }
+        }
+
+        // ── Comfort songs (most replayed) ────────────────────────────────────
+        if (comfortSongs.isNotEmpty()) {
+            item { EditorialSectionHeader("You keep coming back to") }
+            itemsIndexedSongs(comfortSongs, keyPrefix = "comfort", showPlays = true)
+        }
+
         // ── Top artists ──────────────────────────────────────────────────────
         if (topArtists.isNotEmpty()) {
             item { EditorialSectionHeader("Top artists") }
@@ -113,7 +137,7 @@ fun StatsScreen(
         // ── Top tracks ───────────────────────────────────────────────────────
         if (topSongs.isNotEmpty()) {
             item { EditorialSectionHeader("Top tracks") }
-            itemsIndexedSongs(topSongs)
+            itemsIndexedSongs(topSongs, keyPrefix = "top")
         }
     }
 }
@@ -125,9 +149,14 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedArtists(a
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedSongs(songs: List<SongStat>) {
-    itemsIndexed(songs, key = { _, s -> s.id }) { index, song ->
-        SongStatRow(rank = index + 1, song = song)
+private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedSongs(
+    songs: List<SongStat>,
+    keyPrefix: String,
+    showPlays: Boolean = false,
+) {
+    // Prefix the key so the same song appearing in two sections (e.g. comfort + top) stays unique.
+    itemsIndexed(songs, key = { _, s -> "$keyPrefix:${s.id}" }) { index, song ->
+        SongStatRow(rank = index + 1, song = song, showPlays = showPlays)
     }
 }
 
@@ -184,7 +213,7 @@ private fun ArtistRow(rank: Int, artist: ArtistStat) {
 }
 
 @Composable
-private fun SongStatRow(rank: Int, song: SongStat) {
+private fun SongStatRow(rank: Int, song: SongStat, showPlays: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     val art = rememberSongArtwork(song.title, song.artist, song.thumbnailUrl)
@@ -229,13 +258,73 @@ private fun SongStatRow(rank: Int, song: SongStat) {
                 )
             }
             Text(
-                formatDuration(song.totalMs),
+                if (showPlays) "${song.plays} plays" else formatDuration(song.totalMs),
                 style = CaptionItalic,
                 color = ext.muted,
             )
         }
         HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass, modifier = Modifier.padding(horizontal = 24.dp))
     }
+}
+
+/** The 24-hour "when you listen" chart + a one-line personality + the peak hour. */
+@Composable
+private fun ListeningChart(fingerprint: ListeningFingerprint) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+        Text(
+            "You're ${fingerprint.daypartLabel}.",
+            style = MaterialTheme.typography.headlineSmall,
+            color = colors.onBackground,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            "Peak listening around ${formatHour(fingerprint.peakHour)}",
+            style = CaptionItalic,
+            color = ext.muted,
+        )
+        Spacer(Modifier.height(16.dp))
+        // 24 bars, one per hour, growing from the baseline.
+        Row(
+            modifier = Modifier.fillMaxWidth().height(76.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            fingerprint.shape.forEachIndexed { hour, value ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(value.coerceAtLeast(0.03f))
+                        .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                        .background(
+                            if (hour == fingerprint.peakHour) colors.primary
+                            else colors.primary.copy(alpha = 0.28f),
+                        ),
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            listOf("12a", "6a", "12p", "6p", "12a").forEach {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = ext.muted)
+            }
+        }
+    }
+}
+
+/** "9 am", "1 pm", "12 am" — a friendly hour label. */
+private fun formatHour(hour: Int): String = when {
+    hour == 0 -> "12 am"
+    hour < 12 -> "$hour am"
+    hour == 12 -> "12 pm"
+    else -> "${hour - 12} pm"
+}
+
+/** First-play epoch-millis → "March 2026". */
+private fun formatSince(ms: Long): String {
+    val date = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+    return date.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.getDefault()))
 }
 
 /** Formats milliseconds as a friendly listening duration: "12m", "3h 24m", "1d 4h". */
