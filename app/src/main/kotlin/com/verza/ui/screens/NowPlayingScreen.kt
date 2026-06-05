@@ -79,15 +79,28 @@ fun NowPlayingScreen(
     onPlayQueueItem: (Int) -> Unit,
     onRemoveQueueItem: (Int) -> Unit,
     onAddToPlaylist: () -> Unit,
+    onEnterAmbient: () -> Unit,
     sleepTimerEndAt: Long?,
     onSetSleepTimer: (Long?) -> Unit,
+    onWindDown: (Long) -> Unit,
     onSleepTimerEndOfTrack: () -> Unit,
+    focusActive: Boolean,
+    focusEndAt: Long?,
+    onStartFocus: (Long?) -> Unit,
+    onEndFocus: () -> Unit,
+    focusCompleteMinutes: Int?,
+    onConsumeFocusComplete: () -> Unit,
     albumArtMotion: Boolean = true,
     sleeveMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Opens the "share this track as a poster" card; used from both Sleeve and standard layouts.
     var showShareCard by remember { mutableStateOf(false) }
+    // Opens the editorial liner-notes sheet for the current track.
+    var showLinerNotes by remember { mutableStateOf(false) }
+    // Opens the Focus/Flow session sheet (duration picker / active-session controls).
+    var showFocusSheet by remember { mutableStateOf(false) }
+    val focusRemaining = rememberSleepCountdown(focusEndAt)
 
     // Editorial "Sleeve" poster surface fully replaces the standard layout when enabled.
     if (sleeveMode) {
@@ -121,6 +134,10 @@ fun NowPlayingScreen(
                 onRemoveDownload = onRemoveDownload,
                 onAddToPlaylist = onAddToPlaylist,
                 onShare = { showShareCard = true },
+                onAmbient = onEnterAmbient,
+                onLinerNotes = { showLinerNotes = true },
+                onFocus = { showFocusSheet = true },
+                focusActive = focusActive,
                 modifier = Modifier.fillMaxSize(),
             )
             if (showShareCard) {
@@ -131,6 +148,28 @@ fun NowPlayingScreen(
                     onDismiss = { showShareCard = false },
                 )
             }
+            if (showLinerNotes) {
+                LinerNotesSheet(
+                    title = title,
+                    artist = artist,
+                    artworkUrl = artworkUrl,
+                    onDismiss = { showLinerNotes = false },
+                )
+            }
+            if (showFocusSheet) {
+                FocusSheet(
+                    active = focusActive,
+                    remaining = focusRemaining,
+                    onStart = { onStartFocus(it); showFocusSheet = false },
+                    onEnd = { onEndFocus(); showFocusSheet = false },
+                    onDismiss = { showFocusSheet = false },
+                )
+            }
+            FocusCompleteBanner(
+                minutes = focusCompleteMinutes,
+                onConsume = onConsumeFocusComplete,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
         return
     }
@@ -225,6 +264,14 @@ fun NowPlayingScreen(
                             onClick = { menuOpen = false; showShareCard = true },
                         )
                         DropdownMenuItem(
+                            text = { Text("Ambient display") },
+                            onClick = { menuOpen = false; onEnterAmbient() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Liner notes") },
+                            onClick = { menuOpen = false; showLinerNotes = true },
+                        )
+                        DropdownMenuItem(
                             text = { Text("Lyrics") },
                             onClick = { menuOpen = false; onOpenLyrics() },
                         )
@@ -239,6 +286,18 @@ fun NowPlayingScreen(
                         DropdownMenuItem(
                             text = { Text(if (sleepRemaining != null) "Sleep timer · $sleepRemaining" else "Sleep timer") },
                             onClick = { menuOpen = false; showSleepSheet = true },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    when {
+                                        focusActive && focusRemaining != null -> "Focus · $focusRemaining"
+                                        focusActive -> "Focus session · on"
+                                        else -> "Focus session"
+                                    }
+                                )
+                            },
+                            onClick = { menuOpen = false; showFocusSheet = true },
                         )
                         HorizontalDivider()
                         if (isDownloaded) {
@@ -496,6 +555,20 @@ fun NowPlayingScreen(
                 onDismiss = { showShareCard = false },
             )
         }
+        FocusCompleteBanner(
+            minutes = focusCompleteMinutes,
+            onConsume = onConsumeFocusComplete,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+    }
+
+    if (showLinerNotes) {
+        LinerNotesSheet(
+            title = title,
+            artist = artist,
+            artworkUrl = artworkUrl,
+            onDismiss = { showLinerNotes = false },
+        )
     }
 
     if (showSleepSheet) {
@@ -504,6 +577,10 @@ fun NowPlayingScreen(
             remaining = sleepRemaining,
             onPick = { minutes ->
                 onSetSleepTimer(minutes * 60_000L)
+                showSleepSheet = false
+            },
+            onWindDown = { minutes ->
+                onWindDown(minutes * 60_000L)
                 showSleepSheet = false
             },
             onEndOfTrack = {
@@ -517,6 +594,16 @@ fun NowPlayingScreen(
             onDismiss = { showSleepSheet = false },
         )
     }
+
+    if (showFocusSheet) {
+        FocusSheet(
+            active = focusActive,
+            remaining = focusRemaining,
+            onStart = { onStartFocus(it); showFocusSheet = false },
+            onEnd = { onEndFocus(); showFocusSheet = false },
+            onDismiss = { showFocusSheet = false },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -525,6 +612,7 @@ private fun SleepTimerSheet(
     active: Boolean,
     remaining: String?,
     onPick: (Int) -> Unit,
+    onWindDown: (Int) -> Unit,
     onEndOfTrack: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
@@ -549,6 +637,19 @@ private fun SleepTimerSheet(
                 SleepOption(label = "$minutes minutes", onClick = { onPick(minutes) })
             }
             SleepOption(label = "End of track", onClick = onEndOfTrack)
+
+            Spacer(Modifier.height(16.dp))
+            Text("Wind down", style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
+            Text(
+                text = "A long, gradual fade across the final minutes — drift off without a hard cut.",
+                style = MaterialTheme.typography.bodySmall,
+                color = ext.muted,
+            )
+            Spacer(Modifier.height(8.dp))
+            listOf(30, 45, 60).forEach { minutes ->
+                SleepOption(label = "Wind down over $minutes minutes", onClick = { onWindDown(minutes) })
+            }
+
             if (active) {
                 Spacer(Modifier.height(4.dp))
                 SleepOption(label = "Turn off timer", tint = colors.primary, onClick = onCancel)
@@ -570,6 +671,108 @@ private fun SleepOption(label: String, tint: Color? = null, onClick: () -> Unit)
             .clickable(onClick = onClick)
             .padding(vertical = 14.dp, horizontal = 4.dp),
     )
+}
+
+/**
+ * Focus / Flow session sheet. Starts a "deep work" block where the queue is kept topped up so
+ * music never breaks the flow, and a timed block fades out gently when it's up. When a session is
+ * already running this shows the live status and an "End session" action instead of the picker.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FocusSheet(
+    active: Boolean,
+    remaining: String?,
+    onStart: (Long?) -> Unit,
+    onEnd: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text("Focus session", style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
+            Text(
+                text = "Uninterrupted flow for deep work — the music keeps going on its own, so silence never breaks your concentration.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ext.muted,
+            )
+            Spacer(Modifier.height(12.dp))
+            if (active) {
+                Text(
+                    text = if (remaining != null) "In focus · $remaining left" else "In focus · open-ended",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.primary,
+                )
+                Spacer(Modifier.height(8.dp))
+                SleepOption(label = "End session", tint = colors.primary, onClick = onEnd)
+            } else {
+                listOf(25, 50, 90).forEach { minutes ->
+                    SleepOption(label = "$minutes minutes", onClick = { onStart(minutes * 60_000L) })
+                }
+                SleepOption(label = "Open-ended", onClick = { onStart(null) })
+            }
+        }
+    }
+}
+
+/**
+ * A brief, self-dismissing banner shown when a Focus session finishes, e.g. "Focused for 50 min".
+ * Renders nothing when [minutes] is null. Calls [onConsume] after a few seconds to clear the event.
+ */
+@Composable
+private fun FocusCompleteBanner(
+    minutes: Int?,
+    onConsume: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    // Latch the last non-null value so the label survives the slide-out after the event clears.
+    var shown by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(minutes) {
+        if (minutes != null) {
+            shown = minutes
+            kotlinx.coroutines.delay(4_000)
+            onConsume()
+        }
+    }
+    androidx.compose.animation.AnimatedVisibility(
+        visible = minutes != null,
+        enter = androidx.compose.animation.fadeIn() +
+            androidx.compose.animation.slideInVertically { -it },
+        exit = androidx.compose.animation.fadeOut() +
+            androidx.compose.animation.slideOutVertically { -it },
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(top = 12.dp)
+                .clip(RoundedCornerShape(50))
+                .background(colors.primaryContainer)
+                .clickable(onClick = onConsume)
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = colors.onPrimaryContainer,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = shown?.let { "Focused for $it min" } ?: "Focus complete",
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.onPrimaryContainer,
+            )
+        }
+    }
 }
 
 /**
