@@ -26,6 +26,10 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE id = :id")
     suspend fun get(id: String): SongEntity?
 
+    /** Every song row — used by the library backup/export. */
+    @Query("SELECT * FROM songs")
+    suspend fun getAll(): List<SongEntity>
+
     @Upsert
     suspend fun upsert(song: SongEntity)
 }
