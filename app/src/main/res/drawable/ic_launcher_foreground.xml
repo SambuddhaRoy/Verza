@@ -2,16 +2,14 @@
 <!--
   Launcher icon foreground — "The Fold" mark, inset.
 
-  Same geometry as the original design, scaled to 0.65× from the icon's centre and
-  re-centred at (256, 256) so the content occupies the inner ~50 % of the 108 dp
-  canvas. This matches the convention used by most modern app icons (Spotify,
-  Apple Music, Snapchat) — content lives well inside the safe-zone circle and the
-  outer canvas reads as deliberate page margin.
+  The mark is geometrically centred at (256, 256), but it's top-heavy (wide pages up
+  top tapering to a point at the bottom), so its *optical* centre sits above the middle
+  and the logo read as sitting too high. The whole mark is nudged down 30 viewport units
+  via the wrapping <group> so it reads as vertically balanced inside the safe zone.
 
-  Reference for the new geometry (computed from the original 512-space SVG by
-  scale = 0.65 around centre (256, 246) → new centre (256, 256)):
-    Left page:  64,72 → 196,72 → 252,420 → 256,420
-    Right page: 448,72 → 316,72 → 260,420 → 256,420
+  Base geometry (computed from the original 512-space SVG by scale = 0.65 around centre):
+    Left page:  131,143 → 217,143 → 253,369 → 256,369
+    Right page: 381,143 → 295,143 → 259,369 → 256,369
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -19,32 +17,34 @@
     android:viewportWidth="512"
     android:viewportHeight="512">
 
-    <!-- Left page (ink). Inner-50 % version. -->
-    <path
-        android:fillColor="#0C0C0C"
-        android:pathData="M 131,143 L 217,143 L 253,369 L 256,369 Z"/>
+    <group android:translateY="30">
 
-    <!-- Right page (ink). Mirror of the left. -->
-    <path
-        android:fillColor="#0C0C0C"
-        android:pathData="M 381,143 L 295,143 L 259,369 L 256,369 Z"/>
+        <!-- Left page (ink). Inner-50 % version. -->
+        <path
+            android:fillColor="#0C0C0C"
+            android:pathData="M 131,143 L 217,143 L 253,369 L 256,369 Z"/>
 
-    <!--
-      Suggestion-of-text lines. Same proportions to each page as the original, scaled
-      with the rest. Stroke width is bumped slightly (1.5 → 1.0 viewport units, which
-      after 0.65 scale renders at roughly the same on-device weight as before).
-    -->
-    <path
-        android:strokeColor="#F5F1EA"
-        android:strokeWidth="1.0"
-        android:strokeAlpha="0.25"
-        android:pathData="
-            M 145,158 L 194,158
-            M 143,166 L 190,166
-            M 143,175 L 192,175
-            M 145,183 L 195,183
-            M 318,158 L 367,158
-            M 322,166 L 369,166
-            M 320,175 L 369,175
-            M 317,183 L 367,183"/>
+        <!-- Right page (ink). Mirror of the left. -->
+        <path
+            android:fillColor="#0C0C0C"
+            android:pathData="M 381,143 L 295,143 L 259,369 L 256,369 Z"/>
+
+        <!--
+          Suggestion-of-text lines. Same proportions to each page as the original, scaled
+          with the rest.
+        -->
+        <path
+            android:strokeColor="#F5F1EA"
+            android:strokeWidth="1.0"
+            android:strokeAlpha="0.25"
+            android:pathData="
+                M 145,158 L 194,158
+                M 143,166 L 190,166
+                M 143,175 L 192,175
+                M 145,183 L 195,183
+                M 318,158 L 367,158
+                M 322,166 L 369,166
+                M 320,175 L 369,175
+                M 317,183 L 367,183"/>
+    </group>
 </vector>
