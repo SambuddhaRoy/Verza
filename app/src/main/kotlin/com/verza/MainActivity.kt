@@ -1,6 +1,7 @@
 package com.verza
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -23,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.audio.AudioVisualizer
 import com.verza.audio.HapticPlayer
 import com.verza.audio.VisualizerSignal
+import com.verza.data.SessionInbox
 import com.verza.playback.PlaybackViewModel
 import com.verza.ui.navigation.Screen
 import com.verza.ui.navigation.VerzaNavigation
@@ -57,6 +59,8 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition { !splashReady }
         super.onCreate(savedInstanceState)
+        // A verza://session/... link may have launched us cold — hand it to the playback owner.
+        handleSessionIntent(intent)
         enableEdgeToEdge()
         setContent {
             // Ask for notification permission so the media-playback foreground service
@@ -207,6 +211,21 @@ class MainActivity : ComponentActivity() {
                     ) { navContent() }
                 }
             }
+        }
+    }
+
+    /** Re-delivered while we're already running (singleTop) — e.g. a session link tapped in a chat. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleSessionIntent(intent)
+    }
+
+    /** Posts an incoming verza://session/... link to the inbox; the playback owner loads it. */
+    private fun handleSessionIntent(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (intent.action == Intent.ACTION_VIEW && data.scheme == "verza" && data.host == "session") {
+            SessionInbox.post(data.toString())
         }
     }
 }

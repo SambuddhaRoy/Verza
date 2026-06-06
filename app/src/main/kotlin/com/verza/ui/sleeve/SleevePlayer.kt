@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SelfImprovement
@@ -108,6 +109,7 @@ fun SleevePlayer(
     onAmbient: () -> Unit,
     onLinerNotes: () -> Unit,
     onFocus: () -> Unit,
+    onShareSession: () -> Unit,
     focusActive: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -301,6 +303,12 @@ fun SleevePlayer(
                     contentDescription = "Share as image",
                     tint = sub,
                     onClick = onShare,
+                )
+                SleeveActionIcon(
+                    icon = Icons.Filled.Link,
+                    contentDescription = "Share listening session",
+                    tint = sub,
+                    onClick = onShareSession,
                 )
             }
 

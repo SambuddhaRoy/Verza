@@ -48,6 +48,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onSignIn: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenEqualizer: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -265,6 +266,32 @@ fun SettingsScreen(
                 AudioQualityRow(AudioQuality.HIGH, "High", "Best available bitrate", audioQuality == AudioQuality.HIGH) { viewModel.setAudioQuality(AudioQuality.HIGH) }
                 AudioQualityRow(AudioQuality.MEDIUM, "Medium", "About 128 kbps", audioQuality == AudioQuality.MEDIUM) { viewModel.setAudioQuality(AudioQuality.MEDIUM) }
                 AudioQualityRow(AudioQuality.LOW, "Low", "Data saver", audioQuality == AudioQuality.LOW) { viewModel.setAudioQuality(AudioQuality.LOW) }
+            }
+        }
+
+        // ── Sound ───────────────────────────────────────────────────────────────
+        item { SectionHeader("Sound") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pressableScale(onClick = onOpenEqualizer)
+                        .padding(vertical = 14.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Equalizer", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+                        Text("Tune the bands, bass, and volume leveling", style = CaptionItalic, color = ext.muted)
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = ext.muted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
             }
         }
 

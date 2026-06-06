@@ -90,6 +90,7 @@ fun NowPlayingScreen(
     onEndFocus: () -> Unit,
     focusCompleteMinutes: Int?,
     onConsumeFocusComplete: () -> Unit,
+    onBuildSessionLink: () -> String?,
     albumArtMotion: Boolean = true,
     sleeveMode: Boolean = false,
     modifier: Modifier = Modifier,
@@ -101,6 +102,14 @@ fun NowPlayingScreen(
     // Opens the Focus/Flow session sheet (duration picker / active-session controls).
     var showFocusSheet by remember { mutableStateOf(false) }
     val focusRemaining = rememberSleepCountdown(focusEndAt)
+
+    // Build + share the current queue as a verza:// "listen along" link (used from both layouts).
+    val shareCtx = LocalContext.current
+    val shareSession: () -> Unit = {
+        val link = onBuildSessionLink()
+        if (link != null) shareSessionLink(shareCtx, link)
+        else android.widget.Toast.makeText(shareCtx, "Nothing to share yet", android.widget.Toast.LENGTH_SHORT).show()
+    }
 
     // Editorial "Sleeve" poster surface fully replaces the standard layout when enabled.
     if (sleeveMode) {
@@ -137,6 +146,7 @@ fun NowPlayingScreen(
                 onAmbient = onEnterAmbient,
                 onLinerNotes = { showLinerNotes = true },
                 onFocus = { showFocusSheet = true },
+                onShareSession = shareSession,
                 focusActive = focusActive,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -278,6 +288,10 @@ fun NowPlayingScreen(
                         DropdownMenuItem(
                             text = { Text("Add to playlist…") },
                             onClick = { menuOpen = false; onAddToPlaylist() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Share listening session") },
+                            onClick = { menuOpen = false; shareSession() },
                         )
                         DropdownMenuItem(
                             text = { Text("Start radio") },
@@ -896,6 +910,19 @@ private fun shareSong(context: Context, title: String, artist: String, url: Stri
 private fun copyToClipboard(context: Context, text: String) {
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     cm.setPrimaryClip(ClipData.newPlainText("Song link", text))
+}
+
+/** Shares a verza:// "listen along" session link via the system chooser. */
+private fun shareSessionLink(context: Context, link: String) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "Listen along on Verza")
+        putExtra(
+            Intent.EXTRA_TEXT,
+            "Pick up where I'm at — open this in Verza to play the same set:\n$link",
+        )
+    }
+    context.startActivity(Intent.createChooser(intent, "Share listening session"))
 }
 
 private fun formatTime(ms: Long): String {
