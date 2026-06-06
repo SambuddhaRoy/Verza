@@ -4,7 +4,7 @@
 
 ### A YouTube Music client for Android, with an editorial soul.
 
-*The full YouTube Music catalogue — no ads, real album art, offline downloads, and synced lyrics — wrapped in a living, sound-reactive background and **Sleeve**, a cover-driven editorial appearance. Built from scratch in Kotlin + Jetpack Compose.*
+*The full YouTube Music catalogue — no ads, real album art, offline downloads, and synced lyrics — wrapped in a living, sound-reactive background and **Sleeve**, a cover-driven editorial appearance. A graphic equalizer, focus sessions, an ambient display, private listening stats and shareable sessions round it out. Built from scratch in Kotlin + Jetpack Compose, with no Google Play Services dependency.*
 
 <br/>
 
@@ -58,20 +58,40 @@ A **cover-driven editorial mode** — serif type, film grain, glass chrome, and 
 <tr>
 <td valign="top">
 
-### 🎨 Identity
-**Material You** by default · nine curated palettes incl. the **Atelier** pair · Cormorant Garamond / Newsreader display type
+### 🎚️ Sound
+A graphic **equalizer**, **bass boost**, and **volume leveling** — bound to the live audio session, loaded only when you use them
+
+</td>
+<td valign="top">
+
+### 🧘 Focus & rest
+**Focus sessions** that never break the flow · a **wind-down** fade · **gentle start** on resume · an **ambient** lean-back display
 
 </td>
 <td valign="top">
 
 ### 📊 Your Sound
-Top tracks & artists by **real listened time**, totals, and a day streak — from a local play-event log
+A private, on-device **Wrapped** — top tracks by real listened time, a *when-you-listen* fingerprint, and your comfort songs
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🔗 Listen along
+Share your queue as a **`verza://` link** — a friend opens it and picks up the **same set, same spot**. No account, no server
 
 </td>
 <td valign="top">
 
-### 🖼️ Real album art
-Songs throughout the app pull the **actual cover** from iTunes Search — no more random music-video frames
+### 💾 Yours to keep
+**Local music**, playlists, and a one-file **export / import** of your whole library · long-press anything on Home
+
+</td>
+<td valign="top">
+
+### 🪶 Free & clean
+**No Google Play Services** — bundled OFL fonts, no trackers, no ads. Ready for **F-Droid / IzzyOnDroid**
 
 </td>
 </tr>
@@ -135,7 +155,7 @@ Songs throughout the app pull the **actual cover** from iTunes Search — no mor
 4. A **"Play Protect" warning** appears for any app not from the Play Store — tap **Install anyway** (sometimes under **More details**).
 5. Launch Verza from your app drawer. A short first-run setup lets you choose sign-in, theme, appearance and glow.
 
-> **Requirements:** Android 8.0 Oreo (API 26)+. ~10 MB storage. The fluid shader glow uses the GPU on Android 13+; older devices get a lighter gradient glow automatically.
+> **Requirements:** Android 8.0 Oreo (API 26)+. ~6 MB download (~20 MB installed). The fluid shader glow uses the GPU on Android 13+; older devices get a lighter gradient glow automatically.
 
 <details>
 <summary><b>Why does Android show a "Play Protect" warning?</b></summary>
@@ -161,21 +181,35 @@ To silence it entirely on a phone you trust Verza on: **Settings → Security �
 - **Full YouTube Music catalogue** via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) — handles signature deciphering and the `n`-parameter rolling cipher, so streams play on a clean install with no auth.
 - **Resilient stream resolver** — tries progressive HTTP audio → DASH stream URLs → a video-with-audio fallback → the page-level DASH manifest, so playback survives YouTube's periodic format changes.
 - **Account sign-in (optional)** — your personalised home, saved playlists, followed artists, and server-side Liked Songs, with likes pushed back to your account.
+- **Local music** — play audio stored on your device alongside streams, and build playlists from either.
 - **Offline downloads** to app-private storage; the resolver prefers local files, so downloaded tracks play with no network.
-- **Song radio**, **sleep timer** (15/30/45/60 min or end-of-track, with a soft fade-out and live countdown), **skip silence**, an **audio-quality** picker, and **queue persistence** across cold starts.
+- **Queue control** — *play next*, *add to queue* (a song, album or whole playlist), **loop** a track or the queue, shuffle, and a persisted queue across cold starts.
+- **Song radio**, **gapless** playback, **skip silence**, and an **audio-quality** picker.
 - Foreground **Media3** service with lock-screen / notification controls.
+
+### Sound
+- A graphic **equalizer** with per-band gain on the device's real band layout, a **bass-boost** slider, and **volume leveling** that lifts quiet tracks toward a steadier perceived loudness.
+- Effects bind to the live ExoPlayer audio session and are only loaded once you actually engage one — no audio-framework work at startup for everyone else. *(Settings → Sound → Equalizer)*
+
+### Wind down & focus
+- **Sleep timer** — 15/30/45/60 min or end-of-track, with a soft fade-out and a live countdown.
+- **Wind-down** — a long, gradual fade across the final minutes instead of a hard cut, for drifting off.
+- **Gentle start** — eases the volume up when you resume, a soft "sunrise".
+- **Focus / Flow sessions** — a timed (or open-ended) deep-work block that keeps the queue topped up with a radio continuation so silence never breaks your concentration, then fades out with a "you focused for *N* minutes" summary.
 
 ### The living glow
 - A flowing, domain-warped **fluid field** rendered with a real **AGSL `RuntimeShader`** on Android 13+, with a multi-radial-gradient fallback on older devices.
 - **Album-art adaptive colours** — a vibrant palette extracted from the current cover (AndroidX Palette) tints the glow.
 - **Sound reactivity (optional)** — an FFT visualizer drives the glow's motion and brightness with the music's bass / mid / treble.
+- **Mood-adaptive** — high-energy tracks warm and brighten the glow; mellow ones cool and calm it, eased over a long window so it breathes.
+- **Feel the beat** — optional **haptics** that tap along with the bass, reading playback only (the same signal as the glow — never the microphone).
 - Colour presets, three intensity stops, and a **de-monochrome** colour derivation that keeps even Material You's palette lively.
 
 ### Sleeve — the editorial appearance
 An opt-in, **cover-driven** mode (Settings → Appearance) inspired by record-label landing pages. Every surface — background, cards, chrome, type — recolours from the **current cover art** and floats over the live glow.
 
 - **Typography** — **Newsreader** serif at a light regular weight with tight tracking for all titles; **IBM Plex Mono** for wide-tracked eyebrows, indices and timecodes.
-- **Poster Now Playing** — the full-bleed cover **dissolves into the reactive glow at its edges** (no frame, no seam). The **queue is contextual**: the current song is framed second from the top, set large and bold, and switching songs **animates the type and scroll**. Like · Radio · Lyrics · Download all live on the poster.
+- **Poster Now Playing** — the full-bleed cover **dissolves into the reactive glow at its edges** (no frame, no seam). The **queue is contextual**: the current song is framed second from the top, set large and bold, and switching songs **animates the type and scroll**. Like · Add-to-playlist · Radio · Download sit on the poster, with a ⋯ "More" menu for focus, sleep/wind-down, ambient, and sharing — full parity with the standard player.
 - **Texture** — film grain, an edge vignette, chromatic-aberration headlines, mono superscript numerals, and moody cover-colour backdrops give it a printed, photographic feel.
 - **Carried app-wide** — a mono dateline masthead on Home, full-bleed Album and moody Playlist headers, **translucent "glass" nav, cards and mini-player**, and editorial track listings throughout.
 - **"Adaptive · cover"** — a standalone theme that brings the same cover-sampled colour scheme to the standard (non-Sleeve) UI.
@@ -188,20 +222,34 @@ An opt-in, **cover-driven** mode (Settings → Appearance) inspired by record-la
 - A cold-launch **boot animation** and the **"Fold"** launcher icon (with an Android-13 themed-icon variant).
 
 ### Home, Search & Library
-- **Home** — a personal-first feed (*Recently Played*, *Quick Picks*, *Your Daily Discover*, *Keep Listening*, *From Your Liked Songs*, *Your YouTube Playlists*, *Similar to …*) with **mixed section sizes** for rhythm.
+- **Home** — a personal-first feed (*Recently Played*, *Quick Picks*, *Your Daily Discover*, *Keep Listening*, *From Your Liked Songs*, *Your YouTube Playlists*, *Similar to …*) with **mixed section sizes** for rhythm, plus **"More like your week"** — recommendations seeded from your most-listened tracks and computed **on your phone**, with no server-side profiling.
+- **Long-press** any song, album or playlist on Home for quick actions — play, play next, add to queue, start a radio, or like it.
 - **Search** — filter tabs (**Songs · Albums · Artists · Playlists**), as-you-type autocomplete, and clearable recent-search chips.
 - **Library** — **Recently played** + **Liked** (Room-backed, offline), a **Downloaded** tab, a **Playlists** tab (local + saved YT playlists), and a **Followed artists** tab. *Add to playlist* on any track from any row.
 
-### Now Playing & Lyrics
-- Full-bleed artwork, scrubbable progress, the **Like · Radio · Lyrics · Queue** action row, and an overflow menu (Share, Copy link, Start radio, Sleep timer, Download / Remove).
+### Now Playing, Lyrics & extras
+- Full-bleed artwork, scrubbable progress, the **Like · Radio · Lyrics · Queue** action row, and an overflow with focus, sleep/wind-down, ambient, liner notes, add-to-playlist, radio, share and download — **all reachable in both the standard and Sleeve layouts** (Sleeve folds the occasional actions into a ⋯ "More" menu).
 - **Synced (LRC) lyrics** from [LRCLIB](https://lrclib.net) with line-by-line auto-scroll, a plain-text fallback, and caching per `(title, artist, duration)`.
+- **Ambient display** — a full-screen, screen-on clock with a slowly drifting cover, for a desk or nightstand. Tap anywhere to exit.
+- **Liner notes** — an editorial card about what's playing (album, year, genre, and a few words), assembled on the fly from iTunes Search + Wikipedia.
+- **Share cards** — export the Now-Playing poster (or a lyric) as a still **image** *or* a short **video** with a cinematic push-in, via the system share sheet.
 
-### Your Sound (listening stats)
-- An editorial insights page from a local **play-event log**: total time listened, tracks played, a **day streak**, and your **top artists & tracks** ranked by *real* engaged listening time (paused gaps excluded).
+### Your Sound — a private, always-on Wrapped
+- An editorial insights page from a **local play-event log** — nothing leaves your phone: total time listened, a **day streak**, your **top artists & tracks** by *real* engaged listening time (paused gaps excluded), a **"when you listen"** 24-hour fingerprint ("you're a night owl"), the **comfort songs** you keep coming back to, and your "listening since" date.
 
-### Onboarding & Settings
+### Listen along
+- Share your current queue as a compact, gzipped **`verza://session/…` link**; a friend opens it in Verza and picks up the **same set at the same spot**. No account, no server, no personal data — only streamable tracks travel, and an incoming link is validated and **confirmed before it loads**.
+
+### Own your library
+- Export everything you've built — likes (with state), playlists, and your full listening history — to **a single JSON file you own**, and merge it back idempotently on any device. The sign-in cookie is never included.
+
+### Onboarding, the tour & Settings
 - A six-step **first-run setup**: welcome → optional sign-in → theme → **appearance (Standard or Sleeve)** → glow + **sound reactivity** → done.
-- **Settings** — General (start screen), **Appearance** (Sleeve), Playback (resume-on-open, skip silence, album-art motion), Audio quality, Theme, Background glow (enable / colour / intensity / reactivity), Search (save & clear history), and Data (reset listening stats).
+- A **guided feature tour** offered at the end of setup (and re-openable any time from **Settings → Help → Take the tour**): a swipeable walkthrough of every feature that says plainly *where to find it* and how to use it.
+- **Settings** — General (start screen), **Appearance** (Sleeve), Playback (resume-on-open, skip silence, album-art motion, **gentle start**), Audio quality, **Sound** (equalizer / bass / loudness), Theme, Background glow (enable / colour / intensity / reactivity / **Feel the beat**), Search (save & clear history), Data (**export / import** library, reset listening stats), and Help.
+
+### Built to be free
+- **No Google Play Services dependency.** Fonts are bundled as OFL files in the app rather than fetched from the proprietary downloadable-fonts provider, so Verza is clean for **F-Droid / IzzyOnDroid**. No analytics, no trackers, no ads — see [Privacy](#privacy).
 
 ---
 
@@ -210,10 +258,10 @@ An opt-in, **cover-driven** mode (Settings → Appearance) inspired by record-la
 | Layer | Tech |
 |---|---|
 | **Language** | Kotlin 2.0 |
-| **UI** | Jetpack Compose · Material 3 · Coil 3 · AGSL `RuntimeShader` |
-| **Playback** | Media3 / ExoPlayer · custom `ResolvingDataSource` |
+| **UI** | Jetpack Compose · Material 3 · Coil 3 · AGSL `RuntimeShader` · bundled OFL fonts (no Play Services) |
+| **Playback** | Media3 / ExoPlayer · custom `ResolvingDataSource` · Media3 Transformer (video share export) |
 | **Stream extraction** | [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) (Mozilla Rhino for the signature cipher) |
-| **Colour & audio FX** | AndroidX Palette (album colours) · `android.media.audiofx.Visualizer` (FFT reactivity) |
+| **Colour & audio FX** | AndroidX Palette (album colours) · `Visualizer` (FFT reactivity + haptics) · `Equalizer` / `BassBoost` / `LoudnessEnhancer` |
 | **HTTP** | Ktor for InnerTube · OkHttp shared across the app |
 | **DI** | Hilt |
 | **Persistence** | Room (history / likes / downloads / local playlists / play events) · DataStore (preferences + queue) |
@@ -228,7 +276,8 @@ Verza is a three-module Android project:
 
 ```
 :app          Compose UI, ViewModels, Hilt graph, navigation, theming,
-              glow shader, audio visualizer, listening stats
+              glow shader, audio visualizer + haptics, equalizer/effects,
+              listening stats, share cards (image + video), shareable sessions
 :innertube    InnerTube API client, parsers (search / home / artist / …),
               and the NewPipe-backed stream resolver
 :player       Media3 MediaLibraryService + PlayerConnection
@@ -293,7 +342,7 @@ The first build pulls NewPipeExtractor, Media3, Compose, Hilt, Room and Ktor —
 
 Verza has **no backend, no analytics, no tracking, and no ads** — nothing about your usage is ever sent to the developer. See [**`PRIVACY.md`**](PRIVACY.md) for the full policy. In short:
 
-- **On-device only** — liked songs, playlists, history, stats, queue and downloads stay on your phone. The optional sign-in cookie is **encrypted with a hardware-backed Android Keystore key** and excluded from backups.
+- **On-device only** — liked songs, playlists, history, stats, queue and downloads stay on your phone. Recommendations and Your Sound are computed locally. The optional sign-in cookie is **encrypted with a hardware-backed Android Keystore key** and excluded from both backups and shared session links.
 - **Minimal, anonymous third-party requests** — YouTube/Google for the catalogue (your cookie *only if you sign in*, *only* to Google); Apple iTunes Search gets a title/artist to fetch real cover art; LRCLIB gets title/artist/duration for lyrics. None carry a user identifier.
 - **The microphone permission never records you.** It's requested only if you enable the *Sound reactivity* glow, and is used solely to read a frequency snapshot of the music Verza is already playing (Android's `Visualizer` API) to animate the background. No audio is captured, stored, or transmitted — Android just labels the capability "Microphone" because the API is gated by `RECORD_AUDIO`.
 
@@ -310,8 +359,9 @@ Verza is an unofficial client. It uses public InnerTube endpoints and NewPipeExt
 - [**NewPipeExtractor**](https://github.com/TeamNewPipe/NewPipeExtractor) — YouTube stream extraction, signature deciphering, and the `n`-parameter rolling cipher.
 - [**InnerTune · OuterTune · SimpMusic**](https://github.com/z-huang/InnerTune) — Kotlin YouTube Music clients that pioneered the InnerTube-on-Android approach Verza follows.
 - [**LRCLIB**](https://lrclib.net) — free, no-auth synced-lyrics provider.
-- [**iTunes Search API**](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/) — real album art when YouTube serves a music-video frame.
+- [**iTunes Search API**](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/) — real album art when YouTube serves a music-video frame; liner-notes metadata.
 - [**Material 3**](https://m3.material.io/) — design system and the typography / shape / colour primitives.
+- **Fonts** — Cormorant Garamond, Newsreader, Inter, and IBM Plex Mono, all under the SIL Open Font License and bundled in-app. See [`FONTS.md`](FONTS.md).
 
 ---
 
