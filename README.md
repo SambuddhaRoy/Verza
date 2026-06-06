@@ -16,7 +16,7 @@
 
 <br/>
 
-<img src="docs/sleeve-home.jpg" alt="Verza — Sleeve home" width="270"/>&nbsp;&nbsp;<img src="docs/sleeve-now-playing.jpg" alt="Verza — Sleeve now playing" width="270"/>
+<img src="docs/sleeve-home.png" alt="Verza — Sleeve home" width="270"/>&nbsp;&nbsp;<img src="docs/sleeve-now-playing.png" alt="Verza — Sleeve now playing" width="270"/>
 
 <sub><i>The <b>Sleeve</b> appearance — every surface is sampled from the cover art and floats over the live reactive glow.</i></sub>
 
@@ -107,14 +107,14 @@ Share your queue as a **`verza://` link** — a friend opens it and picks up the
 <table>
 <tr>
 <td align="center">
-<img src="docs/sleeve-home.jpg" alt="Sleeve — Home" width="280"/>
+<img src="docs/sleeve-home.png" alt="Sleeve — Home" width="280"/>
 <br/>
 <sub><b>Home</b> — mono dateline masthead, big cover-driven titles, cover-tinted glass cards, film grain over the live glow</sub>
 </td>
 <td align="center">
-<img src="docs/sleeve-now-playing.jpg" alt="Sleeve — Now Playing" width="280"/>
+<img src="docs/sleeve-now-playing.png" alt="Sleeve — Now Playing" width="280"/>
 <br/>
-<sub><b>Now Playing</b> — a full-bleed poster whose cover dissolves into the glow, with the queue framed on the current song</sub>
+<sub><b>Now Playing</b> — a full-bleed poster whose cover dissolves into the glow; the queue stays collapsed (a tap away) so the artwork leads</sub>
 </td>
 </tr>
 </table>
