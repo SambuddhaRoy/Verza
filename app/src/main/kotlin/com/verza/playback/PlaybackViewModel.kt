@@ -116,6 +116,10 @@ class PlaybackViewModel @Inject constructor(
     val focusComplete: StateFlow<Int?> = _focusComplete.asStateFlow()
     private var focusJob: Job? = null
 
+    /** A validated shared session awaiting the user's go-ahead (from an incoming verza:// link). */
+    private val _pendingSharedSession = MutableStateFlow<SharedSession?>(null)
+    val pendingSharedSession: StateFlow<SharedSession?> = _pendingSharedSession.asStateFlow()
+
     // ── Listen-time accumulation (powers "Your Sound" stats) ───────────────────
     // We tally the real time the user spends listening to each track (only while actually
     // playing) using elapsedRealtime deltas from the polling loop, then flush a PlayEvent
@@ -187,11 +191,13 @@ class PlaybackViewModel @Inject constructor(
             }.collect { audioEffects.apply(it) }
         }
 
-        // A shared listening session arrived via a verza:// deep link — load and start it.
+        // A shared listening session arrived via a verza:// deep link. We never auto-play it — the
+        // intent filter is exported, so a link could come from anywhere. Decode + validate, then
+        // surface it for explicit confirmation (see [pendingSharedSession]).
         viewModelScope.launch {
             SessionInbox.pending.collect { link ->
                 if (link != null) {
-                    sessionShare.decodeLink(link)?.let { loadSharedSession(it) }
+                    _pendingSharedSession.value = sessionShare.decodeLink(link)
                     SessionInbox.consume()
                 }
             }
@@ -374,6 +380,15 @@ class PlaybackViewModel @Inject constructor(
         return sessionShare.encodeLink(session)
     }
 
+    /** User confirmed the incoming shared session — load + start it, then clear the prompt. */
+    fun acceptSharedSession() {
+        _pendingSharedSession.value?.let { loadSharedSession(it) }
+        _pendingSharedSession.value = null
+    }
+
+    /** User declined the incoming shared session. */
+    fun dismissSharedSession() { _pendingSharedSession.value = null }
+
     /** Loads a decoded shared session into the player and starts it at the shared track + position. */
     private fun loadSharedSession(session: SharedSession) {
         if (session.tracks.isEmpty()) return
@@ -429,8 +444,6 @@ class PlaybackViewModel @Inject constructor(
             }
         }
     }
-    /** App playback volume 0f..1f — driven by the Console-mode volume knob. */
-    fun setVolume(volume: Float) = playerConnection.setVolume(volume)
     fun seekToNext() = playerConnection.seekToNext()
     fun seekToPrevious() = playerConnection.seekToPrevious()
     fun seekTo(positionMs: Long) = playerConnection.seekTo(positionMs)

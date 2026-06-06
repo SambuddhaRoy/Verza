@@ -41,7 +41,11 @@ data class EqConfig(
     val bandLevelsMb: List<Int> = emptyList(),
     val bassStrength: Int = 0,        // 0..1000 (0 = off)
     val loudnessEnabled: Boolean = false,
-)
+) {
+    /** True when nothing is engaged — lets the controller skip attaching any effect to the chain. */
+    fun isDefault(): Boolean =
+        !eqEnabled && bassStrength == 0 && !loudnessEnabled && bandLevelsMb.all { it == 0 }
+}
 
 /**
  * Owns the platform audio effects (Equalizer, BassBoost, LoudnessEnhancer) bound to ExoPlayer's
@@ -64,27 +68,41 @@ class AudioEffectsController @Inject constructor() {
     private var bassBoost: BassBoost? = null
     private var loudness: LoudnessEnhancer? = null
     private var lastConfig = EqConfig()
+    private var metadataProbed = false
 
-    private val _metadata = MutableStateFlow(queryMetadata())
+    // Starts at the safe default and is filled lazily — see [ensureMetadata]. Avoids touching the
+    // audio framework at app start for the (majority) of users who never open the Equalizer.
+    private val _metadata = MutableStateFlow(EqMetadata.Default)
     /** Device equaliser layout, for the UI to render the right bands. */
     val metadata: StateFlow<EqMetadata> = _metadata.asStateFlow()
+
+    /**
+     * Probes the device band layout on demand (the Equalizer screen calls this on open). One-time and
+     * cheap; uses a throwaway equaliser on the global output mix (session 0) that is never enabled, so
+     * audio is untouched — we only read the constant band info.
+     */
+    @Synchronized
+    fun ensureMetadata() {
+        if (metadataProbed) return
+        metadataProbed = true
+        runCatching {
+            val probe = Equalizer(EFFECT_PRIORITY, 0)
+            _metadata.value = readMetadata(probe)
+            probe.release()
+        }
+    }
 
     /** (Re)binds the effects to [newSessionId]. Pass 0 to release. Safe to call repeatedly. */
     @Synchronized
     fun bind(newSessionId: Int) {
-        if (newSessionId == sessionId && (equalizer != null || newSessionId == 0)) return
+        if (newSessionId == sessionId) return
         releaseEffects()
         sessionId = newSessionId
-        if (newSessionId == 0) return
-        try {
-            equalizer = Equalizer(EFFECT_PRIORITY, newSessionId)
-            bassBoost = BassBoost(EFFECT_PRIORITY, newSessionId)
-            loudness = LoudnessEnhancer(newSessionId)
-            equalizer?.let { _metadata.value = readMetadata(it) }
+        // Only attach effects when there's actually something to apply — a flat/off config means we
+        // don't load any audio-effect into the playback chain at all.
+        if (newSessionId != 0 && !lastConfig.isDefault()) {
+            ensureEffects()
             applyInternal(lastConfig)
-        } catch (t: Throwable) {
-            if (BuildConfig.DEBUG) Log.e(TAG, "AudioFx init failed: ${t.javaClass.simpleName}: ${t.message}", t)
-            releaseEffects()
         }
     }
 
@@ -92,7 +110,22 @@ class AudioEffectsController @Inject constructor() {
     @Synchronized
     fun apply(config: EqConfig) {
         lastConfig = config
+        if (sessionId != 0 && !config.isDefault()) ensureEffects()
         applyInternal(config)
+    }
+
+    /** Lazily creates the effect objects on the current session; no-op if already created or no session. */
+    private fun ensureEffects() {
+        if (equalizer != null || sessionId == 0) return
+        try {
+            equalizer = Equalizer(EFFECT_PRIORITY, sessionId)
+            bassBoost = BassBoost(EFFECT_PRIORITY, sessionId)
+            loudness = LoudnessEnhancer(sessionId)
+            equalizer?.let { _metadata.value = readMetadata(it); metadataProbed = true }
+        } catch (t: Throwable) {
+            if (BuildConfig.DEBUG) Log.e(TAG, "AudioFx init failed: ${t.javaClass.simpleName}: ${t.message}", t)
+            releaseEffects()
+        }
     }
 
     private fun applyInternal(config: EqConfig) {
@@ -136,19 +169,6 @@ class AudioEffectsController @Inject constructor() {
         equalizer = null
         bassBoost = null
         loudness = null
-    }
-
-    /**
-     * Reads the device band layout from a throwaway equaliser on the global output mix (session 0).
-     * It is never enabled, so it leaves audio untouched — we only read the constant band metadata.
-     */
-    private fun queryMetadata(): EqMetadata = try {
-        val probe = Equalizer(EFFECT_PRIORITY, 0)
-        val md = readMetadata(probe)
-        probe.release()
-        md
-    } catch (t: Throwable) {
-        EqMetadata.Default
     }
 
     private fun readMetadata(eq: Equalizer): EqMetadata {
