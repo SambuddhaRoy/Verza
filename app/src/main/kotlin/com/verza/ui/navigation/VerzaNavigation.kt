@@ -6,7 +6,10 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,6 +56,7 @@ fun VerzaNavigation(
     val sleepTimerEndAt by playbackViewModel.sleepTimerEndAt.collectAsStateWithLifecycle()
     val focusSession by playbackViewModel.focusSession.collectAsStateWithLifecycle()
     val focusComplete by playbackViewModel.focusComplete.collectAsStateWithLifecycle()
+    val pendingSharedSession by playbackViewModel.pendingSharedSession.collectAsStateWithLifecycle()
 
     // Activity-scoped settings VM (same instance MainActivity uses) for UI prefs the player VM
     // doesn't own — e.g. the Now Playing album-art motion toggle.
@@ -248,12 +252,34 @@ fun VerzaNavigation(
             composable(Screen.Onboarding.route) {
                 OnboardingScreen(
                     onSignIn = { navController.navigate(Screen.Login.route) },
-                    onFinished = {
-                        navController.navigate(Screen.Home.route) {
+                    onFinished = { takeTour ->
+                        val dest = if (takeTour) Screen.Tour.create(fromOnboarding = true) else Screen.Home.route
+                        navController.navigate(dest) {
                             // Strip onboarding from the back stack so a back-press from Home exits
                             // the app rather than returning the user to onboarding.
                             popUpTo(Screen.Onboarding.route) { inclusive = true }
                             launchSingleTop = true
+                        }
+                    },
+                )
+            }
+            composable(
+                route = Screen.Tour.route,
+                arguments = listOf(navArgument(Screen.Tour.ARG) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }),
+            ) { entry ->
+                val fromOnboarding = entry.arguments?.getBoolean(Screen.Tour.ARG) ?: false
+                FeatureTourScreen(
+                    onFinish = {
+                        if (fromOnboarding) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Tour.route) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        } else {
+                            navController.popBackStack()
                         }
                     },
                 )
@@ -300,6 +326,7 @@ fun VerzaNavigation(
                     onSignIn = { navController.navigate(Screen.Login.route) },
                     onOpenStats = { navController.navigate(Screen.Stats.route) },
                     onOpenEqualizer = { navController.navigate(Screen.Equalizer.route) },
+                    onOpenTour = { navController.navigate(Screen.Tour.create(fromOnboarding = false)) },
                 )
             }
             composable(Screen.Stats.route) {
@@ -462,6 +489,36 @@ fun VerzaNavigation(
             onGoToArtist = { trackActions.onGoToArtist(item.toMusicItem()) },
             onOpen = { openItem(item) },
             onDismiss = { homeMenuItem = null },
+        )
+    }
+
+    // A "listen along" link was opened — confirm before replacing the current queue (the deep link
+    // is exported, so the session is never loaded without the user's explicit go-ahead).
+    pendingSharedSession?.let { session ->
+        val count = session.tracks.size
+        val lead = session.tracks.firstOrNull()
+        AlertDialog(
+            onDismissRequest = { playbackViewModel.dismissSharedSession() },
+            title = { Text("Listen along?") },
+            text = {
+                Text(
+                    buildString {
+                        append("Someone shared a set of $count track")
+                        if (count != 1) append("s")
+                        lead?.takeIf { it.title.isNotBlank() }?.let { append(", starting with “${it.title}”") }
+                        append(". Load it and start playing? This replaces your current queue.")
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    playbackViewModel.acceptSharedSession()
+                    navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
+                }) { Text("Listen") }
+            },
+            dismissButton = {
+                TextButton(onClick = { playbackViewModel.dismissSharedSession() }) { Text("Not now") }
+            },
         )
     }
 }

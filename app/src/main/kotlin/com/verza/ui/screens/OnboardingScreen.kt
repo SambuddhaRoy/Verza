@@ -51,7 +51,7 @@ import com.verza.ui.theme.toColorScheme
 @Composable
 fun OnboardingScreen(
     onSignIn: () -> Unit,
-    onFinished: () -> Unit,
+    onFinished: (takeTour: Boolean) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -116,9 +116,9 @@ fun OnboardingScreen(
                         },
                     )
                     else -> StepDone(
-                        onFinish = {
+                        onFinish = { takeTour ->
                             viewModel.setOnboardingCompleted()
-                            onFinished()
+                            onFinished(takeTour)
                         },
                     )
                 }
@@ -355,7 +355,7 @@ private fun StepGlow(onPick: (Boolean, GlowColorPreset?, Boolean) -> Unit) {
 }
 
 @Composable
-private fun StepDone(onFinish: () -> Unit) {
+private fun StepDone(onFinish: (takeTour: Boolean) -> Unit) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
@@ -380,12 +380,14 @@ private fun StepDone(onFinish: () -> Unit) {
         )
         Spacer(Modifier.height(14.dp))
         Text(
-            text = "Welcome to Verza.",
+            text = "There's a lot under the hood — want the quick tour?",
             style = CaptionItalic.copy(fontSize = 18.sp),
             color = ext.muted,
         )
         Spacer(Modifier.weight(1f))
-        PrimaryActionButton(text = "Begin listening", onClick = onFinish)
+        PrimaryActionButton(text = "Take the tour", onClick = { onFinish(true) })
+        Spacer(Modifier.height(12.dp))
+        TextActionButton(text = "Jump straight in", onClick = { onFinish(false) })
     }
 }
 
