@@ -22,7 +22,7 @@ import com.verza.ui.sleeve.grain
 import com.verza.ui.sleeve.moodyBackdrop
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
-import com.verza.ui.theme.LocalCoverColors
+import com.verza.ui.theme.LocalArtworkColors
 
 /** Preview + share for the current track as an editorial poster, via the shared [ShareCardOverlay]. */
 @Composable
@@ -44,7 +44,7 @@ fun NowPlayingShareOverlay(
 /**
  * The flagship "share the song as art" poster — a full-bleed cover, grained and graded down into
  * the cover-coloured canvas, with the editorial masthead (artist · "title") and the VERZA wordmark
- * at the foot. Drawn from [LocalCoverColors] so it's identical regardless of the active theme.
+ * at the foot. Drawn from [LocalArtworkColors] so it's identical regardless of the active theme.
  */
 @Composable
 fun NowPlayingCard(
@@ -53,7 +53,7 @@ fun NowPlayingCard(
     artist: String,
     artworkUrl: String?,
 ) {
-    val cover = LocalCoverColors.current
+    val cover = LocalArtworkColors.current
     Box(modifier = modifier.background(cover.bg)) {
         // Cover photograph (grain lives here so the masthead stays crisp).
         Box(Modifier.fillMaxSize().grain(0.07f)) {

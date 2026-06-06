@@ -268,6 +268,7 @@ fun NowPlayingScreen(
                     DropdownMenu(
                         expanded = menuOpen,
                         onDismissRequest = { menuOpen = false },
+                        containerColor = MaterialTheme.colorScheme.surface,
                     ) {
                         DropdownMenuItem(
                             text = { Text("Share") },

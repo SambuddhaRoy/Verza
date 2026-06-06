@@ -343,9 +343,9 @@ fun VerzaTheme(
     val isSystemDark = isSystemInDarkTheme()
 
     val colorScheme: ColorScheme = when {
-        // Sleeve forces the whole app onto the cover-derived scheme so every screen recolours.
-        sleeve && coverScheme != null -> coverScheme
         // ADAPTIVE: the cover-derived scheme built at runtime (falls back to the static default).
+        // Sleeve no longer forces this — it's a layout/typography layer over whatever theme is
+        // selected, so picking any theme (and light vs dark) actually recolours Sleeve too.
         theme == VerzaTheme.ADAPTIVE -> coverScheme ?: theme.toColorScheme()
         theme == VerzaTheme.DYNAMIC && DynamicColorSupported ->
             if (isSystemDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -353,10 +353,10 @@ fun VerzaTheme(
         else -> theme.toColorScheme()
     }
 
-    // Derive the extended (Verza-specific) colors. For DYNAMIC / ADAPTIVE / Sleeve we synthesise
-    // them from the active scheme so the whole UI stays on-palette.
+    // Derive the extended (Verza-specific) colors. For DYNAMIC / ADAPTIVE we synthesise them from
+    // the active scheme; fixed themes carry their own hand-tuned extended palette.
     val extended: VerzaExtendedColors =
-        if (sleeve || theme == VerzaTheme.DYNAMIC || theme == VerzaTheme.ADAPTIVE) colorScheme.deriveExtendedColors()
+        if (theme == VerzaTheme.DYNAMIC || theme == VerzaTheme.ADAPTIVE) colorScheme.deriveExtendedColors()
         else theme.toExtendedColors()
 
     CompositionLocalProvider(
