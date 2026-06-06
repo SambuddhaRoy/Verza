@@ -1,13 +1,20 @@
 package com.verza.ui.sleeve
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -18,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Downloading
@@ -127,6 +135,9 @@ fun SleevePlayer(
     val ink = cover.ink
     val sub = cover.sub
     val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+
+    // The queue starts collapsed so the cover poster is the hero; the Queue toggle reveals it.
+    var queueExpanded by remember { mutableStateOf(false) }
 
     // Slow cinematic drift on the cover — a gentle Ken-Burns zoom that keeps the poster alive.
     val drift = rememberInfiniteTransition(label = "sleeveDrift")
@@ -241,19 +252,27 @@ fun SleevePlayer(
 
             Spacer(Modifier.height(14.dp))
 
-            // ── Queue ─────────────────────────────────────────────────────────
-            // Fills the space between masthead and transport. The current song sits second from
-            // the top, large + bold; switching songs animates both the type and the scroll.
-            if (queue.size > 1) {
+            // ── Queue (collapsed by default) ──────────────────────────────────
+            // Breathing room when collapsed, so the cover poster dominates. The Queue toggle in the
+            // action row unfurls it just above the controls with a fluid spring; the current song
+            // still sits large with switching songs animating the type and scroll.
+            Spacer(Modifier.weight(1f))
+            AnimatedVisibility(
+                visible = queueExpanded && queue.size > 1,
+                enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy)) +
+                    fadeIn(tween(220)),
+                exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy)) +
+                    fadeOut(tween(140)),
+            ) {
                 SleeveQueue(
                     queue = queue,
                     currentIndex = currentIndex,
                     cover = cover,
                     onPlayQueueItem = onPlayQueueItem,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp),
                 )
-            } else {
-                Spacer(Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(12.dp))
@@ -268,6 +287,14 @@ fun SleevePlayer(
                 horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (queue.size > 1) {
+                    SleeveActionIcon(
+                        icon = Icons.AutoMirrored.Filled.QueueMusic,
+                        contentDescription = if (queueExpanded) "Hide queue" else "Show queue",
+                        tint = if (queueExpanded) accent else sub,
+                        onClick = { queueExpanded = !queueExpanded },
+                    )
+                }
                 SleeveActionIcon(
                     icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                     contentDescription = "Like",
