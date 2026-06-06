@@ -4,7 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -38,12 +39,15 @@ fun ShareCardOverlay(
     chooserTitle: String,
     onDismiss: () -> Unit,
     aspectRatio: Float = 4f / 5f,
+    allowVideo: Boolean = true,
     card: @Composable (Modifier) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val layer = rememberGraphicsLayer()
-    var sharing by remember { mutableStateOf(false) }
+    // null = idle; "image" / "video" = an export is in flight (both buttons disabled meanwhile).
+    var working by remember { mutableStateOf<String?>(null) }
+    val baseName = remember(fileName) { fileName.substringBeforeLast('.') }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Scrim — tap to dismiss.
@@ -70,22 +74,44 @@ fun ShareCardOverlay(
                     .clip(VerzaShape)
                     .captureInto(layer),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onDismiss) { Text("Close") }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDismiss, enabled = working == null) { Text("Close") }
                 Button(
+                    enabled = working == null,
                     onClick = {
-                        if (!sharing) {
-                            sharing = true
+                        if (working == null) {
+                            working = "image"
                             scope.launch {
                                 runCatching { layer.shareAsPng(context, fileName, chooserTitle) }
-                                sharing = false
+                                working = null
                             }
                         }
                     },
                 ) {
-                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.Image, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (sharing) "Preparing…" else "Share")
+                    Text(if (working == "image") "Preparing…" else "Image")
+                }
+                if (allowVideo) {
+                    Button(
+                        enabled = working == null,
+                        onClick = {
+                            if (working == null) {
+                                working = "video"
+                                scope.launch {
+                                    runCatching { layer.shareAsVideo(context, baseName, chooserTitle) }
+                                    working = null
+                                }
+                            }
+                        },
+                    ) {
+                        Icon(Icons.Filled.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (working == "video") "Rendering…" else "Video")
+                    }
                 }
             }
         }
