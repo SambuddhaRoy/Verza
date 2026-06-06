@@ -42,6 +42,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.verza.player.QueueItem
 import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.share.NowPlayingShareOverlay
@@ -372,7 +374,12 @@ fun NowPlayingScreen(
             ) {
                 if (artworkUrl != null) {
                     AsyncImage(
-                        model = artworkUrl,
+                        // Crossfade so the cover dissolves between the YT thumbnail and the higher-res
+                        // iTunes art (and between tracks) instead of flashing to black on the swap.
+                        model = ImageRequest.Builder(context)
+                            .data(artworkUrl)
+                            .crossfade(320)
+                            .build(),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                     )

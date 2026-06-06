@@ -76,7 +76,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
+import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.verza.player.QueueItem
 import com.verza.ui.theme.CoverColors
 import com.verza.ui.theme.FontMono
@@ -184,7 +187,13 @@ fun SleevePlayer(
             Box(Modifier.fillMaxSize().grain(0.08f).vignette(0.40f)) {
                 if (artworkUrl != null) {
                     AsyncImage(
-                        model = artworkUrl,
+                        // Crossfade so the cover doesn't flash to black when the art swaps mid-track
+                        // (the YT thumbnail loads first, then the higher-res iTunes art replaces it):
+                        // Coil holds the previous frame and dissolves into the new one.
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(artworkUrl)
+                            .crossfade(320)
+                            .build(),
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()

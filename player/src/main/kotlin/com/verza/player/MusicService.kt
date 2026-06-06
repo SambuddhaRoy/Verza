@@ -33,7 +33,9 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import java.io.File
 import java.io.IOException
+import java.io.InterruptedIOException
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 private const val INNERTUBE_SCHEME = "innertube://"
 
@@ -99,6 +101,14 @@ class MusicService : MediaLibraryService() {
                 if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Resolved $videoId → ${stream.url.take(120)}…")
                 dataSpec.withUri(Uri.parse(stream.url))
             } catch (t: Throwable) {
+                // A load the user skipped away from is cancelled by interrupting this loader thread,
+                // so runBlocking throws InterruptedException / CancellationException. That isn't a
+                // real playback failure — abort quietly (no toast) and let ExoPlayer move on. Without
+                // this, rapidly skipping tracks surfaces a spurious "Couldn't play this track".
+                if (isCancellation(t)) {
+                    Thread.currentThread().interrupt() // preserve the interrupt for the loader
+                    throw IOException("Resolve cancelled for $videoId", t)
+                }
                 if (BuildConfig.DEBUG) Log.e("VerzaPlayback", "Resolve failed for $videoId", t)
                 showPlaybackToast(mainHandler, debugDetail = "Playback failed: ${t.javaClass.simpleName}: ${t.message}")
                 throw if (t is IOException) t else IOException("Playback failed for $videoId", t)
@@ -149,6 +159,19 @@ class MusicService : MediaLibraryService() {
     private fun showPlaybackToast(handler: Handler, debugDetail: String) {
         val text = if (BuildConfig.DEBUG) debugDetail else "Couldn't play this track"
         handler.post { Toast.makeText(this, text, Toast.LENGTH_LONG).show() }
+    }
+
+    /**
+     * True when [t] is the result of ExoPlayer cancelling this load (the user skipped while it was
+     * still resolving) rather than a genuine playback failure — so we can suppress the error toast.
+     */
+    private fun isCancellation(t: Throwable): Boolean {
+        var e: Throwable? = t
+        while (e != null) {
+            if (e is InterruptedException || e is InterruptedIOException || e is CancellationException) return true
+            e = e.cause
+        }
+        return Thread.currentThread().isInterrupted
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = session
