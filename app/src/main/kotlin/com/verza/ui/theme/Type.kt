@@ -1,44 +1,51 @@
 package com.verza.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.verza.R
 
-private val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage   = "com.google.android.gms",
-    certificates      = R.array.com_google_android_gms_fonts_certs,
-)
+// ── Bundled fonts (no Google Play Services dependency) ───────────────────────────
+// All four families ship as OFL-licensed variable fonts in res/font, so the app pulls
+// nothing from the proprietary `com.google.android.gms.fonts` provider — a hard
+// requirement for F-Droid / IzzyOnDroid inclusion. A single variable file covers every
+// weight we reach for; FontVariation.Settings drives the 'wght' axis per declared weight.
+// (minSdk 26 ⇒ font variation axes are honoured on every supported device.)
 
-// Cormorant Garamond — heavier editorial serif. Replaces Playfair Display for the
-// big, bold, sophisticated voice on display/headline/title text. The five variants
-// cover every weight×style combination the typography theme reaches for:
-//  - Regular / Bold for upright titles
-//  - Regular Italic / SemiBold Italic for serif "deck" captions
-//  - Medium kept as a middle weight for occasional accent use
-private val cormorant = GoogleFont("Cormorant Garamond")
+/** A variable-font [Font] that pins the weight axis so one file serves many weights. */
+@OptIn(ExperimentalTextApi::class)
+private fun varFont(resId: Int, weight: FontWeight, style: FontStyle = FontStyle.Normal) =
+    Font(
+        resId,
+        weight = weight,
+        style = style,
+        variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
+    )
+
+// Cormorant Garamond — heavier editorial serif for the big, bold, sophisticated voice on
+// display/headline/title text. Regular/Medium/SemiBold/Bold upright + Regular/SemiBold italic
+// for the serif "deck" captions, all from the one variable file (+ its italic companion).
 val FontDisplay = FontFamily(
-    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.Bold),
-    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.Normal, style = FontStyle.Italic),
-    Font(googleFont = cormorant, fontProvider = provider, weight = FontWeight.SemiBold, style = FontStyle.Italic),
+    varFont(R.font.cormorant_garamond_variable, FontWeight.Normal),
+    varFont(R.font.cormorant_garamond_variable, FontWeight.Medium),
+    varFont(R.font.cormorant_garamond_variable, FontWeight.SemiBold),
+    varFont(R.font.cormorant_garamond_variable, FontWeight.Bold),
+    varFont(R.font.cormorant_garamond_italic_variable, FontWeight.Normal, FontStyle.Italic),
+    varFont(R.font.cormorant_garamond_italic_variable, FontWeight.SemiBold, FontStyle.Italic),
 )
 
 // Inter — clean grotesque sans for body/label (the Söhne stand-in).
-private val inter = GoogleFont("Inter")
 val FontBody = FontFamily(
-    Font(googleFont = inter, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = inter, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = inter, fontProvider = provider, weight = FontWeight.SemiBold),
+    varFont(R.font.inter_variable, FontWeight.Normal),
+    varFont(R.font.inter_variable, FontWeight.Medium),
+    varFont(R.font.inter_variable, FontWeight.SemiBold),
 )
 
 // Newsreader — the Sleeve appearance's serif, exactly matching the UMBRA reference's lead
@@ -46,24 +53,23 @@ val FontBody = FontFamily(
 // high-style voice there comes from large sizes + thin regular weight + tight tracking, NOT from
 // bolding — so we deliberately keep Light/Regular variants and never reach for Bold in Sleeve.
 // A literary, newspaper-ish serif with a softer, warmer voice than Cormorant.
-private val newsreader = GoogleFont("Newsreader")
 val FontSleeve = FontFamily(
-    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Light),
-    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Medium),
+    varFont(R.font.newsreader_variable, FontWeight.Light),
+    varFont(R.font.newsreader_variable, FontWeight.Normal),
+    varFont(R.font.newsreader_variable, FontWeight.Medium),
     // Bold is reserved for deliberate emphasis (e.g. the currently-playing track in the queue),
     // not the general UI voice — which stays at weight 400 per the reference.
-    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Bold),
-    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Light, style = FontStyle.Italic),
-    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Normal, style = FontStyle.Italic),
-    Font(googleFont = newsreader, fontProvider = provider, weight = FontWeight.Medium, style = FontStyle.Italic),
+    varFont(R.font.newsreader_variable, FontWeight.Bold),
+    varFont(R.font.newsreader_italic_variable, FontWeight.Light, FontStyle.Italic),
+    varFont(R.font.newsreader_italic_variable, FontWeight.Normal, FontStyle.Italic),
+    varFont(R.font.newsreader_italic_variable, FontWeight.Medium, FontStyle.Italic),
 )
 
 // IBM Plex Mono — reserved for numeric / timecode chrome (kept for accent details).
-private val plexMono = GoogleFont("IBM Plex Mono")
+// Static instances (Plex Mono ships no variable font); Regular + Medium are all we use.
 val FontMono = FontFamily(
-    Font(googleFont = plexMono, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = plexMono, fontProvider = provider, weight = FontWeight.Medium),
+    Font(R.font.ibm_plex_mono_regular, FontWeight.Normal),
+    Font(R.font.ibm_plex_mono_medium, FontWeight.Medium),
 )
 
 // ── Typography ─────────────────────────────────────────────────────────────────

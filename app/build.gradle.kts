@@ -108,9 +108,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Fonts
-    implementation(libs.androidx.ui.text.google.fonts)
-
     // Coil
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
