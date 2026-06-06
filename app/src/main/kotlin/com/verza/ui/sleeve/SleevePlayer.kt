@@ -208,6 +208,19 @@ fun SleevePlayer(
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.18f)))
         }
 
+        // Soft top grade — the cover feathers out to nothing at the very top, revealing the bare
+        // background (which is *light* in a light theme), so the near-white pills + masthead would
+        // vanish. A dark gradient here keeps the "Close" / "Lyrics" pills and the title legible on
+        // any cover or theme — the poster stays an art-driven dark canvas regardless of app mode.
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0.0f to Color.Black.copy(alpha = 0.45f),
+                    0.42f to Color.Transparent,
+                ),
+            ),
+        )
+
         // Soft bottom grade (over the glow) — keeps the transport + queue legible at the foot.
         Box(
             Modifier.fillMaxSize().background(

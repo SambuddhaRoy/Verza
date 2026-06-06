@@ -58,7 +58,10 @@ fun MiniPlayer(
             .padding(horizontal = 8.dp)
             .fillMaxWidth()
             .height(56.dp)
-            .shadow(elevation = 6.dp, shape = shape, clip = false)
+            // Standard mode is a solid card, so a soft drop shadow lifts it. In Sleeve the strip is
+            // a translucent glass panel over the glow — a Material shadow shows through it and reads
+            // as a heavy grey halo (especially on a light background), so we drop it there.
+            .then(if (sleeve) Modifier else Modifier.shadow(elevation = 6.dp, shape = shape, clip = false))
             .clip(shape)
             .then(stripBackground)
             .clickable(onClick = onExpand)
