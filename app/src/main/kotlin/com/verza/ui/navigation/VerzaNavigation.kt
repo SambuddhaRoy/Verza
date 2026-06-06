@@ -299,10 +299,14 @@ fun VerzaNavigation(
                     onBack = { navController.popBackStack() },
                     onSignIn = { navController.navigate(Screen.Login.route) },
                     onOpenStats = { navController.navigate(Screen.Stats.route) },
+                    onOpenEqualizer = { navController.navigate(Screen.Equalizer.route) },
                 )
             }
             composable(Screen.Stats.route) {
                 StatsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Screen.Equalizer.route) {
+                EqualizerScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Login.route) {
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -395,6 +399,7 @@ fun VerzaNavigation(
                     onEndFocus = { playbackViewModel.endFocusSession() },
                     focusCompleteMinutes = focusComplete,
                     onConsumeFocusComplete = { playbackViewModel.consumeFocusComplete() },
+                    onBuildSessionLink = { playbackViewModel.buildSessionShareLink() },
                     albumArtMotion = albumArtMotion,
                     sleeveMode = sleeveMode,
                 )

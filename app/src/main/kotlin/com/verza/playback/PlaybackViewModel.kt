@@ -3,6 +3,8 @@ package com.verza.playback
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.verza.audio.AudioEffectsController
+import com.verza.audio.EqConfig
 import com.verza.data.ArtworkRepository
 import com.verza.data.DownloadManager
 import com.verza.data.LibraryRepository
@@ -10,6 +12,10 @@ import com.verza.data.MusicRepository
 import com.verza.data.PreferencesRepository
 import com.verza.data.SavedQueue
 import com.verza.data.SavedTrack
+import com.verza.data.SessionInbox
+import com.verza.data.SessionShareRepository
+import com.verza.data.SharedSession
+import com.verza.data.SharedTrack
 import com.verza.data.StatsRepository
 import com.verza.data.db.SongEntity
 import com.verza.innertube.models.HomeItem
@@ -25,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -56,6 +63,8 @@ class PlaybackViewModel @Inject constructor(
     private val downloadManager: DownloadManager,
     private val artworkRepository: ArtworkRepository,
     private val statsRepository: StatsRepository,
+    private val audioEffects: AudioEffectsController,
+    private val sessionShare: SessionShareRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -154,6 +163,38 @@ class PlaybackViewModel @Inject constructor(
         // Track the gentle-start ("sunrise") preference.
         viewModelScope.launch {
             prefs.gentleStartFlow.collect { gentleStart = it }
+        }
+
+        // ── Sound suite: bind the equaliser/bass/loudness effects to the live audio session and
+        // keep them in sync with the saved preferences. The session id changes when ExoPlayer
+        // (re)creates its audio sink; rebinding re-attaches the effects to the new session.
+        viewModelScope.launch {
+            audioSessionId.collect { audioEffects.bind(it) }
+        }
+        viewModelScope.launch {
+            combine(
+                prefs.eqEnabledFlow,
+                prefs.eqBandsFlow,
+                prefs.bassStrengthFlow,
+                prefs.loudnessEnabledFlow,
+            ) { enabled, bands, bass, loudness ->
+                EqConfig(
+                    eqEnabled = enabled,
+                    bandLevelsMb = bands,
+                    bassStrength = bass,
+                    loudnessEnabled = loudness,
+                )
+            }.collect { audioEffects.apply(it) }
+        }
+
+        // A shared listening session arrived via a verza:// deep link — load and start it.
+        viewModelScope.launch {
+            SessionInbox.pending.collect { link ->
+                if (link != null) {
+                    sessionShare.decodeLink(link)?.let { loadSharedSession(it) }
+                    SessionInbox.consume()
+                }
+            }
         }
 
         // Look up real album art for the current track via iTunes, falling back to the YT thumb.
@@ -313,6 +354,40 @@ class PlaybackViewModel @Inject constructor(
             )
         }
         playerConnection.setQueue(mediaItems, startIndex)
+    }
+
+    // ── Shareable listening sessions ──────────────────────────────────────────────
+
+    /**
+     * Builds a `verza://session/...` link capturing the current queue + position so a friend can
+     * pick up the same set. Returns null when nothing streamable is playing (e.g. local-only files).
+     */
+    fun buildSessionShareLink(): String? {
+        val st = playbackState.value
+        if (st.queue.isEmpty()) return null
+        val tracks = st.queue.map { SharedTrack(id = it.mediaId, title = it.title, artist = it.artist, art = it.artworkUrl) }
+        val session = SharedSession(
+            index = st.currentIndex.coerceAtLeast(0),
+            positionMs = playerConnection.currentPositionMs,
+            tracks = tracks,
+        )
+        return sessionShare.encodeLink(session)
+    }
+
+    /** Loads a decoded shared session into the player and starts it at the shared track + position. */
+    private fun loadSharedSession(session: SharedSession) {
+        if (session.tracks.isEmpty()) return
+        val mediaItems = session.tracks.map {
+            PlayerConnection.buildMediaItem(
+                videoId = it.id,
+                title = it.title,
+                artist = it.artist,
+                albumArtUri = it.art,
+            )
+        }
+        val startIndex = session.index.coerceIn(0, mediaItems.lastIndex)
+        playerConnection.setQueue(mediaItems, startIndex)
+        if (session.positionMs > 0) playerConnection.seekTo(session.positionMs)
     }
 
     /** Builds a radio mix seeded by [videoId] and starts playing it. */
@@ -519,6 +594,7 @@ class PlaybackViewModel @Inject constructor(
         flushListen()
         sleepJob?.cancel()
         focusJob?.cancel()
+        audioEffects.bind(0)
         playerConnection.disconnect()
     }
 }
