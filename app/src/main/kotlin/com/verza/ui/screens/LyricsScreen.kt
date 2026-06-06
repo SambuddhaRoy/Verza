@@ -78,7 +78,7 @@ fun LyricsScreen(
                 }
             }
 
-            Box(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (val s = state) {
                     is LyricsUiState.Loading,
                     LyricsUiState.Idle -> CircularProgressIndicator(

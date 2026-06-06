@@ -54,6 +54,12 @@ class MusicService : MediaLibraryService() {
     // Service-lifetime scope for observing app-pushed playback options (see PlayerSettings).
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+    // Short-TTL cache of resolved stream URLs, keyed by videoId — so seeks / re-opens don't re-run
+    // the expensive NewPipe extraction. Concurrent because ExoPlayer resolves on loader threads.
+    private data class CachedStreamUrl(val url: String, val resolvedAt: Long)
+    private val streamUrlCache = java.util.concurrent.ConcurrentHashMap<String, CachedStreamUrl>()
+    private val STREAM_URL_TTL_MS = 5 * 60 * 60 * 1000L // 5h; googlevideo URLs last ~6h
+
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
@@ -90,6 +96,18 @@ class MusicService : MediaLibraryService() {
                     }
                 }
 
+                // Re-use a recently-resolved stream URL. ResolvingDataSource calls this resolver on
+                // *every* open() — including each seek and re-buffer — so without a cache, seeking
+                // re-ran the (multi-second) NewPipe extraction every time, which is why seeks were
+                // slow. googlevideo URLs stay valid for hours, so a short-TTL cache makes seeks
+                // instant while still re-resolving once the URL would have expired.
+                streamUrlCache[videoId]?.let { c ->
+                    if (System.currentTimeMillis() - c.resolvedAt < STREAM_URL_TTL_MS) {
+                        if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Using cached stream URL for $videoId")
+                        return@Resolver dataSpec.withUri(Uri.parse(c.url))
+                    }
+                }
+
                 val stream = runBlocking { InnerTube.resolveAudioStream(videoId) }
                 if (stream == null) {
                     if (BuildConfig.DEBUG) {
@@ -99,6 +117,7 @@ class MusicService : MediaLibraryService() {
                     throw IOException("No playable audio stream for $videoId")
                 }
                 if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Resolved $videoId → ${stream.url.take(120)}…")
+                streamUrlCache[videoId] = CachedStreamUrl(stream.url, System.currentTimeMillis())
                 dataSpec.withUri(Uri.parse(stream.url))
             } catch (t: Throwable) {
                 // A load the user skipped away from is cancelled by interrupting this loader thread,
