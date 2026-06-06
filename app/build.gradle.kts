@@ -25,8 +25,8 @@ android {
         applicationId = "com.verza"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.5.0"
+        versionCode = 13
+        versionName = "1.0.0"
     }
 
     signingConfigs {
@@ -52,6 +52,16 @@ android {
             if (keystorePropsFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
+        }
+    }
+
+    // Name the built APKs after the version, e.g. Verza-v1.0.0.apk (release) — matches the
+    // download convention in the README so release artefacts don't ship as app-release.apk.
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+                "Verza-v${variant.versionName}.apk"
         }
     }
 
