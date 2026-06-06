@@ -10,6 +10,7 @@ import com.verza.data.StatsRepository
 import com.verza.innertube.AudioQuality
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowIntensity
+import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.VerzaTheme
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,6 +45,9 @@ class SettingsViewModel @Inject constructor(
 
     val glowIntensity: StateFlow<GlowIntensity> = prefs.glowIntensityFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, GlowIntensity.MEDIUM)
+
+    val glowStyle: StateFlow<GlowStyle> = prefs.glowStyleFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, GlowStyle.FLUID)
 
     /** Null while DataStore is still loading; non-null once we know whether onboarding has run. */
     val onboardingCompleted: StateFlow<Boolean?> = prefs.onboardingCompletedFlow
@@ -88,6 +92,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setGlowIntensity(intensity: GlowIntensity) {
         viewModelScope.launch { prefs.setGlowIntensity(intensity) }
+    }
+
+    fun setGlowStyle(style: GlowStyle) {
+        viewModelScope.launch { prefs.setGlowStyle(style) }
     }
 
     fun setOnboardingCompleted() {
