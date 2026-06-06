@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import com.verza.audio.VisualizerSignal
 import kotlinx.coroutines.flow.StateFlow
@@ -190,11 +189,10 @@ fun GlowBackground(
     content: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    // Decide light/dark from the *actual* scheme background, not the theme enum — the cover/Adaptive
-    // and Dynamic schemes are built at runtime and can be either. The glow is a dark-canvas effect,
-    // so it's shown only on dark schemes; light themes (incl. a light Sleeve) just show the bg.
-    val isLight = scheme.background.luminance() > 0.5f
-    val show = enabled && !isLight
+    // The shader / gradient mix the saturated triad *toward* the background, which reads as gentle
+    // colour washes on a light canvas just as it glows on a dark one — so we show it in both light
+    // and dark schemes (it used to be hidden on light, which left light mode flat and bare).
+    val show = enabled
     val bg = scheme.background
 
     Box(modifier = modifier.fillMaxSize()) {
