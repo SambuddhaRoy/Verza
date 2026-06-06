@@ -33,6 +33,7 @@ import com.verza.ui.screens.SettingsViewModel
 import com.verza.ui.theme.DefaultCoverColors
 import com.verza.ui.theme.GlowBackground
 import com.verza.ui.theme.GlowColorPreset
+import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.LocalArtworkColors
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.VerzaTheme
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
             val glowEnabled by settingsViewModel.glowEnabled.collectAsStateWithLifecycle()
             val glowColor by settingsViewModel.glowColor.collectAsStateWithLifecycle()
             val glowIntensity by settingsViewModel.glowIntensity.collectAsStateWithLifecycle()
+            val glowStyle by settingsViewModel.glowStyle.collectAsStateWithLifecycle()
             val glowReactive by settingsViewModel.glowReactive.collectAsStateWithLifecycle()
             val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
             val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle()
@@ -214,6 +216,7 @@ class MainActivity : ComponentActivity() {
                         triad = glowTriad,
                         intensity = glowIntensity,
                         signalFlow = if (shouldVisualize) visualizerSignalFlow else null,
+                        style = glowStyle,
                         modifier = Modifier
                             .fillMaxSize()
                             .background(scheme.background)

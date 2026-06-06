@@ -11,6 +11,7 @@ import com.verza.innertube.AudioQuality
 import com.verza.innertube.InnerTube
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowIntensity
+import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.VerzaTheme
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +53,7 @@ class PreferencesRepository @Inject constructor(
     private val glowEnabledKey = booleanPreferencesKey("glow_enabled")
     private val glowColorKey = stringPreferencesKey("glow_color_preset")
     private val glowIntensityKey = stringPreferencesKey("glow_intensity")
+    private val glowStyleKey = stringPreferencesKey("glow_style")
     private val onboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
     private val glowReactiveKey = booleanPreferencesKey("glow_reactive")
     private val startScreenKey = stringPreferencesKey("start_screen")
@@ -95,6 +97,10 @@ class PreferencesRepository @Inject constructor(
     }
     val glowIntensityFlow: Flow<GlowIntensity> = store.data.map { prefs ->
         prefs[glowIntensityKey]?.let { runCatching { GlowIntensity.valueOf(it) }.getOrNull() } ?: GlowIntensity.MEDIUM
+    }
+    /** Glow pattern — fluid aurora (default) or the woven "Loom" geometric variant. */
+    val glowStyleFlow: Flow<GlowStyle> = store.data.map { prefs ->
+        prefs[glowStyleKey]?.let { runCatching { GlowStyle.valueOf(it) }.getOrNull() } ?: GlowStyle.FLUID
     }
 
     /** False on a fresh install; set to true the first time the user finishes the onboarding flow. */
@@ -180,6 +186,10 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setGlowIntensity(intensity: GlowIntensity) {
         store.edit { it[glowIntensityKey] = intensity.name }
+    }
+
+    suspend fun setGlowStyle(style: GlowStyle) {
+        store.edit { it[glowStyleKey] = style.name }
     }
 
     suspend fun setOnboardingCompleted(completed: Boolean) {
