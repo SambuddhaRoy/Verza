@@ -41,7 +41,7 @@ class SearchViewModel @Inject constructor(
     var query by mutableStateOf("")
         private set
 
-    var filter by mutableStateOf(SearchFilter.SONGS)
+    var filter by mutableStateOf(SearchFilter.TOP)
         private set
 
     var showSuggestions by mutableStateOf(false)

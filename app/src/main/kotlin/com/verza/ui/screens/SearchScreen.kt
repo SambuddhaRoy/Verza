@@ -87,7 +87,7 @@ fun SearchScreen(
         ) {
             SearchFilter.entries.forEach { f ->
                 FilterPill(
-                    label = f.name.lowercase().replaceFirstChar { it.uppercase() },
+                    label = f.label,
                     selected = viewModel.filter == f,
                     onClick = { viewModel.onFilterChange(f) },
                 )
