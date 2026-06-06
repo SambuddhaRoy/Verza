@@ -122,4 +122,7 @@ dependencies {
     // Media3 (for PlayerConnection UI-side)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.common)
+    // Transformer + effect — renders the animated (video) share card from a still poster.
+    implementation(libs.androidx.media3.transformer)
+    implementation(libs.androidx.media3.effect)
 }

@@ -50,6 +50,8 @@ androidx-media3-exoplayer-dash      = { group = "androidx.media3", name = "media
 androidx-media3-session             = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 androidx-media3-common              = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
 androidx-media3-datasource-okhttp   = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "media3" }
+androidx-media3-transformer         = { group = "androidx.media3", name = "media3-transformer", version.ref = "media3" }
+androidx-media3-effect              = { group = "androidx.media3", name = "media3-effect", version.ref = "media3" }
 
 # ── Ktor ───────────────────────────────────────────────────────────────────────
 ktor-client-core                    = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
