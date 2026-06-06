@@ -55,6 +55,17 @@ enum class GlowIntensity(val displayName: String, val shaderStrength: Float) {
     BOLD   ("Bold",   shaderStrength = 1.25f),
 }
 
+/**
+ * The glow's visual pattern. [FLUID] is the flowing aurora field; [LOOM] weaves soft horizontal +
+ * vertical light threads over that field (recreating, deliberately, the geometric look an early
+ * build produced as a GPU artifact). Pattern is a shader feature, so it only applies on API 33+;
+ * the pre-33 gradient fallback always renders the fluid look.
+ */
+enum class GlowStyle(val displayName: String) {
+    FLUID ("Fluid"),
+    LOOM  ("Loom"),
+}
+
 @Composable
 fun GlowColorPreset.resolveColor(): Color {
     val context = LocalContext.current
@@ -89,6 +100,7 @@ uniform float uBass;
 uniform float uMid;
 uniform float uTreble;
 uniform float uStrength;
+uniform float uPattern;
 uniform float3 uColorA;
 uniform float3 uColorB;
 uniform float3 uColorC;
@@ -153,6 +165,19 @@ half4 main(float2 fragCoord) {
     float band = 0.5 + 0.5 * sin(6.2831 * f + t * 2.0 + mid * 3.0);
     float intensity = mix(0.55, 1.0, band);
 
+    // ── "Loom" pattern (uPattern > 0.5): soft horizontal + vertical light threads woven on the
+    //    *warped* domain, so they ripple with the flow instead of sitting as a rigid grid. The two
+    //    sets interfere with the fluid field to make the geometric-yet-fluid look.
+    float loom = 0.0;
+    if (uPattern > 0.5) {
+        float2 g = p2 * 11.0 + float2(t * 0.6, -t * 0.45);
+        float2 gf = abs(fract(g) - 0.5) * 2.0;       // 0 at a thread centre, 1 between threads
+        float lw = 0.10 + 0.06 * bass;               // bass thickens the threads
+        float vert = smoothstep(lw, 0.0, gf.x);
+        float horiz = smoothstep(lw, 0.0, gf.y);
+        loom = max(vert, horiz) * smoothstep(0.30, 0.72, f); // threads only glow in the bright flow
+    }
+
     // Spatial shaping: brightest toward the upper-centre, fading down and out so content
     // lower on the screen stays legible.
     float fall = smoothstep(1.25, -0.1, uv.y);
@@ -162,6 +187,14 @@ half4 main(float2 fragCoord) {
     float mask = clamp(f * intensity * fall * vign, 0.0, 1.0);
 
     float3 outc = mix(uBg, col, clamp(mask * amp, 0.0, 1.0));
+
+    // Weave the threads over the wash. They contrast with the canvas — brighter than the colour on
+    // a dark background, darker on a light one — so the pattern reads in both light and dark.
+    float bgLum = dot(uBg, float3(0.299, 0.587, 0.114));
+    float3 threadCol = bgLum > 0.5 ? col * 0.5 : clamp(col + 0.30, 0.0, 1.0);
+    float loomAmt = clamp(loom * fall * vign * amp, 0.0, 1.0);
+    outc = mix(outc, threadCol, loomAmt * 0.8);
+
     return half4(half3(outc), 1.0);
 }
 """
@@ -186,6 +219,7 @@ fun GlowBackground(
     // (below) — so the visualizer's ~30 Hz updates only re-draw the shader, never recompose the
     // whole app tree (which a value read at the call site would have triggered).
     signalFlow: StateFlow<VisualizerSignal>? = null,
+    style: GlowStyle = GlowStyle.FLUID,
     content: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -205,7 +239,7 @@ fun GlowBackground(
                 else null
             }
             if (shader != null) {
-                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow)
+                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow, style == GlowStyle.LOOM)
             } else {
                 GradientGlowFallback(triad, bg, intensity, signalFlow)
             }
@@ -240,6 +274,7 @@ private fun FluidShaderGlow(
     bg: Color,
     strength: Float,
     signalFlow: StateFlow<VisualizerSignal>?,
+    loom: Boolean,
 ) {
     val brush = remember(shader) { ShaderBrush(shader) }
     val time by rememberFrameTimeSeconds()
@@ -270,6 +305,7 @@ private fun FluidShaderGlow(
                 shader.setFloatUniform("uMid", mid)
                 shader.setFloatUniform("uTreble", treble)
                 shader.setFloatUniform("uStrength", adaptedStrength)
+                shader.setFloatUniform("uPattern", if (loom) 1f else 0f)
                 shader.setFloatUniform("uColorA", cA.red, cA.green, cA.blue)
                 shader.setFloatUniform("uColorB", cB.red, cB.green, cB.blue)
                 shader.setFloatUniform("uColorC", cC.red, cC.green, cC.blue)
