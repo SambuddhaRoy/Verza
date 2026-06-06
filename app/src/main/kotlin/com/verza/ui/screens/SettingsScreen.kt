@@ -49,6 +49,7 @@ fun SettingsScreen(
     onSignIn: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenEqualizer: () -> Unit,
+    onOpenTour: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -393,6 +394,19 @@ fun SettingsScreen(
                     subtitle = "Wipe the play history behind Your Sound",
                     tint = colors.error,
                     onClick = { showResetStatsDialog = true },
+                    divider = false,
+                )
+            }
+        }
+
+        // ── Help ─────────────────────────────────────────────────────────────
+        item { SectionHeader("Help") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                ActionRow(
+                    title = "Take the tour",
+                    subtitle = "A quick guide to every feature and where to find it",
+                    onClick = onOpenTour,
                     divider = false,
                 )
             }

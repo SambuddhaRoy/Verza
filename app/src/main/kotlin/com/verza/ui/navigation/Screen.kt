@@ -20,6 +20,10 @@ sealed class Screen(val route: String) {
     data object Boot       : Screen("boot")
     data object Stats      : Screen("stats")
     data object Equalizer  : Screen("equalizer")
+    data object Tour : Screen("tour?onboarding={onboarding}") {
+        const val ARG = "onboarding"
+        fun create(fromOnboarding: Boolean) = "tour?onboarding=$fromOnboarding"
+    }
     data object Lyrics    : Screen("lyrics")
     data object LocalPlaylist : Screen("local_playlist/{playlistId}") {
         const val ARG = "playlistId"
