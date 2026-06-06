@@ -38,6 +38,7 @@ import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.DynamicColorSupported
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowIntensity
+import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaTheme
 import com.verza.ui.theme.resolveColor
@@ -61,6 +62,7 @@ fun SettingsScreen(
     val glowEnabled by viewModel.glowEnabled.collectAsStateWithLifecycle()
     val glowColor by viewModel.glowColor.collectAsStateWithLifecycle()
     val glowIntensity by viewModel.glowIntensity.collectAsStateWithLifecycle()
+    val glowStyle by viewModel.glowStyle.collectAsStateWithLifecycle()
     val glowReactive by viewModel.glowReactive.collectAsStateWithLifecycle()
     val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
     val resumeOnOpen by viewModel.resumeOnOpen.collectAsStateWithLifecycle()
@@ -70,7 +72,6 @@ fun SettingsScreen(
     val sleeveMode by viewModel.sleeveMode.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
-    val isDarkTheme = !currentTheme.isLight
     var showResetStatsDialog by remember { mutableStateOf(false) }
 
     // ── Library backup (export / import) ────────────────────────────────────────
@@ -244,12 +245,6 @@ fun SettingsScreen(
                     onToggle = viewModel::setSkipSilence,
                 )
                 ToggleRow(
-                    title = "Album art motion",
-                    subtitle = "Gently animate the cover while playing",
-                    checked = albumArtMotion,
-                    onToggle = viewModel::setAlbumArtMotion,
-                )
-                ToggleRow(
                     title = "Gentle start",
                     subtitle = "Ease the volume up when you resume — a soft sunrise",
                     checked = gentleStart,
@@ -296,6 +291,27 @@ fun SettingsScreen(
             }
         }
 
+        // ── Appearance ─────────────────────────────────────────────────────────
+        item { SectionHeader("Appearance") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                ToggleRow(
+                    title = "Sleeve mode",
+                    subtitle = "Editorial look — full-bleed poster player, translucent surfaces, " +
+                        "all over the live cover-coloured glow",
+                    checked = sleeveMode,
+                    onToggle = viewModel::setSleeveMode,
+                )
+                ToggleRow(
+                    title = "Album art motion",
+                    subtitle = "Gently animate the cover while playing",
+                    checked = albumArtMotion,
+                    onToggle = viewModel::setAlbumArtMotion,
+                    divider = false,
+                )
+            }
+        }
+
         // ── Theme ──────────────────────────────────────────────────────────────
         item { SectionHeader("Theme") }
         items(VerzaTheme.entries.filter { it != VerzaTheme.DYNAMIC || DynamicColorSupported }) { theme ->
@@ -303,18 +319,23 @@ fun SettingsScreen(
         }
 
         // ── Background glow ────────────────────────────────────────────────────
-        // Glow lives only in dark themes by design. We still show the toggle row in light
-        // themes (with a muted explanation) so users can discover the feature; the colour
-        // and intensity controls collapse to avoid empty real-estate.
+        // The glow now renders on light schemes too (as soft colour washes), so its controls are
+        // available whenever it's enabled, regardless of theme.
         item { SectionHeader("Background glow") }
         item {
             GlowToggleRow(
                 enabled = glowEnabled,
                 onToggle = viewModel::setGlowEnabled,
-                availableInTheme = isDarkTheme,
+                availableInTheme = true,
             )
         }
-        if (isDarkTheme && glowEnabled) {
+        if (glowEnabled) {
+            item {
+                GlowPatternRow(
+                    selected = glowStyle,
+                    onSelect = viewModel::setGlowStyle,
+                )
+            }
             item {
                 GlowColorRow(
                     selected = glowColor,
@@ -355,21 +376,6 @@ fun SettingsScreen(
                     title = "Clear search history",
                     subtitle = "Remove all remembered searches",
                     onClick = viewModel::clearSearchHistory,
-                    divider = false,
-                )
-            }
-        }
-
-        // ── Appearance ───────────────────────────────────────────────────────
-        item { SectionHeader("Appearance") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                ToggleRow(
-                    title = "Sleeve mode",
-                    subtitle = "Editorial look — full-bleed poster player, translucent surfaces, " +
-                        "all over the live cover-coloured glow",
-                    checked = sleeveMode,
-                    onToggle = viewModel::setSleeveMode,
                     divider = false,
                 )
             }
@@ -638,6 +644,29 @@ private fun AudioQualityRow(
 }
 
 // ── Glow rows ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun GlowPatternRow(selected: GlowStyle, onSelect: (GlowStyle) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Column(
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("Pattern", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+        SegmentedChoice(
+            options = GlowStyle.entries,
+            selected = selected,
+            label = { it.displayName },
+            onSelect = onSelect,
+        )
+        Text(
+            "Loom weaves soft geometric threads through the flow (needs Android 13+).",
+            style = CaptionItalic,
+            color = ext.muted,
+        )
+    }
+}
 
 @Composable
 private fun GlowToggleRow(
