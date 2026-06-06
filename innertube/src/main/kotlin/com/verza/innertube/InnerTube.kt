@@ -129,7 +129,9 @@ object InnerTube {
             setBody(buildJsonObject {
                 putContext(c)
                 put("query", query)
-                put("params", params)
+                // An empty params string means "no filter" — omit it so YouTube returns the mixed
+                // top-results page rather than constraining to one type.
+                if (params.isNotEmpty()) put("params", params)
                 continuation?.let { put("continuation", it) }
             }.toString())
         }.bodyAsText().let { defaultJson.parseToJsonElement(it) }
