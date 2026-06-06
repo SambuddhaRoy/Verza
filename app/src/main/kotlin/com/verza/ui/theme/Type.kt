@@ -13,10 +13,10 @@ import androidx.compose.ui.unit.sp
 import com.verza.R
 
 // ── Bundled fonts (no Google Play Services dependency) ───────────────────────────
-// All four families ship as OFL-licensed variable fonts in res/font, so the app pulls
-// nothing from the proprietary `com.google.android.gms.fonts` provider — a hard
-// requirement for F-Droid / IzzyOnDroid inclusion. A single variable file covers every
-// weight we reach for; FontVariation.Settings drives the 'wght' axis per declared weight.
+// Inter (a clean modern grotesque) and IBM Plex Mono ship as OFL variable/static fonts in
+// res/font, so the app pulls nothing from the proprietary `com.google.android.gms.fonts`
+// provider — a requirement for F-Droid / IzzyOnDroid. The one variable Inter file covers
+// every weight; FontVariation.Settings drives the 'wght' axis per declared weight.
 // (minSdk 26 ⇒ font variation axes are honoured on every supported device.)
 
 /** A variable-font [Font] that pins the weight axis so one file serves many weights. */
@@ -29,43 +29,23 @@ private fun varFont(resId: Int, weight: FontWeight, style: FontStyle = FontStyle
         variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
     )
 
-// Cormorant Garamond — heavier editorial serif for the big, bold, sophisticated voice on
-// display/headline/title text. Regular/Medium/SemiBold/Bold upright + Regular/SemiBold italic
-// for the serif "deck" captions, all from the one variable file (+ its italic companion).
-val FontDisplay = FontFamily(
-    varFont(R.font.cormorant_garamond_variable, FontWeight.Normal),
-    varFont(R.font.cormorant_garamond_variable, FontWeight.Medium),
-    varFont(R.font.cormorant_garamond_variable, FontWeight.SemiBold),
-    varFont(R.font.cormorant_garamond_variable, FontWeight.Bold),
-    varFont(R.font.cormorant_garamond_italic_variable, FontWeight.Normal, FontStyle.Italic),
-    varFont(R.font.cormorant_garamond_italic_variable, FontWeight.SemiBold, FontStyle.Italic),
-)
-
-// Inter — clean grotesque sans for body/label (the Söhne stand-in).
+// Inter — the app's single text typeface. A clean, highly readable modern sans used for
+// everything: display, headline, title, body and label. (No serif anywhere — see the
+// aliases below.) One variable file, four weights.
 val FontBody = FontFamily(
     varFont(R.font.inter_variable, FontWeight.Normal),
     varFont(R.font.inter_variable, FontWeight.Medium),
     varFont(R.font.inter_variable, FontWeight.SemiBold),
+    varFont(R.font.inter_variable, FontWeight.Bold),
 )
 
-// Newsreader — the Sleeve appearance's serif, exactly matching the UMBRA reference's lead
-// direction ("Terracotta"), which sets *every* serif at weight 400 (regular). The editorial,
-// high-style voice there comes from large sizes + thin regular weight + tight tracking, NOT from
-// bolding — so we deliberately keep Light/Regular variants and never reach for Bold in Sleeve.
-// A literary, newspaper-ish serif with a softer, warmer voice than Cormorant.
-val FontSleeve = FontFamily(
-    varFont(R.font.newsreader_variable, FontWeight.Light),
-    varFont(R.font.newsreader_variable, FontWeight.Normal),
-    varFont(R.font.newsreader_variable, FontWeight.Medium),
-    // Bold is reserved for deliberate emphasis (e.g. the currently-playing track in the queue),
-    // not the general UI voice — which stays at weight 400 per the reference.
-    varFont(R.font.newsreader_variable, FontWeight.Bold),
-    varFont(R.font.newsreader_italic_variable, FontWeight.Light, FontStyle.Italic),
-    varFont(R.font.newsreader_italic_variable, FontWeight.Normal, FontStyle.Italic),
-    varFont(R.font.newsreader_italic_variable, FontWeight.Medium, FontStyle.Italic),
-)
+// Display + Sleeve type are aliases of the sans now. Verza used an editorial serif (Cormorant /
+// Newsreader) for headlines and the Sleeve appearance; that's been dropped in favour of the
+// simpler, more readable modern sans. The names are kept so call-sites don't churn.
+val FontDisplay = FontBody
+val FontSleeve = FontBody
 
-// IBM Plex Mono — reserved for numeric / timecode chrome (kept for accent details).
+// IBM Plex Mono — reserved for numeric / timecode chrome (durations, indices, datelines).
 // Static instances (Plex Mono ships no variable font); Regular + Medium are all we use.
 val FontMono = FontFamily(
     Font(R.font.ibm_plex_mono_regular, FontWeight.Normal),
@@ -73,8 +53,8 @@ val FontMono = FontFamily(
 )
 
 // ── Typography ─────────────────────────────────────────────────────────────────
-// Display/Headline/Title → serif (Playfair). Body/Label → sans (Inter).
-// Tight, optical letter-spacing on the serif; clean defaults on Inter.
+// Everything is set in Inter (a clean modern sans) — display, headline, title, body, label.
+// Tight, optical letter-spacing at the larger sizes; clean defaults at text sizes.
 
 // Tabular numerals — applied to any text style that frequently contains numbers
 // (durations, kbps, version codes). Keeps "1:24" and "3:09" the same width so
@@ -82,9 +62,7 @@ val FontMono = FontFamily(
 private const val FEAT_TABULAR = "tnum"
 
 val VerzaTypography = Typography(
-    // Display + headline + titleLarge are all Bold in Cormorant Garamond. The font's
-    // bold weight reads as architectural rather than shouty — slightly larger sizes
-    // are forgiving of the heavier stroke without feeling crammed.
+    // Display + headline + titleLarge are Bold Inter — confident without the heavy serif stroke.
     displayLarge = TextStyle(
         fontFamily = FontDisplay, fontWeight = FontWeight.Bold,
         fontSize = 52.sp, lineHeight = 56.sp, letterSpacing = (-0.025).sp,
@@ -159,39 +137,37 @@ val VerzaTypography = Typography(
 )
 
 /**
- * Sleeve-appearance typography — a faithful port of the UMBRA "Terracotta" reference. Every serif
- * slot is **Newsreader at weight 400 (regular)** with tight, optical em-tracking and near-1.0
- * line-heights, so the look comes from scale + thin weight rather than bolding. The serif now
- * reaches down through the *title* slots too (track titles, card titles, list rows) so enabling
- * Sleeve re-sets the whole app as editorial type in one move. Body / label slots keep Inter;
- * numeric chrome uses [FontMono] at point-of-use.
+ * Sleeve-appearance typography. Sleeve keeps its cover-driven colours, poster layout, grain and
+ * mono chrome, but its type is now the same modern sans as the rest of the app — set a touch larger
+ * with tight, optical em-tracking and near-1.0 line-heights so titles still read as a confident,
+ * poster-like display voice (just without the serif). Body / label slots keep Inter; numeric chrome
+ * uses [FontMono] at point-of-use.
  */
-private fun sleeveSerif(size: Int, line: Int, track: Float) = TextStyle(
+private fun sleeveTitle(size: Int, line: Int, track: Float) = TextStyle(
     fontFamily = FontSleeve, fontWeight = FontWeight.Normal,
     fontSize = size.sp, lineHeight = line.sp, letterSpacing = track.em,
 )
 
 val VerzaSleeveTypography = VerzaTypography.copy(
-    displayLarge  = sleeveSerif(54, 54, -0.020f),
-    displayMedium = sleeveSerif(42, 44, -0.020f),
-    displaySmall  = sleeveSerif(33, 36, -0.018f),
-    headlineLarge  = sleeveSerif(30, 32, -0.016f),
-    headlineMedium = sleeveSerif(26, 29, -0.014f),
-    headlineSmall  = sleeveSerif(22, 26, -0.012f),
-    titleLarge  = sleeveSerif(22, 26, -0.010f),
-    // Track / card / list titles become editorial serif as well (reference sets these at ~21/15px,
-    // weight 400). Kept a touch larger than the Inter originals to carry the serif gracefully.
-    titleMedium = sleeveSerif(18, 23, -0.010f),
-    titleSmall  = sleeveSerif(16, 20, -0.008f),
+    displayLarge  = sleeveTitle(54, 54, -0.020f),
+    displayMedium = sleeveTitle(42, 44, -0.020f),
+    displaySmall  = sleeveTitle(33, 36, -0.018f),
+    headlineLarge  = sleeveTitle(30, 32, -0.016f),
+    headlineMedium = sleeveTitle(26, 29, -0.014f),
+    headlineSmall  = sleeveTitle(22, 26, -0.012f),
+    titleLarge  = sleeveTitle(22, 26, -0.010f),
+    // Track / card / list titles get the same display sans, a touch larger than the body originals.
+    titleMedium = sleeveTitle(18, 23, -0.010f),
+    titleSmall  = sleeveTitle(16, 20, -0.008f),
 )
 
 // ── Editorial extras (used directly via the style refs below) ─────────────────
 // These don't belong in the M3 Typography slots — they're used at point-of-use
 // in screens that want the editorial italic voice or tabular monospace timecode.
 
-/** Serif italic, the "deck" voice for short captions and descriptive subtitles. */
+/** Italic "deck" voice for short captions and descriptive subtitles (sans italic). */
 val CaptionItalic = TextStyle(
-    fontFamily = FontDisplay,
+    fontFamily = FontBody,
     fontWeight = FontWeight.Normal,
     fontStyle = FontStyle.Italic,
     fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = 0.sp,

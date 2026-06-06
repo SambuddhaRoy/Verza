@@ -28,7 +28,7 @@
 
 Verza streams the entire YouTube Music catalogue without ads or a subscription, using [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) for stream resolution and the InnerTube API for browse, search and your personal library. Sign in to bring your home feed, playlists, followed artists and Liked Songs along — or use it fully anonymously.
 
-What sets it apart is the **design**: a GPU-shaded glow that drifts behind the app and takes on each song's colours, and **Sleeve** — an opt-in editorial mode that recolours the whole interface from the current cover art, sets it in a literary serif, and turns Now Playing into a poster.
+What sets it apart is the **design**: a GPU-shaded glow that drifts behind the app and takes on each song's colours, and **Sleeve** — an opt-in editorial mode that recolours the whole interface from the current cover art and turns Now Playing into a poster.
 
 ---
 
@@ -51,7 +51,7 @@ A GPU-shaded **glow** that drifts behind the app, takes on each song's **cover c
 <td width="33%" valign="top">
 
 ### ✒️ Sleeve
-A **cover-driven editorial mode** — serif type, film grain, glass chrome, and a poster Now Playing that melts into the glow
+A **cover-driven editorial mode** — cover-tinted surfaces, film grain, glass chrome, and a poster Now Playing that melts into the glow
 
 </td>
 </tr>
@@ -109,7 +109,7 @@ Share your queue as a **`verza://` link** — a friend opens it and picks up the
 <td align="center">
 <img src="docs/sleeve-home.jpg" alt="Sleeve — Home" width="280"/>
 <br/>
-<sub><b>Home</b> — mono dateline masthead, Newsreader titles, cover-tinted glass cards, film grain over the live glow</sub>
+<sub><b>Home</b> — mono dateline masthead, big cover-driven titles, cover-tinted glass cards, film grain over the live glow</sub>
 </td>
 <td align="center">
 <img src="docs/sleeve-now-playing.jpg" alt="Sleeve — Now Playing" width="280"/>
@@ -208,8 +208,8 @@ To silence it entirely on a phone you trust Verza on: **Settings → Security �
 ### Sleeve — the editorial appearance
 An opt-in, **cover-driven** mode (Settings → Appearance) inspired by record-label landing pages. Every surface — background, cards, chrome, type — recolours from the **current cover art** and floats over the live glow.
 
-- **Typography** — **Newsreader** serif at a light regular weight with tight tracking for all titles; **IBM Plex Mono** for wide-tracked eyebrows, indices and timecodes.
-- **Poster Now Playing** — the full-bleed cover **dissolves into the reactive glow at its edges** (no frame, no seam). The **queue is contextual**: the current song is framed second from the top, set large and bold, and switching songs **animates the type and scroll**. Like · Add-to-playlist · Radio · Download sit on the poster, with a ⋯ "More" menu for focus, sleep/wind-down, ambient, and sharing — full parity with the standard player.
+- **Typography** — the same clean **Inter** sans as the rest of the app, set larger with tight optical tracking for a confident, poster-like display voice; **IBM Plex Mono** for wide-tracked eyebrows, indices and timecodes.
+- **Poster Now Playing** — the full-bleed cover **dissolves into the reactive glow at its edges** (no frame, no seam). The **queue is collapsed by default** so the cover is the hero, and **unfurls with a fluid spring** from a Queue toggle; when open, the current song is framed large and switching songs **animates the type and scroll**. Like · Add-to-playlist · Radio · Download sit on the poster, with a ⋯ "More" menu for focus, sleep/wind-down, ambient, and sharing — full parity with the standard player.
 - **Texture** — film grain, an edge vignette, chromatic-aberration headlines, mono superscript numerals, and moody cover-colour backdrops give it a printed, photographic feel.
 - **Carried app-wide** — a mono dateline masthead on Home, full-bleed Album and moody Playlist headers, **translucent "glass" nav, cards and mini-player**, and editorial track listings throughout.
 - **"Adaptive · cover"** — a standalone theme that brings the same cover-sampled colour scheme to the standard (non-Sleeve) UI.
@@ -217,7 +217,7 @@ An opt-in, **cover-driven** mode (Settings → Appearance) inspired by record-la
 ### Themes & motion
 - **Material You (Dynamic)** is the default on Android 12+, colouring the app from your wallpaper; older devices fall back to **Atelier Dark**.
 - Nine curated palettes: the **Atelier** light/dark editorial pair plus **Bauhaus · Malibu · Concrete · Noir · Ember · Acid · Magenta**.
-- **Cormorant Garamond** for display/headlines, **Inter** for body/labels, **IBM Plex Mono** for numerals — hairline rules instead of heavy cards.
+- **Inter** sets all text — display, headline, title, body and label; **IBM Plex Mono** for numerals — hairline rules instead of heavy cards.
 - Motion: **Material fade-through** between bottom-bar tabs and a **shared-axis** slide for push/pop (emphasized easing), press-scale feedback, a spring-animated nav, staggered home reveal, breathing album art, and a smoothly interpolated seek bar.
 - A cold-launch **boot animation** and the **"Fold"** launcher icon (with an Android-13 themed-icon variant).
 
@@ -361,7 +361,7 @@ Verza is an unofficial client. It uses public InnerTube endpoints and NewPipeExt
 - [**LRCLIB**](https://lrclib.net) — free, no-auth synced-lyrics provider.
 - [**iTunes Search API**](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/) — real album art when YouTube serves a music-video frame; liner-notes metadata.
 - [**Material 3**](https://m3.material.io/) — design system and the typography / shape / colour primitives.
-- **Fonts** — Cormorant Garamond, Newsreader, Inter, and IBM Plex Mono, all under the SIL Open Font License and bundled in-app. See [`FONTS.md`](FONTS.md).
+- **Fonts** — Inter and IBM Plex Mono, both under the SIL Open Font License and bundled in-app. See [`FONTS.md`](FONTS.md).
 
 ---
 

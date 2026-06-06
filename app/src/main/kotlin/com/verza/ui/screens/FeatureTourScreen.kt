@@ -67,8 +67,8 @@ private val tourPages = listOf(
         icon = Icons.Filled.Wallpaper,
         eyebrow = "The look",
         title = "An album as a poster",
-        body = "Sleeve mode recolours the whole app from the cover art, sets it in a serif, and turns " +
-            "Now Playing into a full-bleed poster with the queue underneath.",
+        body = "Sleeve mode recolours the whole app from the cover art and turns Now Playing into a " +
+            "full-bleed poster, with the queue a tap away underneath.",
         where = "Settings › Appearance › Sleeve",
     ),
     TourPage(

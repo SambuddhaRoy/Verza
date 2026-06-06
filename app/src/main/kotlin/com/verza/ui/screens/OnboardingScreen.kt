@@ -281,8 +281,8 @@ private fun StepAppearance(onPick: (Boolean) -> Unit) {
         Spacer(Modifier.height(14.dp))
         Text(
             text = "Standard is a clean Material layout. Sleeve is an editorial mode that recolours " +
-                  "the whole app from the cover art, sets it in a serif, and turns Now Playing into " +
-                  "a poster. You can switch anytime in Settings.",
+                  "the whole app from the cover art and turns Now Playing into a poster. " +
+                  "You can switch anytime in Settings.",
             style = MaterialTheme.typography.bodyLarge,
             color = ext.muted,
         )
