@@ -128,6 +128,25 @@ class PlayerConnection(context: Context) {
         if (items.isNotEmpty()) controller?.addMediaItems(items)
     }
 
+    /**
+     * Keeps the currently-playing item exactly as it is (no reload), drops the rest of the queue,
+     * and appends [upcoming] after it. Used to start a radio from the current song without
+     * restarting it. Falls back to a fresh queue when nothing is playing.
+     */
+    fun replaceUpcoming(upcoming: List<MediaItem>) {
+        val ctrl = controller ?: return
+        val cur = ctrl.currentMediaItemIndex
+        if (cur < 0 || ctrl.mediaItemCount == 0) {
+            if (upcoming.isNotEmpty()) setQueue(upcoming)
+            return
+        }
+        // Trim everything after the current item, then everything before it, so the current item
+        // ends up at index 0 still playing; then append the new continuation.
+        if (ctrl.mediaItemCount > cur + 1) ctrl.removeMediaItems(cur + 1, ctrl.mediaItemCount)
+        if (cur > 0) ctrl.removeMediaItems(0, cur)
+        if (upcoming.isNotEmpty()) ctrl.addMediaItems(upcoming)
+    }
+
     /** Inserts [item] directly after the current track, so it plays next. */
     fun addNext(item: MediaItem) {
         controller?.let {

@@ -8,6 +8,7 @@ import com.verza.audio.EqConfig
 import com.verza.data.ArtworkRepository
 import com.verza.data.DownloadManager
 import com.verza.data.LibraryRepository
+import com.verza.data.LyricsRepository
 import com.verza.data.MusicRepository
 import com.verza.data.PreferencesRepository
 import com.verza.data.SavedQueue
@@ -65,6 +66,7 @@ class PlaybackViewModel @Inject constructor(
     private val statsRepository: StatsRepository,
     private val audioEffects: AudioEffectsController,
     private val sessionShare: SessionShareRepository,
+    private val lyricsRepository: LyricsRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -217,6 +219,8 @@ class PlaybackViewModel @Inject constructor(
                     val md = playbackState.value.currentItem?.mediaMetadata ?: return@collect
                     val title = md.title?.toString().orEmpty()
                     val artist = md.artist?.toString().orEmpty()
+                    // Warm the lyrics cache in the background so opening the Lyrics screen is instant.
+                    viewModelScope.launch { lyricsRepository.prefetch(title, artist, playbackState.value.durationMs) }
                     val better = artworkRepository.resolve(title, artist)
                     // Only apply if the track hasn't already moved on while we waited.
                     if (better != null && playbackState.value.currentItem?.mediaId == id) {
@@ -410,7 +414,16 @@ class PlaybackViewModel @Inject constructor(
         if (videoId.isBlank()) return
         viewModelScope.launch {
             repository.radio(videoId).onSuccess { tracks ->
-                if (tracks.isNotEmpty()) playSongs(tracks, 0)
+                if (tracks.isEmpty()) return@onSuccess
+                // If the radio is seeded from the track that's *already playing*, keep it playing
+                // (don't reload it from the start) and just swap the radio continuation in after it.
+                val current = playbackState.value.currentItem?.mediaId
+                if (current != null && current == videoId) {
+                    val continuation = tracks.filter { it.id != videoId }.map { it.toMediaItem() }
+                    playerConnection.replaceUpcoming(continuation)
+                } else {
+                    playSongs(tracks, 0)
+                }
             }
         }
     }
