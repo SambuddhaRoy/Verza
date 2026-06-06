@@ -20,7 +20,7 @@ import com.verza.ui.sleeve.grain
 import com.verza.ui.sleeve.moodyBackdrop
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
-import com.verza.ui.theme.LocalCoverColors
+import com.verza.ui.theme.LocalArtworkColors
 import com.verza.ui.theme.VerzaShape
 
 /** Preview + share for a single lyric line, via the shared [ShareCardOverlay]. */
@@ -54,7 +54,7 @@ fun LyricShareOverlay(
 /**
  * The editorial lyric card itself — a moody, cover-coloured poster with the quoted line in
  * Newsreader, the surrounding lines faded for context, and a small now-playing header + wordmark.
- * Drawn purely from [LocalCoverColors] so it looks the same regardless of the active theme.
+ * Drawn purely from [LocalArtworkColors] so it looks the same regardless of the active theme.
  */
 @Composable
 fun LyricCard(
@@ -66,7 +66,7 @@ fun LyricCard(
     artist: String,
     artworkUrl: String?,
 ) {
-    val cover = LocalCoverColors.current
+    val cover = LocalArtworkColors.current
     Box(
         modifier = modifier
             .background(cover.bg)

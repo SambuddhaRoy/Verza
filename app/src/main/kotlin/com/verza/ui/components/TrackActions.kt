@@ -8,6 +8,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
@@ -59,7 +60,11 @@ fun TrackActionsMenu(item: MusicItem, modifier: Modifier = Modifier) {
                 modifier = Modifier.size(20.dp),
             )
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
             DropdownMenuItem(
                 text = { Text("Play next") },
                 onClick = { open = false; actions.onPlayNext(item) },

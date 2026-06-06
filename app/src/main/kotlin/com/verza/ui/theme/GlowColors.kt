@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color as AndroidColor
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -128,7 +129,29 @@ val DefaultCoverColors = CoverColors(
     line = Color(0xFFF2E9DD).copy(alpha = 0.16f),
 )
 
+/**
+ * Editorial surface palette for the **Sleeve chrome** (Home / Library / Settings / nav / mini-player).
+ * Derived from the *active theme scheme* (see [coverColorsFromScheme]) so switching themes — and
+ * light vs dark — actually recolours Sleeve. (The Now-Playing poster instead uses [LocalArtworkColors].)
+ */
 val LocalCoverColors = staticCompositionLocalOf { DefaultCoverColors }
+
+/**
+ * Palette sampled from the **current track's cover art**, used by the Now-Playing poster, the
+ * ambient display and the share cards — surfaces that sit *on top of the artwork* and therefore need
+ * light ink over a darkened cover for contrast regardless of the app's light/dark theme.
+ */
+val LocalArtworkColors = staticCompositionLocalOf { DefaultCoverColors }
+
+/** Derives the Sleeve editorial palette from an active M3 [scheme], so chrome tracks the theme. */
+fun coverColorsFromScheme(scheme: ColorScheme): CoverColors = CoverColors(
+    accent = scheme.primary,
+    bg = scheme.background,
+    ink = scheme.onBackground,
+    sub = scheme.onSurfaceVariant,
+    faint = scheme.onBackground.copy(alpha = 0.34f),
+    line = scheme.outlineVariant,
+)
 
 /** A near-black canvas that keeps a faint hint of the cover's hue. */
 private fun darkCanvasFrom(c: Color): Color {
@@ -166,11 +189,32 @@ suspend fun extractCoverColors(context: Context, url: String): CoverColors? {
 /** Best-contrast on-colour (black or white) for text/icons drawn on [bg]. */
 private fun onColorFor(bg: Color): Color = if (bg.luminance() > 0.5f) Color(0xFF120A06) else Color.White
 
+/** A near-white canvas that keeps a faint hint of the cover's hue (the light "Adaptive · cover"). */
+private fun lightCanvasFrom(c: Color): Color {
+    val hsv = FloatArray(3)
+    AndroidColor.colorToHSV(c.toArgb(), hsv)
+    return Color(AndroidColor.HSVToColor(floatArrayOf(hsv[0], (hsv[1] * 0.20f).coerceAtMost(0.10f), 0.97f)))
+}
+
+/** Pulls an accent toward enough depth/saturation to read as text/fills on a light canvas. */
+private fun darkenForLight(c: Color): Color {
+    val hsv = FloatArray(3)
+    AndroidColor.colorToHSV(c.toArgb(), hsv)
+    hsv[1] = hsv[1].coerceAtLeast(0.50f)
+    hsv[2] = hsv[2].coerceAtMost(0.74f)
+    return Color(AndroidColor.HSVToColor(hsv))
+}
+
 /**
- * A full dark M3 [ColorScheme] derived from [c] — the engine behind the "Adaptive · cover" theme.
- * Every role (background, surfaces, primary, text) is sampled from or tuned against the cover.
+ * A full M3 [ColorScheme] derived from [c] — the engine behind the "Adaptive · cover" theme. Every
+ * role (background, surfaces, primary, text) is sampled from or tuned against the cover. [light]
+ * builds the light variant (near-white canvas, ink-dark text) so cover-driven theming honours a
+ * light-mode device; the default dark variant is the original editorial look.
  */
-fun coverColorScheme(c: CoverColors): ColorScheme = darkColorScheme(
+fun coverColorScheme(c: CoverColors, light: Boolean = false): ColorScheme =
+    if (light) lightCoverScheme(c) else darkCoverScheme(c)
+
+private fun darkCoverScheme(c: CoverColors): ColorScheme = darkColorScheme(
     primary = c.accent,
     onPrimary = onColorFor(c.accent),
     primaryContainer = lerp(c.bg, c.accent, 0.30f),
@@ -192,3 +236,32 @@ fun coverColorScheme(c: CoverColors): ColorScheme = darkColorScheme(
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
 )
+
+private fun lightCoverScheme(c: CoverColors): ColorScheme {
+    val bg = lightCanvasFrom(c.accent)
+    val ink = Color(0xFF1A1410)            // warm near-black ink
+    val sub = ink.copy(alpha = 0.66f)
+    val primary = darkenForLight(c.accent)
+    return lightColorScheme(
+        primary = primary,
+        onPrimary = onColorFor(primary),
+        primaryContainer = lerp(bg, c.accent, 0.22f),
+        onPrimaryContainer = ink,
+        secondary = primary,
+        onSecondary = onColorFor(primary),
+        secondaryContainer = lerp(bg, c.accent, 0.16f),
+        onSecondaryContainer = ink,
+        tertiary = primary,
+        onTertiary = onColorFor(primary),
+        background = bg,
+        onBackground = ink,
+        surface = lerp(bg, Color.Black, 0.03f),
+        onSurface = ink,
+        surfaceVariant = lerp(bg, Color.Black, 0.06f),
+        onSurfaceVariant = sub,
+        outline = ink.copy(alpha = 0.22f),
+        outlineVariant = lerp(bg, Color.Black, 0.10f),
+        error = Color(0xFFBA1A1A),
+        onError = Color.White,
+    )
+}
