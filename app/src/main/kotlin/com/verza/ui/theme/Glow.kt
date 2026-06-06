@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import com.verza.audio.VisualizerSignal
 import kotlinx.coroutines.flow.StateFlow
@@ -186,15 +187,15 @@ fun GlowBackground(
     // (below) — so the visualizer's ~30 Hz updates only re-draw the shader, never recompose the
     // whole app tree (which a value read at the call site would have triggered).
     signalFlow: StateFlow<VisualizerSignal>? = null,
-    forceDark: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val isLight = LocalVerzaTheme.current.isLight
-    // forceDark (used by Sleeve) renders the reactive glow over a guaranteed-dark canvas regardless
-    // of the chosen theme's lightness, so the editorial surfaces always have a dark context.
-    val show = enabled && (forceDark || !isLight)
     val scheme = MaterialTheme.colorScheme
-    val bg = if (forceDark) Color(0xFF09090C) else scheme.background
+    // Decide light/dark from the *actual* scheme background, not the theme enum — the cover/Adaptive
+    // and Dynamic schemes are built at runtime and can be either. The glow is a dark-canvas effect,
+    // so it's shown only on dark schemes; light themes (incl. a light Sleeve) just show the bg.
+    val isLight = scheme.background.luminance() > 0.5f
+    val show = enabled && !isLight
+    val bg = scheme.background
 
     Box(modifier = modifier.fillMaxSize()) {
         if (show) {

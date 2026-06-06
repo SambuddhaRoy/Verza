@@ -42,7 +42,7 @@ import com.verza.ui.sleeve.grain
 import com.verza.ui.sleeve.moodyBackdrop
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
-import com.verza.ui.theme.LocalCoverColors
+import com.verza.ui.theme.LocalArtworkColors
 import com.verza.ui.theme.VerzaShape
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -76,7 +76,7 @@ fun AmbientDisplay(
 ) {
     KeepScreenOn()
     BackHandler { onExit() }
-    val cover = LocalCoverColors.current
+    val cover = LocalArtworkColors.current
     val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
 
     // A ticking clock — refreshed every 10s is enough to catch minute changes.

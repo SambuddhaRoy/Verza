@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -32,9 +33,11 @@ import com.verza.ui.screens.SettingsViewModel
 import com.verza.ui.theme.DefaultCoverColors
 import com.verza.ui.theme.GlowBackground
 import com.verza.ui.theme.GlowColorPreset
+import com.verza.ui.theme.LocalArtworkColors
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.VerzaTheme
 import com.verza.ui.theme.coverColorScheme
+import com.verza.ui.theme.coverColorsFromScheme
 import com.verza.ui.theme.deriveGlowTriad
 import com.verza.ui.theme.extractCoverColors
 import com.verza.ui.theme.resolveColor
@@ -159,25 +162,33 @@ class MainActivity : ComponentActivity() {
                 if (onboardingCompleted != null) splashReady = true
             }
 
-            // Cover-derived palette (sampled from the current art) drives both the Adaptive theme's
-            // colour scheme and every Sleeve surface. Extracted off the main thread; computed here
-            // so it can feed VerzaTheme's scheme as well as LocalCoverColors below.
-            val wantCover = sleeveMode || theme == VerzaTheme.ADAPTIVE || glowColor == GlowColorPreset.ALBUM_ART
-            val coverColors by produceState(DefaultCoverColors, wantCover, artworkUrl) {
-                value = if (wantCover && !artworkUrl.isNullOrBlank())
+            // Cover-art palette (sampled from the current art) — feeds the Now-Playing poster, the
+            // Adaptive theme's scheme, and the album-art glow. Extracted off the main thread.
+            // We need it whenever Sleeve is on (the poster), the Adaptive theme is picked, or the
+            // glow is set to follow album colours.
+            val isSystemDark = isSystemInDarkTheme()
+            val wantArtwork = sleeveMode || theme == VerzaTheme.ADAPTIVE || glowColor == GlowColorPreset.ALBUM_ART
+            val artworkColors by produceState(DefaultCoverColors, wantArtwork, artworkUrl) {
+                value = if (wantArtwork && !artworkUrl.isNullOrBlank())
                     (extractCoverColors(context, artworkUrl!!) ?: DefaultCoverColors)
                 else DefaultCoverColors
             }
-            // Sleeve forces the cover scheme app-wide; the Adaptive theme uses it directly.
-            val coverScheme = if (theme == VerzaTheme.ADAPTIVE || sleeveMode) coverColorScheme(coverColors) else null
+            // The Adaptive theme builds its scheme from the cover art, honouring the device's
+            // light/dark setting. Sleeve no longer forces this — it follows the selected theme.
+            val coverScheme = if (theme == VerzaTheme.ADAPTIVE)
+                coverColorScheme(artworkColors, light = !isSystemDark) else null
 
             VerzaTheme(theme = theme, coverScheme = coverScheme, sleeve = sleeveMode) {
+                val scheme = MaterialTheme.colorScheme
                 val seed = glowColor.resolveColor()
                 // The glow uses the cover accent whenever we're sampling it; otherwise the preset.
-                val glowTriad = if (wantCover && !artworkUrl.isNullOrBlank())
-                    deriveGlowTriad(coverColors.accent)
+                val glowTriad = if (wantArtwork && !artworkUrl.isNullOrBlank())
+                    deriveGlowTriad(artworkColors.accent)
                 else
                     deriveGlowTriad(seed)
+                // Sleeve chrome (Home / Library / nav / mini-player) tracks the active theme scheme;
+                // the Now-Playing poster uses the artwork palette (LocalArtworkColors) for contrast.
+                val chromeCover = remember(scheme) { coverColorsFromScheme(scheme) }
 
                 val navContent: @Composable () -> Unit = {
                     val completed = onboardingCompleted
@@ -192,19 +203,20 @@ class MainActivity : ComponentActivity() {
 
                 CompositionLocalProvider(
                     LocalSleeveMode provides sleeveMode,
-                    LocalCoverColors provides coverColors,
+                    LocalCoverColors provides chromeCover,
+                    LocalArtworkColors provides artworkColors,
                 ) {
-                    // The reactive, album-coloured glow is the backdrop in every mode. In Sleeve it's
-                    // forced on over a guaranteed-dark canvas so the editorial surfaces always read.
+                    // The reactive, album-coloured glow is the backdrop on dark schemes; on a light
+                    // scheme (incl. a light Sleeve) GlowBackground hides the glow and just shows the
+                    // scheme background, so light mode reads cleanly.
                     GlowBackground(
                         enabled = glowEnabled || sleeveMode,
                         triad = glowTriad,
                         intensity = glowIntensity,
                         signalFlow = if (shouldVisualize) visualizerSignalFlow else null,
-                        forceDark = sleeveMode,
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(if (sleeveMode) coverColors.bg else MaterialTheme.colorScheme.background)
+                            .background(scheme.background)
                             // Sleeve wraps the whole app in a faint, even film grain and a soft
                             // edge vignette — the print/photographic finish from the UMBRA reference.
                             .then(if (sleeveMode) Modifier.vignette(0.30f).grain(0.05f) else Modifier),

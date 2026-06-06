@@ -49,6 +49,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,7 +85,7 @@ import com.verza.player.QueueItem
 import com.verza.ui.theme.CoverColors
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
-import com.verza.ui.theme.LocalCoverColors
+import com.verza.ui.theme.LocalArtworkColors
 
 /**
  * "Sleeve" — an editorial, poster-style Now Playing modelled on the UMBRA reference's lead
@@ -133,7 +134,7 @@ fun SleevePlayer(
     modifier: Modifier = Modifier,
 ) {
     // Colours come from the app-wide cover palette (sampled from this very art).
-    val cover = LocalCoverColors.current
+    val cover = LocalArtworkColors.current
     val accent = cover.accent
     val ink = cover.ink
     val sub = cover.sub
@@ -343,7 +344,11 @@ fun SleevePlayer(
                         tint = if (focusActive || sleepRemaining != null) accent else sub,
                         onClick = { moreOpen = true },
                     )
-                    DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
+                    DropdownMenu(
+                        expanded = moreOpen,
+                        onDismissRequest = { moreOpen = false },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ) {
                         DropdownMenuItem(
                             text = { Text(if (focusActive) "Focus session · on" else "Focus session") },
                             onClick = { moreOpen = false; onFocus() },
