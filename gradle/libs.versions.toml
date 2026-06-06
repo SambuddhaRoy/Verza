@@ -14,7 +14,6 @@ hilt-navigation     = "1.2.0"
 coroutines          = "1.9.0"
 serialization-json  = "1.7.3"
 coil                = "3.0.4"
-google-fonts        = "1.7.6"
 datastore           = "1.1.1"
 splashscreen        = "1.0.1"
 palette             = "1.0.0"
@@ -78,9 +77,6 @@ kotlinx-serialization-json          = { group = "org.jetbrains.kotlinx", name = 
 # ── Coil (image loading) ───────────────────────────────────────────────────────
 coil-compose                        = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-network-okhttp                 = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
-
-# ── Fonts ──────────────────────────────────────────────────────────────────────
-androidx-ui-text-google-fonts       = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "google-fonts" }
 
 # ── YouTube extraction ───────────────────────────────────────────────────────
 newpipe-extractor                   = { group = "com.github.TeamNewPipe", name = "NewPipeExtractor", version.ref = "newpipe" }
