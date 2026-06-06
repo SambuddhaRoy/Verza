@@ -71,19 +71,39 @@ class SessionShareRepository @Inject constructor() {
         return "$SCHEME_PREFIX$payload"
     }
 
-    /** Parses a `verza://session/<payload>` link (or a bare payload) back into a [SharedSession]. */
+    /**
+     * Parses a `verza://session/<payload>` link (or a bare payload) back into a [SharedSession].
+     *
+     * Hardened against hostile links (the intent filter is exported, so anyone can craft one):
+     *  - the compressed payload is length-capped, and decompression is bounded so a gzip bomb can't
+     *    exhaust memory;
+     *  - every track id is re-validated to a plausible YouTube video id, dropping anything that
+     *    looks like a `content://` / `file://` URI or a path — otherwise a crafted id could make the
+     *    player open a *local* file on the recipient's device;
+     *  - the track list is re-capped regardless of what the payload claims.
+     */
     fun decodeLink(linkOrPayload: String): SharedSession? = runCatching {
         val payload = linkOrPayload.trim()
             .removePrefix(SCHEME_PREFIX)
             .substringAfterLast('/')          // tolerate verza://session/<payload> and variants
             .substringBefore('?')
+        if (payload.length > MAX_PAYLOAD_CHARS) return@runCatching null
         val bytes = Base64.decode(payload, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
-        val text = gunzip(bytes).toString(Charsets.UTF_8)
-        json.decodeFromString<SharedSession>(text).takeIf { it.tracks.isNotEmpty() }
+        val text = gunzip(bytes, MAX_DECOMPRESSED_BYTES)?.toString(Charsets.UTF_8) ?: return@runCatching null
+        val parsed = json.decodeFromString<SharedSession>(text)
+        val safeTracks = parsed.tracks.filter { isValidVideoId(it.id) }.take(MAX_TRACKS)
+        if (safeTracks.isEmpty()) return@runCatching null
+        parsed.copy(
+            tracks = safeTracks,
+            index = parsed.index.coerceIn(0, safeTracks.lastIndex),
+            positionMs = parsed.positionMs.coerceAtLeast(0L),
+        )
     }.getOrNull()
 
-    private fun isStreamable(id: String): Boolean =
-        !id.startsWith("content://") && !id.startsWith("file://")
+    private fun isStreamable(id: String): Boolean = isValidVideoId(id)
+
+    /** A real YouTube video id is 11 URL-safe chars; this also rejects URIs, paths, and whitespace. */
+    private fun isValidVideoId(id: String): Boolean = VIDEO_ID.matches(id)
 
     private fun gzip(data: ByteArray): ByteArray {
         val out = ByteArrayOutputStream()
@@ -91,11 +111,28 @@ class SessionShareRepository @Inject constructor() {
         return out.toByteArray()
     }
 
-    private fun gunzip(data: ByteArray): ByteArray =
-        GZIPInputStream(data.inputStream()).use { it.readBytes() }
+    /** Decompresses up to [maxBytes]; returns null if the stream would exceed that (gzip-bomb guard). */
+    private fun gunzip(data: ByteArray, maxBytes: Int): ByteArray? {
+        val out = ByteArrayOutputStream()
+        val buf = ByteArray(8 * 1024)
+        GZIPInputStream(data.inputStream()).use { input ->
+            var total = 0
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                total += n
+                if (total > maxBytes) return null
+                out.write(buf, 0, n)
+            }
+        }
+        return out.toByteArray()
+    }
 
     companion object {
         const val SCHEME_PREFIX = "verza://session/"
         private const val MAX_TRACKS = 50
+        private const val MAX_PAYLOAD_CHARS = 32 * 1024      // ~32 KB of base64 before we refuse it
+        private const val MAX_DECOMPRESSED_BYTES = 256 * 1024 // hard ceiling on inflated JSON
+        private val VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
     }
 }

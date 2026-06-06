@@ -29,6 +29,11 @@ class EqualizerViewModel @Inject constructor(
     private val effects: AudioEffectsController,
 ) : ViewModel() {
 
+    init {
+        // Read the device band layout so the screen shows real bands even before playback starts.
+        effects.ensureMetadata()
+    }
+
     val state: StateFlow<EqUiState> = combine(
         effects.metadata,
         prefs.eqEnabledFlow,
