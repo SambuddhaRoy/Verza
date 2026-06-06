@@ -27,7 +27,9 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SelfImprovement
@@ -35,13 +37,17 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -110,6 +116,8 @@ fun SleevePlayer(
     onLinerNotes: () -> Unit,
     onFocus: () -> Unit,
     onShareSession: () -> Unit,
+    onSleepTimer: () -> Unit,
+    sleepRemaining: String? = null,
     focusActive: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -250,24 +258,16 @@ fun SleevePlayer(
 
             Spacer(Modifier.height(12.dp))
 
-            // ── Secondary actions: Like · Radio · Download ────────────────────
+            // ── Secondary actions: core icons + a "more" menu ─────────────────
+            // The five everyday actions sit on the row; occasional ones (focus, sleep, ambient,
+            // share) live behind ⋯ so the poster stays uncluttered — and so every feature that the
+            // standard player exposes is reachable in Sleeve too.
+            var moreOpen by remember { mutableStateOf(false) }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SleeveActionIcon(
-                    icon = Icons.Filled.SelfImprovement,
-                    contentDescription = "Focus session",
-                    tint = if (focusActive) accent else sub,
-                    onClick = onFocus,
-                )
-                SleeveActionIcon(
-                    icon = Icons.Filled.Fullscreen,
-                    contentDescription = "Ambient display",
-                    tint = sub,
-                    onClick = onAmbient,
-                )
                 SleeveActionIcon(
                     icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                     contentDescription = "Like",
@@ -298,18 +298,38 @@ fun SleevePlayer(
                     enabled = !isDownloading,
                     onClick = { if (isDownloaded) onRemoveDownload() else onDownload() },
                 )
-                SleeveActionIcon(
-                    icon = Icons.Filled.Share,
-                    contentDescription = "Share as image",
-                    tint = sub,
-                    onClick = onShare,
-                )
-                SleeveActionIcon(
-                    icon = Icons.Filled.Link,
-                    contentDescription = "Share listening session",
-                    tint = sub,
-                    onClick = onShareSession,
-                )
+                Box {
+                    SleeveActionIcon(
+                        icon = Icons.Filled.MoreHoriz,
+                        contentDescription = "More",
+                        // Tint accent while a focus block or sleep timer is running, so the row hints
+                        // that something's armed even when its control is tucked away.
+                        tint = if (focusActive || sleepRemaining != null) accent else sub,
+                        onClick = { moreOpen = true },
+                    )
+                    DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(if (focusActive) "Focus session · on" else "Focus session") },
+                            onClick = { moreOpen = false; onFocus() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (sleepRemaining != null) "Sleep timer · $sleepRemaining" else "Sleep timer") },
+                            onClick = { moreOpen = false; onSleepTimer() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Ambient display") },
+                            onClick = { moreOpen = false; onAmbient() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Share as image") },
+                            onClick = { moreOpen = false; onShare() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Share listening session") },
+                            onClick = { moreOpen = false; onShareSession() },
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(8.dp))

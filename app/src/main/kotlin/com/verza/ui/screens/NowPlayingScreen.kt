@@ -102,6 +102,9 @@ fun NowPlayingScreen(
     // Opens the Focus/Flow session sheet (duration picker / active-session controls).
     var showFocusSheet by remember { mutableStateOf(false) }
     val focusRemaining = rememberSleepCountdown(focusEndAt)
+    // Sleep-timer sheet + live countdown — hoisted so both Sleeve and standard layouts can open it.
+    var showSleepSheet by remember { mutableStateOf(false) }
+    val sleepRemaining = rememberSleepCountdown(sleepTimerEndAt)
 
     // Build + share the current queue as a verza:// "listen along" link (used from both layouts).
     val shareCtx = LocalContext.current
@@ -147,6 +150,8 @@ fun NowPlayingScreen(
                 onLinerNotes = { showLinerNotes = true },
                 onFocus = { showFocusSheet = true },
                 onShareSession = shareSession,
+                onSleepTimer = { showSleepSheet = true },
+                sleepRemaining = sleepRemaining,
                 focusActive = focusActive,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -175,6 +180,17 @@ fun NowPlayingScreen(
                     onDismiss = { showFocusSheet = false },
                 )
             }
+            if (showSleepSheet) {
+                SleepTimerSheet(
+                    active = sleepTimerEndAt != null,
+                    remaining = sleepRemaining,
+                    onPick = { minutes -> onSetSleepTimer(minutes * 60_000L); showSleepSheet = false },
+                    onWindDown = { minutes -> onWindDown(minutes * 60_000L); showSleepSheet = false },
+                    onEndOfTrack = { onSleepTimerEndOfTrack(); showSleepSheet = false },
+                    onCancel = { onSetSleepTimer(null); showSleepSheet = false },
+                    onDismiss = { showSleepSheet = false },
+                )
+            }
             FocusCompleteBanner(
                 minutes = focusCompleteMinutes,
                 onConsume = onConsumeFocusComplete,
@@ -189,8 +205,6 @@ fun NowPlayingScreen(
     val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     var showQueue by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
-    var showSleepSheet by remember { mutableStateOf(false) }
-    val sleepRemaining = rememberSleepCountdown(sleepTimerEndAt)
 
     val songUrl = videoId?.let { "https://music.youtube.com/watch?v=$it" }
 
