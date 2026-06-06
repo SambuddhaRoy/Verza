@@ -4,7 +4,8 @@
   Just the two page silhouettes — system tints the whole drawable to a single
   colour, so the cream stroke lines are dropped (they'd otherwise vanish into
   the page once everything became one colour).
-  Geometry matches the inset foreground exactly.
+  Geometry matches the inset foreground exactly, including the 30-unit downward
+  nudge that optically centres the top-heavy mark.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -12,10 +13,12 @@
     android:viewportWidth="512"
     android:viewportHeight="512">
 
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M 131,143 L 217,143 L 253,369 L 256,369 Z"/>
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M 381,143 L 295,143 L 259,369 L 256,369 Z"/>
+    <group android:translateY="30">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M 131,143 L 217,143 L 253,369 L 256,369 Z"/>
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M 381,143 L 295,143 L 259,369 L 256,369 Z"/>
+    </group>
 </vector>
