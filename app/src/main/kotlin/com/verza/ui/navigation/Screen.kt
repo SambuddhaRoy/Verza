@@ -19,6 +19,7 @@ sealed class Screen(val route: String) {
     data object Onboarding : Screen("onboarding")
     data object Boot       : Screen("boot")
     data object Stats      : Screen("stats")
+    data object Equalizer  : Screen("equalizer")
     data object Lyrics    : Screen("lyrics")
     data object LocalPlaylist : Screen("local_playlist/{playlistId}") {
         const val ARG = "playlistId"

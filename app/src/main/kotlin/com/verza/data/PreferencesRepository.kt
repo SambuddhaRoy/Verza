@@ -3,6 +3,7 @@ package com.verza.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.verza.di.ApplicationScope
@@ -61,6 +62,11 @@ class PreferencesRepository @Inject constructor(
     private val sleeveModeKey = booleanPreferencesKey("sleeve_mode")
     private val hapticsKey = booleanPreferencesKey("music_haptics")
     private val gentleStartKey = booleanPreferencesKey("gentle_start")
+    // ── Sound suite (equaliser / bass / loudness) ──────────────────────────────
+    private val eqEnabledKey = booleanPreferencesKey("eq_enabled")
+    private val eqBandsKey = stringPreferencesKey("eq_band_levels") // JSON List<Int> (millibels)
+    private val bassStrengthKey = intPreferencesKey("bass_strength") // 0..1000
+    private val loudnessKey = booleanPreferencesKey("loudness_enabled")
 
     val themeFlow: Flow<VerzaTheme> = store.data.map { prefs ->
         // Default to Material You (Dynamic). On pre-Android-12 devices the theme layer falls back
@@ -123,6 +129,18 @@ class PreferencesRepository @Inject constructor(
 
     /** Ease the volume up over a couple of seconds when resuming playback — a soft "sunrise" start. */
     val gentleStartFlow: Flow<Boolean> = store.data.map { it[gentleStartKey] ?: false }
+
+    // ── Sound suite ─────────────────────────────────────────────────────────────
+    /** Master switch for the graphic equaliser (band sliders only apply when on). */
+    val eqEnabledFlow: Flow<Boolean> = store.data.map { it[eqEnabledKey] ?: false }
+    /** Per-band gains in millibels; empty until the user adjusts a band. */
+    val eqBandsFlow: Flow<List<Int>> = store.data.map { prefs ->
+        prefs[eqBandsKey]?.let { runCatching { json.decodeFromString<List<Int>>(it) }.getOrNull() } ?: emptyList()
+    }
+    /** Bass-boost strength 0..1000 (0 = off), independent of the equaliser switch. */
+    val bassStrengthFlow: Flow<Int> = store.data.map { it[bassStrengthKey] ?: 0 }
+    /** Volume leveling — lifts quiet tracks toward a steadier perceived loudness. */
+    val loudnessEnabledFlow: Flow<Boolean> = store.data.map { it[loudnessKey] ?: false }
 
     init {
         // One-time migration: if an old plaintext cookie exists, re-store it encrypted and drop
@@ -202,6 +220,22 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setGentleStart(enabled: Boolean) {
         store.edit { it[gentleStartKey] = enabled }
+    }
+
+    suspend fun setEqEnabled(enabled: Boolean) {
+        store.edit { it[eqEnabledKey] = enabled }
+    }
+
+    suspend fun setEqBands(levelsMb: List<Int>) {
+        store.edit { it[eqBandsKey] = json.encodeToString(levelsMb) }
+    }
+
+    suspend fun setBassStrength(strength: Int) {
+        store.edit { it[bassStrengthKey] = strength.coerceIn(0, 1000) }
+    }
+
+    suspend fun setLoudnessEnabled(enabled: Boolean) {
+        store.edit { it[loudnessKey] = enabled }
     }
 
     suspend fun setCookie(cookie: String?) {

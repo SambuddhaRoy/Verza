@@ -16,6 +16,9 @@
     <!-- Music-synced haptics ("Feel the beat") — short vibration pulses on the bass. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Attach the equaliser / bass-boost / loudness audio effects to ExoPlayer's session. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
     <!--
         Read on-device audio files for the local-library feature. READ_MEDIA_AUDIO is the
         granular media permission on Android 13+ (API 33); older versions fall back to
@@ -47,6 +50,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Shared listening sessions: verza://session/<payload> opens here. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="verza" android:host="session" />
             </intent-filter>
         </activity>
 
