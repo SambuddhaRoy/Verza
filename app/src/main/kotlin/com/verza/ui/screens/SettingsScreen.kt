@@ -661,7 +661,7 @@ private fun GlowPatternRow(selected: GlowStyle, onSelect: (GlowStyle) -> Unit) {
             onSelect = onSelect,
         )
         Text(
-            "Loom weaves soft geometric threads through the flow (needs Android 13+).",
+            "Loom breaks the glow into soft, drifting rectangular panels (needs Android 13+).",
             style = CaptionItalic,
             color = ext.muted,
         )
