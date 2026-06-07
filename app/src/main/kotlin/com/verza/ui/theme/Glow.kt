@@ -56,8 +56,8 @@ enum class GlowIntensity(val displayName: String, val shaderStrength: Float) {
 }
 
 /**
- * The glow's visual pattern. [FLUID] is the flowing aurora field; [LOOM] organises that field into a
- * drifting patchwork of soft rectangular panels (recreating, deliberately, the geometric look some
+ * The glow's visual pattern. [FLUID] is the flowing aurora field; [LOOM] quantises that field onto a
+ * grid that ripples and deforms with the flow (recreating, deliberately, the geometric look some
  * GPUs render the plain field as). Pattern is a shader feature, so it only applies on API 33+; the
  * pre-33 gradient fallback always renders the fluid look.
  */
@@ -155,23 +155,19 @@ half4 main(float2 fragCoord) {
     float2 p2 = p + warpAmt * (q - 0.5);
     float f = fbm(p2 * 1.8 + float2(t * 0.6, -t * 0.4));
 
-    // ── "Loom" pattern (uPattern > 0.5): organise the field into a coarse grid of soft rectangular
-    //    panels — each breathing on its own phase, nudged by the flow — so the glow reads as a
-    //    geometric patchwork woven through the fluid (recreating the rectangular look the plain field
-    //    renders as on some GPUs). Applied to f *before* colouring, so panels vary both tone and
-    //    brightness. The grid is screen-aligned (raw uv) so the seams are true horizontals/verticals.
+    // ── "Loom" pattern (uPattern > 0.5): quantise the field onto a grid built in the *flowing*
+    //    domain, so the cells deform and drift with the animation (non-uniform, and gap-free since
+    //    floor() tessellates every pixel into a cell). Each cell snaps to a single field value, so
+    //    the boundaries between cells are the visible moving grid; blending back a share of the
+    //    smooth field keeps the fluid flowing *inside* the cells. This recreates the geometric-yet-
+    //    fluid look the plain field renders as on some GPUs (e.g. Pixel/Tensor).
     if (uPattern > 0.5) {
-        float2 cells = float2(3.0, 6.0);
-        float2 cuv = uv * cells;
-        float2 cid = floor(cuv);
-        float2 cf = fract(cuv);
-        float phase = hash(cid) * 6.2831;
-        float panel = 0.55 + 0.5 * sin(t * 1.3 + phase + f * 3.5);
-        // Soft rectangle: full strength in the cell interior, easing back to the raw field at the
-        // seams so adjacent panels read as distinct soft blocks rather than a hard tile grid.
-        float rect = smoothstep(0.0, 0.07, cf.x) * smoothstep(0.0, 0.07, 1.0 - cf.x)
-                   * smoothstep(0.0, 0.07, cf.y) * smoothstep(0.0, 0.07, 1.0 - cf.y);
-        f *= mix(1.0, panel, rect * 0.85);
+        float2 cells = float2(4.0, 7.0);
+        float2 gp = uv + (q - 0.5) * 0.4;             // grid base rides the flow → it ripples + drifts
+        float2 cellId = floor(gp * cells);
+        float2 cellCenter = (cellId + 0.5) / cells;
+        float cellF = fbm(cellCenter * 2.2 + float2(t * 0.6, -t * 0.4));
+        f = mix(f, cellF, 0.65);                       // grid quantisation, with the fluid alongside
     }
 
     // Mix three theme colours across the warped field.
