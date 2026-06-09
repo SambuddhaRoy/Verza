@@ -56,14 +56,14 @@ enum class GlowIntensity(val displayName: String, val shaderStrength: Float) {
 }
 
 /**
- * The glow's visual pattern. [FLUID] is the flowing aurora field; [LOOM] quantises that field onto a
- * grid that ripples and deforms with the flow (recreating, deliberately, the geometric look some
- * GPUs render the plain field as). Pattern is a shader feature, so it only applies on API 33+; the
- * pre-33 gradient fallback always renders the fluid look.
+ * The glow's visual pattern. [FLUID] is the flowing aurora field; [MOSAIC] tessellates that field into
+ * drifting Voronoi cells — a glowing stained-glass mosaic whose cells pulse and slide with the music.
+ * Pattern is a shader feature, so it only applies on API 33+; the pre-33 gradient fallback always
+ * renders the fluid look.
  */
 enum class GlowStyle(val displayName: String) {
-    FLUID ("Fluid"),
-    LOOM  ("Loom"),
+    FLUID  ("Fluid"),
+    MOSAIC ("Mosaic"),
 }
 
 @Composable
@@ -155,19 +155,32 @@ half4 main(float2 fragCoord) {
     float2 p2 = p + warpAmt * (q - 0.5);
     float f = fbm(p2 * 1.8 + float2(t * 0.6, -t * 0.4));
 
-    // ── "Loom" pattern (uPattern > 0.5): quantise the field onto a grid built in the *flowing*
-    //    domain, so the cells deform and drift with the animation (non-uniform, and gap-free since
-    //    floor() tessellates every pixel into a cell). Each cell snaps to a single field value, so
-    //    the boundaries between cells are the visible moving grid; blending back a share of the
-    //    smooth field keeps the fluid flowing *inside* the cells. This recreates the geometric-yet-
-    //    fluid look the plain field renders as on some GPUs (e.g. Pixel/Tensor).
+    // ── "Mosaic" pattern (uPattern > 0.5): tessellate the field into Voronoi cells whose feature
+    //    points orbit with time and whose whole grid is pushed around by the flow field q, so the
+    //    mosaic drifts and breathes. f1/f2 are the nearest / second-nearest feature distances; the
+    //    gap (f2 - f1) draws dark seams between cells, and each cell takes a flat per-cell tone — a
+    //    glowing stained-glass look. We blend most of it over the smooth field so light still flows
+    //    inside the cells rather than the tessellation reading as flat poster paint.
     if (uPattern > 0.5) {
-        float2 cells = float2(4.0, 7.0);
-        float2 gp = uv + (q - 0.5) * 0.4;             // grid base rides the flow → it ripples + drifts
-        float2 cellId = floor(gp * cells);
-        float2 cellCenter = (cellId + 0.5) / cells;
-        float cellF = fbm(cellCenter * 2.2 + float2(t * 0.6, -t * 0.4));
-        f = mix(f, cellF, 0.65);                       // grid quantisation, with the fluid alongside
+        float2 g = (uv + (q - 0.5) * 0.35) * float2(5.0, 8.0);
+        float2 gi = floor(g);
+        float2 gf = fract(g);
+        float f1 = 8.0;
+        float f2 = 8.0;
+        float cellRnd = 0.0;
+        for (int yy = -1; yy <= 1; yy++) {
+            for (int xx = -1; xx <= 1; xx++) {
+                float2 o = float2(float(xx), float(yy));
+                float rnd = hash(gi + o);
+                float2 fp = o + 0.5 + 0.42 * float2(sin(t * 1.7 + rnd * 6.2831), cos(t * 1.5 + rnd * 6.2831));
+                float d = length(gf - fp);
+                if (d < f1) { f2 = f1; f1 = d; cellRnd = rnd; }
+                else if (d < f2) { f2 = d; }
+            }
+        }
+        float seam = smoothstep(0.0, 0.12, f2 - f1);   // 1 inside cells, → 0 along the seams
+        float cellTone = mix(0.25, 1.05, cellRnd);     // each cell its own flat tone
+        f = mix(f, cellTone * seam, 0.72);
     }
 
     // Mix three theme colours across the warped field.
@@ -233,7 +246,7 @@ fun GlowBackground(
                 else null
             }
             if (shader != null) {
-                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow, style == GlowStyle.LOOM)
+                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow, style == GlowStyle.MOSAIC)
             } else {
                 GradientGlowFallback(triad, bg, intensity, signalFlow)
             }
@@ -268,7 +281,7 @@ private fun FluidShaderGlow(
     bg: Color,
     strength: Float,
     signalFlow: StateFlow<VisualizerSignal>?,
-    loom: Boolean,
+    mosaic: Boolean,
 ) {
     val brush = remember(shader) { ShaderBrush(shader) }
     val time by rememberFrameTimeSeconds()
@@ -299,7 +312,7 @@ private fun FluidShaderGlow(
                 shader.setFloatUniform("uMid", mid)
                 shader.setFloatUniform("uTreble", treble)
                 shader.setFloatUniform("uStrength", adaptedStrength)
-                shader.setFloatUniform("uPattern", if (loom) 1f else 0f)
+                shader.setFloatUniform("uPattern", if (mosaic) 1f else 0f)
                 shader.setFloatUniform("uColorA", cA.red, cA.green, cA.blue)
                 shader.setFloatUniform("uColorB", cB.red, cB.green, cB.blue)
                 shader.setFloatUniform("uColorC", cC.red, cC.green, cC.blue)
