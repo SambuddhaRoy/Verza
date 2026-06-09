@@ -20,6 +20,10 @@ sealed class Screen(val route: String) {
     data object Boot       : Screen("boot")
     data object Stats      : Screen("stats")
     data object Equalizer  : Screen("equalizer")
+    data object Mix : Screen("mix/{mixId}") {
+        const val ARG = "mixId"
+        fun create(mixId: String) = "mix/$mixId"
+    }
     data object Tour : Screen("tour?onboarding={onboarding}") {
         const val ARG = "onboarding"
         fun create(fromOnboarding: Boolean) = "tour?onboarding=$fromOnboarding"

@@ -20,6 +20,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -47,12 +49,14 @@ fun HomeScreen(
     onItemClick: (HomeItem) -> Unit,
     onItemLongPress: (HomeItem) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenMix: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val mixes by viewModel.mixes.collectAsStateWithLifecycle()
 
     Box(modifier = modifier.fillMaxSize()) {
         when (val s = state) {
@@ -67,7 +71,7 @@ fun HomeScreen(
                 color = ext.muted,
                 modifier = Modifier.align(Alignment.Center),
             )
-            is HomeUiState.Content -> HomeContent(s.sections, onItemClick, onItemLongPress, onOpenSettings)
+            is HomeUiState.Content -> HomeContent(s.sections, mixes, onItemClick, onItemLongPress, onOpenSettings, onOpenMix)
         }
     }
 }
@@ -75,9 +79,11 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     sections: List<HomeSection>,
+    mixes: List<com.verza.data.CuratedMix>,
     onItemClick: (HomeItem) -> Unit,
     onItemLongPress: (HomeItem) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenMix: (String) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
@@ -144,6 +150,11 @@ private fun HomeContent(
             }
         }
 
+        // "Made for you" — Verza's on-device curated mixes (Daylist / Discover / Release radar).
+        if (mixes.isNotEmpty()) {
+            item { MadeForYouRow(mixes = mixes, onOpenMix = onOpenMix) }
+        }
+
         // Decorative genre chip row — visual filter affordance, not wired yet.
         item { GenreChipRow() }
 
@@ -194,6 +205,74 @@ private fun styleFor(title: String): SectionStyle = when {
     title.startsWith("Similar to", ignoreCase = true) -> SectionStyle.LARGE
     title.equals("Browse charts and trending", ignoreCase = true) -> SectionStyle.DENSE_CARDS
     else -> SectionStyle.STANDARD
+}
+
+@Composable
+private fun MadeForYouRow(
+    mixes: List<com.verza.data.CuratedMix>,
+    onOpenMix: (String) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "Made for you",
+            style = MaterialTheme.typography.titleLarge,
+            color = colors.onBackground,
+            modifier = Modifier.padding(horizontal = 20.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            mixes.forEach { mix -> MixCard(mix = mix, onClick = { onOpenMix(mix.id) }) }
+        }
+    }
+}
+
+/** A generated, Spotify-style cover for a curated mix: a vivid per-kind gradient with the title. */
+@Composable
+private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
+    val (top, bottom) = mixGradient(mix.kind)
+    val eyebrow = when (mix.kind) {
+        com.verza.data.MixKind.DAYLIST -> "DAYLIST"
+        com.verza.data.MixKind.DISCOVER -> "DISCOVERY"
+        com.verza.data.MixKind.RELEASE_RADAR -> "NEW RELEASES"
+    }
+    Box(
+        modifier = Modifier
+            .size(154.dp)
+            .clip(VerzaShape)
+            .background(Brush.linearGradient(listOf(top, bottom)))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+    ) {
+        Text(
+            text = eyebrow,
+            style = TextStyle(fontFamily = FontMono, fontSize = 10.sp, letterSpacing = 0.12.em),
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.align(Alignment.TopStart),
+        )
+        Text(
+            text = mix.title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White,
+            maxLines = 2,
+            modifier = Modifier.align(Alignment.BottomStart),
+        )
+    }
+}
+
+/** Distinct vivid gradient per mix kind — playlist-cover identity, independent of the app theme. */
+private fun mixGradient(kind: com.verza.data.MixKind): Pair<Color, Color> = when (kind) {
+    com.verza.data.MixKind.DAYLIST -> Color(0xFFE0894A) to Color(0xFF6E2F1A)
+    com.verza.data.MixKind.DISCOVER -> Color(0xFF6C5CE7) to Color(0xFF241F4D)
+    com.verza.data.MixKind.RELEASE_RADAR -> Color(0xFF2FA37C) to Color(0xFF123A30)
 }
 
 @Composable

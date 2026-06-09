@@ -289,6 +289,20 @@ fun VerzaNavigation(
                     onItemClick = openItem,
                     onItemLongPress = { homeMenuItem = it },
                     onOpenSettings = { navController.navigate(Screen.Settings.route) },
+                    onOpenMix = { mixId -> navController.navigate(Screen.Mix.create(mixId)) },
+                )
+            }
+            composable(
+                route = Screen.Mix.route,
+                arguments = listOf(navArgument(Screen.Mix.ARG) { type = NavType.StringType }),
+            ) {
+                MixScreen(
+                    onBack = { navController.popBackStack() },
+                    onItemClick = openItem,
+                    onPlayAll = { items ->
+                        playbackViewModel.playSongItems(items)
+                        navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
+                    },
                 )
             }
             composable(Screen.Search.route) {
