@@ -98,7 +98,7 @@ class PreferencesRepository @Inject constructor(
     val glowIntensityFlow: Flow<GlowIntensity> = store.data.map { prefs ->
         prefs[glowIntensityKey]?.let { runCatching { GlowIntensity.valueOf(it) }.getOrNull() } ?: GlowIntensity.MEDIUM
     }
-    /** Glow pattern — fluid aurora (default) or the woven "Loom" geometric variant. */
+    /** Glow pattern — fluid aurora (default) or the cellular "Mosaic" variant. */
     val glowStyleFlow: Flow<GlowStyle> = store.data.map { prefs ->
         prefs[glowStyleKey]?.let { runCatching { GlowStyle.valueOf(it) }.getOrNull() } ?: GlowStyle.FLUID
     }

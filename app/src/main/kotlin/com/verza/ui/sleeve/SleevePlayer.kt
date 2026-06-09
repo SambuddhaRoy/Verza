@@ -174,11 +174,17 @@ fun SleevePlayer(
                         blendMode = BlendMode.DstIn,
                     )
                     // Drive the very top fully to zero so the cover dissolves completely into the
-                    // glow above it — no hard line at the status bar.
+                    // glow above it — no hard line at the status bar. The dissolve is long and eased
+                    // (the cover only becomes solid ~30% down, through two intermediate alpha stops)
+                    // so the cover melts gradually into the reactive glow instead of cutting off
+                    // abruptly where it turns opaque — a seam that became visible once the glow
+                    // started showing through the top on every theme.
                     drawRect(
                         brush = Brush.verticalGradient(
                             0.0f to Color.Transparent,
-                            0.18f to Color.White,
+                            0.10f to Color.White.copy(alpha = 0.28f),
+                            0.20f to Color.White.copy(alpha = 0.72f),
+                            0.30f to Color.White,
                             1.0f to Color.White,
                         ),
                         blendMode = BlendMode.DstIn,
@@ -216,7 +222,9 @@ fun SleevePlayer(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     0.0f to Color.Black.copy(alpha = 0.45f),
-                    0.42f to Color.Transparent,
+                    0.16f to Color.Black.copy(alpha = 0.28f),
+                    0.34f to Color.Black.copy(alpha = 0.08f),
+                    0.52f to Color.Transparent,
                 ),
             ),
         )
