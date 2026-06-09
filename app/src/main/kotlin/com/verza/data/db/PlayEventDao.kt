@@ -92,4 +92,53 @@ interface PlayEventDao {
     /** Epoch-millis of the very first logged play, for the "listening since …" line. */
     @Query("SELECT MIN(playedAt) FROM play_events")
     fun firstPlayedAt(): Flow<Long?>
+
+    // ── Curated mixes (one-shot reads used by MixesRepository) ───────────────────
+
+    /** Top tracks by listened time *within a set of local hours-of-day* — seeds the Daylist mix. */
+    @Query(
+        """
+        SELECT s.id AS id, s.title AS title, s.artist AS artist, s.thumbnailUrl AS thumbnailUrl,
+               SUM(e.listenedMs) AS totalMs, COUNT(*) AS plays
+        FROM play_events e
+        JOIN songs s ON s.id = e.songId
+        WHERE CAST(strftime('%H', e.playedAt / 1000, 'unixepoch', 'localtime') AS INTEGER) IN (:hours)
+        GROUP BY e.songId
+        ORDER BY totalMs DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun topSongsInHours(hours: List<Int>, limit: Int): List<SongStat>
+
+    /** Distinct song ids the user has ever played — the "already heard" set for Discover. */
+    @Query("SELECT DISTINCT songId FROM play_events")
+    suspend fun playedSongIds(): List<String>
+
+    /** One-shot top songs (non-Flow) for background mix generation. */
+    @Query(
+        """
+        SELECT s.id AS id, s.title AS title, s.artist AS artist, s.thumbnailUrl AS thumbnailUrl,
+               SUM(e.listenedMs) AS totalMs, COUNT(*) AS plays
+        FROM play_events e
+        JOIN songs s ON s.id = e.songId
+        GROUP BY e.songId
+        ORDER BY totalMs DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun topSongsOnce(limit: Int): List<SongStat>
+
+    /** One-shot top artists (non-Flow) for background mix generation. */
+    @Query(
+        """
+        SELECT s.artist AS artist, SUM(e.listenedMs) AS totalMs, COUNT(*) AS plays
+        FROM play_events e
+        JOIN songs s ON s.id = e.songId
+        WHERE s.artist <> ''
+        GROUP BY s.artist
+        ORDER BY totalMs DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun topArtistsOnce(limit: Int): List<ArtistStat>
 }
