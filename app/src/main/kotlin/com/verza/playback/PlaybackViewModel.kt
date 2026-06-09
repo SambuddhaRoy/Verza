@@ -354,6 +354,14 @@ class PlaybackViewModel @Inject constructor(
 
     fun playSong(item: MusicItem) = playSongs(listOf(item), 0)
 
+    /** Plays the playable songs of a curated mix (Home item rows), from the top. */
+    fun playSongItems(items: List<HomeItem>) {
+        val songs = items.mapNotNull { item ->
+            item.videoId?.let { MusicItem(id = it, title = item.title, artist = item.subtitle, thumbnailUrl = item.thumbnailUrl) }
+        }
+        if (songs.isNotEmpty()) playSongs(songs, 0)
+    }
+
     fun playSongs(items: List<MusicItem>, startIndex: Int) {
         val mediaItems = items.map {
             PlayerConnection.buildMediaItem(
