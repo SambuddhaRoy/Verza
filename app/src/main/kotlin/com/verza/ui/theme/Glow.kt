@@ -56,14 +56,14 @@ enum class GlowIntensity(val displayName: String, val shaderStrength: Float) {
 }
 
 /**
- * The glow's visual pattern. [FLUID] is the flowing aurora field; [MOSAIC] tessellates that field into
- * drifting Voronoi cells — a glowing stained-glass mosaic whose cells pulse and slide with the music.
- * Pattern is a shader feature, so it only applies on API 33+; the pre-33 gradient fallback always
- * renders the fluid look.
+ * The glow's visual pattern. [FLUID] is the flowing aurora field; [HALFTONE] re-renders that field as
+ * a halftone-print swirl — spiral bands rotating around the glow's focus, screened through a rotated
+ * dot grid whose dot sizes track the local brightness (the comic-print look). Pattern is a shader
+ * feature, so it only applies on API 33+; the pre-33 gradient fallback always renders the fluid look.
  */
 enum class GlowStyle(val displayName: String) {
-    FLUID  ("Fluid"),
-    MOSAIC ("Mosaic"),
+    FLUID    ("Fluid"),
+    HALFTONE ("Halftone"),
 }
 
 @Composable
@@ -155,32 +155,30 @@ half4 main(float2 fragCoord) {
     float2 p2 = p + warpAmt * (q - 0.5);
     float f = fbm(p2 * 1.8 + float2(t * 0.6, -t * 0.4));
 
-    // ── "Mosaic" pattern (uPattern > 0.5): tessellate the field into Voronoi cells whose feature
-    //    points orbit with time and whose whole grid is pushed around by the flow field q, so the
-    //    mosaic drifts and breathes. f1/f2 are the nearest / second-nearest feature distances; the
-    //    gap (f2 - f1) draws dark seams between cells, and each cell takes a flat per-cell tone — a
-    //    glowing stained-glass look. We blend most of it over the smooth field so light still flows
-    //    inside the cells rather than the tessellation reading as flat poster paint.
+    // ── "Halftone" pattern (uPattern > 0.5): re-renders the field as a halftone-print swirl —
+    //    logarithmic spiral bands rotating around the glow's upper-centre focus, screened through a
+    //    rotated dot lattice whose dot sizes track the local band brightness (the comic-print look,
+    //    after shaders.com's "Halftone Swirl"). The flow field q nudges the spiral so it stays
+    //    organic, and bass deepens that wobble and swells the dots, so the print breathes with the
+    //    music.
     if (uPattern > 0.5) {
-        float2 g = (uv + (q - 0.5) * 0.35) * float2(5.0, 8.0);
-        float2 gi = floor(g);
-        float2 gf = fract(g);
-        float f1 = 8.0;
-        float f2 = 8.0;
-        float cellRnd = 0.0;
-        for (int yy = -1; yy <= 1; yy++) {
-            for (int xx = -1; xx <= 1; xx++) {
-                float2 o = float2(float(xx), float(yy));
-                float rnd = hash(gi + o);
-                float2 fp = o + 0.5 + 0.42 * float2(sin(t * 1.7 + rnd * 6.2831), cos(t * 1.5 + rnd * 6.2831));
-                float d = length(gf - fp);
-                if (d < f1) { f2 = f1; f1 = d; cellRnd = rnd; }
-                else if (d < f2) { f2 = d; }
-            }
-        }
-        float seam = smoothstep(0.0, 0.12, f2 - f1);   // 1 inside cells, → 0 along the seams
-        float cellTone = mix(0.25, 1.05, cellRnd);     // each cell its own flat tone
-        f = mix(f, cellTone * seam, 0.72);
+        // Log-spiral band field. The 3-arm count must stay an integer so the sin() phase is
+        // continuous across the atan() seam. l is floored well above zero so the spiral doesn't
+        // alias into noise right at the focus.
+        float2 d = p - float2(0.5 * uResolution.x / uResolution.y, 0.36)
+                 + (q - 0.5) * (0.22 + 0.35 * bass);
+        float l = max(length(d), 0.05);
+        float spiral = 3.0 * atan(d.y, d.x) / 6.2831 - 1.4 * log(l) - t * 2.4;
+        float spiralBand = 0.5 + 0.5 * sin(spiral * 6.2831);
+        float fieldv = mix(spiralBand, f, 0.30);   // keep a share of the fluid inside the bands
+
+        // Halftone screen: a ~26°-rotated dot lattice. Dot radius grows with sqrt(brightness) so
+        // dot *area* tracks the field like real print; bass gives the dots a gentle swell.
+        float2 hp = float2(0.8988 * p.x - 0.4384 * p.y, 0.4384 * p.x + 0.8988 * p.y) * 26.0;
+        float2 cell = fract(hp) - 0.5;
+        float r = 0.62 * sqrt(clamp(fieldv, 0.0, 1.0)) * (1.0 + 0.18 * bass);
+        float dotMask = 1.0 - smoothstep(r - 0.09, r + 0.09, length(cell) * 2.0);
+        f = dotMask * (0.4 + 0.6 * fieldv);
     }
 
     // Mix three theme colours across the warped field.
@@ -246,7 +244,7 @@ fun GlowBackground(
                 else null
             }
             if (shader != null) {
-                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow, style == GlowStyle.MOSAIC)
+                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow, style == GlowStyle.HALFTONE)
             } else {
                 GradientGlowFallback(triad, bg, intensity, signalFlow)
             }
@@ -281,7 +279,7 @@ private fun FluidShaderGlow(
     bg: Color,
     strength: Float,
     signalFlow: StateFlow<VisualizerSignal>?,
-    mosaic: Boolean,
+    halftone: Boolean,
 ) {
     val brush = remember(shader) { ShaderBrush(shader) }
     val time by rememberFrameTimeSeconds()
@@ -312,7 +310,7 @@ private fun FluidShaderGlow(
                 shader.setFloatUniform("uMid", mid)
                 shader.setFloatUniform("uTreble", treble)
                 shader.setFloatUniform("uStrength", adaptedStrength)
-                shader.setFloatUniform("uPattern", if (mosaic) 1f else 0f)
+                shader.setFloatUniform("uPattern", if (halftone) 1f else 0f)
                 shader.setFloatUniform("uColorA", cA.red, cA.green, cA.blue)
                 shader.setFloatUniform("uColorB", cB.red, cB.green, cB.blue)
                 shader.setFloatUniform("uColorC", cC.red, cC.green, cC.blue)
