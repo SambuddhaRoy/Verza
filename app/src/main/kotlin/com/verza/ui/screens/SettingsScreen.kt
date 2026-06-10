@@ -661,7 +661,7 @@ private fun GlowPatternRow(selected: GlowStyle, onSelect: (GlowStyle) -> Unit) {
             onSelect = onSelect,
         )
         Text(
-            "Mosaic breaks the glow into drifting stained-glass cells that pulse with the music (needs Android 13+).",
+            "Halftone swirls the glow into a slowly rotating spiral of print-style dots that breathe with the music (needs Android 13+).",
             style = CaptionItalic,
             color = ext.muted,
         )
