@@ -33,6 +33,9 @@ import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaCorner
 import com.verza.ui.theme.VerzaShape
+import com.verza.ui.verso.ThreadLine
+import com.verza.ui.verso.breathe
+import com.verza.ui.verso.pebbleShape
 
 /**
  * The visual style of a Home section. Spotify-inspired mix so the page reads with rhythm rather
@@ -94,20 +97,20 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
                 }
             }
         } else {
-            // Short accent rule sets the editorial mood — same idiom as Settings/EditorialSectionHeader.
-            Box(
-                Modifier
-                    .width(28.dp)
-                    .height(1.dp)
-                    .clip(RoundedCornerShape(0.5.dp))
-                    .background(colors.primary),
+            // Verso: a short living thread sets the section off, then the lowercase title.
+            ThreadLine(
+                modifier = Modifier.width(34.dp),
+                color = colors.primary,
+                amplitude = 2.dp,
+                wavelength = 26.dp,
+                thickness = 1.6.dp,
             )
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom,
             ) {
                 Text(
-                    text = title,
+                    text = title.lowercase(),
                     style = if (large) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
                     color = colors.onBackground,
                     maxLines = 1,
@@ -116,7 +119,6 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
                 )
                 if (onSeeAll != null) {
                     TextButton(onClick = onSeeAll) {
-                        // Italic serif "see all" reads as an editor's note rather than a button.
                         Text("see all", style = CaptionItalic, color = colors.primary)
                     }
                 }
@@ -203,7 +205,8 @@ private fun CompactTrackCell(
     val art = rememberSongArtwork(item.title, item.subtitle, item.thumbnailUrl)
     val sleeve = LocalSleeveMode.current
     val cover = LocalCoverColors.current
-    val cellShape = VerzaShape
+    val cellKey = item.videoId ?: item.title
+    val cellShape = if (sleeve) VerzaShape else remember(cellKey) { pebbleShape(cellKey, base = 16.dp, swing = 9.dp) }
     val cellSurface = if (sleeve) Modifier.sleeveSurface(cellShape)
                       else Modifier.clip(cellShape).background(colors.surface)
     val titleColor = if (sleeve) cover.ink else colors.onSurface
@@ -265,7 +268,10 @@ fun MediaCard(item: HomeItem, onClick: () -> Unit) = MediaCard(item = item, widt
 fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    val shape = VerzaShape
+    // Verso pebble: each card gets its own stable, slightly-asymmetric silhouette.
+    val key = item.videoId ?: item.browseId ?: item.playlistId ?: item.title
+    val sleeve = LocalSleeveMode.current
+    val shape = if (sleeve) VerzaShape else remember(key) { pebbleShape(key) }
     // Deterministic gradient placeholder when no real artwork exists.
     val gradient = remember(item.title) { gradientFromKey(item.title) }
     // Songs: prefer the iTunes-resolved album cover over the YT video thumbnail.
@@ -273,7 +279,6 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit, onLongClick: (() -
     val art = if (item.isSong) rememberSongArtwork(item.title, item.subtitle, item.thumbnailUrl)
               else item.thumbnailUrl
 
-    val sleeve = LocalSleeveMode.current
     val cover = LocalCoverColors.current
     val cardSurface = if (sleeve) Modifier.sleeveSurface(shape)
                       else Modifier.clip(shape).background(colors.surface)
@@ -283,6 +288,7 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit, onLongClick: (() -
     Column(
         modifier = Modifier
             .width(width)
+            .then(if (sleeve) Modifier else Modifier.breathe(seed = key.hashCode(), amount = 0.004f))
             .then(cardSurface)
             .pressableScale(onLongClick = onLongClick, onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -291,7 +297,8 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit, onLongClick: (() -
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(topStart = VerzaCorner, topEnd = VerzaCorner, bottomStart = 0.dp, bottomEnd = 0.dp))
+                // The artwork inherits the card's pebble silhouette from the parent clip.
+                .then(if (sleeve) Modifier.clip(RoundedCornerShape(topStart = VerzaCorner, topEnd = VerzaCorner, bottomStart = 0.dp, bottomEnd = 0.dp)) else Modifier)
                 .background(gradient),
         ) {
             if (art != null) {

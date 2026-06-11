@@ -153,6 +153,8 @@ fun VerzaNavigation(
                         isPlaying = playback.isPlaying,
                         artworkColor = Color(0xFF2980B9),
                         artworkUrl = currentArtworkUrl,
+                        progress = if (playback.durationMs > 0)
+                            (positionMs.toFloat() / playback.durationMs).coerceIn(0f, 1f) else 0f,
                         onExpand = {
                             navController.navigate(Screen.NowPlaying.route) {
                                 launchSingleTop = true
@@ -163,6 +165,7 @@ fun VerzaNavigation(
                 }
                 VerzaBottomBar(
                     currentRoute = currentRoute,
+                    isPlaying = playback.isPlaying,
                     onNavigate = { screen ->
                         if (currentRoute == screen.route) return@VerzaBottomBar
                         // Two-phase nav for bottom-bar taps:

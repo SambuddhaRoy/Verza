@@ -49,6 +49,10 @@ import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.share.NowPlayingShareOverlay
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaShape
+import com.verza.ui.verso.ThreadLine
+import com.verza.ui.verso.ThreadSeekBar
+import com.verza.ui.verso.breathe
+import com.verza.ui.verso.pebbleShape
 
 @Composable
 fun NowPlayingScreen(
@@ -253,12 +257,14 @@ fun NowPlayingScreen(
                         Text(sleepRemaining, style = MaterialTheme.typography.labelMedium, color = colors.primary)
                     }
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(ext.muted.copy(alpha = 0.3f)),
+                    // The drag handle is a short living thread — it stirs while music plays.
+                    ThreadLine(
+                        modifier = Modifier.width(44.dp),
+                        color = ext.muted.copy(alpha = 0.55f),
+                        amplitude = 2.dp,
+                        wavelength = 22.dp,
+                        thickness = 1.8.dp,
+                        alive = isPlaying,
                     )
                 }
                 Box {
@@ -348,11 +354,10 @@ fun NowPlayingScreen(
             }
 
             // ── Artwork ────────────────────────────────────────────────────
-            // "Breathing" scale: 1.0 ↔ 1.012 on a 3-second loop while playback is active.
-            // Drives the entire artwork box (shadow + clip + image) via a single graphicsLayer
-            // so the shadow scales with the art instead of staying static under it. When paused
-            // the infinite transition pauses too — Compose stops emitting values, the scale
-            // freezes at whatever frame it was on.
+            // Verso: the album art lives inside a slowly *morphing* organic pebble — four corner
+            // radii each cycle on their own period, so the silhouette never repeats exactly.
+            // Combined with the breathing scale, all of it runs in one graphicsLayer (scale,
+            // morphing shape, shadow) so nothing recomposes per frame; the layer just redraws.
             val breathing = rememberInfiniteTransition(label = "artBreath")
             val artScale by breathing.animateFloat(
                 initialValue = 1f,
@@ -363,14 +368,39 @@ fun NowPlayingScreen(
                 ),
                 label = "artScale",
             )
+            val morphing = albumArtMotion && isPlaying
+            val cornerA by breathing.animateFloat(
+                initialValue = 14f, targetValue = if (morphing) 34f else 14f,
+                animationSpec = infiniteRepeatable(tween(9_000, easing = LinearEasing), RepeatMode.Reverse),
+                label = "artCornerA",
+            )
+            val cornerB by breathing.animateFloat(
+                initialValue = 30f, targetValue = if (morphing) 12f else 30f,
+                animationSpec = infiniteRepeatable(tween(12_500, easing = LinearEasing), RepeatMode.Reverse),
+                label = "artCornerB",
+            )
+            val cornerC by breathing.animateFloat(
+                initialValue = 18f, targetValue = if (morphing) 38f else 18f,
+                animationSpec = infiniteRepeatable(tween(15_500, easing = LinearEasing), RepeatMode.Reverse),
+                label = "artCornerC",
+            )
             Box(
                 modifier = Modifier
                     .padding(top = 24.dp, bottom = 20.dp)
                     .size(280.dp)
                     .align(Alignment.CenterHorizontally)
-                    .graphicsLayer { scaleX = artScale; scaleY = artScale }
-                    .shadow(elevation = 24.dp, shape = VerzaShape, clip = false)
-                    .clip(VerzaShape)
+                    .graphicsLayer {
+                        scaleX = artScale
+                        scaleY = artScale
+                        shape = RoundedCornerShape(
+                            topStart = cornerA.dp,
+                            topEnd = cornerB.dp,
+                            bottomEnd = cornerC.dp,
+                            bottomStart = ((cornerA + cornerB) / 2f).dp,
+                        )
+                        clip = true
+                        shadowElevation = 24.dp.toPx()
+                    }
                     .background(colors.surfaceVariant),
             ) {
                 if (artworkUrl != null) {
@@ -423,44 +453,20 @@ fun NowPlayingScreen(
             }
 
             // ── Progress ───────────────────────────────────────────────────
+            // The thread as the seek bar: the played side is a living wave, the rest a faint
+            // near-still line, with a node dot riding the seam. Tap or drag to seek.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(horizontal = 32.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(colors.outlineVariant)
-                        .pointerInput(durationMs) {
-                            detectTapGestures { offset ->
-                                if (durationMs > 0) {
-                                    val fraction = (offset.x / size.width).coerceIn(0f, 1f)
-                                    onSeek((fraction * durationMs).toLong())
-                                }
-                            }
-                        },
-                ) {
-                    // Smooth progress interpolation: the underlying `progress` value updates in
-                    // discrete ~500 ms steps from the playback service, which used to make the
-                    // bar visibly tick. Animating the visible width with a linear 500 ms tween
-                    // makes the fill glide continuously between updates.
-                    val animatedProgress by animateFloatAsState(
-                        targetValue = progress,
-                        animationSpec = tween(durationMillis = 500, easing = LinearEasing),
-                        label = "seekBarFill",
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(animatedProgress)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(colors.primary),
-                    )
-                }
+                ThreadSeekBar(
+                    progress = progress,
+                    onSeek = { fraction -> if (durationMs > 0) onSeek((fraction * durationMs).toLong()) },
+                    modifier = Modifier.fillMaxWidth(),
+                    alive = isPlaying,
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -496,12 +502,15 @@ fun NowPlayingScreen(
                         modifier = Modifier.size(28.dp),
                     )
                 }
-                // Big accent play/pause button.
+                // Big accent play/pause pebble — its silhouette belongs to the current song,
+                // and it breathes a little deeper than everything else while playing.
+                val playShape = remember(title) { pebbleShape(title, base = 30.dp, swing = 12.dp) }
                 Box(
                     modifier = Modifier
                         .size(72.dp)
-                        .shadow(elevation = 12.dp, shape = CircleShape, clip = false)
-                        .clip(CircleShape)
+                        .breathe(seed = title.hashCode(), amount = if (isPlaying) 0.018f else 0.006f)
+                        .shadow(elevation = 12.dp, shape = playShape, clip = false)
+                        .clip(playShape)
                         .background(colors.primary)
                         .clickable(onClick = onTogglePlay),
                     contentAlignment = Alignment.Center,
@@ -564,7 +573,7 @@ fun NowPlayingScreen(
                         .padding(top = 4.dp, bottom = 20.dp),
                 ) {
                     Text(
-                        text = "Up next",
+                        text = "up next",
                         style = MaterialTheme.typography.titleLarge,
                         color = colors.onBackground,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
@@ -853,7 +862,7 @@ private fun ActionButton(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = if (tinted) colors.primary else ext.muted)
+        Text(label.lowercase(), style = MaterialTheme.typography.labelSmall, color = if (tinted) colors.primary else ext.muted)
     }
 }
 

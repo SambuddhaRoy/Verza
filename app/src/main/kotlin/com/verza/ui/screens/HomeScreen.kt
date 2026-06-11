@@ -42,6 +42,10 @@ import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaShape
+import com.verza.ui.verso.ThreadLine
+import com.verza.ui.verso.VersoMasthead
+import com.verza.ui.verso.breathe
+import com.verza.ui.verso.pebbleShape
 import java.util.Calendar
 
 @Composable
@@ -109,44 +113,38 @@ private fun HomeContent(
         verticalArrangement = Arrangement.spacedBy(28.dp),
     ) {
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    if (sleeve) {
-                        // Editorial masthead — a wide-tracked mono dateline above a serif title.
+            if (sleeve) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        // Editorial masthead — a wide-tracked mono dateline above the title.
                         Eyebrow(text = "${greeting()} · ${dateline()}", color = cover.sub)
                         Spacer(Modifier.height(8.dp))
-                    } else {
-                        // Accent "flourish" bar.
-                        Box(
-                            modifier = Modifier
-                                .width(40.dp)
-                                .height(3.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(colors.primary),
-                        )
-                        Spacer(Modifier.height(12.dp))
                         Text(
-                            text = greeting(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.primary,
-                            letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
+                            text = "For You",
+                            style = MaterialTheme.typography.displaySmall,
+                            color = colors.onBackground,
                         )
-                        Spacer(Modifier.height(4.dp))
                     }
-                    Text(
-                        text = "For You",
-                        style = MaterialTheme.typography.displaySmall,
-                        color = colors.onBackground,
-                    )
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = cover.sub)
+                    }
                 }
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = if (sleeve) cover.sub else ext.muted)
-                }
+            } else {
+                // Verso masthead — lowercase display title over a thread that draws itself in.
+                VersoMasthead(
+                    title = "for you",
+                    eyebrow = greeting(),
+                    trailing = {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = ext.muted)
+                        }
+                    },
+                )
             }
         }
 
@@ -217,12 +215,23 @@ private fun MadeForYouRow(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = "Made for you",
-            style = MaterialTheme.typography.titleLarge,
-            color = colors.onBackground,
+        Column(
             modifier = Modifier.padding(horizontal = 20.dp),
-        )
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ThreadLine(
+                modifier = Modifier.width(34.dp),
+                color = colors.primary,
+                amplitude = 2.dp,
+                wavelength = 26.dp,
+                thickness = 1.6.dp,
+            )
+            Text(
+                text = "made for you",
+                style = MaterialTheme.typography.headlineSmall,
+                color = colors.onBackground,
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -247,7 +256,8 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(154.dp)
-            .clip(VerzaShape)
+            .breathe(seed = mix.id.hashCode(), amount = 0.005f)
+            .clip(remember(mix.id) { pebbleShape(mix.id, base = 24.dp, swing = 14.dp) })
             .background(Brush.linearGradient(listOf(top, bottom)))
             .clickable(onClick = onClick)
             .padding(14.dp),
@@ -310,16 +320,17 @@ private fun GenreChipRow() {
                     )
                 }
             } else {
+                // Verso chips: lowercase wordmarks in per-genre pebbles.
                 val bg = if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f)
                 val fg = if (selected) colors.onPrimary else colors.primary
                 Box(
                     modifier = Modifier
-                        .clip(CircleShape)
+                        .clip(remember(g) { pebbleShape(g, base = 15.dp, swing = 8.dp) })
                         .background(bg)
                         .clickable(onClick = { active = g })
                         .padding(horizontal = 18.dp, vertical = 8.dp),
                 ) {
-                    Text(g, style = MaterialTheme.typography.labelLarge, color = fg)
+                    Text(g.lowercase(), style = MaterialTheme.typography.labelLarge, color = fg)
                 }
             }
         }
