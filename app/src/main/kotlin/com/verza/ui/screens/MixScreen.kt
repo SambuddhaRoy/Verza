@@ -45,6 +45,9 @@ import com.verza.data.MixesRepository
 import com.verza.innertube.models.HomeItem
 import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.verso.breathe
+import com.verza.ui.verso.pebbleShape
+import androidx.compose.runtime.remember
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -100,13 +103,14 @@ fun MixScreen(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             item {
-                // Gradient banner + title + subtitle + Play.
+                // Gradient banner + title + subtitle + Play — the banner is the mix's own pebble.
                 val (top, bottom) = mixGradient(m.kind)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-                        .clip(RoundedCornerShape(18.dp))
+                        .breathe(seed = m.id.hashCode(), amount = 0.004f)
+                        .clip(remember(m.id) { pebbleShape(m.id, base = 26.dp, swing = 14.dp) })
                         .background(Brush.linearGradient(listOf(top, bottom)))
                         .padding(18.dp),
                 ) {

@@ -43,6 +43,8 @@ import com.verza.ui.components.TrackActionsMenu
 import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaShape
+import com.verza.ui.verso.VersoMasthead
+import com.verza.ui.verso.pebbleShape
 
 private enum class LibraryTab(val label: String, val icon: ImageVector) {
     RECENT("Recent", Icons.Filled.History),
@@ -103,20 +105,8 @@ fun LibraryScreen(
             .padding(top = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // ── Header ─────────────────────────────────────────────────────────
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(colors.primary),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text("Your collection", style = MaterialTheme.typography.labelSmall, color = colors.primary)
-            Spacer(Modifier.height(4.dp))
-            Text("Library", style = MaterialTheme.typography.displaySmall, color = colors.onBackground)
-        }
+        // ── Verso masthead ─────────────────────────────────────────────────
+        VersoMasthead(title = "library", eyebrow = "your collection")
 
         // ── Tabs ───────────────────────────────────────────────────────────
         Row(
@@ -267,7 +257,7 @@ private fun LibraryPill(entry: LibraryTab, selected: Boolean, onClick: () -> Uni
     val fg = if (selected) colors.onPrimary else colors.primary
     Row(
         modifier = Modifier
-            .clip(CircleShape)
+            .clip(remember(entry) { pebbleShape(entry.label, base = 15.dp, swing = 8.dp) })
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -275,7 +265,7 @@ private fun LibraryPill(entry: LibraryTab, selected: Boolean, onClick: () -> Uni
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(entry.icon, contentDescription = null, tint = fg, modifier = Modifier.size(16.dp))
-        Text(entry.label, style = MaterialTheme.typography.labelLarge, color = fg)
+        Text(entry.label.lowercase(), style = MaterialTheme.typography.labelLarge, color = fg)
     }
 }
 
