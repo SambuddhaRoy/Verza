@@ -153,6 +153,10 @@ fun VerzaNavigation(
                         isPlaying = playback.isPlaying,
                         artworkColor = Color(0xFF2980B9),
                         artworkUrl = currentArtworkUrl,
+                        progress = if (playback.durationMs > 0)
+                            (positionMs.toFloat() / playback.durationMs).coerceIn(0f, 1f) else 0f,
+                        onNext = { playbackViewModel.seekToNext() },
+                        onPrevious = { playbackViewModel.seekToPrevious() },
                         onExpand = {
                             navController.navigate(Screen.NowPlaying.route) {
                                 launchSingleTop = true
