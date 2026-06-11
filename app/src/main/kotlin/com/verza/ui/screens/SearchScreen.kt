@@ -35,6 +35,8 @@ import com.verza.innertube.models.MusicItem
 import com.verza.ui.components.TrackActionsMenu
 import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.verso.VersoMasthead
+import com.verza.ui.verso.pebbleShape
 
 @Composable
 fun SearchScreen(
@@ -54,20 +56,8 @@ fun SearchScreen(
             .padding(top = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // ── Header (flourish + eyebrow + title) ────────────────────────────
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(colors.primary),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text("Explore", style = MaterialTheme.typography.labelSmall, color = colors.primary)
-            Spacer(Modifier.height(4.dp))
-            Text("Search", style = MaterialTheme.typography.displaySmall, color = colors.onBackground)
-        }
+        // ── Verso masthead ─────────────────────────────────────────────────
+        VersoMasthead(title = "search", eyebrow = "explore")
 
         // ── Pill search bar ────────────────────────────────────────────────
         SearchPill(
@@ -133,7 +123,7 @@ private fun SearchPill(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(CircleShape)
+            .clip(remember { pebbleShape("verso-search-pill", base = 24.dp, swing = 12.dp) })
             .background(colors.surfaceVariant)
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -184,13 +174,13 @@ private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
     val fg = if (selected) colors.onPrimary else colors.primary
     Box(
         modifier = Modifier
-            .clip(CircleShape)
+            .clip(remember(label) { pebbleShape(label, base = 14.dp, swing = 8.dp) })
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 7.dp),
     ) {
         Text(
-            label,
+            label.lowercase(),
             style = MaterialTheme.typography.labelLarge,
             color = fg,
             maxLines = 1,

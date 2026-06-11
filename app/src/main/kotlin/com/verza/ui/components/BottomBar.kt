@@ -5,14 +5,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,133 +17,150 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.verza.ui.navigation.Screen
 import com.verza.ui.sleeve.LocalSleeveMode
+import com.verza.ui.theme.FontBody
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.verso.drawThread
+import com.verza.ui.verso.threadPhase
+import kotlin.math.sin
 
-private data class NavItem(
-    val screen: Screen,
-    val icon: ImageVector,
-    val label: String,
-)
+private data class NavItem(val screen: Screen, val label: String)
 
+// Verso navigation is wordmarks on a thread — no icons. The thread is the horizon the app
+// rests on; each destination is a node along it.
 private val navItems = listOf(
-    NavItem(Screen.Home,       Icons.Outlined.Home,         "Home"),
-    NavItem(Screen.Search,     Icons.Outlined.Search,       "Search"),
-    NavItem(Screen.Library,    Icons.Outlined.LibraryMusic, "Library"),
-    NavItem(Screen.NowPlaying, Icons.Outlined.MusicNote,    "Now Playing"),
+    NavItem(Screen.Home,       "home"),
+    NavItem(Screen.Search,     "search"),
+    NavItem(Screen.Library,    "library"),
+    NavItem(Screen.NowPlaying, "playing"),
 )
 
+private const val TWO_PI = (2.0 * Math.PI).toFloat()
+
+/**
+ * The Verso "thread horizon" navigation. A continuous undulating thread spans the bottom of the
+ * app; the four destinations are nodes resting on it, marked by lowercase wordmarks. A carrier
+ * dot glides along the thread to whichever node is active, and the thread's swell deepens while
+ * music plays — the bar itself is quietly alive.
+ */
 @Composable
 fun VerzaBottomBar(
     currentRoute: String?,
     onNavigate: (Screen) -> Unit,
     modifier: Modifier = Modifier,
+    isPlaying: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-
-    // Sleeve dresses the nav as a translucent dark bar (so the reactive glow shows through),
-    // with the cover accent marking the active tab.
     val sleeve = LocalSleeveMode.current
     val cover = LocalCoverColors.current
-    val activeColor = if (sleeve) cover.accent else colors.primary
-    val inactiveColor = if (sleeve) cover.faint else ext.muted
-    val labelActiveColor = if (sleeve) cover.ink else colors.onSurface
-    // Sleeve dresses the nav as translucent "glass" — the same low-opacity white wash the cards
-    // and mini-player use (sleeveSurface) — so the live reactive glow shows through it.
-    val barBackground = if (sleeve) {
-        Modifier.background(Color.White.copy(alpha = 0.06f))
-    } else {
-        Modifier.background(colors.surface)
-    }
-    val dividerColor = if (sleeve) Color.White.copy(alpha = 0.12f) else colors.outlineVariant
 
-    Column(modifier = modifier.fillMaxWidth().then(barBackground)) {
-        HorizontalDivider(thickness = 1.dp, color = dividerColor)
-        Row(
-            // windowInsetsPadding *before* height — so the 72 dp content sits ABOVE the system
-            // gesture inset instead of being eaten by it. Otherwise the label clips on devices
-            // with a tall navigation bar.
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .height(72.dp)
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            navItems.forEach { item ->
-                val active = currentRoute == item.screen.route
-                val tint by animateColorAsState(
-                    targetValue = if (active) activeColor else inactiveColor,
-                    animationSpec = tween(180),
-                    label = "navTint",
-                )
+    val accent = if (sleeve) cover.accent else colors.primary
+    val inactive = if (sleeve) cover.faint else ext.muted
+    val activeLabel = if (sleeve) cover.ink else colors.onBackground
+    val threadColor = inactive.copy(alpha = 0.45f)
+
+    val selectedIndex = navItems.indexOfFirst { it.screen.route == currentRoute }
+
+    // The carrier dot's slot position — springs along the thread when the tab changes.
+    val carrier by animateFloatAsState(
+        targetValue = (if (selectedIndex >= 0) selectedIndex else 0).toFloat(),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "navCarrier",
+    )
+    // The horizon swells with playback and settles when idle.
+    val amplitude by animateFloatAsState(
+        targetValue = if (isPlaying) 4.5f else 2.2f,
+        animationSpec = tween(900),
+        label = "navAmplitude",
+    )
+    val phase by threadPhase(alive = true)
+
+    // No opaque bar: the glow shows through a soft scrim that deepens toward the bottom edge.
+    val scrim = Brush.verticalGradient(
+        0f to Color.Transparent,
+        0.55f to colors.background.copy(alpha = if (sleeve) 0.30f else 0.82f),
+        1f to colors.background.copy(alpha = if (sleeve) 0.42f else 0.94f),
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(scrim)
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .height(62.dp),
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val n = navItems.size
+            val cy = size.height * 0.34f
+            val ampPx = amplitude.dp.toPx()
+            val wavelength = size.width / 2.6f
+            fun waveY(x: Float) = cy + ampPx * sin(TWO_PI * x / wavelength + phase)
+            drawThread(
+                color = threadColor,
+                amplitudePx = ampPx,
+                wavelengthPx = wavelength,
+                strokePx = 1.6.dp.toPx(),
+                phase = phase,
+                yCenter = cy,
+            )
+            // Resting node at every destination; the active one is overdrawn by the carrier.
+            for (i in 0 until n) {
+                val x = size.width / n * (i + 0.5f)
+                drawCircle(inactive, radius = 2.4.dp.toPx(), center = Offset(x, waveY(x)))
+            }
+            // The carrier dot, riding the wave between nodes.
+            val cx = size.width / n * (carrier + 0.5f)
+            drawCircle(accent.copy(alpha = 0.30f), radius = 8.5.dp.toPx(), center = Offset(cx, waveY(cx)))
+            drawCircle(accent, radius = 4.4.dp.toPx(), center = Offset(cx, waveY(cx)))
+        }
+        Row(Modifier.fillMaxSize()) {
+            navItems.forEachIndexed { index, item ->
+                val active = index == selectedIndex
                 val labelColor by animateColorAsState(
-                    targetValue = if (active) labelActiveColor else inactiveColor,
-                    animationSpec = tween(180),
+                    targetValue = if (active) activeLabel else inactive,
+                    animationSpec = tween(220),
                     label = "navLabel",
                 )
-                // Active-state icon spring: the selected icon scales up to 1.10× via a
-                // medium-bouncy spring, so tapping a tab gives kinetic confirmation on top
-                // of the colour change. Inactive icons stay at 1.0× (no return spring).
-                val iconScale by animateFloatAsState(
-                    targetValue = if (active) 1.10f else 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium,
-                    ),
-                    label = "navIconScale",
-                )
-
-                Column(
+                Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = { onNavigate(item.screen) }),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                        // No ripple: the carrier dot gliding over IS the touch feedback.
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onNavigate(item.screen) },
+                        ),
+                    contentAlignment = Alignment.BottomCenter,
                 ) {
-                    // Active indicator: 3 dp accent bar at the top of the item.
-                    Box(
-                        modifier = Modifier
-                            .width(20.dp)
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(if (active) activeColor else Color.Transparent),
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.label,
-                        tint = tint,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .graphicsLayer { scaleX = iconScale; scaleY = iconScale },
-                    )
-                    Spacer(Modifier.height(if (sleeve) 4.dp else 2.dp))
                     Text(
                         text = if (sleeve) item.label.uppercase() else item.label,
                         color = labelColor,
                         style = if (sleeve)
                             TextStyle(fontFamily = FontMono, fontSize = 8.5.sp, letterSpacing = 0.1.em)
                         else
-                            MaterialTheme.typography.labelSmall,
+                            TextStyle(
+                                fontFamily = FontBody,
+                                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                                fontSize = 12.sp,
+                                letterSpacing = 0.02.em,
+                            ),
                         textAlign = TextAlign.Center,
                         maxLines = 1,
+                        modifier = Modifier.padding(bottom = 10.dp),
                     )
                 }
             }
