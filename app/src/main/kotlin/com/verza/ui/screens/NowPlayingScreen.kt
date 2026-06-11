@@ -4,15 +4,21 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -26,8 +32,11 @@ import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lyrics
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -363,12 +372,42 @@ fun NowPlayingScreen(
                 ),
                 label = "artScale",
             )
+            // Swipe the cover sideways to change tracks: it follows the finger with a damped
+            // drag and a hint of tilt, springs back on release, and fires next/previous once
+            // the pull crosses the threshold — the artwork itself becomes the skip control.
+            val scope = rememberCoroutineScope()
+            val artDrag = remember { Animatable(0f) }
+            val skipThresholdPx = with(LocalDensity.current) { 72.dp.toPx() }
             Box(
                 modifier = Modifier
                     .padding(top = 24.dp, bottom = 20.dp)
                     .size(280.dp)
                     .align(Alignment.CenterHorizontally)
-                    .graphicsLayer { scaleX = artScale; scaleY = artScale }
+                    .graphicsLayer {
+                        scaleX = artScale
+                        scaleY = artScale
+                        translationX = artDrag.value * 0.55f
+                        rotationZ = artDrag.value * 0.004f
+                    }
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                val pull = artDrag.value
+                                scope.launch {
+                                    if (pull <= -skipThresholdPx) onNext()
+                                    else if (pull >= skipThresholdPx) onPrevious()
+                                    artDrag.animateTo(
+                                        0f,
+                                        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                                    )
+                                }
+                            },
+                            onDragCancel = { scope.launch { artDrag.animateTo(0f, spring()) } },
+                        ) { change, delta ->
+                            change.consume()
+                            scope.launch { artDrag.snapTo(artDrag.value + delta) }
+                        }
+                    }
                     .shadow(elevation = 24.dp, shape = VerzaShape, clip = false)
                     .clip(VerzaShape)
                     .background(colors.surfaceVariant),
@@ -423,18 +462,34 @@ fun NowPlayingScreen(
             }
 
             // ── Progress ───────────────────────────────────────────────────
+            // Real scrubbing: tap to jump, or press and drag anywhere on the bar — the fill,
+            // thumb and elapsed label follow the finger live, and the seek fires on release.
+            // The scrub fraction is local UI state so dragging never fights the position ticks.
+            var scrubFrac by remember { mutableStateOf<Float?>(null) }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(horizontal = 32.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
+                // Smooth progress interpolation: the underlying `progress` value updates in
+                // discrete ~500 ms steps from the playback service. Animating the visible fill
+                // with a linear 500 ms tween makes it glide continuously between updates.
+                val animatedProgress by animateFloatAsState(
+                    targetValue = progress,
+                    animationSpec = tween(durationMillis = 500, easing = LinearEasing),
+                    label = "seekBarFill",
+                )
+                val shownFrac = (scrubFrac ?: animatedProgress).coerceIn(0f, 1f)
+                val thumbRadius by animateDpAsState(
+                    targetValue = if (scrubFrac != null) 7.dp else 4.5.dp,
+                    label = "seekThumb",
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(colors.outlineVariant)
+                        // Generous touch target; the visible track stays slim.
+                        .height(26.dp)
                         .pointerInput(durationMs) {
                             detectTapGestures { offset ->
                                 if (durationMs > 0) {
@@ -442,30 +497,58 @@ fun NowPlayingScreen(
                                     onSeek((fraction * durationMs).toLong())
                                 }
                             }
+                        }
+                        .pointerInput(durationMs) {
+                            detectHorizontalDragGestures(
+                                onDragStart = { offset ->
+                                    scrubFrac = (offset.x / size.width).coerceIn(0f, 1f)
+                                },
+                                onDragEnd = {
+                                    scrubFrac?.let { if (durationMs > 0) onSeek((it * durationMs).toLong()) }
+                                    scrubFrac = null
+                                },
+                                onDragCancel = { scrubFrac = null },
+                            ) { change, _ ->
+                                change.consume()
+                                scrubFrac = (change.position.x / size.width).coerceIn(0f, 1f)
+                            }
                         },
+                    contentAlignment = Alignment.CenterStart,
                 ) {
-                    // Smooth progress interpolation: the underlying `progress` value updates in
-                    // discrete ~500 ms steps from the playback service, which used to make the
-                    // bar visibly tick. Animating the visible width with a linear 500 ms tween
-                    // makes the fill glide continuously between updates.
-                    val animatedProgress by animateFloatAsState(
-                        targetValue = progress,
-                        animationSpec = tween(durationMillis = 500, easing = LinearEasing),
-                        label = "seekBarFill",
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(colors.outlineVariant),
                     )
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(animatedProgress)
-                            .fillMaxHeight()
+                            .fillMaxWidth(shownFrac)
+                            .height(4.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(colors.primary),
                     )
+                    // Thumb — rides the fill's edge and swells under the finger while scrubbing.
+                    Canvas(Modifier.matchParentSize()) {
+                        drawCircle(
+                            color = colors.primary,
+                            radius = thumbRadius.toPx(),
+                            center = Offset(size.width * shownFrac, size.height / 2f),
+                        )
+                    }
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text(formatTime(positionMs), style = MaterialTheme.typography.labelSmall, color = ext.muted)
+                    // While scrubbing, the elapsed label previews the target position in accent.
+                    val previewMs = scrubFrac?.let { (it * durationMs).toLong() } ?: positionMs
+                    Text(
+                        formatTime(previewMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (scrubFrac != null) colors.primary else ext.muted,
+                    )
                     Text(formatTime(durationMs), style = MaterialTheme.typography.labelSmall, color = ext.muted)
                 }
             }
