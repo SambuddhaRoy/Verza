@@ -35,6 +35,7 @@ import com.verza.ui.theme.GlowBackground
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.LocalArtworkColors
+import com.verza.ui.theme.LocalAudioSignal
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.VerzaTheme
 import com.verza.ui.theme.coverColorScheme
@@ -207,6 +208,8 @@ class MainActivity : ComponentActivity() {
                     LocalSleeveMode provides sleeveMode,
                     LocalCoverColors provides chromeCover,
                     LocalArtworkColors provides artworkColors,
+                    // Any composable can ride the music: same gated flow the glow uses.
+                    LocalAudioSignal provides (if (shouldVisualize) visualizerSignalFlow else null),
                 ) {
                     // The reactive, album-coloured glow is the backdrop on dark schemes; on a light
                     // scheme (incl. a light Sleeve) GlowBackground hides the glow and just shows the
