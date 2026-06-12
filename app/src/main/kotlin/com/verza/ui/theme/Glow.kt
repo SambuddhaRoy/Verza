@@ -65,10 +65,10 @@ enum class GlowIntensity(val displayName: String, val shaderStrength: Float) {
 }
 
 /**
- * The glow's visual pattern. [FLUID] is the flowing aurora field; [HALFTONE] re-renders that field as
- * a halftone-print swirl — spiral bands rotating around the glow's focus, screened through a rotated
- * dot grid whose dot sizes track the local brightness (the comic-print look). Pattern is a shader
- * feature, so it only applies on API 33+; the pre-33 gradient fallback always renders the fluid look.
+ * The glow's visual pattern. [FLUID] is the flowing aurora field; [HALFTONE] re-renders it as a wave
+ * of colour travelling through a sea of darkness — a soft band sweeps across a fine comic-halftone dot
+ * screen, the dots swelling at the crest and vanishing in the dark. Pattern is a shader feature, so it
+ * only applies on API 33+; the pre-33 gradient fallback always renders the fluid look.
  */
 enum class GlowStyle(val displayName: String) {
     FLUID    ("Fluid"),
@@ -164,30 +164,30 @@ half4 main(float2 fragCoord) {
     float2 p2 = p + warpAmt * (q - 0.5);
     float f = fbm(p2 * 1.8 + float2(t * 0.6, -t * 0.4));
 
-    // ── "Halftone" pattern (uPattern > 0.5): re-renders the field as a halftone-print swirl —
-    //    logarithmic spiral bands rotating around the glow's upper-centre focus, screened through a
-    //    rotated dot lattice whose dot sizes track the local band brightness (the comic-print look,
-    //    after shaders.com's "Halftone Swirl"). The flow field q nudges the spiral so it stays
-    //    organic, and bass deepens that wobble and swells the dots, so the print breathes with the
-    //    music.
+    // ── "Halftone" pattern (uPattern > 0.5): a wave of colour in a sea of darkness. Most of the
+    //    field sits at zero (so the screen reads as the bare dark background), and a soft diagonal
+    //    band of brightness travels across, undulating with the fluid flow. Only the wave's crest
+    //    lights up, screened through a fine comic-halftone dot lattice whose dot sizes track the
+    //    local brightness — fine dots that swell at the crest and vanish into the dark.
     if (uPattern > 0.5) {
-        // Log-spiral band field. The 3-arm count must stay an integer so the sin() phase is
-        // continuous across the atan() seam. l is floored well above zero so the spiral doesn't
-        // alias into noise right at the focus.
-        float2 d = p - float2(0.5 * uResolution.x / uResolution.y, 0.36)
-                 + (q - 0.5) * (0.22 + 0.35 * bass);
-        float l = max(length(d), 0.05);
-        float spiral = 3.0 * atan(d.y, d.x) / 6.2831 - 1.4 * log(l) - t * 2.4;
-        float spiralBand = 0.5 + 0.5 * sin(spiral * 6.2831);
-        float fieldv = mix(spiralBand, f, 0.30);   // keep a share of the fluid inside the bands
+        // Travelling wave: a diagonal plane wave warped by the flow field q so it ripples instead
+        // of marching straight; the -t term sweeps it across, bass nudges it along. The low spatial
+        // frequency keeps a single broad band on screen at a time, surrounded by darkness.
+        float travel = p.x * 0.7 + p.y * 1.1 + (q.x + q.y - 1.0) * 1.3;
+        float wave = sin(travel * 1.7 - t * 2.0 - bass * 1.2);
+        // Keep only the crest — everything below the threshold collapses to black sea.
+        float crest = smoothstep(0.55, 0.98, wave);
+        float fieldv = crest * mix(0.7, 1.0, f);   // a little fluid texture inside the band
 
-        // Halftone screen: a ~26°-rotated dot lattice. Dot radius grows with sqrt(brightness) so
-        // dot *area* tracks the field like real print; bass gives the dots a gentle swell.
-        float2 hp = float2(0.8988 * p.x - 0.4384 * p.y, 0.4384 * p.x + 0.8988 * p.y) * 26.0;
+        // Fine comic-halftone screen: a tight ~15°-rotated dot lattice (≈140 dots across the
+        // height — far finer than before). The lattice is fixed in screen space, so the wave
+        // modulates dot *size* rather than moving the dots (no shimmer). Radius tracks
+        // sqrt(brightness) so dot *area* follows the wave like real print.
+        float2 hp = float2(0.9659 * p.x - 0.2588 * p.y, 0.2588 * p.x + 0.9659 * p.y) * 140.0;
         float2 cell = fract(hp) - 0.5;
-        float r = 0.62 * sqrt(clamp(fieldv, 0.0, 1.0)) * (1.0 + 0.18 * bass);
-        float dotMask = 1.0 - smoothstep(r - 0.09, r + 0.09, length(cell) * 2.0);
-        f = dotMask * (0.4 + 0.6 * fieldv);
+        float r = (0.72 + 0.12 * bass) * sqrt(clamp(fieldv, 0.0, 1.0));
+        float dotMask = 1.0 - smoothstep(r - 0.14, r + 0.14, length(cell) * 2.0);
+        f = dotMask * fieldv;
     }
 
     // Mix three theme colours across the warped field.
