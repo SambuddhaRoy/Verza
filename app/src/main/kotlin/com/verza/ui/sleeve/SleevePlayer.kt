@@ -162,14 +162,21 @@ fun SleevePlayer(
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
-                    // Organic edge melt (sides, bottom, corners).
+                    // Organic edge melt (sides, bottom, corners). The alpha falls off as an eased
+                    // S-curve through several intermediate stops rather than a flat core that
+                    // suddenly ramps to transparent — that hard knee showed up as a visible arc /
+                    // "cut-off" where the bright cover met the dark background in the lower third.
+                    // A wider radius spreads the feather so it only fully dissolves at the very edge.
                     drawRect(
                         brush = Brush.radialGradient(
                             0.0f to Color.White,
-                            0.55f to Color.White,
+                            0.40f to Color.White,
+                            0.60f to Color.White.copy(alpha = 0.90f),
+                            0.75f to Color.White.copy(alpha = 0.62f),
+                            0.88f to Color.White.copy(alpha = 0.30f),
                             1.0f to Color.Transparent,
                             center = Offset(size.width * 0.5f, size.height * 0.46f),
-                            radius = size.width * 1.04f,
+                            radius = size.width * 1.18f,
                         ),
                         blendMode = BlendMode.DstIn,
                     )
