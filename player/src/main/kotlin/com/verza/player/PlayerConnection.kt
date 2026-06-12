@@ -220,6 +220,12 @@ class PlayerConnection(context: Context) {
                 MediaMetadata.Builder()
                     .setTitle(title)
                     .setArtist(artist)
+                    // Tagging the item as playable music (not an untyped media item) lets the
+                    // system + OEM surfaces — lock screen, OnePlus hole-punch popout, always-on
+                    // display — treat it as a proper "now playing" card with the cover art.
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .setIsBrowsable(false)
+                    .setIsPlayable(true)
                     .apply { albumArtUri?.let { setArtworkUri(android.net.Uri.parse(it)) } }
                     .build()
             )
