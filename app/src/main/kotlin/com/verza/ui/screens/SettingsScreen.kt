@@ -661,7 +661,7 @@ private fun GlowPatternRow(selected: GlowStyle, onSelect: (GlowStyle) -> Unit) {
             onSelect = onSelect,
         )
         Text(
-            "Halftone swirls the glow into a slowly rotating spiral of print-style dots that breathe with the music (needs Android 13+).",
+            "Halftone sweeps a wave of colour through a sea of darkness, screened as fine comic-print dots that swell with the music (needs Android 13+).",
             style = CaptionItalic,
             color = ext.muted,
         )
