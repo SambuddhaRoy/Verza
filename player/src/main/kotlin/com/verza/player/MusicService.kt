@@ -2,6 +2,7 @@ package com.verza.player
 
 import android.app.PendingIntent
 import android.net.Uri
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -17,8 +18,11 @@ import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.verza.innertube.InnerTube
@@ -28,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -38,6 +43,8 @@ import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
 private const val INNERTUBE_SCHEME = "innertube://"
+// Custom session command behind the notification / lock-screen / always-on "Like" heart.
+private const val ACTION_TOGGLE_LIKE = "com.verza.player.TOGGLE_LIKE"
 
 @AndroidEntryPoint
 class MusicService : MediaLibraryService() {
@@ -171,7 +178,46 @@ class MusicService : MediaLibraryService() {
 
         session = MediaLibrarySession.Builder(this, player, LibrarySessionCallback())
             .also { builder -> activityIntent?.let { builder.setSessionActivity(it) } }
+            // The "Like" heart shows on the lock screen, the notification, the OnePlus hole-punch
+            // popout and the always-on display — anywhere the system surfaces the media session.
+            .setCustomLayout(buildCustomLayout())
             .build()
+
+        // Redraw the heart (filled ↔ outline) when the track changes or the liked set updates —
+        // the like store lives in :app and pushes new ids in through NowPlayingBridge.
+        player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                refreshLikeLayout()
+            }
+        })
+        serviceScope.launch {
+            NowPlayingBridge.likedIds.collect { refreshLikeLayout() }
+        }
+    }
+
+    // ── "Like" control on the system media surfaces ─────────────────────────────
+
+    /** The heart button — filled when the current track is liked, outline otherwise. */
+    @OptIn(UnstableApi::class)
+    private fun likeButton(liked: Boolean): CommandButton =
+        CommandButton.Builder()
+            .setDisplayName(if (liked) "Unlike" else "Like")
+            .setIconResId(if (liked) R.drawable.verza_ic_heart_filled else R.drawable.verza_ic_heart)
+            .setSessionCommand(SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY))
+            .setEnabled(true)
+            .build()
+
+    private fun isCurrentLiked(): Boolean {
+        val id = player.currentMediaItem?.mediaId ?: return false
+        return NowPlayingBridge.likedIds.value.contains(id)
+    }
+
+    private fun buildCustomLayout(): List<CommandButton> = listOf(likeButton(isCurrentLiked()))
+
+    /** Pushes a fresh custom layout to every controller (notification included). Main thread. */
+    @OptIn(UnstableApi::class)
+    private fun refreshLikeLayout() {
+        if (::session.isInitialized) session.setCustomLayout(buildCustomLayout())
     }
 
     /** Shows the full diagnostic in debug builds; a short, non-revealing message in release. */
@@ -204,6 +250,55 @@ class MusicService : MediaLibraryService() {
 
     // ── Library callbacks ──────────────────────────────────────────────────────
     private inner class LibrarySessionCallback : MediaLibrarySession.Callback {
+
+        /**
+         * Grant every controller (the system notification controller included) permission to send
+         * our custom "toggle like" command, on top of the default media + library commands, and
+         * hand it the current heart layout.
+         */
+        @OptIn(UnstableApi::class)
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult {
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
+                .buildUpon()
+                .add(SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY))
+                .build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(sessionCommands)
+                .setCustomLayout(buildCustomLayout())
+                .build()
+        }
+
+        /**
+         * The heart was tapped on the lock screen / notification / hole-punch / AOD. We hand the
+         * current track (the service owns the player, so it always knows what's playing) to :app
+         * via [NowPlayingBridge]; :app persists the like and republishes the liked set, which flips
+         * the icon back through [refreshLikeLayout].
+         */
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
+                player.currentMediaItem?.let { item ->
+                    val md = item.mediaMetadata
+                    NowPlayingBridge.requestLikeToggle(
+                        NowPlayingBridge.LikeRequest(
+                            mediaId = item.mediaId,
+                            title = md.title?.toString().orEmpty(),
+                            artist = md.artist?.toString().orEmpty(),
+                            artworkUri = md.artworkUri?.toString(),
+                        )
+                    )
+                }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+        }
 
         /**
          * Media3 drops MediaItem.localConfiguration (the URI) when items cross the
