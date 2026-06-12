@@ -23,8 +23,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import coil3.compose.AsyncImage
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -235,7 +237,12 @@ private fun MadeForYouRow(
     }
 }
 
-/** A generated, Spotify-style cover for a curated mix: a vivid per-kind gradient with the title. */
+/**
+ * The cover for a curated mix: real album art from a song *inside* the mix, washed with the
+ * mix kind's signature tint so Daylist/Discovery/Release radar keep their colour identities
+ * (and the eyebrow + title stay legible over any artwork). Falls back to the plain gradient
+ * while the mix is still being generated.
+ */
 @Composable
 private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
     val (top, bottom) = mixGradient(mix.kind)
@@ -244,27 +251,48 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
         com.verza.data.MixKind.DISCOVER -> "DISCOVERY"
         com.verza.data.MixKind.RELEASE_RADAR -> "NEW RELEASES"
     }
+    // The first item with art fronts the mix — stable for the life of the generated mix.
+    val coverArt = remember(mix.items) { mix.items.firstNotNullOfOrNull { it.thumbnailUrl } }
     Box(
         modifier = Modifier
             .size(154.dp)
             .clip(VerzaShape)
             .background(Brush.linearGradient(listOf(top, bottom)))
-            .clickable(onClick = onClick)
-            .padding(14.dp),
+            .clickable(onClick = onClick),
     ) {
-        Text(
-            text = eyebrow,
-            style = TextStyle(fontFamily = FontMono, fontSize = 10.sp, letterSpacing = 0.12.em),
-            color = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.align(Alignment.TopStart),
-        )
-        Text(
-            text = mix.title,
-            style = MaterialTheme.typography.headlineSmall,
-            color = Color.White,
-            maxLines = 2,
-            modifier = Modifier.align(Alignment.BottomStart),
-        )
+        if (coverArt != null) {
+            AsyncImage(
+                model = coverArt,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // Kind-tinted scrim: light at the top, deep at the foot where the title sits.
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0f to top.copy(alpha = 0.30f),
+                        0.45f to bottom.copy(alpha = 0.35f),
+                        1f to bottom.copy(alpha = 0.92f),
+                    ),
+                ),
+            )
+        }
+        Box(Modifier.fillMaxSize().padding(14.dp)) {
+            Text(
+                text = eyebrow,
+                style = TextStyle(fontFamily = FontMono, fontSize = 10.sp, letterSpacing = 0.12.em),
+                color = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.align(Alignment.TopStart),
+            )
+            Text(
+                text = mix.title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = Color.White,
+                maxLines = 2,
+                modifier = Modifier.align(Alignment.BottomStart),
+            )
+        }
     }
 }
 

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import com.verza.ui.theme.LocalAudioSignal
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -109,9 +112,19 @@ fun MiniPlayer(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // The thumbnail bounces gently with the live bass while music plays — the strip
+            // visibly carries the song's pulse even from another screen.
+            val audioSignal = LocalAudioSignal.current
+            val bass = audioSignal?.collectAsState()?.value?.bass ?: 0f
+            val artBounce by animateFloatAsState(
+                targetValue = if (isPlaying) 1f + 0.07f * bass else 1f,
+                animationSpec = tween(durationMillis = 110, easing = LinearEasing),
+                label = "miniArtBounce",
+            )
             Box(
                 modifier = Modifier
                     .size(40.dp)
+                    .graphicsLayer { scaleX = artBounce; scaleY = artBounce }
                     .clip(VerzaShape)
                     .background(artworkColor),
             ) {

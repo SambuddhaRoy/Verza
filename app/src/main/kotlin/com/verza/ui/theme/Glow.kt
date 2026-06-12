@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -29,6 +30,14 @@ import com.verza.audio.VisualizerSignal
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.cos
 import kotlin.math.sin
+
+/**
+ * The live audio-reactive signal, app-wide. MainActivity provides the visualizer's band flow here
+ * whenever reactivity is running (permission granted + playback active), so any composable — the
+ * play button, the mini-player art, the Now Playing cover — can move with the music. Null when
+ * the visualizer is off; consumers should treat that as a still signal.
+ */
+val LocalAudioSignal = staticCompositionLocalOf<StateFlow<VisualizerSignal>?> { null }
 
 /**
  * User-selectable colour for the dark-theme background glow. The default WARM_AMBER
