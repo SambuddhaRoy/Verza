@@ -4,7 +4,14 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -56,6 +63,7 @@ import coil3.request.crossfade
 import com.verza.player.QueueItem
 import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.share.NowPlayingShareOverlay
+import com.verza.ui.theme.LocalAudioSignal
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaShape
 
@@ -378,14 +386,23 @@ fun NowPlayingScreen(
             val scope = rememberCoroutineScope()
             val artDrag = remember { Animatable(0f) }
             val skipThresholdPx = with(LocalDensity.current) { 72.dp.toPx() }
+            // The cover also *grooves*: when reactivity is running, the live bass band gives the
+            // art a gentle kick on every beat, layered on top of the slow breathing scale.
+            val audioSignal = LocalAudioSignal.current
+            val liveBass = audioSignal?.collectAsState()?.value?.bass ?: 0f
+            val bassKick by animateFloatAsState(
+                targetValue = if (isPlaying) 1f + 0.022f * liveBass else 1f,
+                animationSpec = tween(durationMillis = 110, easing = LinearEasing),
+                label = "artBassKick",
+            )
             Box(
                 modifier = Modifier
                     .padding(top = 24.dp, bottom = 20.dp)
                     .size(280.dp)
                     .align(Alignment.CenterHorizontally)
                     .graphicsLayer {
-                        scaleX = artScale
-                        scaleY = artScale
+                        scaleX = artScale * bassKick
+                        scaleY = artScale * bassKick
                         translationX = artDrag.value * 0.55f
                         rotationZ = artDrag.value * 0.004f
                     }
@@ -571,37 +588,86 @@ fun NowPlayingScreen(
                         modifier = Modifier.size(22.dp),
                     )
                 }
-                IconButton(onClick = onPrevious) {
+                // Skip buttons punch in their direction and spring back — kinetic confirmation
+                // that matches the artwork sliding the same way.
+                val prevNudge = remember { Animatable(0f) }
+                IconButton(onClick = {
+                    scope.launch {
+                        prevNudge.snapTo(-9f)
+                        prevNudge.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                    }
+                    onPrevious()
+                }) {
                     Icon(
                         Icons.Filled.SkipPrevious,
                         contentDescription = "Previous",
                         tint = colors.onBackground,
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier
+                            .size(28.dp)
+                            .graphicsLayer { translationX = prevNudge.value.dp.toPx() },
                     )
                 }
-                // Big accent play/pause button.
+                // The play button is the page's heartbeat: it pops with a spring on every toggle,
+                // swells with the live bass while music plays, and the play/pause glyph morphs
+                // through a scale+fade instead of cutting.
+                val playPop = remember { Animatable(1f) }
+                LaunchedEffect(isPlaying) {
+                    playPop.snapTo(0.84f)
+                    playPop.animateTo(
+                        1f,
+                        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                    )
+                }
+                val playBass by animateFloatAsState(
+                    targetValue = if (isPlaying) 1f + 0.055f * liveBass else 1f,
+                    animationSpec = tween(durationMillis = 110, easing = LinearEasing),
+                    label = "playBass",
+                )
                 Box(
                     modifier = Modifier
                         .size(72.dp)
+                        .graphicsLayer {
+                            val s = playPop.value * playBass
+                            scaleX = s
+                            scaleY = s
+                        }
                         .shadow(elevation = 12.dp, shape = CircleShape, clip = false)
                         .clip(CircleShape)
                         .background(colors.primary)
                         .clickable(onClick = onTogglePlay),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = colors.onPrimary,
-                        modifier = Modifier.size(34.dp),
-                    )
+                    AnimatedContent(
+                        targetState = isPlaying,
+                        transitionSpec = {
+                            (scaleIn(initialScale = 0.55f, animationSpec = tween(180)) + fadeIn(tween(120))) togetherWith
+                                (scaleOut(targetScale = 0.55f, animationSpec = tween(140)) + fadeOut(tween(100)))
+                        },
+                        label = "playIconMorph",
+                    ) { playing ->
+                        Icon(
+                            imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (playing) "Pause" else "Play",
+                            tint = colors.onPrimary,
+                            modifier = Modifier.size(34.dp),
+                        )
+                    }
                 }
-                IconButton(onClick = onNext) {
+                val nextNudge = remember { Animatable(0f) }
+                IconButton(onClick = {
+                    scope.launch {
+                        nextNudge.snapTo(9f)
+                        nextNudge.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                    }
+                    onNext()
+                }) {
                     Icon(
                         Icons.Filled.SkipNext,
                         contentDescription = "Next",
                         tint = colors.onBackground,
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier
+                            .size(28.dp)
+                            .graphicsLayer { translationX = nextNudge.value.dp.toPx() },
                     )
                 }
                 IconButton(onClick = onCycleRepeat) {
@@ -623,12 +689,16 @@ fun NowPlayingScreen(
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ActionButton(
-                    icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    label = "Like",
-                    tinted = isLiked,
-                    onClick = onToggleLike,
-                )
+                // Liking a song fires a small particle burst from behind the heart.
+                Box(contentAlignment = Alignment.Center) {
+                    LikeBurst(active = isLiked)
+                    ActionButton(
+                        icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        label = "Like",
+                        tinted = isLiked,
+                        onClick = onToggleLike,
+                    )
+                }
                 ActionButton(icon = Icons.Filled.Radio, label = "Radio", onClick = onStartRadio)
                 ActionButton(icon = Icons.Outlined.Lyrics, label = "Lyrics", onClick = onOpenLyrics)
                 ActionButton(
@@ -914,6 +984,42 @@ private fun rememberSleepCountdown(endAt: Long?): String? {
     val m = (totalSec % 3600) / 60
     val s = totalSec % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+}
+
+/**
+ * A one-shot particle burst fired when [active] flips to true (i.e. the song gets liked):
+ * twelve dots in the theme's accent pair radiate out from behind the heart, shrinking and
+ * fading as they fly. Doesn't fire for the initial state, only for a fresh like.
+ */
+@Composable
+private fun LikeBurst(active: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    val anim = remember { Animatable(1f) }
+    var seen by remember { mutableStateOf(active) }
+    LaunchedEffect(active) {
+        if (active && !seen) {
+            anim.snapTo(0f)
+            anim.animateTo(1f, tween(durationMillis = 620, easing = FastOutSlowInEasing))
+        }
+        seen = active
+    }
+    val t = anim.value
+    if (t < 1f) {
+        Canvas(Modifier.size(68.dp)) {
+            val count = 12
+            val maxReach = size.minDimension / 2f
+            for (i in 0 until count) {
+                val angle = i / count.toFloat() * 2f * Math.PI.toFloat() + 0.26f
+                val reach = maxReach * (0.35f + 0.65f * t)
+                drawCircle(
+                    color = if (i % 2 == 0) colors.primary else colors.tertiary,
+                    radius = (1f - t) * 2.6.dp.toPx() + 0.6.dp.toPx(),
+                    center = center + Offset(kotlin.math.cos(angle) * reach, kotlin.math.sin(angle) * reach),
+                    alpha = (1f - t).coerceIn(0f, 1f),
+                )
+            }
+        }
+    }
 }
 
 @Composable

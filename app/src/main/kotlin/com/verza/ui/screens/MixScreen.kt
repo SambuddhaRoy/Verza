@@ -26,10 +26,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -100,21 +102,40 @@ fun MixScreen(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             item {
-                // Gradient banner + title + subtitle + Play.
+                // Banner fronted by real art from inside the mix, washed with the kind tint
+                // (same treatment as the Home "Made for you" cards); falls back to the gradient.
                 val (top, bottom) = mixGradient(m.kind)
+                val bannerArt = remember(m.items) { m.items.firstNotNullOfOrNull { it.thumbnailUrl } }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
                         .clip(RoundedCornerShape(18.dp))
-                        .background(Brush.linearGradient(listOf(top, bottom)))
-                        .padding(18.dp),
+                        .background(Brush.linearGradient(listOf(top, bottom))),
                 ) {
+                    if (bannerArt != null) {
+                        AsyncImage(
+                            model = bannerArt,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        Box(
+                            Modifier.fillMaxSize().background(
+                                Brush.verticalGradient(
+                                    0f to top.copy(alpha = 0.25f),
+                                    1f to bottom.copy(alpha = 0.92f),
+                                ),
+                            ),
+                        )
+                    }
                     Text(
                         m.title,
                         style = MaterialTheme.typography.displaySmall,
                         color = Color.White,
-                        modifier = Modifier.align(Alignment.BottomStart),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(18.dp),
                     )
                 }
                 Spacer(Modifier.height(10.dp))
