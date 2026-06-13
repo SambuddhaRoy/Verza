@@ -46,4 +46,12 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
-# Media3 / ExoPlayer keeps its own consumer rules; nothing extra needed here.
+# ── Media3 / ExoPlayer ─────────────────────────────────────────────────────────
+# Media3 bundles consumer rules, but R8 full-mode (AGP 8+) has been observed to strip / obfuscate
+# parts of the session + notification machinery in release builds — which silently degraded the
+# rich MediaStyle notification to a plain foreground one and stopped the OS from recognising an
+# active media session (no lock-screen controls, no always-on-display media, no OEM popout).
+# Media3 is core to the app, so keep it wholesale; the modest size cost buys reliable OS integration.
+-keep class androidx.media3.** { *; }
+-keep interface androidx.media3.** { *; }
+-dontwarn androidx.media3.**

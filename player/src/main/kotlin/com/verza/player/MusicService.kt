@@ -13,18 +13,22 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
+import java.util.concurrent.Executors
 import com.verza.innertube.InnerTube
 import com.verza.player.BuildConfig
 import dagger.hilt.android.AndroidEntryPoint
@@ -176,8 +180,27 @@ class MusicService : MediaLibraryService() {
             .getLaunchIntentForPackage(packageName)
             ?.let { PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE) }
 
+        // Own the media notification explicitly rather than leaning on library defaults: a
+        // guaranteed-present monochrome status-bar icon and the standard rich MediaStyle layout.
+        // This makes the system reliably treat us as an active media session (lock-screen controls,
+        // OnePlus hole-punch popout, always-on display), which the default path didn't always do.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this).build().apply {
+                setSmallIcon(R.drawable.verza_ic_notification)
+            }
+        )
+
+        // Load cover art for the notification / lock screen / AOD through the app's own OkHttp
+        // client (with its user-agent + redirects) rather than the default HTTP loader, so the
+        // remote YouTube / iTunes artwork reliably resolves into the rich now-playing card.
+        val artworkBitmapLoader = DataSourceBitmapLoader(
+            MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor()),
+            OkHttpDataSource.Factory(okHttpClient),
+        )
+
         session = MediaLibrarySession.Builder(this, player, LibrarySessionCallback())
             .also { builder -> activityIntent?.let { builder.setSessionActivity(it) } }
+            .setBitmapLoader(artworkBitmapLoader)
             // The "Like" heart shows on the lock screen, the notification, the OnePlus hole-punch
             // popout and the always-on display — anywhere the system surfaces the media session.
             .setCustomLayout(buildCustomLayout())
