@@ -63,6 +63,7 @@ fun SettingsScreen(
     val glowColor by viewModel.glowColor.collectAsStateWithLifecycle()
     val glowIntensity by viewModel.glowIntensity.collectAsStateWithLifecycle()
     val glowStyle by viewModel.glowStyle.collectAsStateWithLifecycle()
+    val glowChaos by viewModel.glowChaos.collectAsStateWithLifecycle()
     val glowReactive by viewModel.glowReactive.collectAsStateWithLifecycle()
     val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
     val resumeOnOpen by viewModel.resumeOnOpen.collectAsStateWithLifecycle()
@@ -335,6 +336,16 @@ fun SettingsScreen(
                     selected = glowStyle,
                     onSelect = viewModel::setGlowStyle,
                 )
+            }
+            // The "Movement" slider only does anything for the Halftone blob, so it's shown
+            // alongside the pattern picker only when Halftone is the active pattern.
+            if (glowStyle == GlowStyle.HALFTONE) {
+                item {
+                    GlowMovementRow(
+                        value = glowChaos,
+                        onChange = viewModel::setGlowChaos,
+                    )
+                }
             }
             item {
                 GlowColorRow(
@@ -662,6 +673,34 @@ private fun GlowPatternRow(selected: GlowStyle, onSelect: (GlowStyle) -> Unit) {
         )
         Text(
             "Halftone drifts a blob of colour through a sea of darkness — fine comic-print dots that wander and pulse with the music, always present somewhere (needs Android 13+).",
+            style = CaptionItalic,
+            color = ext.muted,
+        )
+    }
+}
+
+/** "Movement" slider — how fast / freely the Halftone blob roams the screen. */
+@Composable
+private fun GlowMovementRow(value: Float, onChange: (Float) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
+    Column(
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text("Movement", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+        Slider(
+            value = value,
+            onValueChange = onChange,
+            valueRange = 0f..1f,
+            colors = SliderDefaults.colors(
+                thumbColor = colors.primary,
+                activeTrackColor = colors.primary,
+                inactiveTrackColor = colors.outlineVariant,
+            ),
+        )
+        Text(
+            "Calm at the left, restless at the right — how far and fast the pattern roams. It always stays on screen, however high you go.",
             style = CaptionItalic,
             color = ext.muted,
         )
