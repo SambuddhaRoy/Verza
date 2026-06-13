@@ -3,6 +3,7 @@ package com.verza.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -54,6 +55,7 @@ class PreferencesRepository @Inject constructor(
     private val glowColorKey = stringPreferencesKey("glow_color_preset")
     private val glowIntensityKey = stringPreferencesKey("glow_intensity")
     private val glowStyleKey = stringPreferencesKey("glow_style")
+    private val glowChaosKey = floatPreferencesKey("glow_chaos")
     private val onboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
     private val glowReactiveKey = booleanPreferencesKey("glow_reactive")
     private val startScreenKey = stringPreferencesKey("start_screen")
@@ -102,6 +104,8 @@ class PreferencesRepository @Inject constructor(
     val glowStyleFlow: Flow<GlowStyle> = store.data.map { prefs ->
         prefs[glowStyleKey]?.let { runCatching { GlowStyle.valueOf(it) }.getOrNull() } ?: GlowStyle.FLUID
     }
+    /** How freely the Halftone blob roams the screen, 0..1 ("Movement" slider). Default 0.4. */
+    val glowChaosFlow: Flow<Float> = store.data.map { (it[glowChaosKey] ?: 0.4f).coerceIn(0f, 1f) }
 
     /** False on a fresh install; set to true the first time the user finishes the onboarding flow. */
     val onboardingCompletedFlow: Flow<Boolean> = store.data.map { it[onboardingCompletedKey] ?: false }
@@ -190,6 +194,10 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setGlowStyle(style: GlowStyle) {
         store.edit { it[glowStyleKey] = style.name }
+    }
+
+    suspend fun setGlowChaos(value: Float) {
+        store.edit { it[glowChaosKey] = value.coerceIn(0f, 1f) }
     }
 
     suspend fun setOnboardingCompleted(completed: Boolean) {

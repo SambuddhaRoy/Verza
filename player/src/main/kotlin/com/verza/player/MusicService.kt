@@ -11,6 +11,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
@@ -50,6 +51,7 @@ private const val INNERTUBE_SCHEME = "innertube://"
 // Custom session command behind the notification / lock-screen / always-on "Like" heart.
 private const val ACTION_TOGGLE_LIKE = "com.verza.player.TOGGLE_LIKE"
 
+@OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class MusicService : MediaLibraryService() {
 
@@ -61,6 +63,11 @@ class MusicService : MediaLibraryService() {
 
     private lateinit var player: ExoPlayer
     private lateinit var session: MediaLibrarySession
+
+    // Loads cover bitmaps (via the app's OkHttp client) for the notification AND for the embedded
+    // artwork below.
+    private lateinit var artworkBitmapLoader: DataSourceBitmapLoader
+    private val mainThreadHandler = Handler(Looper.getMainLooper())
 
     // Service-lifetime scope for observing app-pushed playback options (see PlayerSettings).
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -193,7 +200,7 @@ class MusicService : MediaLibraryService() {
         // Load cover art for the notification / lock screen / AOD through the app's own OkHttp
         // client (with its user-agent + redirects) rather than the default HTTP loader, so the
         // remote YouTube / iTunes artwork reliably resolves into the rich now-playing card.
-        val artworkBitmapLoader = DataSourceBitmapLoader(
+        artworkBitmapLoader = DataSourceBitmapLoader(
             MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor()),
             OkHttpDataSource.Factory(okHttpClient),
         )
@@ -211,11 +218,57 @@ class MusicService : MediaLibraryService() {
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 refreshLikeLayout()
+                embedArtwork(mediaItem)
             }
         })
         serviceScope.launch {
             NowPlayingBridge.likedIds.collect { refreshLikeLayout() }
         }
+    }
+
+    /**
+     * Decodes the current track's cover and bakes it into the session metadata as raw bytes, so the
+     * lock screen / always-on display / OEM popout get a real bitmap directly — some surfaces never
+     * fetch a remote artworkUri on their own, which is why the card showed up bare. Fully defensive:
+     * any failure is a silent no-op, and because the replacement keeps the same media id + URI it
+     * only updates metadata, so playback never re-buffers or pauses.
+     */
+    private fun embedArtwork(item: MediaItem?) {
+        val md = item?.mediaMetadata ?: return
+        val uri = md.artworkUri ?: return
+        if (md.artworkData != null) return                       // already embedded for this track
+        val index = player.currentMediaItemIndex
+        val future = runCatching { artworkBitmapLoader.loadBitmap(uri) }.getOrNull() ?: return
+        future.addListener({
+            runCatching {
+                val raw = future.get() ?: return@runCatching
+                // Downscale + JPEG so the bytes stay well under the Binder transaction limit when
+                // the metadata is handed across to the system media surfaces.
+                val maxDim = 640
+                val scale = minOf(1f, maxDim.toFloat() / maxOf(raw.width, raw.height))
+                val bmp = if (scale < 1f)
+                    android.graphics.Bitmap.createScaledBitmap(
+                        raw, (raw.width * scale).toInt().coerceAtLeast(1), (raw.height * scale).toInt().coerceAtLeast(1), true,
+                    )
+                else raw
+                val stream = java.io.ByteArrayOutputStream()
+                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, stream)
+                val bytes = stream.toByteArray()
+                if (bytes.size > 400_000) return@runCatching        // safety valve
+                // Make sure we're still on the same track before swapping its metadata in.
+                if (player.currentMediaItemIndex != index) return@runCatching
+                val current = player.getMediaItemAt(index)
+                if (current.mediaMetadata.artworkUri != uri || current.mediaMetadata.artworkData != null) return@runCatching
+                val newItem = current.buildUpon()
+                    .setMediaMetadata(
+                        current.mediaMetadata.buildUpon()
+                            .setArtworkData(bytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                            .build(),
+                    )
+                    .build()
+                player.replaceMediaItem(index, newItem)
+            }
+        }, java.util.concurrent.Executor { mainThreadHandler.post(it) })
     }
 
     // ── "Like" control on the system media surfaces ─────────────────────────────

@@ -110,6 +110,7 @@ uniform float uMid;
 uniform float uTreble;
 uniform float uStrength;
 uniform float uPattern;
+uniform float uChaos;
 uniform float3 uColorA;
 uniform float3 uColorB;
 uniform float3 uColorC;
@@ -169,16 +170,23 @@ half4 main(float2 fragCoord) {
     //    so it changes shape and size dramatically — but it is *always* present somewhere on the
     //    background (at its smallest, just a sliver in a corner) and never collapses to full black.
     if (uPattern > 0.5) {
-        // Wandering blob centre, in screen (uv) space. The 0.6 amplitude lets the centre drift a
-        // little past each corner, so at the extremes only a sliver of the blob is on screen.
-        float2 c = float2(0.5 + 0.6 * sin(t * 0.31 + bass * 0.6),
-                          0.5 + 0.6 * sin(t * 0.23 + 1.7));
+        // Wandering blob centre, in screen (uv) space. uChaos drives how fast and erratically it
+        // roams: a base sweep plus a faster secondary wobble, both speeding up with uChaos. The
+        // total amplitude stays pinned at 0.6 (0.42 + 0.18) whatever uChaos is, so the centre only
+        // ever drifts ~0.1 past a corner — within the flow-warp reach below — and the blob can
+        // never leave the screen entirely, no matter how high the slider goes.
+        float spd = 0.22 + uChaos * 1.4;
+        float2 c = float2(
+            0.5 + 0.42 * sin(t * spd + bass * 0.6) + 0.18 * sin(t * spd * 2.3 + 1.0),
+            0.5 + 0.42 * sin(t * spd * 0.83 + 1.7) + 0.18 * sin(t * spd * 1.7 + 4.0)
+        );
         // Sample point warped by the flow field so the blob is organic, not a clean circle. The
         // warp span (±~0.2) covers the centre's range, which guarantees some pixel always samples
         // near the centre → the pattern can never disappear entirely.
         float2 huv = uv + (q - 0.5) * 0.4;
         // Radius pulses 0.15 .. 0.75 — wide range, but the floor keeps the blob from vanishing.
-        float radius = 0.45 + 0.30 * sin(t * 0.47 + mid * 1.2);
+        // Its pulse also quickens with uChaos so the blob breathes harder, not just wanders faster.
+        float radius = 0.45 + 0.30 * sin(t * (0.4 + uChaos * 1.0) + mid * 1.2);
         float blob = smoothstep(radius, radius * 0.2, distance(huv, c));   // 1 at centre → 0 past radius
         float fieldv = blob * mix(0.6, 1.0, f);     // fluid texture inside the blob
 
@@ -240,6 +248,8 @@ fun GlowBackground(
     // whole app tree (which a value read at the call site would have triggered).
     signalFlow: StateFlow<VisualizerSignal>? = null,
     style: GlowStyle = GlowStyle.FLUID,
+    // 0..1 — how fast / freely the Halftone blob roams the screen ("Movement" slider).
+    chaos: Float = 0.4f,
     content: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -259,7 +269,7 @@ fun GlowBackground(
                 else null
             }
             if (shader != null) {
-                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow, style == GlowStyle.HALFTONE)
+                FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow, style == GlowStyle.HALFTONE, chaos)
             } else {
                 GradientGlowFallback(triad, bg, intensity, signalFlow)
             }
@@ -295,8 +305,11 @@ private fun FluidShaderGlow(
     strength: Float,
     signalFlow: StateFlow<VisualizerSignal>?,
     halftone: Boolean,
+    chaos: Float,
 ) {
     val brush = remember(shader) { ShaderBrush(shader) }
+    // Ease changes to the movement slider so dragging it glides rather than jumps the motion.
+    val smoothedChaos by animateFloatAsState(chaos.coerceIn(0f, 1f), tween(400), label = "glowChaos")
     val time by rememberFrameTimeSeconds()
 
     // Collected here (not at the call site) so the ~30 Hz signal only recomposes this composable.
@@ -326,6 +339,7 @@ private fun FluidShaderGlow(
                 shader.setFloatUniform("uTreble", treble)
                 shader.setFloatUniform("uStrength", adaptedStrength)
                 shader.setFloatUniform("uPattern", if (halftone) 1f else 0f)
+                shader.setFloatUniform("uChaos", smoothedChaos)
                 shader.setFloatUniform("uColorA", cA.red, cA.green, cA.blue)
                 shader.setFloatUniform("uColorB", cB.red, cB.green, cB.blue)
                 shader.setFloatUniform("uColorC", cC.red, cC.green, cC.blue)
