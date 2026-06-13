@@ -49,6 +49,9 @@ class SettingsViewModel @Inject constructor(
     val glowStyle: StateFlow<GlowStyle> = prefs.glowStyleFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, GlowStyle.FLUID)
 
+    val glowChaos: StateFlow<Float> = prefs.glowChaosFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0.4f)
+
     /** Null while DataStore is still loading; non-null once we know whether onboarding has run. */
     val onboardingCompleted: StateFlow<Boolean?> = prefs.onboardingCompletedFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -96,6 +99,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setGlowStyle(style: GlowStyle) {
         viewModelScope.launch { prefs.setGlowStyle(style) }
+    }
+
+    fun setGlowChaos(value: Float) {
+        viewModelScope.launch { prefs.setGlowChaos(value) }
     }
 
     fun setOnboardingCompleted() {

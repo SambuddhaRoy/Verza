@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity() {
             val glowColor by settingsViewModel.glowColor.collectAsStateWithLifecycle()
             val glowIntensity by settingsViewModel.glowIntensity.collectAsStateWithLifecycle()
             val glowStyle by settingsViewModel.glowStyle.collectAsStateWithLifecycle()
+            val glowChaos by settingsViewModel.glowChaos.collectAsStateWithLifecycle()
             val glowReactive by settingsViewModel.glowReactive.collectAsStateWithLifecycle()
             val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
             val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle()
@@ -220,6 +221,7 @@ class MainActivity : ComponentActivity() {
                         intensity = glowIntensity,
                         signalFlow = if (shouldVisualize) visualizerSignalFlow else null,
                         style = glowStyle,
+                        chaos = glowChaos,
                         modifier = Modifier
                             .fillMaxSize()
                             .background(scheme.background)
