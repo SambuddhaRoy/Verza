@@ -65,10 +65,10 @@ enum class GlowIntensity(val displayName: String, val shaderStrength: Float) {
 }
 
 /**
- * The glow's visual pattern. [FLUID] is the flowing aurora field; [HALFTONE] re-renders it as a wave
- * of colour travelling through a sea of darkness — a soft band sweeps across a fine comic-halftone dot
- * screen, the dots swelling at the crest and vanishing in the dark. Pattern is a shader feature, so it
- * only applies on API 33+; the pre-33 gradient fallback always renders the fluid look.
+ * The glow's visual pattern. [FLUID] is the flowing aurora field; [HALFTONE] re-renders it as a
+ * drifting blob of colour in a sea of darkness — fine comic-print dots that wander and pulse across
+ * the background, always present somewhere (at its smallest, a sliver in a corner). Pattern is a
+ * shader feature, so it only applies on API 33+; the pre-33 gradient fallback always renders fluid.
  */
 enum class GlowStyle(val displayName: String) {
     FLUID    ("Fluid"),
@@ -164,25 +164,27 @@ half4 main(float2 fragCoord) {
     float2 p2 = p + warpAmt * (q - 0.5);
     float f = fbm(p2 * 1.8 + float2(t * 0.6, -t * 0.4));
 
-    // ── "Halftone" pattern (uPattern > 0.5): a wave of colour in a sea of darkness. Most of the
-    //    field sits at zero (so the screen reads as the bare dark background), and a soft diagonal
-    //    band of brightness travels across, undulating with the fluid flow. Only the wave's crest
-    //    lights up, screened through a fine comic-halftone dot lattice whose dot sizes track the
-    //    local brightness — fine dots that swell at the crest and vanish into the dark.
+    // ── "Halftone" pattern (uPattern > 0.5): a drifting blob of colour in a sea of darkness,
+    //    screened as fine comic-print dots. The blob's centre wanders and its radius pulses freely
+    //    so it changes shape and size dramatically — but it is *always* present somewhere on the
+    //    background (at its smallest, just a sliver in a corner) and never collapses to full black.
     if (uPattern > 0.5) {
-        // Travelling wave: a diagonal plane wave warped by the flow field q so it ripples instead
-        // of marching straight; the -t term sweeps it across, bass nudges it along. The low spatial
-        // frequency keeps a single broad band on screen at a time, surrounded by darkness.
-        float travel = p.x * 0.7 + p.y * 1.1 + (q.x + q.y - 1.0) * 1.3;
-        float wave = sin(travel * 1.7 - t * 2.0 - bass * 1.2);
-        // Keep only the crest — everything below the threshold collapses to black sea.
-        float crest = smoothstep(0.55, 0.98, wave);
-        float fieldv = crest * mix(0.7, 1.0, f);   // a little fluid texture inside the band
+        // Wandering blob centre, in screen (uv) space. The 0.6 amplitude lets the centre drift a
+        // little past each corner, so at the extremes only a sliver of the blob is on screen.
+        float2 c = float2(0.5 + 0.6 * sin(t * 0.31 + bass * 0.6),
+                          0.5 + 0.6 * sin(t * 0.23 + 1.7));
+        // Sample point warped by the flow field so the blob is organic, not a clean circle. The
+        // warp span (±~0.2) covers the centre's range, which guarantees some pixel always samples
+        // near the centre → the pattern can never disappear entirely.
+        float2 huv = uv + (q - 0.5) * 0.4;
+        // Radius pulses 0.15 .. 0.75 — wide range, but the floor keeps the blob from vanishing.
+        float radius = 0.45 + 0.30 * sin(t * 0.47 + mid * 1.2);
+        float blob = smoothstep(radius, radius * 0.2, distance(huv, c));   // 1 at centre → 0 past radius
+        float fieldv = blob * mix(0.6, 1.0, f);     // fluid texture inside the blob
 
         // Fine comic-halftone screen: a tight ~15°-rotated dot lattice (≈140 dots across the
-        // height — far finer than before). The lattice is fixed in screen space, so the wave
-        // modulates dot *size* rather than moving the dots (no shimmer). Radius tracks
-        // sqrt(brightness) so dot *area* follows the wave like real print.
+        // height). The lattice is fixed in screen space, so the blob modulates dot *size* rather
+        // than moving the dots (no shimmer). Radius tracks sqrt(brightness) like real print.
         float2 hp = float2(0.9659 * p.x - 0.2588 * p.y, 0.2588 * p.x + 0.9659 * p.y) * 140.0;
         float2 cell = fract(hp) - 0.5;
         float r = (0.72 + 0.12 * bass) * sqrt(clamp(fieldv, 0.0, 1.0));
@@ -204,6 +206,10 @@ half4 main(float2 fragCoord) {
     // lower on the screen stays legible.
     float fall = smoothstep(1.25, -0.1, uv.y);
     float vign = smoothstep(1.15, 0.25, distance(uv, float2(0.5, 0.32)));
+    // Halftone carries its own contained blob, so it doesn't need (and shouldn't be clipped by)
+    // the upper-centre shaping — otherwise a blob that drifts into a corner / the bottom would be
+    // dimmed away to black. Let it show wherever it goes.
+    if (uPattern > 0.5) { fall = 1.0; vign = 1.0; }
 
     float amp = uStrength * (0.8 + 1.2 * bass + 0.4 * mid);
     float mask = clamp(f * intensity * fall * vign, 0.0, 1.0);
