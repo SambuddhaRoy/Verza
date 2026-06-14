@@ -69,6 +69,7 @@ class PreferencesRepository @Inject constructor(
     // ── Sound suite (equaliser / bass / loudness) ──────────────────────────────
     private val eqEnabledKey = booleanPreferencesKey("eq_enabled")
     private val eqBandsKey = stringPreferencesKey("eq_band_levels") // JSON List<Int> (millibels)
+    private val eqPresetKey = stringPreferencesKey("eq_preset")      // EqPreset.name, or absent = Custom
     private val bassStrengthKey = intPreferencesKey("bass_strength") // 0..1000
     private val loudnessKey = booleanPreferencesKey("loudness_enabled")
 
@@ -147,6 +148,8 @@ class PreferencesRepository @Inject constructor(
     val eqBandsFlow: Flow<List<Int>> = store.data.map { prefs ->
         prefs[eqBandsKey]?.let { runCatching { json.decodeFromString<List<Int>>(it) }.getOrNull() } ?: emptyList()
     }
+    /** Name of the active EQ preset, or null when the bands have been hand-tuned ("Custom"). */
+    val eqPresetFlow: Flow<String?> = store.data.map { it[eqPresetKey] }
     /** Bass-boost strength 0..1000 (0 = off), independent of the equaliser switch. */
     val bassStrengthFlow: Flow<Int> = store.data.map { it[bassStrengthKey] ?: 0 }
     /** Volume leveling — lifts quiet tracks toward a steadier perceived loudness. */
@@ -246,6 +249,13 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setEqBands(levelsMb: List<Int>) {
         store.edit { it[eqBandsKey] = json.encodeToString(levelsMb) }
+    }
+
+    /** Records the active preset name, or clears it (null) to mark the bands as hand-tuned. */
+    suspend fun setEqPreset(name: String?) {
+        store.edit { prefs ->
+            if (name == null) prefs.remove(eqPresetKey) else prefs[eqPresetKey] = name
+        }
     }
 
     suspend fun setBassStrength(strength: Int) {

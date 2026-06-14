@@ -1,7 +1,10 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.verza.audio.EqPreset
 import com.verza.ui.components.EditorialSectionHeader
 import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.FontMono
@@ -91,6 +95,13 @@ fun EqualizerScreen(
             onToggle = viewModel::setEnabled,
         )
 
+        // ── Presets ─────────────────────────────────────────────────────────────────
+        EditorialSectionHeader(title = "Presets")
+        PresetChips(
+            active = state.activePreset,
+            onPick = viewModel::applyPreset,
+        )
+
         // ── Bands ─────────────────────────────────────────────────────────────────
         EditorialSectionHeader(title = "Bands")
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -134,6 +145,37 @@ fun EqualizerScreen(
             checked = state.loudnessEnabled,
             onToggle = viewModel::setLoudnessEnabled,
         )
+    }
+}
+
+@Composable
+private fun PresetChips(active: EqPreset?, onPick: (EqPreset) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        EqPreset.entries.forEach { preset ->
+            val selected = preset == active
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(100))
+                    .background(if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f))
+                    .clickable { onPick(preset) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    preset.displayName,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) colors.onPrimary else colors.primary,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
+        }
     }
 }
 

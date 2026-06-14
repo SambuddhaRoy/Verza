@@ -25,8 +25,8 @@ android {
         applicationId = "com.verza"
         minSdk = 26
         targetSdk = 35
-        versionCode = 32
-        versionName = "1.1.8"
+        versionCode = 33
+        versionName = "1.2.0"
     }
 
     signingConfigs {
