@@ -374,6 +374,24 @@ class PlaybackViewModel @Inject constructor(
         playerConnection.setQueue(mediaItems, startIndex)
     }
 
+    /**
+     * Plays a YouTube song shared into Verza by its video id (from "Share → Verza" or a youtu.be
+     * link). We seed a radio off the id, which returns the song itself first with full metadata plus
+     * a continuation queue — so the shared track starts immediately and keeps going. If the radio
+     * lookup fails (offline, etc.) we fall back to playing the bare id, which the resolver streams.
+     */
+    fun playSharedVideo(videoId: String) {
+        viewModelScope.launch {
+            val list = repository.radio(videoId).getOrNull().orEmpty()
+            if (list.isNotEmpty()) {
+                val start = list.indexOfFirst { it.id == videoId }.coerceAtLeast(0)
+                playSongs(list, start)
+            } else {
+                playSong(MusicItem(id = videoId, title = "Shared track", artist = ""))
+            }
+        }
+    }
+
     // ── Shareable listening sessions ──────────────────────────────────────────────
 
     /**

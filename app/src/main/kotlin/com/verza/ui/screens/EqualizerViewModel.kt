@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verza.audio.AudioEffectsController
 import com.verza.audio.EqMetadata
+import com.verza.audio.EqPreset
 import com.verza.data.PreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,6 +22,8 @@ data class EqUiState(
     val bandLevelsMb: List<Int>,
     val bassStrength: Int,
     val loudnessEnabled: Boolean,
+    /** The active preset, or null when bands were hand-tuned ("Custom"). */
+    val activePreset: EqPreset? = null,
 )
 
 @HiltViewModel
@@ -48,6 +51,8 @@ class EqualizerViewModel @Inject constructor(
             bassStrength = bass,
             loudnessEnabled = loudness,
         )
+    }.combine(prefs.eqPresetFlow) { partial, presetName ->
+        partial.copy(activePreset = EqPreset.byName(presetName))
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -67,14 +72,25 @@ class EqualizerViewModel @Inject constructor(
             if (index in current.indices) {
                 current[index] = levelMb.coerceIn(md.minLevelMb, md.maxLevelMb)
                 prefs.setEqBands(current)
+                prefs.setEqPreset(null)   // hand-tuning a band makes it "Custom"
             }
         }
     }
 
-    /** Resets every band to 0 dB (flat). */
+    /** Resets every band to 0 dB (flat) — the Flat preset. */
     fun resetBands() {
         viewModelScope.launch {
             prefs.setEqBands(List(effects.metadata.value.bandCount) { 0 })
+            prefs.setEqPreset(EqPreset.FLAT.name)
+        }
+    }
+
+    /** Applies a preset's curve to the device bands and turns the equaliser on. */
+    fun applyPreset(preset: EqPreset) {
+        viewModelScope.launch {
+            prefs.setEqBands(preset.levelsFor(effects.metadata.value))
+            prefs.setEqEnabled(true)
+            prefs.setEqPreset(preset.name)
         }
     }
 
