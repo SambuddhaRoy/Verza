@@ -23,6 +23,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.verza.data.SharedSongInbox
 import com.verza.innertube.SearchFilter
 import com.verza.innertube.models.HomeItem
 import com.verza.playback.PlaybackViewModel
@@ -461,6 +462,21 @@ fun VerzaNavigation(
             }
         }
       }
+    }
+
+    // A YouTube song was shared into Verza (Share → Verza, or a youtu.be link). Play it and jump
+    // to Now Playing. Unlike a shared *session* (which replaces the whole queue and asks first),
+    // a single shared song is exactly what the user asked for, so it plays straight away.
+    val sharedSong by SharedSongInbox.pending.collectAsStateWithLifecycle()
+    // Keyed on isChromeHidden too: if a share cold-starts the app we're on the Boot/Onboarding
+    // route at first — wait for the chrome to come up so we don't fight the boot navigation, then
+    // play + jump to Now Playing.
+    LaunchedEffect(sharedSong, isChromeHidden) {
+        val videoId = sharedSong ?: return@LaunchedEffect
+        if (isChromeHidden) return@LaunchedEffect
+        playbackViewModel.playSharedVideo(videoId)
+        navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
+        SharedSongInbox.consume()
     }
 
     // Modal "Add to playlist" sheet — sits above the whole nav graph so any track action that

@@ -26,6 +26,7 @@ import com.verza.audio.AudioVisualizer
 import com.verza.audio.HapticPlayer
 import com.verza.audio.VisualizerSignal
 import com.verza.data.SessionInbox
+import com.verza.data.SharedSongInbox
 import com.verza.playback.PlaybackViewModel
 import com.verza.ui.navigation.Screen
 import com.verza.ui.navigation.VerzaNavigation
@@ -64,8 +65,10 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition { !splashReady }
         super.onCreate(savedInstanceState)
-        // A verza://session/... link may have launched us cold — hand it to the playback owner.
+        // A verza://session/... link or a shared YouTube song may have launched us cold — hand
+        // either to the playback owner.
         handleSessionIntent(intent)
+        handleSharedYouTube(intent)
         enableEdgeToEdge()
         setContent {
             // Ask for notification permission so the media-playback foreground service
@@ -239,6 +242,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleSessionIntent(intent)
+        handleSharedYouTube(intent)
     }
 
     /** Posts an incoming verza://session/... link to the inbox; the playback owner loads it. */
@@ -246,6 +250,27 @@ class MainActivity : ComponentActivity() {
         val data = intent?.data ?: return
         if (intent.action == Intent.ACTION_VIEW && data.scheme == "verza" && data.host == "session") {
             SessionInbox.post(data.toString())
+        }
+    }
+
+    /**
+     * Handles a YouTube song shared into Verza — either a text/plain Share (ACTION_SEND, the usual
+     * "Share → Verza" from the YouTube app) or a tapped youtu.be link (ACTION_VIEW). Pulls the video
+     * id out and posts it; the playback owner plays it. A short toast covers the case where the
+     * shared text carries no recognisable YouTube link (Verza shows up for any text/plain share).
+     */
+    private fun handleSharedYouTube(intent: Intent?) {
+        if (intent == null) return
+        val source = when (intent.action) {
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
+            Intent.ACTION_VIEW -> intent.dataString?.takeIf { it.startsWith("http") }
+            else -> null
+        } ?: return
+        val videoId = SharedSongInbox.extractVideoId(source)
+        if (videoId != null) {
+            SharedSongInbox.post(videoId)
+        } else if (intent.action == Intent.ACTION_SEND) {
+            android.widget.Toast.makeText(this, "No YouTube link found to play", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 }

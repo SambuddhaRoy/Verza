@@ -58,6 +58,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="verza" android:host="session" />
             </intent-filter>
+
+            <!-- "Share → Verza" from YouTube (or any app): a text/plain share carrying a YouTube
+                 link is parsed and the song plays here instead. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- Opening a youtu.be share link directly: offer Verza as a handler. Scoped to the
+                 short-link host so we don't intercept ordinary youtube.com browsing. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="youtu.be" />
+                <data android:scheme="http" android:host="youtu.be" />
+            </intent-filter>
         </activity>
 
         <service

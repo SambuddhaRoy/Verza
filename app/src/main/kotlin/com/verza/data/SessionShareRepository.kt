@@ -26,6 +26,49 @@ object SessionInbox {
     fun consume() { _pending.value = null }
 }
 
+/**
+ * Process-wide hand-off for a YouTube song shared *into* Verza (Share → Verza, or opening a youtu.be
+ * link). The Activity extracts the 11-char video id and posts it; the playback owner picks it up,
+ * plays it, and clears it — same decoupling as [SessionInbox].
+ */
+object SharedSongInbox {
+    private val _pending = MutableStateFlow<String?>(null)
+    val pending: StateFlow<String?> = _pending.asStateFlow()
+    fun post(videoId: String) { _pending.value = videoId }
+    fun consume() { _pending.value = null }
+
+    private val VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
+
+    /**
+     * Pulls a YouTube video id out of arbitrary shared text (a pasted/shared link, possibly wrapped
+     * in other words like "Check this out: <url>"). Handles youtu.be/<id>, watch?v=<id>, /shorts/<id>,
+     * /live/<id>, /embed/<id> across youtube.com / m.youtube.com / music.youtube.com. Returns null if
+     * no plausible id is found.
+     */
+    fun extractVideoId(text: String?): String? {
+        if (text.isNullOrBlank()) return null
+        val urls = Regex("""https?://[^\s]+""").findAll(text).map { it.value }.toMutableList()
+        if (urls.isEmpty()) urls += text.trim()   // the share might be a bare URL with no scheme prefix
+        for (raw in urls) {
+            val uri = runCatching { android.net.Uri.parse(raw) }.getOrNull() ?: continue
+            val host = uri.host?.lowercase().orEmpty()
+            val id = when {
+                "youtu.be" in host -> uri.lastPathSegment
+                "youtube.com" in host || "youtube-nocookie.com" in host -> {
+                    uri.getQueryParameter("v") ?: run {
+                        val segs = uri.pathSegments ?: emptyList()
+                        val i = segs.indexOfFirst { it == "shorts" || it == "live" || it == "embed" || it == "v" }
+                        if (i >= 0 && i + 1 < segs.size) segs[i + 1] else null
+                    }
+                }
+                else -> null
+            }
+            if (id != null && VIDEO_ID.matches(id)) return id
+        }
+        return null
+    }
+}
+
 // ── Shareable listening session ──────────────────────────────────────────────────
 // A "local listening room" without a server: a snapshot of the current queue + position encoded
 // into a compact verza:// link. A friend opening it picks up the exact same set at the same spot —
