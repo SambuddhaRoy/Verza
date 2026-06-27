@@ -73,6 +73,7 @@ enum class GlowIntensity(val displayName: String, val shaderStrength: Float) {
 enum class GlowStyle(val displayName: String) {
     FLUID    ("Fluid"),
     HALFTONE ("Halftone"),
+    COVER    ("Cover"),   // flowing, blurred, domain-warped wash of the current album art
 }
 
 @Composable
@@ -248,8 +249,10 @@ fun GlowBackground(
     // whole app tree (which a value read at the call site would have triggered).
     signalFlow: StateFlow<VisualizerSignal>? = null,
     style: GlowStyle = GlowStyle.FLUID,
-    // 0..1 — how fast / freely the Halftone blob roams the screen ("Movement" slider).
+    // 0..1 — how fast / freely the Halftone blob roams / the Cover wash flows ("Movement" slider).
     chaos: Float = 0.4f,
+    // Current cover URL — feeds the [GlowStyle.COVER] album-art wash; null falls back to the fluid glow.
+    artworkUrl: String? = null,
     content: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -268,7 +271,10 @@ fun GlowBackground(
                     runCatching { RuntimeShader(FLUID_SHADER_SRC) }.getOrNull()
                 else null
             }
-            if (shader != null) {
+            if (style == GlowStyle.COVER && artworkUrl != null &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                CoverFlowBackground(artworkUrl = artworkUrl, movement = chaos)
+            } else if (shader != null) {
                 FluidShaderGlow(shader, triad.a, triad.b, triad.c, bg, intensity.shaderStrength, signalFlow, style == GlowStyle.HALFTONE, chaos)
             } else {
                 GradientGlowFallback(triad, bg, intensity, signalFlow)

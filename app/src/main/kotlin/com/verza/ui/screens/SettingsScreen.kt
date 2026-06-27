@@ -337,9 +337,8 @@ fun SettingsScreen(
                     onSelect = viewModel::setGlowStyle,
                 )
             }
-            // The "Movement" slider only does anything for the Halftone blob, so it's shown
-            // alongside the pattern picker only when Halftone is the active pattern.
-            if (glowStyle == GlowStyle.HALFTONE) {
+            // The "Movement" slider drives both the Halftone blob and the Cover wash speed.
+            if (glowStyle == GlowStyle.HALFTONE || glowStyle == GlowStyle.COVER) {
                 item {
                     GlowMovementRow(
                         value = glowChaos,
@@ -672,7 +671,7 @@ private fun GlowPatternRow(selected: GlowStyle, onSelect: (GlowStyle) -> Unit) {
             onSelect = onSelect,
         )
         Text(
-            "Halftone drifts a blob of colour through a sea of darkness — fine comic-print dots that wander and pulse with the music, always present somewhere (needs Android 13+).",
+            "Halftone drifts a blob of comic-print dots through a sea of darkness; Cover is a flowing, blurred wash of the current album art. Both need Android 13+.",
             style = CaptionItalic,
             color = ext.muted,
         )
