@@ -225,6 +225,7 @@ class MainActivity : ComponentActivity() {
                         signalFlow = if (shouldVisualize) visualizerSignalFlow else null,
                         style = glowStyle,
                         chaos = glowChaos,
+                        artworkUrl = artworkUrl,
                         modifier = Modifier
                             .fillMaxSize()
                             .background(scheme.background)
