@@ -33,6 +33,7 @@ import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaCorner
 import com.verza.ui.theme.VerzaShape
+import com.verza.ui.theme.glassSurface
 
 /**
  * The visual style of a Home section. Spotify-inspired mix so the page reads with rhythm rather
@@ -205,7 +206,7 @@ private fun CompactTrackCell(
     val cover = LocalCoverColors.current
     val cellShape = VerzaShape
     val cellSurface = if (sleeve) Modifier.sleeveSurface(cellShape)
-                      else Modifier.clip(cellShape).background(colors.surface)
+                      else Modifier.glassSurface(cellShape)
     val titleColor = if (sleeve) cover.ink else colors.onSurface
     val subtitleColor = if (sleeve) cover.faint else ext.muted
     Row(
@@ -276,7 +277,7 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit, onLongClick: (() -
     val sleeve = LocalSleeveMode.current
     val cover = LocalCoverColors.current
     val cardSurface = if (sleeve) Modifier.sleeveSurface(shape)
-                      else Modifier.clip(shape).background(colors.surface)
+                      else Modifier.glassSurface(shape)
     val titleColor = if (sleeve) cover.ink else colors.onSurface
     val subtitleColor = if (sleeve) cover.faint else ext.muted
 

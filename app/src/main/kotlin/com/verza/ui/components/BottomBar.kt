@@ -64,14 +64,15 @@ fun VerzaBottomBar(
     val activeColor = if (sleeve) cover.accent else colors.primary
     val inactiveColor = if (sleeve) cover.faint else ext.muted
     val labelActiveColor = if (sleeve) cover.ink else colors.onSurface
-    // Sleeve dresses the nav as translucent "glass" — the same low-opacity white wash the cards
-    // and mini-player use (sleeveSurface) — so the live reactive glow shows through it.
+    // Both Sleeve and standard now dress the nav as translucent glass so the flowing cover-art wash
+    // shows through: Sleeve keeps its low-opacity white wash; standard uses the theme's near-opaque
+    // glass (legibility-critical chrome → the heavy tier) over the wash.
     val barBackground = if (sleeve) {
         Modifier.background(Color.White.copy(alpha = 0.06f))
     } else {
-        Modifier.background(colors.surface)
+        Modifier.background(ext.glassHeavy)
     }
-    val dividerColor = if (sleeve) Color.White.copy(alpha = 0.12f) else colors.outlineVariant
+    val dividerColor = if (sleeve) Color.White.copy(alpha = 0.12f) else ext.borderGlass
 
     Column(modifier = modifier.fillMaxWidth().then(barBackground)) {
         HorizontalDivider(thickness = 1.dp, color = dividerColor)
