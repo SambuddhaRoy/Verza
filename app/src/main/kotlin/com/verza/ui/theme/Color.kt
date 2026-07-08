@@ -205,3 +205,41 @@ val MagentaGlass             = Color(0x8C1A1018)
 val MagentaGlassHeavy        = Color(0xD1140C18)
 val MagentaBorderGlass       = Color(0x2EECE2EC)
 val MagentaBrutalBlock       = Color(0x0AECE2EC)
+
+// ── VERZA — neutral liquid glass, green accent (the Verza-Desktop identity) ────
+// The default appearance: neutral near-black surfaces with a SINGLE green accent reserved for
+// interactive elements. All colour comes from the flowing cover-art wash (GlowStyle.COVER) behind
+// the translucent glass panels — the palette itself is deliberately neutral. Tokens per
+// DESKTOP_UI_SPEC.md §1 (accent #52b788, ink white, glass = translucent black over the wash).
+val VerzaPrimary             = Color(0xFF52B788) // accent
+val VerzaPrimaryDark         = Color(0xFF2D6A4F) // accent-dark
+val VerzaPrimaryPale         = Color(0xFF95D5B2) // accent-pale
+val VerzaBackground          = Color(0xFF0A0B0A) // neutral near-black canvas the wash sits over
+val VerzaOnBackground        = Color(0xFFF2F3F1) // ink (white, primary text rung)
+val VerzaSurface             = Color(0xFF131414) // opaque surface (menus, sheet containers)
+val VerzaSurfaceVariant      = Color(0xFF1D1F1E)
+val VerzaOnSurface           = Color(0xFFF2F3F1)
+val VerzaOnSurfaceVariant    = Color(0xFF8C918D) // muted (secondary-text rung)
+val VerzaOutline             = Color(0xFF3A3D3B)
+val VerzaOutlineVariant      = Color(0xFF262827)
+val VerzaMuted               = Color(0xFF8C918D)
+val VerzaGlass               = Color(0x9E101110) // translucent panel — the wash shows through (cards, mini-player)
+val VerzaGlassHeavy          = Color(0xE60E0F0E) // near-opaque panel for legibility-critical chrome (nav, sheets)
+val VerzaBorderGlass         = Color(0x24FFFFFF) // hairline, white .14
+val VerzaBrutalBlock         = Color(0x1452B788)
+
+// ── VERZA LIGHT — the light pair (neutral bone, deeper green accent) ───────────
+val VerzaLightPrimary            = Color(0xFF2D6A4F) // accent (light)
+val VerzaLightBackground         = Color(0xFFF2F4F2)
+val VerzaLightOnBackground       = Color(0xFF0A140E) // ink (light)
+val VerzaLightSurface            = Color(0xFFFAFBFA)
+val VerzaLightSurfaceVariant     = Color(0xFFE6EAE7)
+val VerzaLightOnSurface          = Color(0xFF0A140E)
+val VerzaLightOnSurfaceVariant   = Color(0xFF5A625C)
+val VerzaLightOutline            = Color(0xFFC2C8C4)
+val VerzaLightOutlineVariant     = Color(0xFFDCE1DE)
+val VerzaLightMuted              = Color(0xFF5A625C)
+val VerzaLightGlass              = Color(0xB8FFFFFF)
+val VerzaLightGlassHeavy         = Color(0xF2FAFBFA)
+val VerzaLightBorderGlass        = Color(0x1F0A140E)
+val VerzaLightBrutalBlock        = Color(0x142D6A4F)

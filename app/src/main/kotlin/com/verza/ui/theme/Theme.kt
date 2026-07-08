@@ -15,7 +15,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 enum class VerzaTheme(val displayName: String, val isLight: Boolean) {
-    // ATELIER pair is the editorial default; dark first so it's the launch experience.
+    // VERZA pair — neutral liquid glass + green accent; the default appearance (matches Verza-Desktop).
+    // Listed first so it heads the theme picker and is the launch experience.
+    VERZA         ("Verza",         isLight = false),
+    VERZA_LIGHT   ("Verza Light",   isLight = true),
+    // ATELIER pair is the editorial alternate; dark first.
     ATELIER_DARK  ("Atelier",       isLight = false),
     ATELIER_LIGHT ("Atelier Light", isLight = true),
     // ADAPTIVE builds its entire colour scheme from the current cover art at runtime.
@@ -34,7 +38,7 @@ enum class VerzaTheme(val displayName: String, val isLight: Boolean) {
 val DynamicColorSupported: Boolean
     get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-val LocalVerzaTheme = staticCompositionLocalOf { VerzaTheme.DYNAMIC }
+val LocalVerzaTheme = staticCompositionLocalOf { VerzaTheme.VERZA }
 
 // ── ColorScheme builders ───────────────────────────────────────────────────────
 
@@ -42,6 +46,66 @@ fun VerzaTheme.toColorScheme(): ColorScheme = when (this) {
     // Static fallback used for swatches / before a cover resolves; the live scheme is built
     // from the actual cover art and injected via the VerzaTheme composable's coverScheme param.
     VerzaTheme.ADAPTIVE -> coverColorScheme(DefaultCoverColors)
+    VerzaTheme.VERZA -> darkColorScheme(
+        primary              = VerzaPrimary,
+        onPrimary            = Color(0xFF06130D),
+        primaryContainer     = VerzaPrimaryDark,
+        onPrimaryContainer   = VerzaPrimaryPale,
+        secondary            = Color(0xFF40916C),
+        onSecondary          = Color(0xFF06130D),
+        secondaryContainer   = Color(0xFF1B3A2C),
+        onSecondaryContainer = VerzaPrimaryPale,
+        tertiary             = Color(0xFF74C69D),
+        onTertiary           = Color(0xFF06130D),
+        tertiaryContainer    = Color(0xFF224A38),
+        onTertiaryContainer  = VerzaPrimaryPale,
+        background           = VerzaBackground,
+        onBackground         = VerzaOnBackground,
+        surface              = VerzaSurface,
+        onSurface            = VerzaOnSurface,
+        surfaceVariant       = VerzaSurfaceVariant,
+        onSurfaceVariant     = VerzaOnSurfaceVariant,
+        outline              = VerzaOutline,
+        outlineVariant       = VerzaOutlineVariant,
+        scrim                = Color.Black,
+        inverseSurface       = VerzaOnBackground,
+        inverseOnSurface     = VerzaBackground,
+        inversePrimary       = VerzaPrimaryDark,
+        error                = Color(0xFFFFB4AB),
+        onError              = Color(0xFF690005),
+        errorContainer       = Color(0xFF93000A),
+        onErrorContainer     = Color(0xFFFFDAD6),
+    )
+    VerzaTheme.VERZA_LIGHT -> lightColorScheme(
+        primary              = VerzaLightPrimary,
+        onPrimary            = Color.White,
+        primaryContainer     = Color(0xFFB7E4C7),
+        onPrimaryContainer   = Color(0xFF0B2B1D),
+        secondary            = Color(0xFF40916C),
+        onSecondary          = Color.White,
+        secondaryContainer   = Color(0xFFCBEAD8),
+        onSecondaryContainer = Color(0xFF0B2B1D),
+        tertiary             = VerzaPrimary,
+        onTertiary           = Color.White,
+        tertiaryContainer    = Color(0xFFCBEAD8),
+        onTertiaryContainer  = Color(0xFF0B2B1D),
+        background           = VerzaLightBackground,
+        onBackground         = VerzaLightOnBackground,
+        surface              = VerzaLightSurface,
+        onSurface            = VerzaLightOnSurface,
+        surfaceVariant       = VerzaLightSurfaceVariant,
+        onSurfaceVariant     = VerzaLightOnSurfaceVariant,
+        outline              = VerzaLightOutline,
+        outlineVariant       = VerzaLightOutlineVariant,
+        scrim                = Color.Black,
+        inverseSurface       = Color(0xFF1D2320),
+        inverseOnSurface     = VerzaLightBackground,
+        inversePrimary       = VerzaPrimaryPale,
+        error                = Color(0xFFBA1A1A),
+        onError              = Color.White,
+        errorContainer       = Color(0xFFFFDAD6),
+        onErrorContainer     = Color(0xFF410002),
+    )
     VerzaTheme.ATELIER_DARK -> darkColorScheme(
         primary              = AtelierDarkPrimary,
         onPrimary            = Color(0xFF1A0F08),
@@ -317,6 +381,8 @@ fun VerzaTheme.toColorScheme(): ColorScheme = when (this) {
 }
 
 fun VerzaTheme.toExtendedColors(): VerzaExtendedColors = when (this) {
+    VerzaTheme.VERZA         -> VerzaExtendedColors(VerzaMuted,        VerzaGlass,        VerzaGlassHeavy,        VerzaBorderGlass,        VerzaBrutalBlock,        Color(0xFF40916C),     Color(0xFF74C69D))
+    VerzaTheme.VERZA_LIGHT   -> VerzaExtendedColors(VerzaLightMuted,   VerzaLightGlass,   VerzaLightGlassHeavy,   VerzaLightBorderGlass,   VerzaLightBrutalBlock,   Color(0xFF40916C),     VerzaPrimary)
     VerzaTheme.ATELIER_DARK  -> VerzaExtendedColors(AtelierDarkMuted,  AtelierDarkGlass,  AtelierDarkGlassHeavy,  AtelierDarkBorderGlass,  AtelierDarkBrutalBlock,  AtelierDarkSecondary,  AtelierDarkTertiary)
     VerzaTheme.ATELIER_LIGHT -> VerzaExtendedColors(AtelierLightMuted, AtelierLightGlass, AtelierLightGlassHeavy, AtelierLightBorderGlass, AtelierLightBrutalBlock, AtelierLightSecondary, AtelierLightTertiary)
     VerzaTheme.ADAPTIVE -> toColorScheme().deriveExtendedColors() // overridden at runtime from the cover scheme
@@ -334,7 +400,7 @@ fun VerzaTheme.toExtendedColors(): VerzaExtendedColors = when (this) {
 
 @Composable
 fun VerzaTheme(
-    theme: VerzaTheme = VerzaTheme.DYNAMIC,
+    theme: VerzaTheme = VerzaTheme.VERZA,
     coverScheme: ColorScheme? = null,
     sleeve: Boolean = false,
     content: @Composable () -> Unit,
