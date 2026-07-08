@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
  * reads as one consistent system. Genuinely circular elements (icon buttons, avatars, the play
  * control) stay circular; everything else curves by exactly this much.
  */
-val VerzaCorner: Dp = 16.dp
+val VerzaCorner: Dp = 14.dp
 
 /** The one rounded-rectangle shape, derived from [VerzaCorner]. Use this anywhere you'd reach for
  *  `RoundedCornerShape(...)` on a surface/card/button. */

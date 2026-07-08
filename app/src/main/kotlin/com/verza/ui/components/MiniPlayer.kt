@@ -22,7 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import com.verza.ui.theme.LocalAudioSignal
@@ -41,6 +40,7 @@ import com.verza.ui.theme.FontSleeve
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaShape
+import com.verza.ui.theme.glassSurface
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -65,7 +65,7 @@ fun MiniPlayer(
     // recoloured to the cover and set in Newsreader.
     val sleeve = LocalSleeveMode.current
     val cover = LocalCoverColors.current
-    val stripBackground = if (sleeve) Modifier.sleeveSurface(shape) else Modifier.background(colors.surface)
+    val stripBackground = if (sleeve) Modifier.sleeveSurface(shape) else Modifier.glassSurface(shape)
     val titleColor = if (sleeve) cover.ink else colors.onSurface
     val artistColor = if (sleeve) cover.sub else ext.muted
     val playTint = if (sleeve) cover.accent else colors.primary
@@ -81,11 +81,9 @@ fun MiniPlayer(
             .padding(horizontal = 8.dp)
             .fillMaxWidth()
             .height(56.dp)
-            // Standard mode is a solid card, so a soft drop shadow lifts it. In Sleeve the strip is
-            // a translucent glass panel over the glow — a Material shadow shows through it and reads
-            // as a heavy grey halo (especially on a light background), so we drop it there.
-            .then(if (sleeve) Modifier else Modifier.shadow(elevation = 6.dp, shape = shape, clip = false))
-            .clip(shape)
+            // The strip is a translucent glass panel over the flowing wash in both modes — a Material
+            // shadow shows through it as a grey halo (especially on light), so we drop it and let the
+            // hairline glass border + the wash lift the panel instead.
             .then(stripBackground)
             .clickable(onClick = onExpand)
             .pointerInput(Unit) {

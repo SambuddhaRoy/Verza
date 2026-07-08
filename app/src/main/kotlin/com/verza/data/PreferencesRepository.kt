@@ -74,9 +74,9 @@ class PreferencesRepository @Inject constructor(
     private val loudnessKey = booleanPreferencesKey("loudness_enabled")
 
     val themeFlow: Flow<VerzaTheme> = store.data.map { prefs ->
-        // Default to Material You (Dynamic). On pre-Android-12 devices the theme layer falls back
-        // to the Atelier dark scheme automatically, so this is a safe default everywhere.
-        prefs[themeKey]?.let { runCatching { VerzaTheme.valueOf(it) }.getOrNull() } ?: VerzaTheme.DYNAMIC
+        // Default to VERZA — the neutral liquid-glass + green-accent identity (matches Verza-Desktop).
+        // Colour comes from the cover-art wash behind glass panels; users can still pick Dynamic/Atelier/etc.
+        prefs[themeKey]?.let { runCatching { VerzaTheme.valueOf(it) }.getOrNull() } ?: VerzaTheme.VERZA
     }
 
     // Prefer the encrypted cookie; fall back to any not-yet-migrated legacy plaintext value.
@@ -101,12 +101,12 @@ class PreferencesRepository @Inject constructor(
     val glowIntensityFlow: Flow<GlowIntensity> = store.data.map { prefs ->
         prefs[glowIntensityKey]?.let { runCatching { GlowIntensity.valueOf(it) }.getOrNull() } ?: GlowIntensity.MEDIUM
     }
-    /** Glow pattern — fluid aurora (default) or the dotted "Halftone" swirl variant. */
+    /** Glow pattern — the flowing album-art wash (Cover, default) is the Verza identity; Fluid/Halftone remain. */
     val glowStyleFlow: Flow<GlowStyle> = store.data.map { prefs ->
-        prefs[glowStyleKey]?.let { runCatching { GlowStyle.valueOf(it) }.getOrNull() } ?: GlowStyle.FLUID
+        prefs[glowStyleKey]?.let { runCatching { GlowStyle.valueOf(it) }.getOrNull() } ?: GlowStyle.COVER
     }
-    /** How freely the Halftone blob roams the screen, 0..1 ("Movement" slider). Default 0.4. */
-    val glowChaosFlow: Flow<Float> = store.data.map { (it[glowChaosKey] ?: 0.4f).coerceIn(0f, 1f) }
+    /** How freely the Cover wash flows / the Halftone blob roams, 0..1 ("Movement" slider). Default max, like desktop. */
+    val glowChaosFlow: Flow<Float> = store.data.map { (it[glowChaosKey] ?: 1.0f).coerceIn(0f, 1f) }
 
     /** False on a fresh install; set to true the first time the user finishes the onboarding flow. */
     val onboardingCompletedFlow: Flow<Boolean> = store.data.map { it[onboardingCompletedKey] ?: false }

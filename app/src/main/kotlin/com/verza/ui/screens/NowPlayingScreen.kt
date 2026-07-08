@@ -24,6 +24,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -51,6 +52,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
@@ -66,6 +68,7 @@ import com.verza.ui.share.NowPlayingShareOverlay
 import com.verza.ui.theme.LocalAudioSignal
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaShape
+import com.verza.ui.theme.glassSurface
 
 @Composable
 fun NowPlayingScreen(
@@ -395,6 +398,20 @@ fun NowPlayingScreen(
                 animationSpec = tween(durationMillis = 110, easing = LinearEasing),
                 label = "artBassKick",
             )
+            // Vinyl spin: a slow, continuous rotation (~24 s / revolution) while playing. Driven by a
+            // frame loop keyed on isPlaying/albumArtMotion, so it pauses (holds its angle) when the
+            // music stops or the user disables cover motion — no wasted frames.
+            var vinylAngle by remember { mutableFloatStateOf(0f) }
+            LaunchedEffect(isPlaying, albumArtMotion) {
+                if (!(isPlaying && albumArtMotion)) return@LaunchedEffect
+                var prev = 0L
+                while (true) {
+                    withFrameNanos { now ->
+                        if (prev != 0L) vinylAngle = (vinylAngle + (now - prev) / 1e9f * 15f) % 360f
+                        prev = now
+                    }
+                }
+            }
             Box(
                 modifier = Modifier
                     .padding(top = 24.dp, bottom = 20.dp)
@@ -404,7 +421,7 @@ fun NowPlayingScreen(
                         scaleX = artScale * bassKick
                         scaleY = artScale * bassKick
                         translationX = artDrag.value * 0.55f
-                        rotationZ = artDrag.value * 0.004f
+                        rotationZ = vinylAngle + artDrag.value * 0.004f
                     }
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures(
@@ -425,8 +442,15 @@ fun NowPlayingScreen(
                             scope.launch { artDrag.snapTo(artDrag.value + delta) }
                         }
                     }
-                    .shadow(elevation = 24.dp, shape = VerzaShape, clip = false)
-                    .clip(VerzaShape)
+                    // Circular vinyl with a soft accent glow behind (tinted shadow, drawn past bounds).
+                    .shadow(
+                        elevation = 24.dp,
+                        shape = CircleShape,
+                        clip = false,
+                        ambientColor = colors.primary.copy(alpha = 0.5f),
+                        spotColor = colors.primary.copy(alpha = 0.5f),
+                    )
+                    .clip(CircleShape)
                     .background(colors.surfaceVariant),
             ) {
                 if (artworkUrl != null) {
@@ -449,6 +473,17 @@ fun NowPlayingScreen(
                                 Brush.linearGradient(listOf(colors.primary, colors.tertiary))
                             )
                     )
+                }
+                // Vinyl texture over the art: faint concentric grooves, an accent "label" ring, and a
+                // spindle hole. Subtle so the cover stays the hero — it just reads as a record.
+                Canvas(Modifier.matchParentSize()) {
+                    val c = center
+                    val maxR = size.minDimension / 2f
+                    for (i in 1..18) {
+                        drawCircle(Color.Black, radius = maxR * i / 18f, center = c, alpha = 0.06f, style = Stroke(width = 1f))
+                    }
+                    drawCircle(colors.primary, radius = maxR * 0.19f, center = c, alpha = 0.9f, style = Stroke(width = 2f))
+                    drawCircle(Color.Black, radius = maxR * 0.035f, center = c, alpha = 0.55f)
                 }
             }
 
@@ -544,15 +579,15 @@ fun NowPlayingScreen(
                             .fillMaxWidth(shownFrac)
                             .height(4.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(colors.primary),
+                            // Accent-gradient fill — the "thread".
+                            .background(Brush.horizontalGradient(listOf(colors.primary.copy(alpha = 0.55f), colors.primary))),
                     )
-                    // Thumb — rides the fill's edge and swells under the finger while scrubbing.
+                    // Thumb — rides the fill's edge and swells under the finger while scrubbing, with
+                    // a soft accent glow ring behind it.
                     Canvas(Modifier.matchParentSize()) {
-                        drawCircle(
-                            color = colors.primary,
-                            radius = thumbRadius.toPx(),
-                            center = Offset(size.width * shownFrac, size.height / 2f),
-                        )
+                        val cx = Offset(size.width * shownFrac, size.height / 2f)
+                        drawCircle(color = colors.primary, radius = thumbRadius.toPx() * 2.2f, center = cx, alpha = 0.22f)
+                        drawCircle(color = colors.primary, radius = thumbRadius.toPx(), center = cx)
                     }
                 }
                 Row(
@@ -623,6 +658,9 @@ fun NowPlayingScreen(
                     animationSpec = tween(durationMillis = 110, easing = LinearEasing),
                     label = "playBass",
                 )
+                // Liquid-glass "droplet": a frosted translucent-accent circle floating over the wash —
+                // a subtle accent outline + a soft inner refraction gradient, no glow/specular. The
+                // bright accent glyph is the focal point.
                 Box(
                     modifier = Modifier
                         .size(72.dp)
@@ -631,9 +669,13 @@ fun NowPlayingScreen(
                             scaleX = s
                             scaleY = s
                         }
-                        .shadow(elevation = 12.dp, shape = CircleShape, clip = false)
                         .clip(CircleShape)
-                        .background(colors.primary)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(colors.primary.copy(alpha = 0.34f), colors.primary.copy(alpha = 0.18f))
+                            )
+                        )
+                        .border(1.5.dp, colors.primary.copy(alpha = 0.60f), CircleShape)
                         .clickable(onClick = onTogglePlay),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -648,7 +690,7 @@ fun NowPlayingScreen(
                         Icon(
                             imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = if (playing) "Pause" else "Play",
-                            tint = colors.onPrimary,
+                            tint = colors.primary,
                             modifier = Modifier.size(34.dp),
                         )
                     }
@@ -1055,15 +1097,15 @@ private fun QueueRow(
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    val bg = if (isCurrent) colors.surfaceVariant else Color.Transparent
     val art = rememberSongArtwork(item.title, item.artist, item.artworkUrl)
+    // The playing item reads as a glass row floating over the wash; the rest stay as a clean list.
+    val rowShape = RoundedCornerShape(12.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(bg)
+            .then(if (isCurrent) Modifier.glassSurface(rowShape) else Modifier.clip(rowShape))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
