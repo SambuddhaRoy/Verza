@@ -32,6 +32,25 @@ class MusicRepository @Inject constructor() {
     suspend fun radio(videoId: String): Result<List<MusicItem>> =
         runCatching { withContext(Dispatchers.IO) { InnerTube.radio(videoId) } }
 
+    /**
+     * Discovery radio: same genre as [videoId], but weighted toward music the listener hasn't heard.
+     * Hops the radio into a couple of adjacent artists, then filters/ranks against [known].
+     * Falls back to the plain radio if filtering leaves nothing (a very large library).
+     */
+    suspend fun discoveryRadio(
+        videoId: String,
+        known: DiscoveryRadio.Known,
+    ): Result<List<MusicItem>> = runCatching {
+        withContext(Dispatchers.IO) {
+            val base = InnerTube.radio(videoId)
+            val hops = DiscoveryRadio.branchSeeds(base).flatMap { seed ->
+                runCatching { InnerTube.radio(seed) }.getOrDefault(emptyList())
+            }
+            val ranked = DiscoveryRadio.rank(base + hops, videoId, known)
+            ranked.ifEmpty { base.filter { it.id != videoId } }
+        }
+    }
+
     /** The signed-in user's "Liked Music" playlist (VLLM). Empty when signed out. */
     suspend fun accountLikedSongs(): Result<List<MusicItem>> =
         runCatching { withContext(Dispatchers.IO) { InnerTube.collectionTracks(browseId = "VLLM") } }

@@ -413,6 +413,7 @@ fun VerzaNavigation(
                     onTogglePlay = { playbackViewModel.togglePlay() },
                     onToggleLike = { playbackViewModel.toggleLikeCurrent() },
                     onStartRadio = { current?.mediaId?.let { playbackViewModel.startRadio(it) } },
+                    onStartDiscoveryRadio = { current?.mediaId?.let { playbackViewModel.startDiscoveryRadio(it) } },
                     onOpenLyrics = { navController.navigate(Screen.Lyrics.route) { launchSingleTop = true } },
                     onDownload = { playbackViewModel.downloadCurrent() },
                     onRemoveDownload = { playbackViewModel.removeDownloadCurrent() },

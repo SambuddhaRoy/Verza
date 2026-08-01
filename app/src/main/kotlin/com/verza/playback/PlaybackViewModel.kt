@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.verza.audio.AudioEffectsController
 import com.verza.audio.EqConfig
 import com.verza.data.ArtworkRepository
+import com.verza.data.DiscoveryRadio
 import com.verza.data.DownloadManager
 import com.verza.data.LibraryRepository
 import com.verza.data.LyricsRepository
@@ -447,6 +448,28 @@ class PlaybackViewModel @Inject constructor(
                 if (current != null && current == videoId) {
                     val continuation = tracks.filter { it.id != videoId }.map { it.toMediaItem() }
                     playerConnection.replaceUpcoming(continuation)
+                } else {
+                    playSongs(tracks, 0)
+                }
+            }
+        }
+    }
+
+    /**
+     * Discovery radio: like [startRadio], but weighted toward artists and songs you haven't heard —
+     * for when the usual radio keeps circling the same rotation.
+     */
+    fun startDiscoveryRadio(videoId: String) {
+        if (videoId.isBlank()) return
+        viewModelScope.launch {
+            val known = runCatching { libraryRepository.known() }
+                .getOrDefault(DiscoveryRadio.Known(emptySet(), emptySet()))
+            repository.discoveryRadio(videoId, known).onSuccess { tracks ->
+                if (tracks.isEmpty()) return@onSuccess
+                // Seeded from what's already playing? Keep it playing and swap in the continuation.
+                val current = playbackState.value.currentItem?.mediaId
+                if (current != null && current == videoId) {
+                    playerConnection.replaceUpcoming(tracks.filter { it.id != videoId }.map { it.toMediaItem() })
                 } else {
                     playSongs(tracks, 0)
                 }
