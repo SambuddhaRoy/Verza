@@ -90,6 +90,8 @@ fun NowPlayingScreen(
     onTogglePlay: () -> Unit,
     onToggleLike: () -> Unit,
     onStartRadio: () -> Unit,
+    /** Radio weighted toward music you haven't heard (see DiscoveryRadio). Standard player only. */
+    onStartDiscoveryRadio: () -> Unit,
     onOpenLyrics: () -> Unit,
     onDownload: () -> Unit,
     onRemoveDownload: () -> Unit,
@@ -333,6 +335,10 @@ fun NowPlayingScreen(
                         DropdownMenuItem(
                             text = { Text("Start radio") },
                             onClick = { menuOpen = false; onStartRadio() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Discovery radio") },
+                            onClick = { menuOpen = false; onStartDiscoveryRadio() },
                         )
                         DropdownMenuItem(
                             text = { Text(if (sleepRemaining != null) "Sleep timer · $sleepRemaining" else "Sleep timer") },

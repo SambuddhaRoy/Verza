@@ -22,6 +22,18 @@ class LibraryRepository @Inject constructor(
 
     suspend fun get(id: String): SongEntity? = dao.get(id)
 
+    /**
+     * Everything the listener already knows — every song ever played or liked. Discovery radio uses
+     * this to skip tracks they've heard and to de-prioritise artists they already listen to.
+     */
+    suspend fun known(): DiscoveryRadio.Known {
+        val all = dao.getAll()
+        return DiscoveryRadio.Known(
+            videoIds = all.map { it.id }.toSet(),
+            artists = all.map { DiscoveryRadio.primaryArtist(it.artist) }.filter { it.isNotEmpty() }.toSet(),
+        )
+    }
+
     /** Marks a song as downloaded, recording the absolute path on disk. */
     suspend fun markDownloaded(song: SongEntity, path: String) {
         val existing = dao.get(song.id)
