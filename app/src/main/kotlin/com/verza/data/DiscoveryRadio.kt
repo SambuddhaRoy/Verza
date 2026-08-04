@@ -22,33 +22,36 @@ object DiscoveryRadio {
         artist.substringBefore(',').trim().lowercase()
 
     /**
-     * Up to [limit] seeds for the second hop: the first tracks by *distinct* artists, so the hops
-     * explore sideways instead of re-querying the same artist.
+     * Seeds for the next hop, chosen at RANDOM among artists not yet branched through.
+     *
+     * Picking the *first* distinct-artist tracks (the obvious approach) makes the whole walk
+     * deterministic — YouTube's radio for an id never changes — so every Discovery run explored the
+     * identical slice of the graph and only the shuffle order differed. Randomising the frontier is
+     * what makes each run take a different path outward.
      */
-    fun branchSeeds(base: List<MusicItem>, limit: Int = 2): List<String> {
-        val seen = mutableSetOf<String>()
-        val out = mutableListOf<String>()
-        for (t in base) {
-            val a = primaryArtist(t.artist)
-            if (a.isNotEmpty() && seen.add(a)) out += t.id
-            if (out.size >= limit) break
-        }
-        return out
-    }
+    fun frontier(tracks: List<MusicItem>, branched: Set<String>, limit: Int = 3): List<String> =
+        tracks
+            .filter { it.id.isNotEmpty() && it.id !in branched && primaryArtist(it.artist).isNotEmpty() }
+            .groupBy { primaryArtist(it.artist) }
+            .values
+            .shuffled()
+            .take(limit)
+            .map { group -> group.random().id }
 
     /**
-     * Dedupe [pool], drop the seed and anything already heard, then order unknown artists first
-     * (each tier shuffled so repeat runs differ). Capped at [cap].
+     * Dedupe [pool], drop the seed, anything already heard, and anything a previous run already
+     * offered ([served]); then order unknown artists first, each tier shuffled. Capped at [cap].
      */
     fun rank(
         pool: List<MusicItem>,
         seedId: String,
         known: Known,
+        served: Set<String> = emptySet(),
         cap: Int = 40,
     ): List<MusicItem> {
         val seen = mutableSetOf(seedId)
         val fresh = pool.filter { t ->
-            t.id.isNotEmpty() && seen.add(t.id) && t.id !in known.videoIds
+            t.id.isNotEmpty() && seen.add(t.id) && t.id !in known.videoIds && t.id !in served
         }
         val (unfamiliar, familiar) = fresh.partition { primaryArtist(it.artist) !in known.artists }
         return (unfamiliar.shuffled() + familiar.shuffled()).take(cap)
