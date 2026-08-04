@@ -40,16 +40,36 @@ class MusicRepository @Inject constructor() {
     suspend fun discoveryRadio(
         videoId: String,
         known: DiscoveryRadio.Known,
-    ): Result<List<MusicItem>> = runCatching {
+        served: Set<String> = emptySet(),
+    ): Result<DiscoveryResult> = runCatching {
         withContext(Dispatchers.IO) {
-            val base = InnerTube.radio(videoId)
-            val hops = DiscoveryRadio.branchSeeds(base).flatMap { seed ->
-                runCatching { InnerTube.radio(seed) }.getOrDefault(emptyList())
+            // Walk outward from the seed, choosing each next hop at random (see frontier) so repeat
+            // runs explore different parts of the genre rather than the same fixed slice.
+            val pool = mutableListOf<MusicItem>()
+            val branched = mutableSetOf(videoId)
+            var next = listOf(videoId)
+            repeat(3) {
+                if (next.isEmpty() || pool.size > 150) return@repeat
+                val level = next.flatMap { id ->
+                    runCatching { InnerTube.radio(id) }.getOrDefault(emptyList())
+                }
+                pool += level
+                next = DiscoveryRadio.frontier(level, branched).also { branched += it }
             }
-            val ranked = DiscoveryRadio.rank(base + hops, videoId, known)
-            ranked.ifEmpty { base.filter { it.id != videoId } }
+
+            val ranked = DiscoveryRadio.rank(pool, videoId, known, served)
+            when {
+                ranked.isNotEmpty() -> DiscoveryResult(ranked, exhausted = false)
+                // Everything nearby is heard or already offered — recycle rather than play nothing,
+                // and tell the caller to forget the served memory.
+                served.isNotEmpty() -> DiscoveryResult(DiscoveryRadio.rank(pool, videoId, known), exhausted = true)
+                else -> DiscoveryResult(pool.filter { it.id != videoId }.take(40), exhausted = false)
+            }
         }
     }
+
+    /** [tracks] to play; [exhausted] means the served memory should be cleared. */
+    data class DiscoveryResult(val tracks: List<MusicItem>, val exhausted: Boolean)
 
     /** The signed-in user's "Liked Music" playlist (VLLM). Empty when signed out. */
     suspend fun accountLikedSongs(): Result<List<MusicItem>> =

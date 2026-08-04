@@ -50,6 +50,8 @@ class PreferencesRepository @Inject constructor(
     private val cookieEncKey = stringPreferencesKey("account_cookie_enc")
     private val historyKey = stringPreferencesKey("search_history")
     private val queueKey = stringPreferencesKey("saved_queue")
+    // Tracks Discovery radio has already offered — excluded next time so it never repeats itself.
+    private val discoveryServedKey = stringPreferencesKey("discovery_served")
     private val audioQualityKey = stringPreferencesKey("audio_quality")
     private val glowEnabledKey = booleanPreferencesKey("glow_enabled")
     private val glowColorKey = stringPreferencesKey("glow_color_preset")
@@ -287,6 +289,33 @@ class PreferencesRepository @Inject constructor(
             val updated = (listOf(trimmed) + current.filterNot { it.equals(trimmed, ignoreCase = true) }).take(10)
             prefs[historyKey] = json.encodeToString(updated)
         }
+    }
+
+    // ── Discovery radio memory ─────────────────────────────────────────────
+    // YouTube's radio for a given song is deterministic, so without a record of what we've already
+    // offered, a second Discovery run returns the same tracks. Keep the ids (FIFO-capped) and skip
+    // them next time; that memory is what makes each run genuinely new.
+
+    private val discoveryServedCap = 800
+
+    suspend fun discoveryServed(): Set<String> {
+        val raw = store.data.first()[discoveryServedKey] ?: return emptySet()
+        return runCatching { json.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList()).toSet()
+    }
+
+    suspend fun addDiscoveryServed(ids: List<String>) {
+        if (ids.isEmpty()) return
+        store.edit { prefs ->
+            val current = prefs[discoveryServedKey]
+                ?.let { runCatching { json.decodeFromString<List<String>>(it) }.getOrNull() } ?: emptyList()
+            val updated = (current + ids.filterNot { it in current }).takeLast(discoveryServedCap)
+            prefs[discoveryServedKey] = json.encodeToString(updated)
+        }
+    }
+
+    /** Forget what Discovery has offered — used when the well runs dry so it can start over. */
+    suspend fun clearDiscoveryServed() {
+        store.edit { it.remove(discoveryServedKey) }
     }
 
     suspend fun clearSearchHistory() {
