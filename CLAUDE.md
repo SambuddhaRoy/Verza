@@ -27,7 +27,7 @@ minSdk 26, target/compile 35. A separate Electron desktop port lives at
 - NEVER log or leak the YouTube Music auth cookie. Library backups (export/import) AND shared
   session links must EXCLUDE the cookie.
 
-## Current state (latest = v1.2.3 / versionCode 36)
+## Current state (latest = v1.3.1 / versionCode 38)
 - Branch `main` is the live app. `UI-Redesign` ("Verso" living-thread redesign) is parked on GitHub,
   NOT merged.
 - Last published GitHub *release* is v1.0.0; everything since (mixes, sound suite, OS media
