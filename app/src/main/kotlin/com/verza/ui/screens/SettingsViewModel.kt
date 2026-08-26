@@ -2,6 +2,7 @@ package com.verza.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.verza.data.DownloadStore
 import com.verza.data.ImportSummary
 import com.verza.data.LibraryBackupRepository
 import com.verza.data.PreferencesRepository
@@ -25,6 +26,7 @@ class SettingsViewModel @Inject constructor(
     private val prefs: PreferencesRepository,
     private val stats: StatsRepository,
     private val backup: LibraryBackupRepository,
+    private val downloads: DownloadStore,
 ) : ViewModel() {
 
     val theme: StateFlow<VerzaTheme> = prefs.themeFlow
@@ -76,6 +78,9 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val gentleStart: StateFlow<Boolean> = prefs.gentleStartFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    /** Where downloads are written. Blank = app-private storage. */
+    val downloadTree: StateFlow<String> = prefs.downloadTreeFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     fun setTheme(theme: VerzaTheme) {
         viewModelScope.launch { prefs.setTheme(theme) }
@@ -136,6 +141,12 @@ class SettingsViewModel @Inject constructor(
     fun setSleeveMode(enabled: Boolean) {
         viewModelScope.launch { prefs.setSleeveMode(enabled) }
     }
+
+    fun setDownloadTree(treeUri: String) {
+        viewModelScope.launch { prefs.setDownloadTree(treeUri) }
+    }
+
+    fun downloadFolderLabel(treeUri: String): String = downloads.folderLabel(treeUri)
 
     fun setHapticsEnabled(enabled: Boolean) {
         viewModelScope.launch { prefs.setHapticsEnabled(enabled) }

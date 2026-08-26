@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -73,6 +74,7 @@ fun SettingsScreen(
     val sleeveMode by viewModel.sleeveMode.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
+    val downloadTree by viewModel.downloadTree.collectAsStateWithLifecycle()
     var showResetStatsDialog by remember { mutableStateOf(false) }
 
     // ── Library backup (export / import) ────────────────────────────────────────
@@ -101,6 +103,27 @@ fun SettingsScreen(
                 Toast.makeText(context, "Imported ${r.songs} songs · ${r.playlists} playlists", Toast.LENGTH_LONG).show()
             }.onFailure {
                 Toast.makeText(context, "Couldn't read that backup", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Where downloaded music is written. Taking the permission persistably is the whole point: without
+    // it the grant dies with the process and the next download silently falls back to app storage.
+    val downloadFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            val kept = runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }.isSuccess
+            if (kept) {
+                viewModel.setDownloadTree(uri.toString())
+                Toast.makeText(context, "Downloads will be saved here", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Couldn't keep access to that folder", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -388,6 +411,32 @@ fun SettingsScreen(
                     onClick = viewModel::clearSearchHistory,
                     divider = false,
                 )
+            }
+        }
+
+
+        // ── Downloads ────────────────────────────────────────────────────────
+        item { SectionHeader("Downloads") }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                ActionRow(
+                    title = "Save music to",
+                    subtitle = if (downloadTree.isBlank()) {
+                        "Verza's private folder \u2014 other apps can't see these files, and uninstalling removes them"
+                    } else {
+                        viewModel.downloadFolderLabel(downloadTree)
+                    },
+                    onClick = { downloadFolderLauncher.launch(null) },
+                    divider = downloadTree.isNotBlank(),
+                )
+                if (downloadTree.isNotBlank()) {
+                    ActionRow(
+                        title = "Use app storage instead",
+                        subtitle = "Go back to the private folder. Music already saved stays where it is.",
+                        onClick = { viewModel.setDownloadTree("") },
+                        divider = false,
+                    )
+                }
             }
         }
 
