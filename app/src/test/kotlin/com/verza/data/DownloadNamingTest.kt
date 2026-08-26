@@ -73,4 +73,20 @@ class DownloadNamingTest {
             DownloadNaming.fileName("Radiohead", "Weird Fishes", "x", "audio/opus"),
         )
     }
+    @Test
+    fun `a collection gets a folder, a stray name does not`() {
+        assertEquals("Late Night Drive", DownloadNaming.folder("Late Night Drive"))
+        // Same sanitiser as the files, so a slash cannot silently nest another directory.
+        assertEquals("Chill 2026", DownloadNaming.folder("Chill / 2026"))
+        assertEquals("_CON", DownloadNaming.folder("CON"))
+
+        // Blank means "no folder" — a single downloaded track belongs in the root, not in a folder
+        // named after itself.
+        assertEquals("", DownloadNaming.folder(""))
+        assertEquals("", DownloadNaming.folder("   "))
+        assertEquals("", DownloadNaming.folder(null))
+
+        // A name that sanitises away entirely must not become the "track" placeholder.
+        assertEquals("", DownloadNaming.folder("???"))
+    }
 }

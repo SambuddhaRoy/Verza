@@ -1,6 +1,7 @@
 package com.verza.ui.navigation
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -328,6 +329,10 @@ fun VerzaNavigation(
                         navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
                     },
                     onAddToQueue = { tracks -> playbackViewModel.enqueueAll(tracks) },
+                    onDownloadAll = { tracks, title ->
+                        playbackViewModel.downloadAll(tracks, title)
+                        Toast.makeText(context, "Downloading ${tracks.size} tracks", Toast.LENGTH_SHORT).show()
+                    },
                 )
             }
             composable(
