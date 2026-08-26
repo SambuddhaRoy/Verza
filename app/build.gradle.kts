@@ -129,6 +129,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
+    // Unit tests (JVM) — the pure logic only: filenames, parsers.
+    testImplementation(libs.junit)
+
     // Media3 (for PlayerConnection UI-side)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.common)

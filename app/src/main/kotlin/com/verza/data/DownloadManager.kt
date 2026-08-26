@@ -1,10 +1,8 @@
 package com.verza.data
 
-import android.content.Context
 import com.verza.data.db.SongEntity
 import com.verza.innertube.InnerTube
 import com.verza.innertube.models.MusicItem
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -16,24 +14,28 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Foreground-thread-safe downloader. Resolves the audio stream for a [MusicItem] via NewPipe,
- * streams the bytes to app-private storage, then upserts the [SongEntity] so the resolver in
- * MusicService can prefer the local file on subsequent plays.
+ * streams the bytes to wherever [DownloadStore] says they go, then upserts the [SongEntity] so the
+ * resolver in MusicService can prefer the local copy on subsequent plays.
+ *
+ * Two things matter about the output beyond "it downloaded". It asks the extractor for AAC-in-MP4
+ * rather than taking whatever is cheapest, because a .webm of Opus is a file most other players
+ * refuse; and it is named "Artist - Title", because a folder of videoIds is not a music library.
  *
  * Designed to be simple — no WorkManager scheduling, no eviction. A scope-bound coroutine per
- * download, cancellable via [cancel]. State is exposed as the set of in-flight ids so the UI can
+ * download, cancellable via [remove]. State is exposed as the set of in-flight ids so the UI can
  * show progress affordances.
  */
 @Singleton
 class DownloadManager @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val httpClient: OkHttpClient,
     private val library: LibraryRepository,
+    private val store: DownloadStore,
+    private val prefs: PreferencesRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = mutableMapOf<String, Job>()
@@ -45,49 +47,41 @@ class DownloadManager @Inject constructor(
         if (jobs.containsKey(item.id)) return
         _inProgress.update { it + item.id }
         jobs[item.id] = scope.launch {
+            // Held until the bytes are committed, so any failure — including cancellation — takes the
+            // partial file with it rather than leaving something that later looks like a real download.
+            var pending: DownloadStore.Target? = null
             try {
-                val stream = InnerTube.resolveAudioStream(item.id) ?: return@launch
-                val dir = File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
-                // Pick an extension that roughly matches the container — many decoders sniff
-                // the bytes anyway, but a sensible suffix helps file managers.
-                val ext = when {
-                    stream.mimeType.contains("mp4", true) || stream.mimeType.contains("aac", true) -> "m4a"
-                    stream.mimeType.contains("opus", true) -> "opus"
-                    stream.mimeType.contains("webm", true) -> "webm"
-                    else -> "audio"
-                }
-                val file = File(dir, "${item.id}.$ext")
-                val tmp = File(dir, "${item.id}.$ext.part")
+                val stream = InnerTube.resolveAudioStream(item.id, preferM4a = true) ?: return@launch
+                val (_, mime) = DownloadNaming.containerFor(stream.mimeType)
+                val name = DownloadNaming.fileName(item.artist, item.title, item.id, stream.mimeType)
+                val target = store.create(prefs.downloadTree(), name, mime)
+                pending = target
 
                 val request = Request.Builder().url(stream.url).get().build()
                 httpClient.newCall(request).execute().use { resp ->
                     if (!resp.isSuccessful) error("HTTP ${resp.code}")
                     resp.body!!.byteStream().use { input ->
-                        tmp.outputStream().use { output -> input.copyTo(output) }
+                        target.open().use { output -> input.copyTo(output) }
                     }
                 }
-                // Atomic rename so an interrupted download never leaves a half-written file in place.
-                if (tmp.renameTo(file)) {
-                    library.markDownloaded(item.toEntity(), file.absolutePath)
-                } else {
-                    tmp.delete()
-                }
+                library.markDownloaded(item.toEntity(), target.location)
+                pending = null                    // committed; leave it on disk
             } catch (_: Throwable) {
                 // Best effort — failures leave the song unmarked, the user can retry.
             } finally {
+                pending?.discard()
                 jobs.remove(item.id)
                 _inProgress.update { it - item.id }
             }
         }
     }
 
-    /** Cancels an in-flight download (if any) and removes the on-disk file + DB marker. */
+    /** Cancels an in-flight download (if any) and removes the saved file + DB marker. */
     fun remove(id: String) {
         jobs.remove(id)?.cancel()
         _inProgress.update { it - id }
         scope.launch {
-            val entry = library.get(id)
-            entry?.downloadPath?.let { runCatching { File(it).delete() } }
+            library.get(id)?.downloadPath?.let { store.delete(it) }
             library.clearDownloadPath(id)
         }
     }

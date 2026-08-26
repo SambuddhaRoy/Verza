@@ -286,9 +286,9 @@ object InnerTube {
      * Resolves the best audio stream for [videoId] via NewPipeExtractor (handles signature/n
      * deciphering that the raw player endpoint can't do anonymously). Returns null if unplayable.
      */
-    suspend fun resolveAudioStream(videoId: String): StreamInfo? =
+    suspend fun resolveAudioStream(videoId: String, preferM4a: Boolean = false): StreamInfo? =
         withContext(Dispatchers.IO) {
-            runCatching { NewPipeStreamResolver.resolve(videoId) }.getOrNull()
+            runCatching { NewPipeStreamResolver.resolve(videoId, preferM4a) }.getOrNull()
         }
 
     /**

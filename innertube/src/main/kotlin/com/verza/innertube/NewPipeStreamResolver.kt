@@ -31,7 +31,13 @@ internal object NewPipeStreamResolver {
         }
     }
 
-    fun resolve(videoId: String): StreamInfo? {
+    /**
+     * [preferM4a] is for downloads, not playback. Streaming can take whatever container is best,
+     * because ExoPlayer opens all of them; a file on disk cannot, since a .webm of Opus is a file
+     * most other players and every car stereo will refuse. So a download asks for AAC-in-MP4 and
+     * only falls back to the usual pick when YouTube offers nothing else.
+     */
+    fun resolve(videoId: String, preferM4a: Boolean = false): StreamInfo? {
         ensureInit()
         // YouTube occasionally throttles or returns a transient extraction error; one retry
         // clears most of these.
@@ -40,7 +46,7 @@ internal object NewPipeStreamResolver {
         for (attempt in backoffs.indices) {
             if (backoffs[attempt] > 0) Thread.sleep(backoffs[attempt])
             try {
-                resolveOnce(videoId)?.let { return it }
+                resolveOnce(videoId, preferM4a)?.let { return it }
             } catch (t: Throwable) {
                 lastError = t
                 if (BuildConfig.DEBUG) Log.e("VerzaPlayback", "resolveOnce threw on attempt $attempt for $videoId", t)
@@ -53,7 +59,7 @@ internal object NewPipeStreamResolver {
         return null
     }
 
-    private fun resolveOnce(videoId: String): StreamInfo? {
+    private fun resolveOnce(videoId: String, preferM4a: Boolean = false): StreamInfo? {
         val extractor = ServiceList.YouTube
             .getStreamExtractor("https://www.youtube.com/watch?v=$videoId")
         extractor.fetchPage()
@@ -84,6 +90,10 @@ internal object NewPipeStreamResolver {
         // ── Strategy 1: progressive HTTP audio — works with vanilla DefaultMediaSourceFactory.
         val progressive = audioStreams.filter {
             it.content != null && it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP
+        }
+        if (preferM4a) {
+            val mp4 = progressive.filter { (it.format?.mimeType ?: "").contains("mp4", true) }
+            if (mp4.isNotEmpty()) return mp4.pickByQualityToInfo("Strategy 0: progressive m4a")
         }
         if (progressive.isNotEmpty()) return progressive.pickByQualityToInfo("Strategy 1: progressive")
 

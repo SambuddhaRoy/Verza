@@ -68,6 +68,9 @@ class PreferencesRepository @Inject constructor(
     private val sleeveModeKey = booleanPreferencesKey("sleeve_mode")
     private val hapticsKey = booleanPreferencesKey("music_haptics")
     private val gentleStartKey = booleanPreferencesKey("gentle_start")
+    // SAF tree Uri for the folder downloads are written to. Blank = app-private storage, which is
+    // where they used to go unconditionally: invisible to other apps and wiped on uninstall.
+    private val downloadTreeKey = stringPreferencesKey("download_tree_uri")
     // ── Sound suite (equaliser / bass / loudness) ──────────────────────────────
     private val eqEnabledKey = booleanPreferencesKey("eq_enabled")
     private val eqBandsKey = stringPreferencesKey("eq_band_levels") // JSON List<Int> (millibels)
@@ -136,6 +139,8 @@ class PreferencesRepository @Inject constructor(
 
     /** Editorial "Sleeve" appearance — poster Now Playing + translucent surfaces over the glow. */
     val sleeveModeFlow: Flow<Boolean> = store.data.map { it[sleeveModeKey] ?: false }
+
+    val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
 
     /** Subtle vibration synced to the music's bass. Reads playback audio only (same as the glow). */
     val hapticsEnabledFlow: Flow<Boolean> = store.data.map { it[hapticsKey] ?: false }
@@ -236,6 +241,13 @@ class PreferencesRepository @Inject constructor(
     suspend fun setSleeveMode(enabled: Boolean) {
         store.edit { it[sleeveModeKey] = enabled }
     }
+
+    /** [treeUri] comes from the system folder picker; blank resets to app-private storage. */
+    suspend fun setDownloadTree(treeUri: String) {
+        store.edit { it[downloadTreeKey] = treeUri }
+    }
+
+    suspend fun downloadTree(): String = store.data.first()[downloadTreeKey].orEmpty()
 
     suspend fun setHapticsEnabled(enabled: Boolean) {
         store.edit { it[hapticsKey] = enabled }
