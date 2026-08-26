@@ -334,6 +334,10 @@ class PlaybackViewModel @Inject constructor(
 
     fun download(item: MusicItem) = downloadManager.download(item)
 
+    /** Download a playlist or album; it gets its own folder inside the Verza music folder. */
+    fun downloadAll(items: List<MusicItem>, collection: String) =
+        downloadManager.downloadAll(items, collection)
+
     /** Plays a home card: a song directly, or an album/playlist by expanding it into tracks. */
     fun playHomeItem(item: HomeItem) {
         if (item.isSong) {
