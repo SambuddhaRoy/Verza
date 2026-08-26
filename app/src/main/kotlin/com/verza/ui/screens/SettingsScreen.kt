@@ -422,7 +422,7 @@ fun SettingsScreen(
                 ActionRow(
                     title = "Save music to",
                     subtitle = if (downloadTree.isBlank()) {
-                        "Verza's private folder \u2014 other apps can't see these files, and uninstalling removes them"
+                        "Music/Verza \u2014 playlists and albums get their own folder"
                     } else {
                         viewModel.downloadFolderLabel(downloadTree)
                     },
@@ -431,8 +431,8 @@ fun SettingsScreen(
                 )
                 if (downloadTree.isNotBlank()) {
                     ActionRow(
-                        title = "Use app storage instead",
-                        subtitle = "Go back to the private folder. Music already saved stays where it is.",
+                        title = "Use the Music folder instead",
+                        subtitle = "Go back to Music/Verza. Music already saved stays where it is.",
                         onClick = { viewModel.setDownloadTree("") },
                         divider = false,
                     )

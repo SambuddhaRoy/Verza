@@ -43,7 +43,8 @@ class DownloadManager @Inject constructor(
     private val _inProgress = MutableStateFlow<Set<String>>(emptySet())
     val inProgress: StateFlow<Set<String>> = _inProgress.asStateFlow()
 
-    fun download(item: MusicItem) {
+    /** [collection] is the playlist or album this came from; it becomes the folder on disk. */
+    fun download(item: MusicItem, collection: String = "") {
         if (jobs.containsKey(item.id)) return
         _inProgress.update { it + item.id }
         jobs[item.id] = scope.launch {
@@ -54,7 +55,7 @@ class DownloadManager @Inject constructor(
                 val stream = InnerTube.resolveAudioStream(item.id, preferM4a = true) ?: return@launch
                 val (_, mime) = DownloadNaming.containerFor(stream.mimeType)
                 val name = DownloadNaming.fileName(item.artist, item.title, item.id, stream.mimeType)
-                val target = store.create(prefs.downloadTree(), name, mime)
+                val target = store.create(prefs.downloadTree(), name, mime, collection)
                 pending = target
 
                 val request = Request.Builder().url(stream.url).get().build()
@@ -64,6 +65,7 @@ class DownloadManager @Inject constructor(
                         target.open().use { output -> input.copyTo(output) }
                     }
                 }
+                target.commit()                   // MediaStore hides the file until this clears IS_PENDING
                 library.markDownloaded(item.toEntity(), target.location)
                 pending = null                    // committed; leave it on disk
             } catch (_: Throwable) {
@@ -74,6 +76,15 @@ class DownloadManager @Inject constructor(
                 _inProgress.update { it - item.id }
             }
         }
+    }
+
+    /**
+     * Download a whole playlist or album into its own folder. Sequential on purpose: a hundred
+     * parallel extractions is a good way to get throttled, and nobody is waiting on track 87.
+     */
+    fun downloadAll(items: List<MusicItem>, collection: String) {
+        val name = if (items.size > 1) collection else ""
+        scope.launch { items.forEach { download(it, name) } }
     }
 
     /** Cancels an in-flight download (if any) and removes the saved file + DB marker. */

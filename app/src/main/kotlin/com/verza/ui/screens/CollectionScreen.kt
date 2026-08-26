@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddToQueue
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
@@ -54,6 +55,7 @@ fun CollectionScreen(
     onPlayTracks: (List<MusicItem>, Int) -> Unit,
     onShuffle: (List<MusicItem>) -> Unit,
     onAddToQueue: (List<MusicItem>) -> Unit,
+    onDownloadAll: (List<MusicItem>, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: CollectionViewModel = hiltViewModel(),
 ) {
@@ -75,7 +77,8 @@ fun CollectionScreen(
                 Text(s.message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
                 OutlinedButton(onClick = viewModel::load, shape = CircleShape) { Text("Retry") }
             }
-            is CollectionUiState.Content -> CollectionContent(s.detail, onPlayTracks, onShuffle, onAddToQueue)
+            is CollectionUiState.Content ->
+                CollectionContent(s.detail, onPlayTracks, onShuffle, onAddToQueue, onDownloadAll)
         }
 
         // Floating circular back affordance.
@@ -99,6 +102,7 @@ private fun CollectionContent(
     onPlayTracks: (List<MusicItem>, Int) -> Unit,
     onShuffle: (List<MusicItem>) -> Unit,
     onAddToQueue: (List<MusicItem>) -> Unit,
+    onDownloadAll: (List<MusicItem>, String) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
@@ -148,6 +152,12 @@ private fun CollectionContent(
                         onClick = { if (tracks.isNotEmpty()) onAddToQueue(tracks) },
                         icon = Icons.Filled.AddToQueue,
                         contentDescription = "Add to queue",
+                    )
+                    SleeveOutlineAction(
+                        cover = cover,
+                        onClick = { if (tracks.isNotEmpty()) onDownloadAll(tracks, detail.title) },
+                        icon = Icons.Filled.Download,
+                        contentDescription = "Download",
                     )
                 }
             }
