@@ -107,6 +107,14 @@ class MusicService : MediaLibraryService() {
                 // Prefer a downloaded copy if one exists — instant start, works offline.
                 val cached = runBlocking { downloadLookup.pathFor(videoId) }
                 if (!cached.isNullOrBlank()) {
+                    // Downloads now land in a folder the listener picked, which SAF hands back as a
+                    // content:// Uri rather than a path. DefaultDataSource opens both; only the
+                    // existence check differs, and there is no cheap one for a content Uri, so we
+                    // hand it over and let the open fail through to a re-resolve if it is gone.
+                    if (cached.startsWith("content://")) {
+                        if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Using downloaded document: $cached")
+                        return@Resolver dataSpec.withUri(Uri.parse(cached))
+                    }
                     val file = File(cached)
                     if (file.exists()) {
                         if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Using cached file: ${file.absolutePath}")
