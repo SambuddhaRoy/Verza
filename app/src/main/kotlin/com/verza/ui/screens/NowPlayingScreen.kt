@@ -67,6 +67,9 @@ import com.verza.ui.components.rememberSongArtwork
 import com.verza.ui.share.NowPlayingShareOverlay
 import com.verza.ui.theme.LocalAudioSignal
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.expressive.ExpressiveMoreSheet
+import com.verza.ui.expressive.ExpressiveQueueSheet
+import com.verza.ui.expressive.NowPlayingExpressive
 import com.verza.ui.theme.VerzaShape
 import com.verza.ui.theme.glassSurface
 
@@ -138,652 +141,70 @@ fun NowPlayingScreen(
         else android.widget.Toast.makeText(shareCtx, "Nothing to share yet", android.widget.Toast.LENGTH_SHORT).show()
     }
 
-    // Editorial "Sleeve" poster surface fully replaces the standard layout when enabled.
-    if (sleeveMode) {
-        Box(modifier = modifier.fillMaxSize()) {
-            com.verza.ui.sleeve.SleevePlayer(
-                onBack = onBack,
-                title = title,
-                artist = artist,
-                artworkUrl = artworkUrl,
-                isPlaying = isPlaying,
-                isLiked = isLiked,
-                isDownloaded = isDownloaded,
-                isDownloading = isDownloading,
-                positionMs = positionMs,
-                durationMs = durationMs,
-                shuffleEnabled = shuffleEnabled,
-                repeatMode = repeatMode,
+    // One layout now. The standard screen and the Sleeve poster both wrote text over the artwork in
+    // colours sampled from it, so contrast changed with every track and regularly failed outright.
+    // NowPlayingExpressive keeps the cover for accent and glow and puts everything readable on a flat
+    // near-black canvas at fixed contrast.
+    //
+    // sleeveMode stays in the signature because Settings still shows the switch; it no longer picks a
+    // layout. Removing the preference and ui/sleeve is a separate change.
+    var showQueue by remember { mutableStateOf(false) }
+    var showMore by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        NowPlayingExpressive(
+            onBack = onBack,
+            title = title,
+            artist = artist,
+            artworkUrl = artworkUrl,
+            isPlaying = isPlaying,
+            isLiked = isLiked,
+            isDownloaded = isDownloaded,
+            positionMs = positionMs,
+            durationMs = durationMs,
+            shuffleEnabled = shuffleEnabled,
+            repeatMode = repeatMode,
+            sleepTimerActive = sleepTimerEndAt != null,
+            onTogglePlay = onTogglePlay,
+            onNext = onNext,
+            onPrevious = onPrevious,
+            onSeek = onSeek,
+            onToggleLike = onToggleLike,
+            onAddToPlaylist = onAddToPlaylist,
+            onToggleShuffle = onToggleShuffle,
+            onCycleRepeat = onCycleRepeat,
+            onOpenQueue = { showQueue = true },
+            onOpenLyrics = onOpenLyrics,
+            onStartRadio = onStartRadio,
+            onDownload = onDownload,
+            onRemoveDownload = onRemoveDownload,
+            onOpenSleepTimer = { showSleepSheet = true },
+            onOpenMore = { showMore = true },
+            onShare = { showShareCard = true },
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        if (showQueue) {
+            ExpressiveQueueSheet(
                 queue = queue,
                 currentIndex = currentIndex,
-                onTogglePlay = onTogglePlay,
-                onNext = onNext,
-                onPrevious = onPrevious,
-                onSeek = onSeek,
-                onToggleShuffle = onToggleShuffle,
-                onCycleRepeat = onCycleRepeat,
-                onPlayQueueItem = onPlayQueueItem,
-                onOpenLyrics = onOpenLyrics,
-                onToggleLike = onToggleLike,
-                onStartRadio = onStartRadio,
-                onDownload = onDownload,
-                onRemoveDownload = onRemoveDownload,
-                onAddToPlaylist = onAddToPlaylist,
-                onShare = { showShareCard = true },
-                onAmbient = onEnterAmbient,
-                onLinerNotes = { showLinerNotes = true },
-                onFocus = { showFocusSheet = true },
-                onShareSession = shareSession,
-                onSleepTimer = { showSleepSheet = true },
-                sleepRemaining = sleepRemaining,
+                onPlay = { showQueue = false; onPlayQueueItem(it) },
+                onRemove = onRemoveQueueItem,
+                onDismiss = { showQueue = false },
+            )
+        }
+        if (showMore) {
+            ExpressiveMoreSheet(
+                isDownloading = isDownloading,
                 focusActive = focusActive,
-                modifier = Modifier.fillMaxSize(),
-            )
-            if (showShareCard) {
-                NowPlayingShareOverlay(
-                    title = title,
-                    artist = artist,
-                    artworkUrl = artworkUrl,
-                    onDismiss = { showShareCard = false },
-                )
-            }
-            if (showLinerNotes) {
-                LinerNotesSheet(
-                    title = title,
-                    artist = artist,
-                    artworkUrl = artworkUrl,
-                    onDismiss = { showLinerNotes = false },
-                )
-            }
-            if (showFocusSheet) {
-                FocusSheet(
-                    active = focusActive,
-                    remaining = focusRemaining,
-                    onStart = { onStartFocus(it); showFocusSheet = false },
-                    onEnd = { onEndFocus(); showFocusSheet = false },
-                    onDismiss = { showFocusSheet = false },
-                )
-            }
-            if (showSleepSheet) {
-                SleepTimerSheet(
-                    active = sleepTimerEndAt != null,
-                    remaining = sleepRemaining,
-                    onPick = { minutes -> onSetSleepTimer(minutes * 60_000L); showSleepSheet = false },
-                    onWindDown = { minutes -> onWindDown(minutes * 60_000L); showSleepSheet = false },
-                    onEndOfTrack = { onSleepTimerEndOfTrack(); showSleepSheet = false },
-                    onCancel = { onSetSleepTimer(null); showSleepSheet = false },
-                    onDismiss = { showSleepSheet = false },
-                )
-            }
-            FocusCompleteBanner(
-                minutes = focusCompleteMinutes,
-                onConsume = onConsumeFocusComplete,
-                modifier = Modifier.align(Alignment.TopCenter),
+                onDiscoveryRadio = { showMore = false; onStartDiscoveryRadio() },
+                onAmbient = { showMore = false; onEnterAmbient() },
+                onLinerNotes = { showMore = false; showLinerNotes = true },
+                onFocus = { showMore = false; showFocusSheet = true },
+                onShareSession = { showMore = false; shareSession() },
+                onDismiss = { showMore = false },
             )
         }
-        return
-    }
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    val context = LocalContext.current
-    val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
-    var showQueue by remember { mutableStateOf(false) }
-    var menuOpen by remember { mutableStateOf(false) }
-
-    val songUrl = videoId?.let { "https://music.youtube.com/watch?v=$it" }
-
-    // Transparent root so the app-wide flowing GlowBackground (rendered behind the NavHost in
-    // MainActivity) shows through on this screen too. The previous opaque background + local
-    // radial wash hid it entirely.
-    Box(
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-        ) {
-            // ── Header ─────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Close", tint = colors.onBackground)
-                }
-                // When a sleep timer is armed, the centre shows a live countdown chip; otherwise
-                // the decorative drag handle.
-                if (sleepRemaining != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(colors.primary.copy(alpha = 0.14f))
-                            .clickable { showSleepSheet = true }
-                            .padding(horizontal = 12.dp, vertical = 5.dp),
-                    ) {
-                        Icon(
-                            Icons.Filled.Bedtime,
-                            contentDescription = "Sleep timer",
-                            tint = colors.primary,
-                            modifier = Modifier.size(14.dp),
-                        )
-                        Text(sleepRemaining, style = MaterialTheme.typography.labelMedium, color = colors.primary)
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(ext.muted.copy(alpha = 0.3f)),
-                    )
-                }
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Outlined.MoreVert, contentDescription = "More", tint = colors.onBackground)
-                    }
-                    DropdownMenu(
-                        expanded = menuOpen,
-                        onDismissRequest = { menuOpen = false },
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Share") },
-                            enabled = songUrl != null,
-                            onClick = {
-                                menuOpen = false
-                                if (songUrl != null) shareSong(context, title, artist, songUrl)
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Copy link") },
-                            enabled = songUrl != null,
-                            onClick = {
-                                menuOpen = false
-                                if (songUrl != null) copyToClipboard(context, songUrl)
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Share as image") },
-                            onClick = { menuOpen = false; showShareCard = true },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Ambient display") },
-                            onClick = { menuOpen = false; onEnterAmbient() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Liner notes") },
-                            onClick = { menuOpen = false; showLinerNotes = true },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Lyrics") },
-                            onClick = { menuOpen = false; onOpenLyrics() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Add to playlist…") },
-                            onClick = { menuOpen = false; onAddToPlaylist() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Share listening session") },
-                            onClick = { menuOpen = false; shareSession() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Start radio") },
-                            onClick = { menuOpen = false; onStartRadio() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Discovery radio") },
-                            onClick = { menuOpen = false; onStartDiscoveryRadio() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(if (sleepRemaining != null) "Sleep timer · $sleepRemaining" else "Sleep timer") },
-                            onClick = { menuOpen = false; showSleepSheet = true },
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    when {
-                                        focusActive && focusRemaining != null -> "Focus · $focusRemaining"
-                                        focusActive -> "Focus session · on"
-                                        else -> "Focus session"
-                                    }
-                                )
-                            },
-                            onClick = { menuOpen = false; showFocusSheet = true },
-                        )
-                        HorizontalDivider()
-                        if (isDownloaded) {
-                            DropdownMenuItem(
-                                text = { Text("Remove download") },
-                                onClick = { menuOpen = false; onRemoveDownload() },
-                            )
-                        } else {
-                            DropdownMenuItem(
-                                text = { Text(if (isDownloading) "Downloading…" else "Download") },
-                                enabled = !isDownloading,
-                                onClick = { menuOpen = false; onDownload() },
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── Artwork ────────────────────────────────────────────────────
-            // "Breathing" scale: 1.0 ↔ 1.012 on a 3-second loop while playback is active.
-            // Drives the entire artwork box (shadow + clip + image) via a single graphicsLayer
-            // so the shadow scales with the art instead of staying static under it. When paused
-            // the infinite transition pauses too — Compose stops emitting values, the scale
-            // freezes at whatever frame it was on.
-            val breathing = rememberInfiniteTransition(label = "artBreath")
-            val artScale by breathing.animateFloat(
-                initialValue = 1f,
-                targetValue = if (isPlaying && albumArtMotion) 1.012f else 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 3000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-                label = "artScale",
-            )
-            // Swipe the cover sideways to change tracks: it follows the finger with a damped
-            // drag and a hint of tilt, springs back on release, and fires next/previous once
-            // the pull crosses the threshold — the artwork itself becomes the skip control.
-            val scope = rememberCoroutineScope()
-            val artDrag = remember { Animatable(0f) }
-            val skipThresholdPx = with(LocalDensity.current) { 72.dp.toPx() }
-            // The cover also *grooves*: when reactivity is running, the live bass band gives the
-            // art a gentle kick on every beat, layered on top of the slow breathing scale.
-            val audioSignal = LocalAudioSignal.current
-            val liveBass = audioSignal?.collectAsState()?.value?.bass ?: 0f
-            val bassKick by animateFloatAsState(
-                targetValue = if (isPlaying) 1f + 0.022f * liveBass else 1f,
-                animationSpec = tween(durationMillis = 110, easing = LinearEasing),
-                label = "artBassKick",
-            )
-            // Vinyl spin: a slow, continuous rotation (~24 s / revolution) while playing. Driven by a
-            // frame loop keyed on isPlaying/albumArtMotion, so it pauses (holds its angle) when the
-            // music stops or the user disables cover motion — no wasted frames.
-            var vinylAngle by remember { mutableFloatStateOf(0f) }
-            LaunchedEffect(isPlaying, albumArtMotion) {
-                if (!(isPlaying && albumArtMotion)) return@LaunchedEffect
-                var prev = 0L
-                while (true) {
-                    withFrameNanos { now ->
-                        if (prev != 0L) vinylAngle = (vinylAngle + (now - prev) / 1e9f * 15f) % 360f
-                        prev = now
-                    }
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .padding(top = 24.dp, bottom = 20.dp)
-                    .size(280.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .graphicsLayer {
-                        scaleX = artScale * bassKick
-                        scaleY = artScale * bassKick
-                        translationX = artDrag.value * 0.55f
-                        rotationZ = vinylAngle + artDrag.value * 0.004f
-                    }
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                val pull = artDrag.value
-                                scope.launch {
-                                    if (pull <= -skipThresholdPx) onNext()
-                                    else if (pull >= skipThresholdPx) onPrevious()
-                                    artDrag.animateTo(
-                                        0f,
-                                        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                                    )
-                                }
-                            },
-                            onDragCancel = { scope.launch { artDrag.animateTo(0f, spring()) } },
-                        ) { change, delta ->
-                            change.consume()
-                            scope.launch { artDrag.snapTo(artDrag.value + delta) }
-                        }
-                    }
-                    // Circular vinyl with a soft accent glow behind (tinted shadow, drawn past bounds).
-                    .shadow(
-                        elevation = 24.dp,
-                        shape = CircleShape,
-                        clip = false,
-                        ambientColor = colors.primary.copy(alpha = 0.5f),
-                        spotColor = colors.primary.copy(alpha = 0.5f),
-                    )
-                    .clip(CircleShape)
-                    .background(colors.surfaceVariant),
-            ) {
-                if (artworkUrl != null) {
-                    AsyncImage(
-                        // Crossfade so the cover dissolves between the YT thumbnail and the higher-res
-                        // iTunes art (and between tracks) instead of flashing to black on the swap.
-                        model = ImageRequest.Builder(context)
-                            .data(artworkUrl)
-                            .crossfade(320)
-                            .build(),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    // Themed gradient placeholder so the canvas is never blank.
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(listOf(colors.primary, colors.tertiary))
-                            )
-                    )
-                }
-                // Vinyl texture over the art: faint concentric grooves, an accent "label" ring, and a
-                // spindle hole. Subtle so the cover stays the hero — it just reads as a record.
-                Canvas(Modifier.matchParentSize()) {
-                    val c = center
-                    val maxR = size.minDimension / 2f
-                    for (i in 1..18) {
-                        drawCircle(Color.Black, radius = maxR * i / 18f, center = c, alpha = 0.06f, style = Stroke(width = 1f))
-                    }
-                    drawCircle(colors.primary, radius = maxR * 0.19f, center = c, alpha = 0.9f, style = Stroke(width = 2f))
-                    drawCircle(Color.Black, radius = maxR * 0.035f, center = c, alpha = 0.55f)
-                }
-            }
-
-            // ── Track info ─────────────────────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = colors.onBackground,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = artist,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ext.muted,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            // ── Progress ───────────────────────────────────────────────────
-            // Real scrubbing: tap to jump, or press and drag anywhere on the bar — the fill,
-            // thumb and elapsed label follow the finger live, and the seek fires on release.
-            // The scrub fraction is local UI state so dragging never fights the position ticks.
-            var scrubFrac by remember { mutableStateOf<Float?>(null) }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                // Smooth progress interpolation: the underlying `progress` value updates in
-                // discrete ~500 ms steps from the playback service. Animating the visible fill
-                // with a linear 500 ms tween makes it glide continuously between updates.
-                val animatedProgress by animateFloatAsState(
-                    targetValue = progress,
-                    animationSpec = tween(durationMillis = 500, easing = LinearEasing),
-                    label = "seekBarFill",
-                )
-                val shownFrac = (scrubFrac ?: animatedProgress).coerceIn(0f, 1f)
-                val thumbRadius by animateDpAsState(
-                    targetValue = if (scrubFrac != null) 7.dp else 4.5.dp,
-                    label = "seekThumb",
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        // Generous touch target; the visible track stays slim.
-                        .height(26.dp)
-                        .pointerInput(durationMs) {
-                            detectTapGestures { offset ->
-                                if (durationMs > 0) {
-                                    val fraction = (offset.x / size.width).coerceIn(0f, 1f)
-                                    onSeek((fraction * durationMs).toLong())
-                                }
-                            }
-                        }
-                        .pointerInput(durationMs) {
-                            detectHorizontalDragGestures(
-                                onDragStart = { offset ->
-                                    scrubFrac = (offset.x / size.width).coerceIn(0f, 1f)
-                                },
-                                onDragEnd = {
-                                    scrubFrac?.let { if (durationMs > 0) onSeek((it * durationMs).toLong()) }
-                                    scrubFrac = null
-                                },
-                                onDragCancel = { scrubFrac = null },
-                            ) { change, _ ->
-                                change.consume()
-                                scrubFrac = (change.position.x / size.width).coerceIn(0f, 1f)
-                            }
-                        },
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(colors.outlineVariant),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(shownFrac)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            // Accent-gradient fill — the "thread".
-                            .background(Brush.horizontalGradient(listOf(colors.primary.copy(alpha = 0.55f), colors.primary))),
-                    )
-                    // Thumb — rides the fill's edge and swells under the finger while scrubbing, with
-                    // a soft accent glow ring behind it.
-                    Canvas(Modifier.matchParentSize()) {
-                        val cx = Offset(size.width * shownFrac, size.height / 2f)
-                        drawCircle(color = colors.primary, radius = thumbRadius.toPx() * 2.2f, center = cx, alpha = 0.22f)
-                        drawCircle(color = colors.primary, radius = thumbRadius.toPx(), center = cx)
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    // While scrubbing, the elapsed label previews the target position in accent.
-                    val previewMs = scrubFrac?.let { (it * durationMs).toLong() } ?: positionMs
-                    Text(
-                        formatTime(previewMs),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (scrubFrac != null) colors.primary else ext.muted,
-                    )
-                    Text(formatTime(durationMs), style = MaterialTheme.typography.labelSmall, color = ext.muted)
-                }
-            }
-
-            // ── Controls ───────────────────────────────────────────────────
-            // SpaceEvenly distributes the five controls (shuffle · prev · PLAY · next · repeat)
-            // with equal gaps including edges — adaptive to width, always centered.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onToggleShuffle) {
-                    Icon(
-                        Icons.Filled.Shuffle,
-                        contentDescription = "Shuffle",
-                        tint = if (shuffleEnabled) colors.primary else ext.muted,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                // Skip buttons punch in their direction and spring back — kinetic confirmation
-                // that matches the artwork sliding the same way.
-                val prevNudge = remember { Animatable(0f) }
-                IconButton(onClick = {
-                    scope.launch {
-                        prevNudge.snapTo(-9f)
-                        prevNudge.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-                    }
-                    onPrevious()
-                }) {
-                    Icon(
-                        Icons.Filled.SkipPrevious,
-                        contentDescription = "Previous",
-                        tint = colors.onBackground,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .graphicsLayer { translationX = prevNudge.value.dp.toPx() },
-                    )
-                }
-                // The play button is the page's heartbeat: it pops with a spring on every toggle,
-                // swells with the live bass while music plays, and the play/pause glyph morphs
-                // through a scale+fade instead of cutting.
-                val playPop = remember { Animatable(1f) }
-                LaunchedEffect(isPlaying) {
-                    playPop.snapTo(0.84f)
-                    playPop.animateTo(
-                        1f,
-                        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                    )
-                }
-                val playBass by animateFloatAsState(
-                    targetValue = if (isPlaying) 1f + 0.055f * liveBass else 1f,
-                    animationSpec = tween(durationMillis = 110, easing = LinearEasing),
-                    label = "playBass",
-                )
-                // Liquid-glass "droplet": a frosted translucent-accent circle floating over the wash —
-                // a subtle accent outline + a soft inner refraction gradient, no glow/specular. The
-                // bright accent glyph is the focal point.
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .graphicsLayer {
-                            val s = playPop.value * playBass
-                            scaleX = s
-                            scaleY = s
-                        }
-                        .clip(CircleShape)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(colors.primary.copy(alpha = 0.34f), colors.primary.copy(alpha = 0.18f))
-                            )
-                        )
-                        .border(1.5.dp, colors.primary.copy(alpha = 0.60f), CircleShape)
-                        .clickable(onClick = onTogglePlay),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    AnimatedContent(
-                        targetState = isPlaying,
-                        transitionSpec = {
-                            (scaleIn(initialScale = 0.55f, animationSpec = tween(180)) + fadeIn(tween(120))) togetherWith
-                                (scaleOut(targetScale = 0.55f, animationSpec = tween(140)) + fadeOut(tween(100)))
-                        },
-                        label = "playIconMorph",
-                    ) { playing ->
-                        Icon(
-                            imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (playing) "Pause" else "Play",
-                            tint = colors.primary,
-                            modifier = Modifier.size(34.dp),
-                        )
-                    }
-                }
-                val nextNudge = remember { Animatable(0f) }
-                IconButton(onClick = {
-                    scope.launch {
-                        nextNudge.snapTo(9f)
-                        nextNudge.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-                    }
-                    onNext()
-                }) {
-                    Icon(
-                        Icons.Filled.SkipNext,
-                        contentDescription = "Next",
-                        tint = colors.onBackground,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .graphicsLayer { translationX = nextNudge.value.dp.toPx() },
-                    )
-                }
-                IconButton(onClick = onCycleRepeat) {
-                    Icon(
-                        imageVector = if (repeatMode == Player.REPEAT_MODE_ONE)
-                            Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-                        contentDescription = "Repeat",
-                        tint = if (repeatMode != Player.REPEAT_MODE_OFF) colors.primary else ext.muted,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
-
-            // ── Action row ─────────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Liking a song fires a small particle burst from behind the heart.
-                Box(contentAlignment = Alignment.Center) {
-                    LikeBurst(active = isLiked)
-                    ActionButton(
-                        icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        label = "Like",
-                        tinted = isLiked,
-                        onClick = onToggleLike,
-                    )
-                }
-                ActionButton(icon = Icons.Filled.Radio, label = "Radio", onClick = onStartRadio)
-                ActionButton(icon = Icons.Outlined.Lyrics, label = "Lyrics", onClick = onOpenLyrics)
-                ActionButton(
-                    icon = Icons.Filled.QueueMusic,
-                    label = if (showQueue) "Hide" else "Queue",
-                    tinted = showQueue,
-                    onClick = { showQueue = !showQueue },
-                )
-            }
-
-            // ── Up next (queue) ───────────────────────────────────────────
-            if (showQueue && queue.size > 1) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp, bottom = 20.dp),
-                ) {
-                    Text(
-                        text = "Up next",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = colors.onBackground,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                    )
-                    queue.forEachIndexed { index, item ->
-                        QueueRow(
-                            item = item,
-                            isCurrent = index == currentIndex,
-                            onClick = { onPlayQueueItem(index) },
-                            onRemove = { onRemoveQueueItem(index) },
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-        }
-
         if (showShareCard) {
             NowPlayingShareOverlay(
                 title = title,
@@ -792,53 +213,38 @@ fun NowPlayingScreen(
                 onDismiss = { showShareCard = false },
             )
         }
+        if (showLinerNotes) {
+            LinerNotesSheet(
+                title = title,
+                artist = artist,
+                artworkUrl = artworkUrl,
+                onDismiss = { showLinerNotes = false },
+            )
+        }
+        if (showFocusSheet) {
+            FocusSheet(
+                active = focusActive,
+                remaining = focusRemaining,
+                onStart = { onStartFocus(it); showFocusSheet = false },
+                onEnd = { onEndFocus(); showFocusSheet = false },
+                onDismiss = { showFocusSheet = false },
+            )
+        }
+        if (showSleepSheet) {
+            SleepTimerSheet(
+                active = sleepTimerEndAt != null,
+                remaining = sleepRemaining,
+                onPick = { minutes -> onSetSleepTimer(minutes * 60_000L); showSleepSheet = false },
+                onWindDown = { minutes -> onWindDown(minutes * 60_000L); showSleepSheet = false },
+                onEndOfTrack = { onSleepTimerEndOfTrack(); showSleepSheet = false },
+                onCancel = { onSetSleepTimer(null); showSleepSheet = false },
+                onDismiss = { showSleepSheet = false },
+            )
+        }
         FocusCompleteBanner(
             minutes = focusCompleteMinutes,
             onConsume = onConsumeFocusComplete,
             modifier = Modifier.align(Alignment.TopCenter),
-        )
-    }
-
-    if (showLinerNotes) {
-        LinerNotesSheet(
-            title = title,
-            artist = artist,
-            artworkUrl = artworkUrl,
-            onDismiss = { showLinerNotes = false },
-        )
-    }
-
-    if (showSleepSheet) {
-        SleepTimerSheet(
-            active = sleepTimerEndAt != null,
-            remaining = sleepRemaining,
-            onPick = { minutes ->
-                onSetSleepTimer(minutes * 60_000L)
-                showSleepSheet = false
-            },
-            onWindDown = { minutes ->
-                onWindDown(minutes * 60_000L)
-                showSleepSheet = false
-            },
-            onEndOfTrack = {
-                onSleepTimerEndOfTrack()
-                showSleepSheet = false
-            },
-            onCancel = {
-                onSetSleepTimer(null)
-                showSleepSheet = false
-            },
-            onDismiss = { showSleepSheet = false },
-        )
-    }
-
-    if (showFocusSheet) {
-        FocusSheet(
-            active = focusActive,
-            remaining = focusRemaining,
-            onStart = { onStartFocus(it); showFocusSheet = false },
-            onEnd = { onEndFocus(); showFocusSheet = false },
-            onDismiss = { showFocusSheet = false },
         )
     }
 }
