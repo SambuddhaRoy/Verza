@@ -23,6 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.audio.AudioVisualizer
+import com.verza.ui.expressive.LocalExpressiveColors
+import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.audio.HapticPlayer
 import com.verza.audio.VisualizerSignal
 import com.verza.data.SessionInbox
@@ -212,6 +214,8 @@ class MainActivity : ComponentActivity() {
                     LocalSleeveMode provides sleeveMode,
                     LocalCoverColors provides chromeCover,
                     LocalArtworkColors provides artworkColors,
+                    // Same sampled cover, but with the contrast contract applied — see ExpressiveColors.
+                    LocalExpressiveColors provides expressiveColorsFrom(artworkColors),
                     // Any composable can ride the music: same gated flow the glow uses.
                     LocalAudioSignal provides (if (shouldVisualize) visualizerSignalFlow else null),
                 ) {
