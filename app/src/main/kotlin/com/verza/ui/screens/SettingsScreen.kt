@@ -4,6 +4,10 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.verza.ui.expressive.BodyStrong
+import com.verza.ui.expressive.BodyText
+import com.verza.ui.expressive.CoverShapeMode
+import com.verza.ui.expressive.ExpressiveChipRow
 import com.verza.ui.expressive.HeroTitle
 import com.verza.ui.expressive.LocalExpressiveColors
 import androidx.compose.foundation.background
@@ -77,6 +81,7 @@ fun SettingsScreen(
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
     val downloadTree by viewModel.downloadTree.collectAsStateWithLifecycle()
+    val coverShape by viewModel.coverShape.collectAsStateWithLifecycle()
     var showResetStatsDialog by remember { mutableStateOf(false) }
 
     // ── Library backup (export / import) ────────────────────────────────────────
@@ -359,6 +364,32 @@ fun SettingsScreen(
             }
         }
 
+
+        // ── Now Playing ──────────────────────────────────────────────────────
+        item { SectionHeader("Now Playing") }
+        item {
+            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                Text(
+                    text = "Cover shape",
+                    style = BodyStrong,
+                    color = xc.onContainer,
+                    modifier = Modifier.padding(start = 20.dp, bottom = 2.dp),
+                )
+                Text(
+                    text = "The silhouette the album art is masked with. \"Change each track\" morphs " +
+                        "into a new one as the song changes.",
+                    style = BodyText,
+                    color = xc.onContainerMuted,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
+                )
+                ExpressiveChipRow(
+                    options = CoverShapeMode.entries.toList(),
+                    selected = coverShape,
+                    label = { it.label },
+                    onSelect = { viewModel.setCoverShape(it) },
+                )
+            }
+        }
 
         // ── Downloads ────────────────────────────────────────────────────────
         item { SectionHeader("Downloads") }

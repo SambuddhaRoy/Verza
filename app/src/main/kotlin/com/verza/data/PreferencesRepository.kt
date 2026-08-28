@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.verza.di.ApplicationScope
 import com.verza.innertube.AudioQuality
 import com.verza.innertube.InnerTube
+import com.verza.ui.expressive.CoverShapeMode
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowIntensity
 import com.verza.ui.theme.GlowStyle
@@ -71,6 +72,9 @@ class PreferencesRepository @Inject constructor(
     // SAF tree Uri for the folder downloads are written to. Blank = app-private storage, which is
     // where they used to go unconditionally: invisible to other apps and wiped on uninstall.
     private val downloadTreeKey = stringPreferencesKey("download_tree_uri")
+    // Which silhouette the album art is masked with. Defaults to SHUFFLE — the shape changing per
+    // track is the point of having it at all.
+    private val coverShapeKey = stringPreferencesKey("cover_shape_mode")
     // ── Sound suite (equaliser / bass / loudness) ──────────────────────────────
     private val eqEnabledKey = booleanPreferencesKey("eq_enabled")
     private val eqBandsKey = stringPreferencesKey("eq_band_levels") // JSON List<Int> (millibels)
@@ -141,6 +145,9 @@ class PreferencesRepository @Inject constructor(
     val sleeveModeFlow: Flow<Boolean> = store.data.map { it[sleeveModeKey] ?: false }
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
+
+    val coverShapeFlow: Flow<CoverShapeMode> =
+        store.data.map { CoverShapeMode.fromName(it[coverShapeKey]) }
 
     /** Subtle vibration synced to the music's bass. Reads playback audio only (same as the glow). */
     val hapticsEnabledFlow: Flow<Boolean> = store.data.map { it[hapticsKey] ?: false }
@@ -248,6 +255,10 @@ class PreferencesRepository @Inject constructor(
     }
 
     suspend fun downloadTree(): String = store.data.first()[downloadTreeKey].orEmpty()
+
+    suspend fun setCoverShape(mode: CoverShapeMode) {
+        store.edit { it[coverShapeKey] = mode.name }
+    }
 
     suspend fun setHapticsEnabled(enabled: Boolean) {
         store.edit { it[hapticsKey] = enabled }
