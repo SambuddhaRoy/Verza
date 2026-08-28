@@ -2,15 +2,14 @@ package com.verza.ui.expressive
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -28,25 +27,24 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
 
 /**
- * The control vocabulary: a filled shape, a glyph, and a spring on press.
+ * The control vocabulary: a filled shape, a glyph or a word, and a spring on press.
  *
- * These are deliberately not M3 Buttons. The reference's play control is a 96dp-tall pill and its
- * shuffle is a scalloped circle — sizes and shapes the stock components fight rather than express,
- * and skinning them back out is more code than drawing them.
+ * Not M3 Buttons. The reference's play control is a ~90dp labelled pill and its shuffle is a
+ * scalloped circle — sizes and shapes the stock components fight rather than express, so skinning
+ * them back out would be more code than drawing them.
  *
- * Every one takes a contentDescription. The old player had icon-only controls with none, which made
- * the whole screen opaque to TalkBack; readability is not only about contrast.
+ * Every one takes a contentDescription. The screens these replace had icon-only rows with none,
+ * which made the player opaque to TalkBack; legibility is not only a contrast problem.
  */
 @Composable
 private fun pressScale(interaction: MutableInteractionSource): Float {
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.93f else 1f,
-        animationSpec = ExpressiveMotion.bouncy(),
+        // Spatial: this moves something, so it is allowed to overshoot on release.
+        animationSpec = ExpressiveMotion.spatialDefault(),
         label = "pressScale",
     )
     return scale
@@ -85,31 +83,40 @@ fun ExpressiveControl(
     }
 }
 
-/** The play/pause control: a wide pill, the largest target on the screen because it is the one you hit most. */
+/**
+ * The play control: a wide pill with a word in it, not an icon.
+ *
+ * Spelling it out is the reference's choice and it is a good one — it is the only control on the
+ * screen you look for rather than glance at, and a word is faster to find than a glyph among a row
+ * of other glyphs.
+ */
 @Composable
 fun PlayPill(
     playing: Boolean,
     onClick: () -> Unit,
-    icon: ImageVector,
     container: Color,
     content: Color,
     modifier: Modifier = Modifier,
 ) {
-    ExpressiveControl(
-        onClick = onClick,
-        icon = icon,
-        contentDescription = if (playing) "Pause" else "Play",
-        container = container,
-        content = content,
-        shape = PillShape,
-        iconSize = 40.dp,
-        modifier = modifier.height(92.dp),
-    )
+    val interaction = remember { MutableInteractionSource() }
+    val scale = pressScale(interaction)
+    val label = if (playing) "PAUSE" else "PLAY"
+    Box(
+        modifier = modifier
+            .scale(scale)
+            .clip(PillShape)
+            .background(container)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .semantics { contentDescription = if (playing) "Pause" else "Play" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = label, style = PillLabel, color = content)
+    }
 }
 
 /**
- * The bottom pill of secondary actions. One row, always visible, so the things that used to hide
- * behind an overflow menu are simply on screen.
+ * The row of secondary actions. One row, always visible, so what used to hide behind an overflow
+ * menu is simply on screen.
  */
 @Composable
 fun ExpressiveToolbar(
@@ -120,8 +127,8 @@ fun ExpressiveToolbar(
     Row(
         modifier = modifier
             .clip(PillShape)
-            .background(colors.elevated)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .background(colors.surface)
+            .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -130,11 +137,11 @@ fun ExpressiveToolbar(
                 onClick = item.onClick,
                 icon = item.icon,
                 contentDescription = item.label,
-                container = if (item.active) colors.accent.copy(alpha = 0.22f) else Color.Transparent,
-                content = if (item.active) colors.accent else colors.inkMuted,
+                container = if (item.active) colors.accent else Color.Transparent,
+                content = if (item.active) colors.onAccent else colors.onSurface,
                 shape = CircleShape,
                 iconSize = 21.dp,
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(46.dp),
             )
         }
     }
@@ -147,7 +154,7 @@ data class ToolbarItem(
     val active: Boolean = false,
 )
 
-/** A labelled row for the "more" sheet — icon, name, and an optional value on the right. */
+/** A labelled row for a sheet — icon, name, optional value on the right. */
 @Composable
 fun ExpressiveSheetRow(
     icon: ImageVector,
@@ -160,7 +167,7 @@ fun ExpressiveSheetRow(
 ) {
     Row(
         modifier = modifier
-            .clip(ExpressiveCornerSmall)
+            .clip(ShapeMedium)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -169,23 +176,15 @@ fun ExpressiveSheetRow(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (active) colors.accent else colors.inkMuted,
+            tint = if (active) colors.accent else colors.onSurface,
             modifier = Modifier.size(22.dp),
         )
         Text(
             text = label,
-            color = if (active) colors.accent else colors.ink,
-            fontSize = 16.sp,
+            style = BodyText,
+            color = if (active) colors.accent else colors.onSurface,
             modifier = Modifier.weight(1f),
         )
-        if (value != null) {
-            Text(text = value, color = colors.inkFaint, fontSize = 14.sp)
-        }
+        if (value != null) Text(text = value, style = Timecode, color = colors.onSurface)
     }
-}
-
-/** Spacer helper so the transport row's gaps stay in one place. */
-@Composable
-fun ControlGap(width: Dp = 12.dp) {
-    Box(modifier = Modifier.width(width))
 }

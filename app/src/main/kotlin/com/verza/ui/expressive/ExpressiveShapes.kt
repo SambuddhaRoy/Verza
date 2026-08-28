@@ -1,7 +1,7 @@
 package com.verza.ui.expressive
 
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
@@ -15,82 +15,105 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * The shape and motion vocabulary.
+ * Shape and motion.
  *
- * Material 3 Expressive ships these as `MaterialShapes` and `MotionScheme`, but in material3 1.4.0
- * both are internal, and the version that exposes them needs an AGP 9 upgrade. They are a path and
- * two spring specs, so they are cheaper to draw than to chase.
+ * Material 3 Expressive ships these as `MaterialShapes` and `MotionScheme`. Both are internal in
+ * material3 1.4.0, and the release that exposes them needs an AGP 9 upgrade (proven on
+ * chore/agp9-spike). A scalloped path and a table of spring constants are cheaper to draw than to
+ * chase, so they are here.
  *
- * ponytail: hand-rolled deliberately. Swap for MaterialShapes/MotionScheme once the expressive API
- * is public in a release that does not force the toolchain jump.
+ * ponytail: swap for MaterialShapes/MotionScheme when the expressive API is public in a release that
+ * does not force the toolchain jump.
  */
 
 /**
- * A scalloped circle — the shuffle button in the reference. The lobes are what stop a row of round
- * controls reading as a row of identical dots; shape is doing the work an extra colour would
- * otherwise have to.
+ * A scalloped blob — the artwork mask in the reference, and the shuffle button at a smaller size.
+ *
+ * Lobes are placed on an *ellipse* rather than a circle, so the same shape reads as a cookie in a
+ * square box and as a cloud in a wide one. That is the single knob that makes it work for both.
  */
-class CookieShape(private val lobes: Int = 9, private val depth: Float = 0.12f) : Shape {
+class ScallopShape(
+    private val lobes: Int = 9,
+    private val depth: Float = 0.12f,
+) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         val cx = size.width / 2f
         val cy = size.height / 2f
-        val outer = minOf(cx, cy)
-        val inner = outer * (1f - depth)
+        val innerScale = 1f - depth
         val path = Path()
-        // Two samples per lobe (crest, trough) through a smooth curve reads as scalloped rather than
-        // spiky; a straight lineTo between them would give a cog.
+        // Two samples per lobe (crest, trough) joined by a quadratic. A straight line between them
+        // would give a cog; the curve is what makes it read as soft.
         val steps = lobes * 2
         val step = (2 * PI / steps).toFloat()
-        for (i in 0 until steps) {
-            val r = if (i % 2 == 0) outer else inner
+        fun px(a: Float, rx: Float, ry: Float) = cx + rx * cos(a)
+        fun py(a: Float, rx: Float, ry: Float) = cy + ry * sin(a)
+
+        for (i in 0..steps) {
+            val crest = i % 2 == 0
+            val rx = if (crest) cx else cx * innerScale
+            val ry = if (crest) cy else cy * innerScale
             val a = i * step - (PI / 2).toFloat()
-            val x = cx + r * cos(a)
-            val y = cy + r * sin(a)
+            val x = px(a, rx, ry)
+            val y = py(a, rx, ry)
             if (i == 0) {
                 path.moveTo(x, y)
             } else {
-                // Control point on the midpoint angle at the mean radius rounds the lobe off.
-                val pa = a - step / 2f
-                val pr = (outer + inner) / 2f
-                path.quadraticBezierTo(cx + pr * cos(pa), cy + pr * sin(pa), x, y)
+                val midA = a - step / 2f
+                val midRx = cx * (1f + innerScale) / 2f
+                val midRy = cy * (1f + innerScale) / 2f
+                path.quadraticTo(px(midA, midRx, midRy), py(midA, midRx, midRy), x, y)
             }
         }
-        val a0 = -(PI / 2).toFloat()
-        val pa = a0 - step / 2f
-        val pr = (outer + inner) / 2f
-        path.quadraticBezierTo(cx + pr * cos(pa), cy + pr * sin(pa), cx + outer * cos(a0), cy + outer * sin(a0))
         path.close()
         return Outline.Generic(path)
     }
 }
 
-/** The corner radius the layout is built on. Artwork, cards and sheets all share it. */
-val ExpressiveCorner = RoundedCornerShape(28.dp)
-val ExpressiveCornerSmall = RoundedCornerShape(20.dp)
+/** The cover mask: few, deep lobes on a wide box reads as the reference's cloud. */
+val CloudShape = ScallopShape(lobes = 7, depth = 0.17f)
 
-/** A fully rounded rectangle. Used for the play control, which is a pill rather than a circle. */
+/** The small scalloped control (shuffle). More, shallower lobes so it stays legible at 52dp. */
+val CookieShape = ScallopShape(lobes = 9, depth = 0.13f)
+
+// ── shape scale ──────────────────────────────────────────────────────────────
+// M3's scale runs extraSmall 4 / small 8 / medium 12 / large 16 / extraLarge 24. Expressive pushes
+// the top end much further — the reference's cards and sheets are far rounder than 24dp — so the
+// large end is extended rather than replaced.
+val ShapeSmall = RoundedCornerShape(12.dp)
+val ShapeMedium = RoundedCornerShape(20.dp)
+val ShapeLarge = RoundedCornerShape(28.dp)
+val ShapeExtraLarge = RoundedCornerShape(36.dp)
+
+/** Fully rounded. The play control and every chip. */
 val PillShape = RoundedCornerShape(percent = 50)
 
+// Kept for call sites written against the first pass.
+val ExpressiveCorner = ShapeLarge
+val ExpressiveCornerSmall = ShapeMedium
+
 /**
- * Springs, not durations. The expressive motion system is characterised by overshoot — a control
- * that settles by bouncing slightly reads as physical, which is the whole point of the style.
+ * Springs, not durations.
+ *
+ * M3 Expressive splits motion two ways. *Spatial* animations move something — position, size,
+ * corner radius — and are allowed to overshoot, which is what gives the style its bounce. *Effects*
+ * animate colour and opacity, where overshoot is meaningless and would show up as a flash, so they
+ * are critically damped. Each has fast/default/slow.
  */
 object ExpressiveMotion {
-    /** For anything the finger is directly on: fast, barely any bounce. */
-    fun <T> snappy() = spring<T>(
-        dampingRatio = 0.82f,
-        stiffness = Spring.StiffnessMediumLow,
-    )
+    // Spatial: damping below 1 so it overshoots and settles.
+    fun <T> spatialFast() = spring<T>(dampingRatio = 0.75f, stiffness = 1400f)
+    fun <T> spatialDefault() = spring<T>(dampingRatio = 0.72f, stiffness = 700f)
+    fun <T> spatialSlow() = spring<T>(dampingRatio = 0.70f, stiffness = 300f)
 
-    /** For things that appear or change size — the play/pause morph, toolbar reveals. */
-    fun <T> bouncy() = spring<T>(
-        dampingRatio = 0.55f,
-        stiffness = Spring.StiffnessLow,
-    )
+    // Effects: critically damped. Colour must never overshoot — it reads as a flicker.
+    fun <T> effectsFast() = spring<T>(dampingRatio = 1f, stiffness = 1400f)
+    fun <T> effectsDefault() = spring<T>(dampingRatio = 1f, stiffness = 700f)
+    fun <T> effectsSlow() = spring<T>(dampingRatio = 1f, stiffness = Spring.StiffnessLow)
 
-    /** Slow ambient drift: the glow, the artwork's idle motion. */
-    fun <T> ambient() = spring<T>(
-        dampingRatio = 1f,
-        stiffness = 40f,
-    )
+    /** Slow ambient drift for the glow and the artwork's idle motion. */
+    fun <T> ambient() = spring<T>(dampingRatio = 1f, stiffness = 40f)
+
+    // Aliases used by the first pass.
+    fun <T> snappy() = spatialFast<T>()
+    fun <T> bouncy() = spatialDefault<T>()
 }

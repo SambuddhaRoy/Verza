@@ -7,29 +7,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Repeat
@@ -46,30 +43,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import kotlinx.coroutines.flow.MutableStateFlow
 import com.verza.audio.VisualizerSignal
 import com.verza.ui.theme.LocalAudioSignal
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * Now Playing.
+ * Now Playing, laid out against the Material 3 Expressive reference.
  *
- * The old screen put the controls *on* the artwork and tinted the text with colours sampled from
- * it, which is why it was unreadable: contrast changed with every track and nothing enforced a
- * floor. Here the artwork is a picture, in a box, with nothing written on it, and everything you
- * have to read sits below it on a near-black canvas at fixed contrast. The cover still drives the
- * colour — it just drives the parts where being wrong is a matter of taste rather than legibility.
+ * Four things carry the style, and all four are choices the old screen did not make. The background
+ * is a saturated cover-derived colour rather than a dark neutral. The artwork is masked to a
+ * scalloped cloud rather than a rectangle. The title is set enormous in an italic display serif and
+ * is the largest thing on the screen by a wide margin. And the transport wraps asymmetrically —
+ * a labelled PLAY pill beside one round skip, the other skip dropping to the next row beside the
+ * seek bar — instead of sitting as three evenly spaced circles.
  *
- * The second change is that the actions are on screen. Lyrics, radio, download and the sleep timer
- * used to be behind an overflow menu, which meant most of what the player could do was invisible
- * unless you went looking.
+ * Readability is not left to the cover. See ExpressiveColors: every text/background pair here is
+ * chosen by measured contrast and held above 4.5:1, which is checked across the whole hue wheel by
+ * ExpressiveColorsTest rather than trusted.
  */
 @Composable
 fun NowPlayingExpressive(
@@ -105,248 +101,228 @@ fun NowPlayingExpressive(
 ) {
     val colors = LocalExpressiveColors.current
 
-    // The glow breathes with the low end. Read straight off the signal the app already runs for the
-    // background — no second visualizer, and it is null (so still) when nothing is playing.
-    // A still fallback so the collect is unconditional — a composable call behind ?. changes the
-    // call graph between recompositions, which Compose does not allow.
+    // The artwork breathes with the low end, read off the signal the app already runs for the glow.
+    // A still fallback keeps the collect unconditional — a composable call behind ?. would change
+    // the call graph between recompositions, which Compose does not allow.
     val stillSignal = remember { MutableStateFlow(VisualizerSignal()) }
     val signal by (LocalAudioSignal.current ?: stillSignal).collectAsState()
-
     val bass = signal.bass
-    val glowStrength by animateFloatAsState(
-        targetValue = if (isPlaying) 0.14f + bass * 0.16f else 0.10f,
+
+    val artScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1f + bass * 0.035f else 1f,
         animationSpec = ExpressiveMotion.ambient(),
-        label = "glow",
+        label = "artPulse",
     )
 
     val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.canvas),
+            .background(colors.container)
+            .windowInsetsPadding(WindowInsets.systemBars)
+            .padding(horizontal = 20.dp),
     ) {
-        // Ambient wash. Sits behind everything and never behind text — the copy below is on the
-        // flat canvas, so the glow cannot eat into its contrast.
+        // ── top row ──────────────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ExpressiveControl(
+                onClick = onBack,
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                container = colors.surface,
+                content = colors.onSurface,
+                iconSize = 22.dp,
+                modifier = Modifier.size(46.dp),
+            )
+            Spacer(Modifier.weight(1f))
+            ExpressiveControl(
+                onClick = onShare,
+                icon = Icons.Filled.Share,
+                contentDescription = "Share",
+                container = colors.surface,
+                content = colors.onSurface,
+                iconSize = 20.dp,
+                modifier = Modifier.size(46.dp),
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // ── artwork, masked to a cloud ───────────────────────────────────────────
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.55f to colors.glow.copy(alpha = glowStrength * 0.35f),
-                        1f to colors.glow.copy(alpha = glowStrength),
-                    )
-                )
+                .fillMaxWidth()
+                .weight(1f, fill = false)
+                .aspectRatio(1.18f)
+                .clip(CloudShape),
+        ) {
+            AsyncImage(
+                model = artworkUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.surface)
+                    .scale(artScale),
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // ── the name, doing the shouting ─────────────────────────────────────────
+        Text(
+            text = title,
+            style = HeroDisplay,
+            color = colors.accent,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = artist,
+            style = BodyStrong,
+            color = colors.onContainerMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 16.dp),
+        Spacer(Modifier.height(14.dp))
+
+        // ── transport, wrapped asymmetrically like the reference ─────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // ── artwork ──────────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .aspectRatio(0.82f)
-                    .clip(ExpressiveCorner)
-                    .background(colors.elevated),
-            ) {
-                AsyncImage(
-                    model = artworkUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                ExpressiveControl(
-                    onClick = onBack,
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    container = Color.Black.copy(alpha = 0.42f),
-                    content = Color.White,
-                    iconSize = 22.dp,
-                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp).size(44.dp),
-                )
-                ExpressiveControl(
-                    onClick = onShare,
-                    icon = Icons.Filled.Share,
-                    contentDescription = "Share",
-                    container = Color.Black.copy(alpha = 0.42f),
-                    content = Color.White,
-                    iconSize = 20.dp,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).size(44.dp),
-                )
-            }
+            PlayPill(
+                playing = isPlaying,
+                onClick = onTogglePlay,
+                container = colors.accent,
+                content = colors.onAccent,
+                modifier = Modifier.weight(1f).height(84.dp),
+            )
+            ExpressiveControl(
+                onClick = onPrevious,
+                icon = Icons.Filled.SkipPrevious,
+                contentDescription = "Previous track",
+                container = colors.accent,
+                content = colors.onAccent,
+                iconSize = 32.dp,
+                modifier = Modifier.size(84.dp),
+            )
+        }
 
-            Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(12.dp))
 
-            // ── title, artist, and the two per-track actions ──────────────────────
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        color = colors.ink,
-                        fontSize = 27.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        text = artist,
-                        color = colors.inkMuted,
-                        fontSize = 15.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                ExpressiveControl(
-                    onClick = onToggleLike,
-                    icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = if (isLiked) "Remove from liked songs" else "Add to liked songs",
-                    container = colors.elevated,
-                    content = if (isLiked) colors.accent else colors.ink,
-                    iconSize = 21.dp,
-                    modifier = Modifier.size(46.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                ExpressiveControl(
-                    onClick = onAddToPlaylist,
-                    icon = Icons.Filled.PlaylistAdd,
-                    contentDescription = "Add to playlist",
-                    container = colors.elevated,
-                    content = colors.ink,
-                    iconSize = 22.dp,
-                    modifier = Modifier.size(46.dp),
-                )
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            // ── position ──────────────────────────────────────────────────────────
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ExpressiveControl(
+                onClick = onNext,
+                icon = Icons.Filled.SkipNext,
+                contentDescription = "Next track",
+                container = colors.accent,
+                content = colors.onAccent,
+                iconSize = 32.dp,
+                modifier = Modifier.size(78.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
                 WavySeekBar(
                     progress = progress,
                     onSeek = { f -> onSeek((f * durationMs).toLong()) },
                     accent = colors.accent,
-                    trackColor = colors.line,
+                    trackColor = colors.accentMuted,
                     animating = isPlaying,
                     amplitude = 0.35f + bass * 0.65f,
-                    modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = formatDuration(durationMs - positionMs),
-                    color = colors.inkFaint,
-                    fontSize = 13.sp,
-                )
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(formatDuration(positionMs), style = Timecode, color = colors.onContainerMuted)
+                    Spacer(Modifier.weight(1f))
+                    Text(formatDuration(durationMs), style = Timecode, color = colors.onContainerMuted)
+                }
             }
-
-            Spacer(Modifier.height(14.dp))
-
-            // ── transport ─────────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PlayPill(
-                    playing = isPlaying,
-                    onClick = onTogglePlay,
-                    icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    container = colors.accent,
-                    content = colors.onAccent,
-                    modifier = Modifier.weight(1f),
-                )
-                ExpressiveControl(
-                    onClick = onPrevious,
-                    icon = Icons.Filled.SkipPrevious,
-                    contentDescription = "Previous track",
-                    container = colors.accent,
-                    content = colors.onAccent,
-                    iconSize = 32.dp,
-                    modifier = Modifier.size(92.dp),
-                )
-                ExpressiveControl(
-                    onClick = onNext,
-                    icon = Icons.Filled.SkipNext,
-                    contentDescription = "Next track",
-                    container = colors.accent,
-                    content = colors.onAccent,
-                    iconSize = 32.dp,
-                    modifier = Modifier.size(92.dp),
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            // ── queue-shaping row ─────────────────────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ExpressiveControl(
-                    onClick = onToggleShuffle,
-                    icon = Icons.Filled.Shuffle,
-                    contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
-                    container = if (shuffleEnabled) colors.accent else colors.elevated,
-                    content = if (shuffleEnabled) colors.onAccent else colors.inkMuted,
-                    shape = CookieShape(),
-                    iconSize = 20.dp,
-                    modifier = Modifier.size(52.dp),
-                )
-                ExpressiveControl(
-                    onClick = onCycleRepeat,
-                    icon = if (repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-                    contentDescription = when (repeatMode) {
-                        1 -> "Repeat one"
-                        2 -> "Repeat all"
-                        else -> "Repeat off"
-                    },
-                    container = if (repeatMode != 0) colors.accent else colors.elevated,
-                    content = if (repeatMode != 0) colors.onAccent else colors.inkMuted,
-                    iconSize = 20.dp,
-                    modifier = Modifier.size(52.dp),
-                )
-                Spacer(Modifier.weight(1f))
-                ExpressiveControl(
-                    onClick = onOpenQueue,
-                    icon = Icons.AutoMirrored.Filled.QueueMusic,
-                    contentDescription = "Queue",
-                    container = colors.elevated,
-                    content = colors.ink,
-                    shape = ExpressiveCornerSmall,
-                    iconSize = 22.dp,
-                    modifier = Modifier.size(width = 62.dp, height = 52.dp),
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // ── everything that used to be in a menu ──────────────────────────────
-            ExpressiveToolbar(
-                items = listOf(
-                    ToolbarItem(Icons.Filled.Article, "Lyrics", onOpenLyrics),
-                    ToolbarItem(Icons.Filled.Radio, "Start radio", onStartRadio),
-                    ToolbarItem(
-                        icon = if (isDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
-                        label = if (isDownloaded) "Remove download" else "Download",
-                        onClick = if (isDownloaded) onRemoveDownload else onDownload,
-                        active = isDownloaded,
-                    ),
-                    ToolbarItem(Icons.Filled.Bedtime, "Sleep timer", onOpenSleepTimer, active = sleepTimerActive),
-                    ToolbarItem(Icons.Filled.MoreHoriz, "More", onOpenMore),
-                ),
-                colors = colors,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-
-            Spacer(Modifier.height(14.dp))
         }
+
+        Spacer(Modifier.height(14.dp))
+
+        // ── queue shaping + everything that used to be in a menu ─────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ExpressiveControl(
+                onClick = onToggleShuffle,
+                icon = Icons.Filled.Shuffle,
+                contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
+                container = if (shuffleEnabled) colors.accent else colors.surface,
+                content = if (shuffleEnabled) colors.onAccent else colors.onSurface,
+                shape = CookieShape,
+                iconSize = 20.dp,
+                modifier = Modifier.size(52.dp),
+            )
+            ExpressiveControl(
+                onClick = onCycleRepeat,
+                icon = if (repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                contentDescription = when (repeatMode) {
+                    1 -> "Repeat one"
+                    2 -> "Repeat all"
+                    else -> "Repeat off"
+                },
+                container = if (repeatMode != 0) colors.accent else colors.surface,
+                content = if (repeatMode != 0) colors.onAccent else colors.onSurface,
+                iconSize = 20.dp,
+                modifier = Modifier.size(52.dp),
+            )
+            ExpressiveControl(
+                onClick = onToggleLike,
+                icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                contentDescription = if (isLiked) "Remove from liked songs" else "Add to liked songs",
+                container = if (isLiked) colors.accent else colors.surface,
+                content = if (isLiked) colors.onAccent else colors.onSurface,
+                iconSize = 20.dp,
+                modifier = Modifier.size(52.dp),
+            )
+            Spacer(Modifier.weight(1f))
+            ExpressiveControl(
+                onClick = onOpenQueue,
+                icon = Icons.AutoMirrored.Filled.QueueMusic,
+                contentDescription = "Queue",
+                container = colors.surface,
+                content = colors.onSurface,
+                shape = ShapeMedium,
+                iconSize = 22.dp,
+                modifier = Modifier.size(width = 64.dp, height = 52.dp),
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        ExpressiveToolbar(
+            items = listOf(
+                ToolbarItem(Icons.Filled.Lyrics, "Lyrics", onOpenLyrics),
+                ToolbarItem(Icons.Filled.Radio, "Start radio", onStartRadio),
+                ToolbarItem(Icons.Filled.PlaylistAdd, "Add to playlist", onAddToPlaylist),
+                ToolbarItem(
+                    icon = if (isDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
+                    label = if (isDownloaded) "Remove download" else "Download",
+                    onClick = if (isDownloaded) onRemoveDownload else onDownload,
+                    active = isDownloaded,
+                ),
+                ToolbarItem(Icons.Filled.Bedtime, "Sleep timer", onOpenSleepTimer, active = sleepTimerActive),
+                ToolbarItem(Icons.Filled.MoreHoriz, "More", onOpenMore),
+            ),
+            colors = colors,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+
+        Spacer(Modifier.height(12.dp))
     }
 }
 
