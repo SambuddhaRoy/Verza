@@ -76,20 +76,26 @@ val CloudShape = ScallopShape(lobes = 7, depth = 0.17f)
 val CookieShape = ScallopShape(lobes = 9, depth = 0.13f)
 
 // ── shape scale ──────────────────────────────────────────────────────────────
-// M3's scale runs extraSmall 4 / small 8 / medium 12 / large 16 / extraLarge 24. Expressive pushes
-// the top end much further — the reference's cards and sheets are far rounder than 24dp — so the
-// large end is extended rather than replaced.
-val ShapeSmall = RoundedCornerShape(12.dp)
-val ShapeMedium = RoundedCornerShape(20.dp)
-val ShapeLarge = RoundedCornerShape(28.dp)
-val ShapeExtraLarge = RoundedCornerShape(36.dp)
+// The M3 baseline runs none 0 / xs 4 / s 8 / m 12 / l 16 / xl 28 / full. Expressive adds three
+// larger steps for more dramatic silhouettes rather than replacing the scale: large-increased 20,
+// extra-large-increased 32, and extra-extra-large 48.
+val ShapeExtraSmall = RoundedCornerShape(4.dp)
+val ShapeSmall = RoundedCornerShape(8.dp)
+val ShapeMedium = RoundedCornerShape(12.dp)
+val ShapeLarge = RoundedCornerShape(16.dp)
+val ShapeLargeIncreased = RoundedCornerShape(20.dp)
+val ShapeExtraLarge = RoundedCornerShape(28.dp)
+val ShapeExtraLargeIncreased = RoundedCornerShape(32.dp)
+val ShapeExtraExtraLarge = RoundedCornerShape(48.dp)
 
+/** Bottom sheets: rounded at the top, flat where they meet the edge of the screen. */
+val ShapeBottomSheet = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 /** Fully rounded. The play control and every chip. */
 val PillShape = RoundedCornerShape(percent = 50)
 
 // Kept for call sites written against the first pass.
-val ExpressiveCorner = ShapeLarge
-val ExpressiveCornerSmall = ShapeMedium
+val ExpressiveCorner = ShapeExtraLarge
+val ExpressiveCornerSmall = ShapeLargeIncreased
 
 /**
  * Springs, not durations.

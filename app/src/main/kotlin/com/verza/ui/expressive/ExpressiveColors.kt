@@ -38,6 +38,22 @@ data class ExpressiveColors(
     val surface: Color,
     /** Text on [surface]. */
     val onSurface: Color,
+    /** Secondary text on [surface] — still above the contrast floor. */
+    val onSurfaceMuted: Color,
+    /**
+     * The surface-container ladder. M3 expresses elevation with tone rather than shadow, so a card
+     * on a card on the canvas is three tones apart, not three drop shadows deep.
+     */
+    val surfaceLow: Color,
+    val surfaceHigh: Color,
+    val surfaceHighest: Color,
+    /**
+     * A third hue for secondary emphasis. The spec is explicit that mixing primary, secondary and
+     * tertiary is what stops a screen reading as one flat colour; with only a container and an
+     * accent, every highlight looks like every other highlight.
+     */
+    val tertiary: Color,
+    val onTertiary: Color,
     /** Hairlines. */
     val line: Color,
 ) {
@@ -57,8 +73,26 @@ val DefaultExpressiveColors = ExpressiveColors(
     accentMuted = Color(0xFF8B7FE8),
     surface = Color(0xFF3A2FA8),
     onSurface = Color(0xFFFFFFFF),
+    onSurfaceMuted = Color(0xFFD5CFFF),
+    surfaceLow = Color(0xFF2E2589),
+    surfaceHigh = Color(0xFF4A3DC4),
+    surfaceHighest = Color(0xFF5A4CDC),
+    tertiary = Color(0xFF7AF2D0),
+    onTertiary = Color(0xFF10352C),
     line = Color(0x33FFFFFF),
 )
+
+/**
+ * State-layer opacities. A solid overlay of the content colour at these alphas is how M3 expresses
+ * interaction, instead of each component inventing its own hover/press tint.
+ */
+object StateLayer {
+    const val HOVER = 0.08f
+    const val FOCUS = 0.10f
+    const val PRESSED = 0.10f
+    const val DRAGGED = 0.16f
+    const val DISABLED = 0.38f
+}
 
 val LocalExpressiveColors = staticCompositionLocalOf { DefaultExpressiveColors }
 
@@ -193,7 +227,15 @@ fun expressiveColorsFrom(cover: CoverColors): ExpressiveColors {
     val accent = separate(fromHsv((seed[0] + 55f) % 360f, seed[1], seed[2]), container)
     val onAccent = readableOn(accent)
 
+    // Cards sit one tone below the canvas so they read as contained rather than floating.
     val surface = fromHsv(seed[0], (seed[1] * 0.9f).coerceIn(0.35f, 0.8f), (seed[2] * 0.62f).coerceIn(0.18f, 0.34f))
+    val surfaceHsv = hsv(surface)
+    fun tone(v: Float) = fromHsv(surfaceHsv[0], surfaceHsv[1], v.coerceIn(0.10f, 0.60f))
+    val onSurface = readableOn(surface)
+
+    // Tertiary sits on the far side of the wheel from the accent, so a secondary highlight cannot be
+    // mistaken for the primary one.
+    val tertiary = separate(fromHsv((seed[0] + 200f) % 360f, seed[1].coerceAtLeast(0.45f), seed[2]), container)
 
     return ExpressiveColors(
         container = container,
@@ -203,7 +245,13 @@ fun expressiveColorsFrom(cover: CoverColors): ExpressiveColors {
         onAccent = onAccent,
         accentMuted = androidx.compose.ui.graphics.lerp(accent, container, 0.55f),
         surface = surface,
-        onSurface = readableOn(surface),
+        onSurface = onSurface,
+        onSurfaceMuted = mutedOn(surface, onSurface),
+        surfaceLow = tone(surfaceHsv[2] * 0.78f),
+        surfaceHigh = tone(surfaceHsv[2] * 1.25f),
+        surfaceHighest = tone(surfaceHsv[2] * 1.5f),
+        tertiary = tertiary,
+        onTertiary = readableOn(tertiary),
         line = onContainer.copy(alpha = 0.22f),
     )
 }

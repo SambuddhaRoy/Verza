@@ -10,6 +10,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import com.verza.ui.expressive.ExpressiveChipRow
+import com.verza.ui.expressive.HeroTitle
+import com.verza.ui.expressive.LocalExpressiveColors
+import com.verza.ui.expressive.MetaLabel
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -97,38 +101,32 @@ fun LibraryScreen(
         if (granted) viewModel.loadLocalSongs()
     }
 
+    val xc = LocalExpressiveColors.current
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(xc.container)
             .padding(top = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // ── Header ─────────────────────────────────────────────────────────
+        // Mono dateline over an italic display serif, matching Home's masthead.
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(colors.primary),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text("Your collection", style = MaterialTheme.typography.labelSmall, color = colors.primary)
-            Spacer(Modifier.height(4.dp))
-            Text("Library", style = MaterialTheme.typography.displaySmall, color = colors.onBackground)
+            Text("YOUR COLLECTION", style = MetaLabel, color = xc.onContainerMuted)
+            Spacer(Modifier.height(6.dp))
+            Text("Library", style = HeroTitle, color = xc.onContainer)
         }
 
         // ── Tabs ───────────────────────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            LibraryTab.entries.forEach { entry ->
-                LibraryPill(entry = entry, selected = tab == entry) { tab = entry }
-            }
-        }
+        // Filter chips rather than a tab bar: the selected one fills and squares off slightly, so
+        // the active tab is identifiable by shape as well as by colour.
+        ExpressiveChipRow(
+            options = LibraryTab.entries.toList(),
+            selected = tab,
+            label = { it.label },
+            icon = { it.icon },
+            onSelect = { tab = it },
+        )
 
         Box(modifier = Modifier.weight(1f)) {
             when (tab) {
