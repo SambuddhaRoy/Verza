@@ -8,6 +8,15 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.Search
+import com.verza.ui.expressive.ExpressiveMotion
+import com.verza.ui.expressive.ExpressiveMiniPlayer
+import com.verza.ui.expressive.ExpressiveNavBar
+import com.verza.ui.expressive.NavDestination
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,8 +38,6 @@ import com.verza.innertube.SearchFilter
 import com.verza.innertube.models.HomeItem
 import com.verza.playback.PlaybackViewModel
 import com.verza.ui.components.LocalTrackActions
-import com.verza.ui.components.VerzaBottomBar
-import com.verza.ui.components.MiniPlayer
 import com.verza.ui.components.TrackActions
 import com.verza.ui.screens.*
 
@@ -151,16 +158,14 @@ fun VerzaNavigation(
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200)),
                 ) {
-                    MiniPlayer(
+                    ExpressiveMiniPlayer(
                         title = currentTitle,
                         artist = currentArtist,
                         isPlaying = playback.isPlaying,
-                        artworkColor = Color(0xFF2980B9),
                         artworkUrl = currentArtworkUrl,
                         progress = if (playback.durationMs > 0)
                             (positionMs.toFloat() / playback.durationMs).coerceIn(0f, 1f) else 0f,
                         onNext = { playbackViewModel.seekToNext() },
-                        onPrevious = { playbackViewModel.seekToPrevious() },
                         onExpand = {
                             navController.navigate(Screen.NowPlaying.route) {
                                 launchSingleTop = true
@@ -169,10 +174,12 @@ fun VerzaNavigation(
                         onTogglePlay = { playbackViewModel.togglePlay() },
                     )
                 }
-                VerzaBottomBar(
+                ExpressiveNavBar(
+                    destinations = EXPRESSIVE_NAV,
                     currentRoute = currentRoute,
-                    onNavigate = { screen ->
-                        if (currentRoute == screen.route) return@VerzaBottomBar
+                    onNavigate = { route ->
+                        val screen = SCREEN_FOR_ROUTE[route] ?: return@ExpressiveNavBar
+                        if (currentRoute == screen.route) return@ExpressiveNavBar
                         // Two-phase nav for bottom-bar taps:
                         // 1. If the target tab is already in the back stack (the common case for
                         //    Home — it's the start destination, always present), pop straight back
@@ -182,7 +189,7 @@ fun VerzaNavigation(
                         // 2. Otherwise (e.g. tapping Search for the first time), navigate fresh,
                         //    anchored under Home so the stack stays flat across tab switches.
                         val popped = navController.popBackStack(screen.route, inclusive = false)
-                        if (popped) return@VerzaBottomBar
+                        if (popped) return@ExpressiveNavBar
                         navController.navigate(screen.route) {
                             popUpTo(Screen.Home.route) {
                                 saveState = true
@@ -584,9 +591,11 @@ private val PREAPP_ROUTES = setOf(
 )
 
 /** Fade-through enter: a beat after the old screen clears, the new one fades + eases up to scale. */
+// Spring-backed rather than timed: the incoming screen settles into place with a slight overshoot,
+// which is the expressive motion scheme applied to navigation.
 private fun fadeThroughIn(): EnterTransition =
-    fadeIn(tween(280, delayMillis = 90, easing = Emphasized)) +
-        scaleIn(initialScale = 0.94f, animationSpec = tween(280, delayMillis = 90, easing = Emphasized))
+    fadeIn(tween(220, delayMillis = 60, easing = Emphasized)) +
+        scaleIn(initialScale = 0.92f, animationSpec = ExpressiveMotion.spatialDefault())
 
 /** Fade-through exit: the outgoing screen quickly dissolves + eases down, revealing the glow. */
 private fun fadeThroughOut(): ExitTransition =
@@ -596,8 +605,9 @@ private fun fadeThroughOut(): ExitTransition =
 /** Shared-axis (X) enter — a small directional slide + fade for push (forward) / pop (back). */
 private fun sharedAxisIn(forward: Boolean): EnterTransition {
     val dir = if (forward) 1 else -1
-    return slideInHorizontally(tween(340, easing = Emphasized)) { full -> dir * full / 10 } +
-        fadeIn(tween(220, delayMillis = 40, easing = Emphasized))
+    return slideInHorizontally(ExpressiveMotion.spatialDefault()) { full -> dir * full / 8 } +
+        fadeIn(tween(200, delayMillis = 40, easing = Emphasized)) +
+        scaleIn(initialScale = 0.94f, animationSpec = ExpressiveMotion.spatialDefault())
 }
 
 /** Shared-axis (X) exit — the counterpart slide + fade for the departing screen. */
@@ -606,3 +616,21 @@ private fun sharedAxisOut(forward: Boolean): ExitTransition {
     return slideOutHorizontally(tween(340, easing = Emphasized)) { full -> -dir * full / 10 } +
         fadeOut(tween(150, easing = LinearOutSlowInEasing))
 }
+
+/**
+ * The four bottom-bar destinations. Kept next to the navigation graph rather than inside the bar so
+ * the bar stays a dumb component that knows nothing about Screen.
+ */
+private val EXPRESSIVE_NAV = listOf(
+    NavDestination(Screen.Home.route, Icons.Outlined.Home, "Home"),
+    NavDestination(Screen.Search.route, Icons.Outlined.Search, "Search"),
+    NavDestination(Screen.Library.route, Icons.Outlined.LibraryMusic, "Library"),
+    NavDestination(Screen.NowPlaying.route, Icons.Outlined.MusicNote, "Playing"),
+)
+
+private val SCREEN_FOR_ROUTE = mapOf(
+    Screen.Home.route to Screen.Home,
+    Screen.Search.route to Screen.Search,
+    Screen.Library.route to Screen.Library,
+    Screen.NowPlaying.route to Screen.NowPlaying,
+)

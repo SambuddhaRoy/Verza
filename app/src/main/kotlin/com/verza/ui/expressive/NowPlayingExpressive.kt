@@ -192,61 +192,57 @@ fun NowPlayingExpressive(
 
         Spacer(Modifier.height(14.dp))
 
-        // ── transport, wrapped asymmetrically like the reference ─────────────────
+        // ── position ─────────────────────────────────────────────────────────────
+        WavySeekBar(
+            progress = progress,
+            onSeek = { f -> onSeek((f * durationMs).toLong()) },
+            accent = colors.accent,
+            trackColor = colors.accentMuted,
+            animating = isPlaying,
+            amplitude = 0.35f + bass * 0.65f,
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(formatDuration(positionMs), style = Timecode, color = colors.onContainerMuted)
+            Spacer(Modifier.weight(1f))
+            Text(formatDuration(durationMs), style = Timecode, color = colors.onContainerMuted)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── transport ────────────────────────────────────────────────────────────
+        // Reading order left to right: back, play, forward. The shape contrast between the pill and
+        // the two circles is what carries the style here — separating the skips onto different rows
+        // read as a layout bug, not as expression.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PlayPill(
-                playing = isPlaying,
-                onClick = onTogglePlay,
-                container = colors.accent,
-                content = colors.onAccent,
-                modifier = Modifier.weight(1f).height(84.dp),
-            )
             ExpressiveControl(
                 onClick = onPrevious,
                 icon = Icons.Filled.SkipPrevious,
                 contentDescription = "Previous track",
                 container = colors.accent,
                 content = colors.onAccent,
-                iconSize = 32.dp,
-                modifier = Modifier.size(84.dp),
+                iconSize = 30.dp,
+                modifier = Modifier.size(72.dp),
             )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+            PlayPill(
+                playing = isPlaying,
+                onClick = onTogglePlay,
+                container = colors.accent,
+                content = colors.onAccent,
+                modifier = Modifier.weight(1f).height(72.dp),
+            )
             ExpressiveControl(
                 onClick = onNext,
                 icon = Icons.Filled.SkipNext,
                 contentDescription = "Next track",
                 container = colors.accent,
                 content = colors.onAccent,
-                iconSize = 32.dp,
-                modifier = Modifier.size(78.dp),
+                iconSize = 30.dp,
+                modifier = Modifier.size(72.dp),
             )
-            Column(modifier = Modifier.weight(1f)) {
-                WavySeekBar(
-                    progress = progress,
-                    onSeek = { f -> onSeek((f * durationMs).toLong()) },
-                    accent = colors.accent,
-                    trackColor = colors.accentMuted,
-                    animating = isPlaying,
-                    amplitude = 0.35f + bass * 0.65f,
-                )
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(formatDuration(positionMs), style = Timecode, color = colors.onContainerMuted)
-                    Spacer(Modifier.weight(1f))
-                    Text(formatDuration(durationMs), style = Timecode, color = colors.onContainerMuted)
-                }
-            }
         }
 
         Spacer(Modifier.height(14.dp))
