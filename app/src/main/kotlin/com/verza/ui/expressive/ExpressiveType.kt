@@ -39,8 +39,8 @@ val HeroDisplay = TextStyle(
     fontFamily = FontHero,
     fontStyle = FontStyle.Italic,
     fontWeight = FontWeight.Normal,
-    fontSize = 64.sp,
-    lineHeight = 58.sp,
+    fontSize = 44.sp,
+    lineHeight = 42.sp,
     letterSpacing = (-0.02).em,
 )
 
@@ -49,8 +49,8 @@ val HeroTitle = TextStyle(
     fontFamily = FontHero,
     fontStyle = FontStyle.Italic,
     fontWeight = FontWeight.Normal,
-    fontSize = 40.sp,
-    lineHeight = 40.sp,
+    fontSize = 32.sp,
+    lineHeight = 34.sp,
     letterSpacing = (-0.015).em,
 )
 
