@@ -223,8 +223,11 @@ fun expressiveColorsFrom(cover: CoverColors): ExpressiveColors {
     val container = fromHsv(seed[0], seed[1].coerceIn(0.45f, 0.82f), seed[2].coerceIn(0.30f, 0.52f))
     val onContainer = readableOn(container)
 
-    // Accent: rotated 55° for a complementary-ish partner, then separated by measured contrast.
-    val accent = separate(fromHsv((seed[0] + 55f) % 360f, seed[1], seed[2]), container)
+    // Accent: the true complement, 180° opposite the container, then separated by measured
+    // contrast. 55° was only adjacent — near enough in hue that accent text on the container read as
+    // a shade of it rather than as a different colour, which is what made toggles and labels hard to
+    // pick out. Opposite hues are maximally distinguishable at equal luminance.
+    val accent = separate(fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2]), container)
     val onAccent = readableOn(accent)
 
     // Cards sit one tone below the canvas so they read as contained rather than floating.
@@ -235,7 +238,7 @@ fun expressiveColorsFrom(cover: CoverColors): ExpressiveColors {
 
     // Tertiary sits on the far side of the wheel from the accent, so a secondary highlight cannot be
     // mistaken for the primary one.
-    val tertiary = separate(fromHsv((seed[0] + 200f) % 360f, seed[1].coerceAtLeast(0.45f), seed[2]), container)
+    val tertiary = separate(fromHsv((seed[0] + 100f) % 360f, seed[1].coerceAtLeast(0.45f), seed[2]), container)
 
     return ExpressiveColors(
         container = container,
