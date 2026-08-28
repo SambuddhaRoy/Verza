@@ -4,6 +4,8 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.verza.ui.expressive.HeroTitle
+import com.verza.ui.expressive.LocalExpressiveColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -128,8 +130,9 @@ fun SettingsScreen(
         }
     }
 
+    val xc = LocalExpressiveColors.current
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().background(xc.container),
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
@@ -160,8 +163,8 @@ fun SettingsScreen(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "Settings",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = colors.onBackground,
+                    style = HeroTitle,
+                    color = xc.onContainer,
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
@@ -320,13 +323,6 @@ fun SettingsScreen(
         item {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                 ToggleRow(
-                    title = "Sleeve mode",
-                    subtitle = "Editorial look — full-bleed poster player, translucent surfaces, " +
-                        "all over the live cover-coloured glow",
-                    checked = sleeveMode,
-                    onToggle = viewModel::setSleeveMode,
-                )
-                ToggleRow(
                     title = "Album art motion",
                     subtitle = "Gently animate the cover while playing",
                     checked = albumArtMotion,
@@ -345,57 +341,6 @@ fun SettingsScreen(
         // ── Background glow ────────────────────────────────────────────────────
         // The glow now renders on light schemes too (as soft colour washes), so its controls are
         // available whenever it's enabled, regardless of theme.
-        item { SectionHeader("Background glow") }
-        item {
-            GlowToggleRow(
-                enabled = glowEnabled,
-                onToggle = viewModel::setGlowEnabled,
-                availableInTheme = true,
-            )
-        }
-        if (glowEnabled) {
-            item {
-                GlowPatternRow(
-                    selected = glowStyle,
-                    onSelect = viewModel::setGlowStyle,
-                )
-            }
-            // The "Movement" slider drives both the Halftone blob and the Cover wash speed.
-            if (glowStyle == GlowStyle.HALFTONE || glowStyle == GlowStyle.COVER) {
-                item {
-                    GlowMovementRow(
-                        value = glowChaos,
-                        onChange = viewModel::setGlowChaos,
-                    )
-                }
-            }
-            item {
-                GlowColorRow(
-                    selected = glowColor,
-                    onSelect = viewModel::setGlowColor,
-                )
-            }
-            item {
-                GlowIntensityRow(
-                    selected = glowIntensity,
-                    onSelect = viewModel::setGlowIntensity,
-                )
-            }
-            item {
-                GlowReactivityRow(
-                    enabled = glowReactive,
-                    onToggle = viewModel::setGlowReactive,
-                )
-            }
-            item {
-                MusicHapticsRow(
-                    enabled = hapticsEnabled,
-                    onToggle = viewModel::setHapticsEnabled,
-                )
-            }
-        }
-
-        // ── Search ───────────────────────────────────────────────────────────
         item { SectionHeader("Search") }
         item {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {

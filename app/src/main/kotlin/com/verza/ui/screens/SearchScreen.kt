@@ -10,6 +10,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.verza.ui.expressive.HeroTitle
+import com.verza.ui.expressive.LocalExpressiveColors
+import com.verza.ui.expressive.MetaLabel
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,25 +51,19 @@ fun SearchScreen(
     val history by viewModel.history.collectAsStateWithLifecycle()
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
 
+    val xc = LocalExpressiveColors.current
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(top = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // ── Header (flourish + eyebrow + title) ────────────────────────────
+        // ── Header ─────────────────────────────────────────────────────────
+        // Same masthead as Home and Library: mono dateline over an italic display serif.
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(colors.primary),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text("Explore", style = MaterialTheme.typography.labelSmall, color = colors.primary)
-            Spacer(Modifier.height(4.dp))
-            Text("Search", style = MaterialTheme.typography.displaySmall, color = colors.onBackground)
+            Text("EXPLORE", style = MetaLabel, color = xc.onContainerMuted)
+            Spacer(Modifier.height(6.dp))
+            Text("Search", style = HeroTitle, color = xc.onContainer)
         }
 
         // ── Pill search bar ────────────────────────────────────────────────

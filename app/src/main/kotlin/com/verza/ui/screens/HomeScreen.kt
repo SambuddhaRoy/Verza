@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.innertube.models.HomeItem
 import com.verza.innertube.models.HomeSection
 import androidx.compose.foundation.background
+import com.verza.ui.expressive.ExpressiveMotion
 import com.verza.ui.expressive.ExpressiveControl
 import com.verza.ui.expressive.ExpressiveSectionRow
 import com.verza.ui.expressive.HeroTitle
@@ -166,20 +167,30 @@ private fun HomeContent(
             // scope (not per-item) means scrolling away and back doesn't re-trigger — items
             // recycled by LazyColumn read the already-advanced counter and just appear.
             val visible = index < visibleCount
+            // Opacity is an effects animation, so it stays critically damped — a row that flickers
+            // past full opacity and back looks like a rendering fault.
             val alpha by animateFloatAsState(
                 targetValue = if (visible) 1f else 0f,
-                animationSpec = tween(durationMillis = 280),
+                animationSpec = ExpressiveMotion.effectsDefault(),
                 label = "homeRowAlpha",
             )
+            // Position is spatial, so it overshoots slightly and settles. This is the bounce.
             val translationY by animateFloatAsState(
                 targetValue = if (visible) 0f else translateYPx,
-                animationSpec = tween(durationMillis = 320),
+                animationSpec = ExpressiveMotion.spatialDefault(),
                 label = "homeRowY",
+            )
+            val revealScale by animateFloatAsState(
+                targetValue = if (visible) 1f else 0.92f,
+                animationSpec = ExpressiveMotion.spatialDefault(),
+                label = "homeRowScale",
             )
             Box(
                 modifier = Modifier.graphicsLayer {
                     this.alpha = alpha
                     this.translationY = translationY
+                    this.scaleX = revealScale
+                    this.scaleY = revealScale
                 },
             ) {
                 ExpressiveSectionRow(

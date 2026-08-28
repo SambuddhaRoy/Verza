@@ -6,6 +6,9 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.layout.Box
+import com.verza.ui.expressive.ExpressiveMotion
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,7 +37,6 @@ import com.verza.ui.navigation.Screen
 import com.verza.ui.navigation.VerzaNavigation
 import com.verza.ui.screens.SettingsViewModel
 import com.verza.ui.theme.DefaultCoverColors
-import com.verza.ui.theme.GlowBackground
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.LocalArtworkColors
@@ -210,33 +212,24 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val expressive = expressiveColorsFrom(artworkColors)
+                // Cross-fade the canvas as the cover changes. An effects spring, not a spatial one:
+                // colour must not overshoot or it reads as a flash between tracks.
+                val canvas by animateColorAsState(
+                    targetValue = expressive.container,
+                    animationSpec = ExpressiveMotion.effectsSlow(),
+                    label = "appCanvas",
+                )
+
                 CompositionLocalProvider(
-                    LocalSleeveMode provides sleeveMode,
                     LocalCoverColors provides chromeCover,
                     LocalArtworkColors provides artworkColors,
-                    // Same sampled cover, but with the contrast contract applied — see ExpressiveColors.
-                    LocalExpressiveColors provides expressiveColorsFrom(artworkColors),
-                    // Any composable can ride the music: same gated flow the glow uses.
+                    LocalExpressiveColors provides expressive,
+                    // Any composable can ride the music: the same gated signal the player reads.
                     LocalAudioSignal provides (if (shouldVisualize) visualizerSignalFlow else null),
                 ) {
-                    // The reactive, album-coloured glow is the backdrop on dark schemes; on a light
-                    // scheme (incl. a light Sleeve) GlowBackground hides the glow and just shows the
-                    // scheme background, so light mode reads cleanly.
-                    GlowBackground(
-                        enabled = glowEnabled || sleeveMode,
-                        triad = glowTriad,
-                        intensity = glowIntensity,
-                        signalFlow = if (shouldVisualize) visualizerSignalFlow else null,
-                        style = glowStyle,
-                        chaos = glowChaos,
-                        artworkUrl = artworkUrl,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(scheme.background)
-                            // Sleeve wraps the whole app in a faint, even film grain and a soft
-                            // edge vignette — the print/photographic finish from the UMBRA reference.
-                            .then(if (sleeveMode) Modifier.vignette(0.30f).grain(0.05f) else Modifier),
-                    ) { navContent() }
+                    // One surface, edge to edge, behind everything including the system bars.
+                    Box(modifier = Modifier.fillMaxSize().background(canvas)) { navContent() }
                 }
             }
         }
