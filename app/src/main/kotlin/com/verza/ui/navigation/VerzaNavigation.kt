@@ -65,8 +65,10 @@ fun VerzaNavigation(
     val settingsVm: SettingsViewModel = hiltViewModel()
     val albumArtMotion by settingsVm.albumArtMotion.collectAsStateWithLifecycle()
     val sleeveMode by settingsVm.sleeveMode.collectAsStateWithLifecycle()
-    // Sleeve mode wants an immersive, edge-to-edge Now Playing, so the bottom chrome hides there.
-    val immersiveNowPlaying = sleeveMode && currentRoute == Screen.NowPlaying.route
+    // Now Playing owns the whole screen. It used to share it with the bottom nav unless Sleeve was
+    // on; the redesigned player lays out against the full height, so leaving the nav bar there pushed
+    // its content up and clipped the artwork off the top of the screen.
+    val immersiveNowPlaying = currentRoute == Screen.NowPlaying.route
     val artworkOverride by playbackViewModel.currentArtworkOverride.collectAsStateWithLifecycle()
 
     val current = playback.currentItem
