@@ -68,6 +68,15 @@ class ExpressiveColorsTest {
                 "$where: onSurface only ${contrastRatio(c.surface, c.onSurface)}",
                 contrastRatio(c.surface, c.onSurface) >= floor,
             )
+            assertTrue(
+                "$where: onSurfaceMuted only ${contrastRatio(c.surface, c.onSurfaceMuted)}",
+                contrastRatio(c.surface, c.onSurfaceMuted) >= floor,
+            )
+            // Tertiary is a real text/fill pair too, not decoration — it carries secondary emphasis.
+            assertTrue(
+                "$where: onTertiary only ${contrastRatio(c.tertiary, c.onTertiary)}",
+                contrastRatio(c.tertiary, c.onTertiary) >= floor,
+            )
             checked++
         }
         assertTrue("swept a meaningful number of seeds", checked > 400)

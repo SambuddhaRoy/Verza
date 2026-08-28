@@ -35,6 +35,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.innertube.models.HomeItem
 import com.verza.innertube.models.HomeSection
+import androidx.compose.foundation.background
+import com.verza.ui.expressive.ExpressiveControl
+import com.verza.ui.expressive.ExpressiveSectionRow
+import com.verza.ui.expressive.HeroTitle
+import com.verza.ui.expressive.LocalExpressiveColors
+import com.verza.ui.expressive.MetaLabel
 import com.verza.ui.components.SectionRow
 import com.verza.ui.components.SectionStyle
 import com.verza.ui.sleeve.Eyebrow
@@ -105,12 +111,16 @@ private fun HomeContent(
     // lookups inside every item lambda.
     val translateYPx = with(LocalDensity.current) { 24.dp.toPx() }
 
+    val xc = LocalExpressiveColors.current
+
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().background(xc.container),
         contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp),
     ) {
         item {
+            // Masthead: a wide-tracked mono dateline over an italic display serif, which is how the
+            // reference treats a page title — as an editorial moment rather than a label.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -118,37 +128,27 @@ private fun HomeContent(
                 verticalAlignment = Alignment.Top,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    if (sleeve) {
-                        // Editorial masthead — a wide-tracked mono dateline above a serif title.
-                        Eyebrow(text = "${greeting()} · ${dateline()}", color = cover.sub)
-                        Spacer(Modifier.height(8.dp))
-                    } else {
-                        // Accent "flourish" bar.
-                        Box(
-                            modifier = Modifier
-                                .width(40.dp)
-                                .height(3.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(colors.primary),
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = greeting(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.primary,
-                            letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                    }
+                    Text(
+                        text = "${greeting()} · ${dateline()}".uppercase(),
+                        style = MetaLabel,
+                        color = xc.onContainerMuted,
+                    )
+                    Spacer(Modifier.height(6.dp))
                     Text(
                         text = "For You",
-                        style = MaterialTheme.typography.displaySmall,
-                        color = colors.onBackground,
+                        style = HeroTitle,
+                        color = xc.onContainer,
                     )
                 }
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = if (sleeve) cover.sub else ext.muted)
-                }
+                ExpressiveControl(
+                    onClick = onOpenSettings,
+                    icon = Icons.Outlined.Settings,
+                    contentDescription = "Settings",
+                    container = xc.surface,
+                    content = xc.onSurface,
+                    iconSize = 20.dp,
+                    modifier = Modifier.size(44.dp),
+                )
             }
         }
 
@@ -182,12 +182,11 @@ private fun HomeContent(
                     this.translationY = translationY
                 },
             ) {
-                SectionRow(
+                ExpressiveSectionRow(
                     title = section.title,
                     items = section.items,
                     onItemClick = onItemClick,
                     onItemLongPress = onItemLongPress,
-                    style = styleFor(section.title),
                 )
             }
         }
