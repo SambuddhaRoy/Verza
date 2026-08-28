@@ -58,7 +58,7 @@ fun ExpressiveQueueSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = colors.elevated,
+        containerColor = colors.surface,
         dragHandle = null,
     ) {
         Column(modifier = Modifier.navigationBarsPadding()) {
@@ -77,12 +77,12 @@ fun ExpressiveQueueSheet(
                         AsyncImage(
                             model = item.artworkUrl,
                             contentDescription = null,
-                            modifier = Modifier.size(46.dp).clip(ExpressiveCornerSmall).background(colors.canvas),
+                            modifier = Modifier.size(46.dp).clip(ExpressiveCornerSmall).background(colors.container),
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = item.title,
-                                color = if (playing) colors.accent else colors.ink,
+                                color = if (playing) colors.accent else colors.onSurface,
                                 fontSize = 15.sp,
                                 fontWeight = if (playing) FontWeight.Bold else FontWeight.Normal,
                                 maxLines = 1,
@@ -90,7 +90,7 @@ fun ExpressiveQueueSheet(
                             )
                             Text(
                                 text = item.artist,
-                                color = colors.inkFaint,
+                                color = colors.onContainerMuted,
                                 fontSize = 13.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -101,7 +101,7 @@ fun ExpressiveQueueSheet(
                             icon = Icons.Filled.Close,
                             contentDescription = "Remove ${item.title} from the queue",
                             container = Color.Transparent,
-                            content = colors.inkFaint,
+                            content = colors.onContainerMuted,
                             iconSize = 18.dp,
                             modifier = Modifier.size(38.dp),
                         )
@@ -129,7 +129,7 @@ fun ExpressiveMoreSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(),
-        containerColor = colors.elevated,
+        containerColor = colors.surface,
         dragHandle = null,
     ) {
         Column(modifier = Modifier.navigationBarsPadding().padding(horizontal = 8.dp)) {
@@ -187,17 +187,17 @@ private fun SheetHeader(title: String, subtitle: String?, onDismiss: () -> Unit)
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, color = colors.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(text = title, color = colors.onSurface, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             if (subtitle != null) {
-                Text(text = subtitle, color = colors.inkFaint, fontSize = 13.sp)
+                Text(text = subtitle, color = colors.onContainerMuted, fontSize = 13.sp)
             }
         }
         ExpressiveControl(
             onClick = onDismiss,
             icon = Icons.Filled.Close,
             contentDescription = "Close",
-            container = colors.canvas,
-            content = colors.inkMuted,
+            container = colors.container,
+            content = colors.onSurface,
             shape = CircleShape,
             iconSize = 18.dp,
             modifier = Modifier.size(40.dp),
