@@ -2,6 +2,7 @@ package com.verza.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.verza.ui.expressive.CoverShapeMode
 import com.verza.data.DownloadStore
 import com.verza.data.ImportSummary
 import com.verza.data.LibraryBackupRepository
@@ -81,6 +82,8 @@ class SettingsViewModel @Inject constructor(
     /** Where downloads are written. Blank = app-private storage. */
     val downloadTree: StateFlow<String> = prefs.downloadTreeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+    val coverShape: StateFlow<CoverShapeMode> = prefs.coverShapeFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CoverShapeMode.SHUFFLE)
 
     fun setTheme(theme: VerzaTheme) {
         viewModelScope.launch { prefs.setTheme(theme) }
@@ -140,6 +143,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setSleeveMode(enabled: Boolean) {
         viewModelScope.launch { prefs.setSleeveMode(enabled) }
+    }
+
+    fun setCoverShape(mode: CoverShapeMode) {
+        viewModelScope.launch { prefs.setCoverShape(mode) }
     }
 
     fun setDownloadTree(treeUri: String) {

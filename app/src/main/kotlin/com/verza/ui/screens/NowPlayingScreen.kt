@@ -68,7 +68,7 @@ import com.verza.ui.share.NowPlayingShareOverlay
 import com.verza.ui.theme.LocalAudioSignal
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.expressive.ExpressiveMoreSheet
-import com.verza.ui.expressive.ExpressiveQueueSheet
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.ui.expressive.NowPlayingExpressive
 import com.verza.ui.theme.VerzaShape
 import com.verza.ui.theme.glassSurface
@@ -148,8 +148,10 @@ fun NowPlayingScreen(
     //
     // sleeveMode stays in the signature because Settings still shows the switch; it no longer picks a
     // layout. Removing the preference and ui/sleeve is a separate change.
-    var showQueue by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
+    // The cover-shape preference lives in Settings; read it here so the player can morph the mask.
+    val settingsVm: com.verza.ui.screens.SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val coverShapeMode by settingsVm.coverShape.collectAsStateWithLifecycle()
 
     Box(modifier = modifier.fillMaxSize()) {
         NowPlayingExpressive(
@@ -157,6 +159,12 @@ fun NowPlayingScreen(
             title = title,
             artist = artist,
             artworkUrl = artworkUrl,
+            trackKey = videoId,
+            coverShapeMode = coverShapeMode,
+            queue = queue,
+            currentIndex = currentIndex,
+            onPlayQueueItem = onPlayQueueItem,
+            onRemoveQueueItem = onRemoveQueueItem,
             isPlaying = isPlaying,
             isLiked = isLiked,
             isDownloaded = isDownloaded,
@@ -173,7 +181,6 @@ fun NowPlayingScreen(
             onAddToPlaylist = onAddToPlaylist,
             onToggleShuffle = onToggleShuffle,
             onCycleRepeat = onCycleRepeat,
-            onOpenQueue = { showQueue = true },
             onOpenLyrics = onOpenLyrics,
             onStartRadio = onStartRadio,
             onDownload = onDownload,
@@ -184,15 +191,6 @@ fun NowPlayingScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        if (showQueue) {
-            ExpressiveQueueSheet(
-                queue = queue,
-                currentIndex = currentIndex,
-                onPlay = { showQueue = false; onPlayQueueItem(it) },
-                onRemove = onRemoveQueueItem,
-                onDismiss = { showQueue = false },
-            )
-        }
         if (showMore) {
             ExpressiveMoreSheet(
                 isDownloading = isDownloading,
