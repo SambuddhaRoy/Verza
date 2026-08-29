@@ -1,11 +1,13 @@
 package com.verza.ui.expressive
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -308,10 +310,15 @@ private fun PlayerPane(
             targetState = artworkUrl to trackKey,
             transitionSpec = {
                 val dir = if (forward) 1 else -1
-                (slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 3 } +
+                // SizeTransform with snap, and no clipping. AnimatedContent animates its container to
+                // fit the incoming child by default; the child here is fillMaxHeight, so it measures
+                // against a container that is itself mid-animation. Each track change fed a slightly
+                // smaller size back in and it compounded — which is why the cover kept shrinking.
+                ((slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 3 } +
                     fadeIn(ExpressiveMotion.effectsDefault())) togetherWith
                     (slideOutHorizontally(ExpressiveMotion.spatialDefault()) { w -> -dir * w / 3 } +
-                        fadeOut(ExpressiveMotion.effectsFast()))
+                        fadeOut(ExpressiveMotion.effectsFast())))
+                    .using(SizeTransform(clip = false) { _, _ -> snap() })
             },
             modifier = Modifier.fillMaxWidth().weight(1f),
             label = "artSwap",
@@ -356,9 +363,10 @@ private fun PlayerPane(
             targetState = title to artist,
             transitionSpec = {
                 val dir = if (forward) 1 else -1
-                (slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 4 } +
+                ((slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 4 } +
                     fadeIn(ExpressiveMotion.effectsDefault())) togetherWith
-                    fadeOut(ExpressiveMotion.effectsFast())
+                    fadeOut(ExpressiveMotion.effectsFast()))
+                    .using(SizeTransform(clip = false) { _, _ -> snap() })
             },
             label = "titleSwap",
         ) { (t, a) ->

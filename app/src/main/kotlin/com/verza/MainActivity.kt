@@ -124,8 +124,8 @@ class MainActivity : ComponentActivity() {
                 context,
                 Manifest.permission.RECORD_AUDIO,
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            // The visualizer feeds both the reactive glow and the music haptics, so either feature
-            // being on (plus permission + an active session) is enough to run it.
+            // The visualizer feeds the spectrum seek bar and the music haptics, so either being on
+            // (plus permission + an active session) is enough to run it.
             val shouldVisualize = (glowReactive || hapticsEnabled) && hasAudioPermission &&
                 audioSessionId != 0 && isPlaying
 
