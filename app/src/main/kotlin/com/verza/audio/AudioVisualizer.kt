@@ -97,7 +97,11 @@ class AudioVisualizer(private val audioSessionId: Int) {
                             processFft(fft, samplingRate)
                         }
                     },
-                    Visualizer.getMaxCaptureRate() / 2, // ~30 Hz on most devices
+                    // Full rate. Half was fine when this only nudged a slow-drifting glow, but the
+                    // spectrum seek bar is redrawn every frame and reads visibly steppy on 30 Hz
+                    // data. The capture itself is cheap; what used to be expensive was letting each
+                    // one recompose the UI, and it no longer does.
+                    Visualizer.getMaxCaptureRate(),
                     /* waveform = */ false,
                     /* fft     = */ true,
                 )
