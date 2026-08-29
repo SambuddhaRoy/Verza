@@ -28,7 +28,17 @@ data class VisualizerSignal(
     val mid: Float = 0f,
     val treble: Float = 0f,
     val energy: Float = 0f,
-)
+    /**
+     * A coarse spectrum, [BAND_COUNT] log-spaced bins from about 60 Hz to about 14 kHz, each 0..1.
+     * A List rather than a FloatArray so the data class keeps value equality — Compose skips
+     * recomposition on an unchanged signal, and an array would compare by identity and never match.
+     */
+    val bands: List<Float> = emptyList(),
+) {
+    companion object {
+        const val BAND_COUNT = 16
+    }
+}
 
 /**
  * Wraps [android.media.audiofx.Visualizer] and exposes a [signal] [StateFlow] of smoothed
@@ -168,6 +178,29 @@ class AudioVisualizer(private val audioSessionId: Int) {
         val bass = ((bassSum / bassCount.coerceAtLeast(1)) / 5f).coerceIn(0f, 1f)
         val mid = ((midSum / midCount.coerceAtLeast(1)) / 5f).coerceIn(0f, 1f)
         val treble = ((trebleSum / trebleCount.coerceAtLeast(1)) / 5f).coerceIn(0f, 1f)
+
+        // The spectrum for the seek-bar bars. Same log-compressed magnitudes, but averaged into
+        // log-spaced buckets rather than three wide bands.
+        val bands = buildList(VisualizerSignal.BAND_COUNT) {
+            val lowHz = 60f
+            val highHz = minOf(14000f, sampleRateHz / 2f)
+            val ratio = highHz / lowHz
+            var prevBin = 1
+            for (i in 1..VisualizerSignal.BAND_COUNT) {
+                val edgeHz = lowHz * Math.pow(ratio.toDouble(), i.toDouble() / VisualizerSignal.BAND_COUNT).toFloat()
+                val edgeBin = (edgeHz / binWidthHz).toInt().coerceIn(prevBin, nBins - 1)
+                var sum = 0f
+                var count = 0
+                for (k in prevBin..edgeBin) {
+                    val real = fft[2 * k].toInt()
+                    val imag = fft[2 * k + 1].toInt()
+                    sum += ln(1f + sqrt((real * real + imag * imag).toFloat()))
+                    count++
+                }
+                add(((sum / count.coerceAtLeast(1)) / 5f).coerceIn(0f, 1f))
+                prevBin = (edgeBin + 1).coerceAtMost(nBins - 1)
+            }
+        }
 
         // Low-pass filter — exponentially-weighted moving average. Asymmetric: rises take ~5
         // frames, falls take ~10 (DECAY < ALPHA). Asymmetric smoothing makes peaks pop while
