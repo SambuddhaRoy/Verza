@@ -58,10 +58,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -251,15 +254,21 @@ private fun PlayerPane(
 ) {
     val colors = LocalExpressiveColors.current
 
+    // The flow, not its value. Collecting here would recompose everything below on every capture.
     val stillSignal = remember { MutableStateFlow(VisualizerSignal()) }
-    val signal by (LocalAudioSignal.current ?: stillSignal).collectAsState()
-    val bass = signal.bass
+    val signalFlow = LocalAudioSignal.current ?: stillSignal
 
-    val artScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1f + bass * 0.035f else 1f,
-        animationSpec = ExpressiveMotion.ambient(),
-        label = "artPulse",
-    )
+    // The artwork's bass pulse, smoothed on the frame clock. Held in state that is only read inside
+    // the graphicsLayer block below, so a new value invalidates the layer rather than the tree.
+    val artScale = remember { mutableFloatStateOf(1f) }
+    LaunchedEffect(signalFlow, isPlaying) {
+        while (true) {
+            withFrameNanos { }
+            val target = if (isPlaying) 1f + signalFlow.value.bass * 0.035f else 1f
+            // Ease toward the target instead of snapping; the capture is coarser than the frame rate.
+            artScale.floatValue += (target - artScale.floatValue) * 0.12f
+        }
+    }
     val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
 
     // Which way the new track should come in from. Derived from the queue index rather than a
@@ -349,7 +358,12 @@ private fun PlayerPane(
                     // it overlaps its neighbours instead of displacing them, and the bass pulse costs
                     // no relayout.
                     modifier = Modifier.fillMaxSize().background(colors.surface)
-                        .scale(artScale * COVER_BOOST),
+                        .graphicsLayer {
+                            // Read inside the layer block: deferred, so the pulse never recomposes.
+                            val s = artScale.floatValue * COVER_BOOST
+                            scaleX = s
+                            scaleY = s
+                        },
                 )
             }
             }
@@ -396,7 +410,7 @@ private fun PlayerPane(
             onSeek = { f -> onSeek((f * durationMs).toLong()) },
             accent = colors.accent,
             trackColor = colors.accentMuted,
-            bands = signal.bands,
+            signalFlow = signalFlow,
             animating = isPlaying,
         )
         Row(modifier = Modifier.fillMaxWidth()) {
