@@ -321,6 +321,7 @@ private fun PlayerPane(
                 modifier = Modifier
                     .fillMaxHeight()
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .scale(COVER_BOOST)
                     .clip(coverShape)
                     // Drag sideways to change track — the gesture the slide animation implies.
                     .pointerInput(Unit) {
@@ -337,13 +338,18 @@ private fun PlayerPane(
                     model = url,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().background(colors.surface).scale(artScale),
+                    // COVER_BOOST pushes the art past its slot. Scaling is a draw-time transform, so
+                    // it overlaps its neighbours instead of displacing them, and the bass pulse costs
+                    // no relayout.
+                    modifier = Modifier.fillMaxSize().background(colors.surface)
+                        .scale(artScale * COVER_BOOST),
                 )
             }
             }
         }
 
-        Spacer(Modifier.height(10.dp))
+        // No spacer: the boosted cover is meant to crowd the title slightly, which is what stops
+        // the two reading as separate stacked blocks.
 
         // ── title ────────────────────────────────────────────────────────────────
         AnimatedContent(
@@ -377,13 +383,13 @@ private fun PlayerPane(
 
         Spacer(Modifier.height(10.dp))
 
-        WavySeekBar(
+        VisualizerSeekBar(
             progress = progress,
             onSeek = { f -> onSeek((f * durationMs).toLong()) },
             accent = colors.accent,
             trackColor = colors.accentMuted,
+            bands = signal.bands,
             animating = isPlaying,
-            amplitude = 0.35f + bass * 0.65f,
         )
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(formatDuration(positionMs), style = Timecode, color = colors.onContainerMuted)
@@ -546,3 +552,9 @@ internal fun formatDuration(ms: Long): String {
     val total = ms / 1000
     return "%d:%02d".format(total / 60, total % 60)
 }
+
+/**
+ * How far the artwork is allowed to grow past its layout slot. Chosen so it overlaps the back and
+ * share buttons the way the reference does and just kisses the title.
+ */
+private const val COVER_BOOST = 1.22f

@@ -44,7 +44,7 @@ import com.verza.ui.theme.LocalAudioSignal
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.VerzaTheme
 import com.verza.ui.theme.coverColorScheme
-import com.verza.ui.theme.coverColorsFromScheme
+import com.verza.ui.theme.coverColorsFromExpressive
 import com.verza.ui.theme.deriveGlowTriad
 import com.verza.ui.theme.extractCoverColors
 import com.verza.ui.theme.resolveColor
@@ -193,13 +193,19 @@ class MainActivity : ComponentActivity() {
                 val scheme = MaterialTheme.colorScheme
                 val seed = glowColor.resolveColor()
                 // The glow uses the cover accent whenever we're sampling it; otherwise the preset.
-                val glowTriad = if (wantArtwork && !artworkUrl.isNullOrBlank())
-                    deriveGlowTriad(artworkColors.accent)
-                else
-                    deriveGlowTriad(seed)
-                // Sleeve chrome (Home / Library / nav / mini-player) tracks the active theme scheme;
-                // the Now-Playing poster uses the artwork palette (LocalArtworkColors) for contrast.
-                val chromeCover = remember(scheme) { coverColorsFromScheme(scheme) }
+                // The one palette. Everything downstream is derived from it.
+                val expressive = expressiveColorsFrom(artworkColors)
+                // Screens not yet rewritten read LocalCoverColors; mapping it onto the expressive
+                // palette converts them without each one having to be touched.
+                val chromeCover = remember(expressive) {
+                    coverColorsFromExpressive(
+                        container = expressive.container,
+                        onContainer = expressive.onContainer,
+                        onContainerMuted = expressive.onContainerMuted,
+                        accent = expressive.accent,
+                        line = expressive.line,
+                    )
+                }
 
                 val navContent: @Composable () -> Unit = {
                     val completed = onboardingCompleted
@@ -212,7 +218,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val expressive = expressiveColorsFrom(artworkColors)
                 // Cross-fade the canvas as the cover changes. An effects spring, not a spatial one:
                 // colour must not overshoot or it reads as a flash between tracks.
                 val canvas by animateColorAsState(

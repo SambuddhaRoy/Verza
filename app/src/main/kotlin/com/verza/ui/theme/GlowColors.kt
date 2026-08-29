@@ -143,14 +143,26 @@ val LocalCoverColors = staticCompositionLocalOf { DefaultCoverColors }
  */
 val LocalArtworkColors = staticCompositionLocalOf { DefaultCoverColors }
 
-/** Derives the Sleeve editorial palette from an active M3 [scheme], so chrome tracks the theme. */
-fun coverColorsFromScheme(scheme: ColorScheme): CoverColors = CoverColors(
-    accent = scheme.primary,
-    bg = scheme.background,
-    ink = scheme.onBackground,
-    sub = scheme.onSurfaceVariant,
-    faint = scheme.onBackground.copy(alpha = 0.34f),
-    line = scheme.outlineVariant,
+/**
+ * The chrome palette every not-yet-rewritten screen reads through LocalCoverColors.
+ *
+ * It used to come from the Material scheme, which is why those screens still looked like the old app
+ * after the player was rebuilt. Mapping it onto the expressive palette instead means they pick up the
+ * cover-derived colour and its measured contrast without each one being rewritten to say so.
+ */
+fun coverColorsFromExpressive(
+    container: Color,
+    onContainer: Color,
+    onContainerMuted: Color,
+    accent: Color,
+    line: Color,
+): CoverColors = CoverColors(
+    accent = accent,
+    bg = container,
+    ink = onContainer,
+    sub = onContainerMuted,
+    faint = onContainerMuted.copy(alpha = 0.6f),
+    line = line,
 )
 
 /** A near-black canvas that keeps a faint hint of the cover's hue. */
