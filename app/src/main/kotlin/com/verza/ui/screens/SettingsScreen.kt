@@ -82,10 +82,20 @@ fun SettingsScreen(
     val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
     val downloadTree by viewModel.downloadTree.collectAsStateWithLifecycle()
     val coverShape by viewModel.coverShape.collectAsStateWithLifecycle()
+    val spectrumOn by viewModel.glowReactive.collectAsStateWithLifecycle()
     var showResetStatsDialog by remember { mutableStateOf(false) }
 
     // ── Library backup (export / import) ────────────────────────────────────────
     val context = LocalContext.current
+    // Re-read on every recomposition so granting the permission lights the feature up without a
+    // restart.
+    val hasAudioPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.RECORD_AUDIO,
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> if (granted) viewModel.setGlowReactive(true) }
     val scope = rememberCoroutineScope()
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
@@ -443,6 +453,25 @@ fun SettingsScreen(
                     onSelect = { viewModel.setCoverShape(it) },
                 )
             }
+        }
+        item {
+            ToggleRow(
+                title = "Spectrum seek bar",
+                subtitle = if (hasAudioPermission) {
+                    "The played half of the progress bar becomes a live spectrum"
+                } else {
+                    "Needs the audio-capture permission \u2014 it reads Verza's own playback, never the microphone"
+                },
+                checked = spectrumOn && hasAudioPermission,
+                onToggle = { on ->
+                    if (on && !hasAudioPermission) {
+                        audioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                    } else {
+                        viewModel.setGlowReactive(on)
+                    }
+                },
+                divider = false,
+            )
         }
 
         // ── Downloads ────────────────────────────────────────────────────────

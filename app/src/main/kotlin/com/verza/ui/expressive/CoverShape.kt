@@ -43,8 +43,14 @@ data class ScallopSpec(val lobes: Int, val depth: Float) {
         val Flower = ScallopSpec(5, 0.24f)
         val Bloom = ScallopSpec(12, 0.10f)
 
-        /** The set SHUFFLE cycles through. Circle is in it so some tracks get a calm frame. */
-        val Cycle = listOf(Cloud, Cookie, Flower, Bloom, Circle)
+        /**
+         * The set SHUFFLE cycles through.
+         *
+         * Deliberately far apart. The first version included both Cookie (9 lobes, 0.13 deep) and
+         * Bloom (12 lobes, 0.10 deep), which are near-identical to the eye — so a genuine change
+         * between them looked like no change at all, and the shape appeared to repeat.
+         */
+        val Cycle = listOf(Circle, Flower, Cloud, Bloom)
     }
 }
 
@@ -115,10 +121,17 @@ private fun CoverShapeMode.spec(): ScallopSpec? = when (this) {
 fun rememberCoverShape(mode: CoverShapeMode, trackKey: String?): Shape {
     if (mode == CoverShapeMode.NONE) return ShapeExtraLarge
 
-    val target = remember(mode, trackKey) {
+    // The shape we are currently showing, so SHUFFLE can guarantee the next one differs.
+    var shown by remember { mutableStateOf<ScallopSpec?>(null) }
+
+    val target = remember(mode, trackKey, shown) {
         mode.spec() ?: run {
+            // Hash the track so the choice is stable, then pick from the shapes that are NOT the one
+            // on screen. Hashing straight into the whole list gave a 1-in-4 chance of drawing the
+            // same shape again, which reads as the feature being broken rather than as chance.
+            val options = ScallopSpec.Cycle.filter { it != shown }
             val h = (trackKey ?: "").hashCode()
-            ScallopSpec.Cycle[Math.floorMod(h, ScallopSpec.Cycle.size)]
+            options[Math.floorMod(h, options.size)]
         }
     }
 
@@ -126,12 +139,14 @@ fun rememberCoverShape(mode: CoverShapeMode, trackKey: String?): Shape {
     // run to 1 on each change, so every transition starts from the silhouette actually on screen.
     var from by remember { mutableStateOf(target) }
     var to by remember { mutableStateOf(target) }
+    LaunchedEffect(Unit) { if (shown == null) shown = target }
     val t = remember { Animatable(1f) }
 
     LaunchedEffect(target) {
         if (to != target) {
             from = to
             to = target
+            shown = target
             t.snapTo(0f)
             // A spatial spring, so it overshoots: the silhouette springs slightly past the new shape
             // and settles back, which is the bounce doing something the eye can actually read.
