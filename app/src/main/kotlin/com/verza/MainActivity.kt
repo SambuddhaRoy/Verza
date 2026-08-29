@@ -27,6 +27,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.audio.AudioVisualizer
 import com.verza.ui.expressive.LocalExpressiveColors
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.verza.data.IconVariant
+import javax.inject.Inject
 import com.verza.ui.expressive.expressiveColorScheme
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.audio.HapticPlayer
@@ -59,6 +64,9 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    /** Swaps the launcher icon alias when "Icon follows the music" is on. */
+    @Inject lateinit var iconVariant: IconVariant
     // Gate for the system splash screen: stays on screen until we know whether onboarding
     // has been completed. Plain Boolean field rather than a Compose state since the splash
     // screen's keep-on-screen lambda is invoked on the main thread outside the composition.
@@ -187,6 +195,23 @@ class MainActivity : ComponentActivity() {
             }
             // One palette, resolved before the theme so the Material scheme can be built from it.
             val expressive = expressiveColorsFrom(artworkColors)
+
+            // Launcher icon follows the palette, when asked to. Rate-limited and bucketed: the swap
+            // is a visible event on the home screen, so it only happens when the hue actually moves
+            // into a different bucket, and never more than once every few minutes.
+            val adaptiveIcon by settingsViewModel.adaptiveIcon.collectAsStateWithLifecycle()
+            var lastIconBucket by rememberSaveable { mutableIntStateOf(-1) }
+            var lastIconAt by rememberSaveable { mutableLongStateOf(0L) }
+            LaunchedEffect(adaptiveIcon, expressive.accent) {
+                if (!adaptiveIcon) return@LaunchedEffect
+                val bucket = iconVariant.bucketFor(expressive.accent)
+                val now = System.currentTimeMillis()
+                if (bucket != lastIconBucket && now - lastIconAt > IconVariant.MIN_INTERVAL_MS) {
+                    lastIconBucket = bucket
+                    lastIconAt = now
+                    iconVariant.apply(bucket)
+                }
+            }
 
             // The Material scheme is the expressive palette. Anything still reading
             // MaterialTheme.colorScheme therefore agrees with the canvas it is drawn on, instead of

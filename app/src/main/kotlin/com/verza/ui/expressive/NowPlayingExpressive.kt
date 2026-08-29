@@ -19,6 +19,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -315,28 +316,31 @@ private fun PlayerPane(
         // ── artwork ──────────────────────────────────────────────────────────────
         // Keyed on the track so a change animates. Slide plus fade, springing in from the side the
         // queue moved; the mask morphs underneath at the same time.
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+        // One measurement of the slot, turned into an explicit side length. Everything below is
+        // sized from this rather than from a fill modifier, so nothing the image does can change it.
+        val side = if (maxWidth < maxHeight) maxWidth else maxHeight
         AnimatedContent(
             targetState = artworkUrl to trackKey,
             transitionSpec = {
                 val dir = if (forward) 1 else -1
-                // SizeTransform with snap, and no clipping. AnimatedContent animates its container to
-                // fit the incoming child by default; the child here is fillMaxHeight, so it measures
-                // against a container that is itself mid-animation. Each track change fed a slightly
-                // smaller size back in and it compounded — which is why the cover kept shrinking.
+                // Snap the size rather than animating it: an animating container plus fill-based
+                // children is what made the cover shrink a little more with every track.
                 ((slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 3 } +
                     fadeIn(ExpressiveMotion.effectsDefault())) togetherWith
                     (slideOutHorizontally(ExpressiveMotion.spatialDefault()) { w -> -dir * w / 3 } +
                         fadeOut(ExpressiveMotion.effectsFast())))
                     .using(SizeTransform(clip = false) { _, _ -> snap() })
             },
-            modifier = Modifier.fillMaxWidth().weight(1f),
+            modifier = Modifier.size(side),
             label = "artSwap",
         ) { (url, _) ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .size(side)
                     .scale(COVER_BOOST)
                     .clip(coverShape)
                     // Drag sideways to change track — the gesture the slide animation implies.
@@ -359,14 +363,14 @@ private fun PlayerPane(
                     // no relayout.
                     modifier = Modifier.fillMaxSize().background(colors.surface)
                         .graphicsLayer {
-                            // Read inside the layer block: deferred, so the pulse never recomposes.
-                            val s = artScale.floatValue * COVER_BOOST
-                            scaleX = s
-                            scaleY = s
+                            // The bass pulse only. COVER_BOOST is applied once, on the mask above —
+                            // applying it here as well drew the art at 1.49x inside a 1.22x clip.
+                            scaleX = artScale.floatValue
+                            scaleY = artScale.floatValue
                         },
                 )
             }
-            }
+        }
         }
 
         // No spacer: the boosted cover is meant to crowd the title slightly, which is what stops
