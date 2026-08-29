@@ -121,32 +121,28 @@ private fun CoverShapeMode.spec(): ScallopSpec? = when (this) {
 fun rememberCoverShape(mode: CoverShapeMode, trackKey: String?): Shape {
     if (mode == CoverShapeMode.NONE) return ShapeExtraLarge
 
-    // The shape we are currently showing, so SHUFFLE can guarantee the next one differs.
-    var shown by remember { mutableStateOf<ScallopSpec?>(null) }
-
-    val target = remember(mode, trackKey, shown) {
-        mode.spec() ?: run {
-            // Hash the track so the choice is stable, then pick from the shapes that are NOT the one
-            // on screen. Hashing straight into the whole list gave a 1-in-4 chance of drawing the
-            // same shape again, which reads as the feature being broken rather than as chance.
-            val options = ScallopSpec.Cycle.filter { it != shown }
-            val h = (trackKey ?: "").hashCode()
-            options[Math.floorMod(h, options.size)]
-        }
-    }
-
-    // Where the morph is coming from and going to, plus the 0..1 driver between them. Reset to 0 and
-    // run to 1 on each change, so every transition starts from the silhouette actually on screen.
-    var from by remember { mutableStateOf(target) }
-    var to by remember { mutableStateOf(target) }
-    LaunchedEffect(Unit) { if (shown == null) shown = target }
+    // Where the morph is coming from and going to, plus the 0..1 driver between them.
+    //
+    // The pick happens inside the effect rather than in a remember. An earlier version keyed the
+    // choice on the shape currently displayed and then wrote that same value from the effect, so
+    // picking a shape invalidated the pick, which picked again — the morph restarted continuously
+    // and the silhouettes piled up on top of each other.
+    val initial = remember(mode) { mode.spec() ?: ScallopSpec.Cloud }
+    var from by remember { mutableStateOf(initial) }
+    var to by remember { mutableStateOf(initial) }
     val t = remember { Animatable(1f) }
 
-    LaunchedEffect(target) {
-        if (to != target) {
+    LaunchedEffect(mode, trackKey) {
+        val next = mode.spec() ?: run {
+            // Hash the track so the choice is stable for a given song, but draw only from the shapes
+            // that are NOT on screen — hashing into the whole list gave a one-in-four chance of
+            // redrawing the same silhouette, which reads as broken rather than as chance.
+            val options = ScallopSpec.Cycle.filter { it != to }
+            options[Math.floorMod((trackKey ?: "").hashCode(), options.size)]
+        }
+        if (next != to) {
             from = to
-            to = target
-            shown = target
+            to = next
             t.snapTo(0f)
             // A spatial spring, so it overshoots: the silhouette springs slightly past the new shape
             // and settles back, which is the bounce doing something the eye can actually read.

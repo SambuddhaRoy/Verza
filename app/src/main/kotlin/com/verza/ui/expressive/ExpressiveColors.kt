@@ -144,7 +144,7 @@ internal fun fromHsv(h: Float, s: Float, v: Float): Color {
  * fallback is a very dark tint of the background's own hue rather than a neutral — it keeps the
  * palette coherent instead of dropping a grey hole into it.
  */
-private fun readableOn(bg: Color): Color {
+internal fun readableOn(bg: Color): Color {
     val floor = ExpressiveColors.MIN_CONTRAST
     if (contrastRatio(bg, Color.White) >= floor) return Color.White
     // White did not clear it, so go the other way and keep going until it does. Stepping the value

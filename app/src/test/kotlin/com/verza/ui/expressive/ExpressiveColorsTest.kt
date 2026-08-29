@@ -118,4 +118,30 @@ class ExpressiveColorsTest {
             assertEquals("blue", seed.blue, back.blue, 0.01f)
         }
     }
+
+    @Test
+    fun `the Material scheme derived from the palette is readable too`() {
+        val floor = ExpressiveColors.MIN_CONTRAST
+        for (seed in seeds()) {
+            val c = expressiveColorsFrom(coverOf(seed))
+            val s = expressiveColorScheme(c)
+            val where = "seed=${seed.value.toString(16)}"
+
+            // The pairs that untouched screens actually draw with.
+            val pairs = listOf(
+                "background/onBackground" to (s.background to s.onBackground),
+                "surface/onSurface" to (s.surface to s.onSurface),
+                "surfaceVariant/onSurfaceVariant" to (s.surfaceVariant to s.onSurfaceVariant),
+                "primary/onPrimary" to (s.primary to s.onPrimary),
+                "secondary/onSecondary" to (s.secondary to s.onSecondary),
+                "tertiary/onTertiary" to (s.tertiary to s.onTertiary),
+                "primaryContainer/onPrimaryContainer" to (s.primaryContainer to s.onPrimaryContainer),
+                "secondaryContainer/onSecondaryContainer" to (s.secondaryContainer to s.onSecondaryContainer),
+            )
+            for ((name, pair) in pairs) {
+                val ratio = contrastRatio(pair.first, pair.second)
+                assertTrue("$where: $name only $ratio", ratio >= floor)
+            }
+        }
+    }
 }
