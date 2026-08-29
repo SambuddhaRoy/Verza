@@ -312,13 +312,12 @@ private fun PlayerPane(
                     (slideOutHorizontally(ExpressiveMotion.spatialDefault()) { w -> -dir * w / 3 } +
                         fadeOut(ExpressiveMotion.effectsFast()))
             },
-            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+            modifier = Modifier.fillMaxWidth().weight(1f),
             label = "artSwap",
         ) { (url, _) ->
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.12f)
+                    .fillMaxSize()
                     .clip(coverShape)
                     // Drag sideways to change track — the gesture the slide animation implies.
                     .pointerInput(Unit) {
@@ -461,8 +460,16 @@ private fun PlayerPane(
                 iconSize = 20.dp,
                 modifier = Modifier.size(50.dp),
             )
-            Spacer(Modifier.weight(1f))
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // Its own full-width row. Sharing one with the toggles above left no room for six items, so
+        // half of them were clipped off the edge rather than wrapped.
+        Row(modifier = Modifier.fillMaxWidth()) {
             ExpressiveToolbar(
+                modifier = Modifier.fillMaxWidth(),
+                spread = true,
                 items = listOf(
                     ToolbarItem(Icons.Filled.Lyrics, "Lyrics", onOpenLyrics),
                     ToolbarItem(Icons.Filled.Radio, "Start radio", onStartRadio),
@@ -480,7 +487,7 @@ private fun PlayerPane(
             )
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(6.dp))
 
         // ── the hint that there is more below ────────────────────────────────────
         QueueHint(count = queueCount, onClick = onShowQueue)
