@@ -4,7 +4,7 @@
 
 ### A YouTube Music client for Android, with an editorial soul.
 
-*The full YouTube Music catalogue — no ads, real album art, offline downloads, and synced lyrics — wrapped in a living, sound-reactive background and **Sleeve**, a cover-driven editorial appearance. A graphic equalizer, focus sessions, an ambient display, private listening stats and shareable sessions round it out. Built from scratch in Kotlin + Jetpack Compose, with no Google Play Services dependency.*
+*The full YouTube Music catalogue — no ads, real album art, offline downloads to your Music folder, and synced lyrics — dressed in **Material 3 Expressive**: a colour scheme pulled from the album art, a cover mask that morphs between tracks, and spring motion throughout. A graphic equalizer, focus sessions, an ambient display, private listening stats and shareable sessions round it out. Built from scratch in Kotlin + Jetpack Compose, with no Google Play Services dependency.*
 
 <br/>
 
@@ -16,9 +16,9 @@
 
 <br/>
 
-<img src="docs/sleeve-home.png" alt="Verza — Sleeve home" width="270"/>&nbsp;&nbsp;<img src="docs/sleeve-now-playing.png" alt="Verza — Sleeve now playing" width="270"/>
+<img src="docs/sleeve-home.png" alt="Verza — Home" width="270"/>&nbsp;&nbsp;<img src="docs/sleeve-now-playing.png" alt="Verza — Now Playing" width="270"/>
 
-<sub><i>The <b>Sleeve</b> appearance — every surface is sampled from the cover art and floats over the live reactive glow.</i></sub>
+<sub><i>Material 3 Expressive — the palette is sampled from the album art, and the cover mask morphs as the track changes.</i></sub>
 
 </div>
 
@@ -28,7 +28,7 @@
 
 Verza streams the entire YouTube Music catalogue without ads or a subscription, using [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) for stream resolution and the InnerTube API for browse, search and your personal library. Sign in to bring your home feed, playlists, followed artists and Liked Songs along — or use it fully anonymously.
 
-What sets it apart is the **design**: a GPU-shaded glow that drifts behind the app and takes on each song's colours, and **Sleeve** — an opt-in editorial mode that recolours the whole interface from the current cover art and turns Now Playing into a poster.
+What sets it apart is the **design**: the whole interface takes its colour from the album art, in the Material 3 Expressive language — a saturated canvas, a complementary accent, a cover mask that morphs between tracks, and spring motion throughout. Contrast is enforced by measurement rather than by taste, so a dark or muddy cover never costs you legibility.
 
 ---
 
@@ -44,14 +44,14 @@ Full YouTube Music catalogue · No ads · Offline downloads · Song radio · Bac
 </td>
 <td width="33%" valign="top">
 
-### 🌌 Living background
-A GPU-shaded **glow** that drifts behind the app, takes on each song's **cover colours**, and can **pulse with the music**
+### 🎨 Cover-driven colour
+The whole app takes its palette from the **album art** — with every text pair held above **4.5:1** by measured contrast, not by hope
 
 </td>
 <td width="33%" valign="top">
 
-### ✒️ Sleeve
-A **cover-driven editorial mode** — cover-tinted surfaces, film grain, glass chrome, and a poster Now Playing that melts into the glow
+### 🌀 Material 3 Expressive
+A **morphing cover mask** that changes with each track, a **live spectrum** seek bar, big display type, and spring motion everywhere
 
 </td>
 </tr>
@@ -85,13 +85,13 @@ Share your queue as a **`verza://` link** — a friend opens it and picks up the
 <td valign="top">
 
 ### 💾 Yours to keep
-**Local music**, playlists, and a one-file **export / import** of your whole library · long-press anything on Home
+Downloads land in **Music/Verza** as `Artist - Title` files any player opens · **local music**, playlists, and a one-file **export / import**
 
 </td>
 <td valign="top">
 
 ### 🪶 Free & clean
-**No Google Play Services** — bundled OFL fonts, no trackers, no ads. Ready for **F-Droid / IzzyOnDroid**
+**No Google Play Services** — bundled OFL fonts, no trackers, no ads. **Updates itself** from GitHub. Ready for **F-Droid / IzzyOnDroid**
 
 </td>
 </tr>
@@ -101,18 +101,18 @@ Share your queue as a **`verza://` link** — a friend opens it and picks up the
 
 ## Screenshots
 
-**Sleeve** — the cover-driven editorial appearance
+Material 3 Expressive — the cover-driven interface
 
 <div align="center">
 <table>
 <tr>
 <td align="center">
-<img src="docs/sleeve-home.png" alt="Sleeve — Home" width="280"/>
+<img src="docs/sleeve-home.png" alt="Home" width="280"/>
 <br/>
 <sub><b>Home</b> — mono dateline masthead, big cover-driven titles, cover-tinted glass cards, film grain over the live glow</sub>
 </td>
 <td align="center">
-<img src="docs/sleeve-now-playing.png" alt="Sleeve — Now Playing" width="280"/>
+<img src="docs/sleeve-now-playing.png" alt="Now Playing" width="280"/>
 <br/>
 <sub><b>Now Playing</b> — a full-bleed poster whose cover dissolves into the glow; the queue stays collapsed (a tap away) so the artwork leads</sub>
 </td>
@@ -153,7 +153,9 @@ Share your queue as a **`verza://` link** — a friend opens it and picks up the
 2. Open the file. Android will ask whether your browser may install apps — tap **Settings → Allow from this source**, then go back.
 3. Tap the APK again and choose **Install**.
 4. A **"Play Protect" warning** appears for any app not from the Play Store — tap **Install anyway** (sometimes under **More details**).
-5. Launch Verza from your app drawer. A short first-run setup lets you choose sign-in, theme, appearance and glow.
+5. Launch Verza from your app drawer. A short first-run setup lets you choose sign-in, theme and appearance.
+
+After that first install, Verza checks for its own updates: **Settings → Updates** fetches the newest release from this repo, downloads the APK and hands it to Android's installer. It never installs anything without you tapping through.
 
 > **Requirements:** Android 8.0 Oreo (API 26)+. ~6 MB download (~20 MB installed). The fluid shader glow uses the GPU on Android 13+; older devices get a lighter gradient glow automatically.
 
@@ -197,22 +199,16 @@ To silence it entirely on a phone you trust Verza on: **Settings → Security �
 - **Gentle start** — eases the volume up when you resume, a soft "sunrise".
 - **Focus / Flow sessions** — a timed (or open-ended) deep-work block that keeps the queue topped up with a radio continuation so silence never breaks your concentration, then fades out with a "you focused for *N* minutes" summary.
 
-### The living glow
-- A flowing, domain-warped **fluid field** rendered with a real **AGSL `RuntimeShader`** on Android 13+, with a multi-radial-gradient fallback on older devices.
-- **Album-art adaptive colours** — a vibrant palette extracted from the current cover (AndroidX Palette) tints the glow.
-- **Sound reactivity (optional)** — an FFT visualizer drives the glow's motion and brightness with the music's bass / mid / treble.
-- **Mood-adaptive** — high-energy tracks warm and brighten the glow; mellow ones cool and calm it, eased over a long window so it breathes.
-- **Feel the beat** — optional **haptics** that tap along with the bass, reading playback only (the same signal as the glow — never the microphone).
-- Colour presets, three intensity stops, and a **de-monochrome** colour derivation that keeps even Material You's palette lively.
+### Material 3 Expressive
+The whole app is dressed in Material 3 Expressive, driven by the album art.
 
-### Sleeve — the editorial appearance
-An opt-in, **cover-driven** mode (Settings → Appearance) inspired by record-label landing pages. Every surface — background, cards, chrome, type — recolours from the **current cover art** and floats over the live glow.
-
-- **Typography** — the same clean **Inter** sans as the rest of the app, set larger with tight optical tracking for a confident, poster-like display voice; **IBM Plex Mono** for wide-tracked eyebrows, indices and timecodes.
-- **Poster Now Playing** — the full-bleed cover **dissolves into the reactive glow at its edges** (no frame, no seam). The **queue is collapsed by default** so the cover is the hero, and **unfurls with a fluid spring** from a Queue toggle; when open, the current song is framed large and switching songs **animates the type and scroll**. Like · Add-to-playlist · Radio · Download sit on the poster, with a ⋯ "More" menu for focus, sleep/wind-down, ambient, and sharing — full parity with the standard player.
-- **Texture** — film grain, an edge vignette, chromatic-aberration headlines, mono superscript numerals, and moody cover-colour backdrops give it a printed, photographic feel.
-- **Carried app-wide** — a mono dateline masthead on Home, full-bleed Album and moody Playlist headers, **translucent "glass" nav, cards and mini-player**, and editorial track listings throughout.
-- **"Adaptive · cover"** — a standalone theme that brings the same cover-sampled colour scheme to the standard (non-Sleeve) UI.
+- **Two-tone, cover-derived** — a saturated container colour and a **complementary accent** taken 180° opposite it on the wheel, so controls and labels read as a different colour rather than a shade of the background.
+- **Contrast is measured, not assumed.** Every text/background pair is searched until it clears **4.5:1**, and a unit test sweeps the entire hue wheel — 483 seeds — asserting it. The album art picks the hues; it gets no vote on whether the result is legible.
+- **A morphing cover mask** — the artwork is clipped to a scalloped silhouette defined parametrically, so two shapes can be blended by lerping their radii. Pick one in Settings, or let it **change with each track**, chosen from a hash of the track id so a given song always gets the same shape.
+- **A live spectrum seek bar** — the played half is a bar visualiser fed from a sixteen-bin FFT; the rest is a flat line, so progress reads at a glance without a number.
+- **Spring motion throughout** — spatial animations overshoot and settle, colour animations are critically damped, following the expressive motion scheme rather than fixed durations.
+- **Mixed type** — a high-contrast italic display serif for hero names, IBM Plex Mono for metadata and timecodes, Inter for body. All bundled OFL, no Play Services font provider.
+- **Feel the beat** — optional **haptics** that tap along with the bass, reading playback only (never the microphone).
 
 ### Themes & motion
 - **Material You (Dynamic)** is the default on Android 12+, colouring the app from your wallpaper; older devices fall back to **Atelier Dark**.
@@ -228,7 +224,7 @@ An opt-in, **cover-driven** mode (Settings → Appearance) inspired by record-la
 - **Library** — **Recently played** + **Liked** (Room-backed, offline), a **Downloaded** tab, a **Playlists** tab (local + saved YT playlists), and a **Followed artists** tab. *Add to playlist* on any track from any row.
 
 ### Now Playing, Lyrics & extras
-- Full-bleed artwork, scrubbable progress, the **Like · Radio · Lyrics · Queue** action row, and an overflow with focus, sleep/wind-down, ambient, liner notes, add-to-playlist, radio, share and download — **all reachable in both the standard and Sleeve layouts** (Sleeve folds the occasional actions into a ⋯ "More" menu).
+- A morphing cover mask, a live spectrum seek bar, and a labelled **PLAY** pill between two round skips. Lyrics · Radio · Add to playlist · Download · Sleep timer sit in a toolbar on screen rather than behind a menu, with a ⋯ **More** sheet for discovery radio, focus, ambient, liner notes and session sharing.
 - **Synced (LRC) lyrics** from [LRCLIB](https://lrclib.net) with line-by-line auto-scroll, a plain-text fallback, and caching per `(title, artist, duration)`.
 - **Ambient display** — a full-screen, screen-on clock with a slowly drifting cover, for a desk or nightstand. Tap anywhere to exit.
 - **Liner notes** — an editorial card about what's playing (album, year, genre, and a few words), assembled on the fly from iTunes Search + Wikipedia.
@@ -244,9 +240,9 @@ An opt-in, **cover-driven** mode (Settings → Appearance) inspired by record-la
 - Export everything you've built — likes (with state), playlists, and your full listening history — to **a single JSON file you own**, and merge it back idempotently on any device. The sign-in cookie is never included.
 
 ### Onboarding, the tour & Settings
-- A six-step **first-run setup**: welcome → optional sign-in → theme → **appearance (Standard or Sleeve)** → glow + **sound reactivity** → done.
+- A **first-run setup**: welcome → optional sign-in → theme → **sound reactivity** → done.
 - A **guided feature tour** offered at the end of setup (and re-openable any time from **Settings → Help → Take the tour**): a swipeable walkthrough of every feature that says plainly *where to find it* and how to use it.
-- **Settings** — General (start screen), **Appearance** (Sleeve), Playback (resume-on-open, skip silence, album-art motion, **gentle start**), Audio quality, **Sound** (equalizer / bass / loudness), Theme, Background glow (enable / colour / intensity / reactivity / **Feel the beat**), Search (save & clear history), Data (**export / import** library, reset listening stats), and Help.
+- **Settings** — General (start screen), Playback (resume-on-open, skip silence, album-art motion, **gentle start**), Audio quality, **Sound** (equalizer / bass / loudness), Theme, **Now Playing** (cover shape), **Downloads** (folder + format), **Updates**, Search (save & clear history), Data (**export / import** library, reset listening stats), and Help.
 
 ### Built to be free
 - **No Google Play Services dependency.** Fonts are bundled as OFL files in the app rather than fetched from the proprietary downloadable-fonts provider, so Verza is clean for **F-Droid / IzzyOnDroid**. No analytics, no trackers, no ads — see [Privacy](#privacy).
