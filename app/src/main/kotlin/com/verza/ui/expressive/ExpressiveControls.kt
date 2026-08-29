@@ -123,13 +123,15 @@ fun ExpressiveToolbar(
     items: List<ToolbarItem>,
     colors: ExpressiveColors,
     modifier: Modifier = Modifier,
+    /** Spread the items across the full width rather than packing them at the start. */
+    spread: Boolean = false,
 ) {
     Row(
         modifier = modifier
             .clip(PillShape)
             .background(colors.surface)
             .padding(horizontal = 6.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = if (spread) Arrangement.SpaceEvenly else Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items.forEach { item ->
