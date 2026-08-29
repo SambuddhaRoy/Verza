@@ -27,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.audio.AudioVisualizer
 import com.verza.ui.expressive.LocalExpressiveColors
+import com.verza.ui.expressive.expressiveColorScheme
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.audio.HapticPlayer
 import com.verza.audio.VisualizerSignal
@@ -184,17 +185,13 @@ class MainActivity : ComponentActivity() {
                     (extractCoverColors(context, artworkUrl!!) ?: DefaultCoverColors)
                 else DefaultCoverColors
             }
-            // The Adaptive theme builds its scheme from the cover art, honouring the device's
-            // light/dark setting. Sleeve no longer forces this — it follows the selected theme.
-            val coverScheme = if (theme == VerzaTheme.ADAPTIVE)
-                coverColorScheme(artworkColors, light = !isSystemDark) else null
+            // One palette, resolved before the theme so the Material scheme can be built from it.
+            val expressive = expressiveColorsFrom(artworkColors)
 
-            VerzaTheme(theme = theme, coverScheme = coverScheme, sleeve = sleeveMode) {
-                val scheme = MaterialTheme.colorScheme
-                val seed = glowColor.resolveColor()
-                // The glow uses the cover accent whenever we're sampling it; otherwise the preset.
-                // The one palette. Everything downstream is derived from it.
-                val expressive = expressiveColorsFrom(artworkColors)
+            // The Material scheme is the expressive palette. Anything still reading
+            // MaterialTheme.colorScheme therefore agrees with the canvas it is drawn on, instead of
+            // colouring text from a theme chosen independently of the background.
+            VerzaTheme(theme = theme, coverScheme = expressiveColorScheme(expressive), sleeve = sleeveMode) {
                 // Screens not yet rewritten read LocalCoverColors; mapping it onto the expressive
                 // palette converts them without each one having to be touched.
                 val chromeCover = remember(expressive) {
