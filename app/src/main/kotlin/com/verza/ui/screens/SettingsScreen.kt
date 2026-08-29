@@ -83,6 +83,7 @@ fun SettingsScreen(
     val downloadTree by viewModel.downloadTree.collectAsStateWithLifecycle()
     val coverShape by viewModel.coverShape.collectAsStateWithLifecycle()
     val spectrumOn by viewModel.glowReactive.collectAsStateWithLifecycle()
+    val adaptiveIcon by viewModel.adaptiveIcon.collectAsStateWithLifecycle()
     var showResetStatsDialog by remember { mutableStateOf(false) }
 
     // ── Library backup (export / import) ────────────────────────────────────────
@@ -470,6 +471,17 @@ fun SettingsScreen(
                         viewModel.setGlowReactive(on)
                     }
                 },
+                divider = false,
+            )
+        }
+
+        item {
+            ToggleRow(
+                title = "Icon follows the music",
+                subtitle = "The launcher icon takes the colour of what you are playing. Android has " +
+                    "to swap the icon to do this, so it may blink on your home screen when it changes.",
+                checked = adaptiveIcon,
+                onToggle = { viewModel.setAdaptiveIcon(it) },
                 divider = false,
             )
         }

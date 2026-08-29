@@ -3,6 +3,7 @@ package com.verza.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verza.ui.expressive.CoverShapeMode
+import com.verza.data.IconVariant
 import com.verza.data.UpdateRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.verza.data.DownloadStore
@@ -30,6 +31,7 @@ class SettingsViewModel @Inject constructor(
     private val stats: StatsRepository,
     private val backup: LibraryBackupRepository,
     private val updates: UpdateRepository,
+    private val iconVariant: IconVariant,
     private val downloads: DownloadStore,
 ) : ViewModel() {
 
@@ -189,6 +191,17 @@ class SettingsViewModel @Inject constructor(
     fun installUpdate(file: java.io.File) {
         if (!updates.install(file)) {
             _updateState.value = UpdateState.Failed("Android would not open the installer")
+        }
+    }
+
+    val adaptiveIcon: StateFlow<Boolean> = prefs.adaptiveIconFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Turning it off puts the default icon back rather than leaving the last colour stuck on. */
+    fun setAdaptiveIcon(enabled: Boolean) {
+        viewModelScope.launch {
+            prefs.setAdaptiveIcon(enabled)
+            if (!enabled) iconVariant.reset()
         }
     }
 

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The shared glyph, tinted. The bitmap carries only alpha, so the tint is the whole colour. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_verza_glyph"
+    android:tint="@color/icon_fg_amber"
+    android:gravity="fill" />
