@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -315,9 +316,11 @@ private fun PlayerPane(
             modifier = Modifier.fillMaxWidth().weight(1f),
             label = "artSwap",
         ) { (url, _) ->
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxHeight()
+                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
                     .clip(coverShape)
                     // Drag sideways to change track — the gesture the slide animation implies.
                     .pointerInput(Unit) {
@@ -337,9 +340,10 @@ private fun PlayerPane(
                     modifier = Modifier.fillMaxSize().background(colors.surface).scale(artScale),
                 )
             }
+            }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
 
         // ── title ────────────────────────────────────────────────────────────────
         AnimatedContent(

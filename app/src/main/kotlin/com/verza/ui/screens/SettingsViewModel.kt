@@ -3,6 +3,8 @@ package com.verza.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verza.ui.expressive.CoverShapeMode
+import com.verza.data.UpdateRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.verza.data.DownloadStore
 import com.verza.data.ImportSummary
 import com.verza.data.LibraryBackupRepository
@@ -27,6 +29,7 @@ class SettingsViewModel @Inject constructor(
     private val prefs: PreferencesRepository,
     private val stats: StatsRepository,
     private val backup: LibraryBackupRepository,
+    private val updates: UpdateRepository,
     private val downloads: DownloadStore,
 ) : ViewModel() {
 
@@ -143,6 +146,50 @@ class SettingsViewModel @Inject constructor(
 
     fun setSleeveMode(enabled: Boolean) {
         viewModelScope.launch { prefs.setSleeveMode(enabled) }
+    }
+
+    // ── app updates ─────────────────────────────────────────────────────────
+    private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val updateState: StateFlow<UpdateState> = _updateState
+
+    sealed interface UpdateState {
+        data object Idle : UpdateState
+        data object Checking : UpdateState
+        data object UpToDate : UpdateState
+        data class Available(val release: UpdateRepository.Release) : UpdateState
+        data class Downloading(val progress: Float) : UpdateState
+        data class Ready(val file: java.io.File, val version: String) : UpdateState
+        data class Failed(val message: String) : UpdateState
+    }
+
+    fun checkForUpdate() {
+        if (_updateState.value is UpdateState.Checking) return
+        _updateState.value = UpdateState.Checking
+        viewModelScope.launch {
+            val release = updates.checkForUpdate()
+            _updateState.value =
+                if (release == null) UpdateState.UpToDate else UpdateState.Available(release)
+        }
+    }
+
+    fun downloadUpdate(release: UpdateRepository.Release) {
+        _updateState.value = UpdateState.Downloading(0f)
+        viewModelScope.launch {
+            val file = updates.download(release) { p ->
+                _updateState.value = UpdateState.Downloading(p)
+            }
+            _updateState.value = if (file == null) {
+                UpdateState.Failed("Download failed")
+            } else {
+                UpdateState.Ready(file, release.version)
+            }
+        }
+    }
+
+    fun installUpdate(file: java.io.File) {
+        if (!updates.install(file)) {
+            _updateState.value = UpdateState.Failed("Android would not open the installer")
+        }
     }
 
     fun setCoverShape(mode: CoverShapeMode) {

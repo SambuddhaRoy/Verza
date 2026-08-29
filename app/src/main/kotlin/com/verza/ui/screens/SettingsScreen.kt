@@ -365,6 +365,60 @@ fun SettingsScreen(
         }
 
 
+        // ── Updates ──────────────────────────────────────────────────────────
+        item { SectionHeader("Updates") }
+        item {
+            val update by viewModel.updateState.collectAsStateWithLifecycle()
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                when (val u = update) {
+                    is SettingsViewModel.UpdateState.Idle -> ActionRow(
+                        title = "Check for updates",
+                        subtitle = "Verza is sideloaded, so it looks for new versions on GitHub itself",
+                        onClick = { viewModel.checkForUpdate() },
+                        divider = false,
+                    )
+                    is SettingsViewModel.UpdateState.Checking -> ActionRow(
+                        title = "Checking\u2026",
+                        subtitle = "Asking GitHub for the latest release",
+                        onClick = {},
+                        divider = false,
+                    )
+                    is SettingsViewModel.UpdateState.UpToDate -> ActionRow(
+                        title = "Up to date",
+                        subtitle = "You are on ${com.verza.BuildConfig.VERSION_NAME}. Tap to check again.",
+                        onClick = { viewModel.checkForUpdate() },
+                        divider = false,
+                    )
+                    is SettingsViewModel.UpdateState.Available -> ActionRow(
+                        title = "Download ${u.release.version}",
+                        subtitle = u.release.notes.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() }
+                            ?: "A newer version is available",
+                        onClick = { viewModel.downloadUpdate(u.release) },
+                        divider = false,
+                    )
+                    is SettingsViewModel.UpdateState.Downloading -> ActionRow(
+                        title = "Downloading ${(u.progress * 100).toInt()}%",
+                        subtitle = "Keep Verza open until this finishes",
+                        onClick = {},
+                        divider = false,
+                    )
+                    is SettingsViewModel.UpdateState.Ready -> ActionRow(
+                        title = "Install ${u.version}",
+                        subtitle = "Android will ask you to confirm",
+                        onClick = { viewModel.installUpdate(u.file) },
+                        divider = false,
+                    )
+                    is SettingsViewModel.UpdateState.Failed -> ActionRow(
+                        title = "Update failed",
+                        subtitle = "${u.message}. Tap to try again.",
+                        tint = colors.error,
+                        onClick = { viewModel.checkForUpdate() },
+                        divider = false,
+                    )
+                }
+            }
+        }
+
         // ── Now Playing ──────────────────────────────────────────────────────
         item { SectionHeader("Now Playing") }
         item {
