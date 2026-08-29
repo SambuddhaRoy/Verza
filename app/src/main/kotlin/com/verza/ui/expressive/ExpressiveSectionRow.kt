@@ -65,36 +65,3 @@ fun ExpressiveSectionRow(
         Spacer(Modifier.height(22.dp))
     }
 }
-
-/**
- * A vertical segmented list of tracks — Library's tab contents, and any "see all".
- *
- * Rows are grouped into one rounded block rather than stacked as separate cards, so a list reads as
- * a single object. [nowPlayingId] fills its row, which is the spec's "selection is a filled
- * container" rule applied to the one row that matters most.
- */
-@Composable
-fun ExpressiveTrackList(
-    items: List<HomeItem>,
-    onItemClick: (HomeItem) -> Unit,
-    modifier: Modifier = Modifier,
-    nowPlayingId: String? = null,
-    trailing: @Composable ((HomeItem) -> Unit)? = null,
-) {
-    Column(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        items.forEachIndexed { index, item ->
-            ExpressiveListItem(
-                title = item.title,
-                subtitle = item.subtitle,
-                artworkUrl = item.thumbnailUrl,
-                onClick = { onItemClick(item) },
-                selected = nowPlayingId != null && item.videoId == nowPlayingId,
-                position = segmentPositionOf(index, items.size),
-                trailing = trailing?.let { t -> { t(item) } },
-            )
-        }
-    }
-}

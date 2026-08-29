@@ -205,6 +205,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ── notices ─────────────────────────────────────────────────────────────
+    // Suspending accessors rather than flows: these are read once at launch to decide whether to
+    // show a sheet, not observed for changes.
+    suspend fun seenChangelogVersion(): String = prefs.seenChangelogVersion()
+    suspend fun setSeenChangelogVersion(v: String) = prefs.setSeenChangelogVersion(v)
+    suspend fun dismissedUpdateVersion(): String = prefs.dismissedUpdateVersion()
+    fun setDismissedUpdateVersion(v: String) { viewModelScope.launch { prefs.setDismissedUpdateVersion(v) } }
+    suspend fun notesFor(version: String): String? = updates.notesFor(version)
+
+    /** A check that does not touch the Settings row state — used by the launch-time offer. */
+    suspend fun checkForUpdateQuietly(): UpdateRepository.Release? = updates.checkForUpdate()
+
     fun setCoverShape(mode: CoverShapeMode) {
         viewModelScope.launch { prefs.setCoverShape(mode) }
     }

@@ -14,6 +14,10 @@ import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Search
 import com.verza.ui.expressive.ExpressiveMotion
+import com.verza.data.UpdateRepository
+import com.verza.ui.expressive.ChangelogSheet
+import com.verza.ui.expressive.UpdateAvailableSheet
+import com.verza.ui.screens.SettingsViewModel
 import com.verza.ui.expressive.ExpressiveMiniPlayer
 import com.verza.ui.expressive.ExpressiveNavBar
 import com.verza.ui.expressive.NavDestination
@@ -91,6 +95,32 @@ fun VerzaNavigation(
     val showMiniPlayer = hasTrack && currentRoute != Screen.NowPlaying.route && currentRoute != null && !isChromeHidden
 
     val context = LocalContext.current
+
+    // ── after-update changelog, and the offer of a newer version ────────────────
+    //
+    // Both are decided once per launch rather than watched: the installed version cannot change
+    // while the app is running, and polling GitHub on every recomposition would be rude to both the
+    // API and the battery. The changelog goes first — telling someone what just changed and then
+    // immediately asking them to update again would be nonsense.
+    val noticesVm: SettingsViewModel = hiltViewModel()
+    var changelog by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var updateOffer by remember { mutableStateOf<UpdateRepository.Release?>(null) }
+
+    LaunchedEffect(Unit) {
+        val installed = com.verza.BuildConfig.VERSION_NAME
+        if (noticesVm.seenChangelogVersion() != installed) {
+            // A fresh install has nothing to announce; only show this when upgrading over something.
+            if (noticesVm.seenChangelogVersion().isNotEmpty()) {
+                changelog = installed to (noticesVm.notesFor(installed) ?: "")
+            }
+            noticesVm.setSeenChangelogVersion(installed)
+        } else {
+            val release = noticesVm.checkForUpdateQuietly()
+            if (release != null && noticesVm.dismissedUpdateVersion() != release.version) {
+                updateOffer = release
+            }
+        }
+    }
 
     // The track currently being added to a playlist via the sheet picker, or null when closed.
     var pendingAdd by remember { mutableStateOf<com.verza.innertube.models.MusicItem?>(null) }
@@ -203,6 +233,23 @@ fun VerzaNavigation(
             }
         },
     ) { innerPadding ->
+      changelog?.let { (version, notes) ->
+          ChangelogSheet(version = version, notes = notes, onDismiss = { changelog = null })
+      }
+      updateOffer?.let { release ->
+          UpdateAvailableSheet(
+              version = release.version,
+              notes = release.notes,
+              onUpdate = {
+                  updateOffer = null
+                  navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+              },
+              onLater = {
+                  noticesVm.setDismissedUpdateVersion(release.version)
+                  updateOffer = null
+              },
+          )
+      }
       CompositionLocalProvider(LocalTrackActions provides trackActions) {
         NavHost(
             navController = navController,

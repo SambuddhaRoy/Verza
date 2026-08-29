@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Box
 import com.verza.ui.expressive.ExpressiveMotion
 import androidx.activity.compose.setContent
@@ -186,15 +187,26 @@ class MainActivity : ComponentActivity() {
             // Adaptive theme's scheme, and the album-art glow. Extracted off the main thread.
             // We need it whenever Sleeve is on (the poster), the Adaptive theme is picked, or the
             // glow is set to follow album colours.
-            val isSystemDark = isSystemInDarkTheme()
-            val wantArtwork = sleeveMode || theme == VerzaTheme.ADAPTIVE || glowColor == GlowColorPreset.ALBUM_ART
-            val artworkColors by produceState(DefaultCoverColors, wantArtwork, artworkUrl) {
-                value = if (wantArtwork && !artworkUrl.isNullOrBlank())
-                    (extractCoverColors(context, artworkUrl!!) ?: DefaultCoverColors)
-                else DefaultCoverColors
+            // The cover drives every colour in the app now, so it is always extracted. This used to be
+            // gated on Sleeve, the Adaptive theme or an album-art glow setting — all of which are
+            // gone, and when the gate came out false the app sat on the default palette entirely.
+            val artworkColors by produceState(DefaultCoverColors, artworkUrl) {
+                if (artworkUrl.isNullOrBlank()) {
+                    value = DefaultCoverColors
+                    return@produceState
+                }
+                // Settle before decoding. Skipping through ten tracks otherwise runs ten bitmap
+                // decodes and ten Palette passes for nine covers nobody sees, and that work lands on
+                // exactly the frames the skip animation needs.
+                kotlinx.coroutines.delay(220)
+                value = extractCoverColors(context, artworkUrl!!) ?: DefaultCoverColors
             }
-            // One palette, resolved before the theme so the Material scheme can be built from it.
-            val expressive = expressiveColorsFrom(artworkColors)
+
+            // Pure functions of the cover, so they are computed when the cover changes rather than on
+            // every playback emission. Both walk contrast searches; rebuilding them per recomposition
+            // was doing that work dozens of times a second for an unchanged colour.
+            val expressive = remember(artworkColors) { expressiveColorsFrom(artworkColors) }
+            val materialScheme = remember(expressive) { expressiveColorScheme(expressive) }
 
             // Launcher icon follows the palette, when asked to. Rate-limited and bucketed: the swap
             // is a visible event on the home screen, so it only happens when the hue actually moves
@@ -216,7 +228,7 @@ class MainActivity : ComponentActivity() {
             // The Material scheme is the expressive palette. Anything still reading
             // MaterialTheme.colorScheme therefore agrees with the canvas it is drawn on, instead of
             // colouring text from a theme chosen independently of the background.
-            VerzaTheme(theme = theme, coverScheme = expressiveColorScheme(expressive), sleeve = sleeveMode) {
+            VerzaTheme(theme = theme, coverScheme = materialScheme, sleeve = sleeveMode) {
                 // Screens not yet rewritten read LocalCoverColors; mapping it onto the expressive
                 // palette converts them without each one having to be touched.
                 val chromeCover = remember(expressive) {
@@ -242,7 +254,11 @@ class MainActivity : ComponentActivity() {
 
                 // Cross-fade the canvas as the cover changes. An effects spring, not a spatial one:
                 // colour must not overshoot or it reads as a flash between tracks.
-                val canvas by animateColorAsState(
+                //
+                // Kept as a State and read in the draw lambda below rather than unwrapped here. Read
+                // here, the fade would invalidate this scope — and everything the app draws with it —
+                // on every frame of every track change.
+                val canvas = animateColorAsState(
                     targetValue = expressive.container,
                     animationSpec = ExpressiveMotion.effectsSlow(),
                     label = "appCanvas",
@@ -256,7 +272,9 @@ class MainActivity : ComponentActivity() {
                     LocalAudioSignal provides (if (shouldVisualize) visualizerSignalFlow else null),
                 ) {
                     // One surface, edge to edge, behind everything including the system bars.
-                    Box(modifier = Modifier.fillMaxSize().background(canvas)) { navContent() }
+                    Box(modifier = Modifier.fillMaxSize().drawBehind { drawRect(canvas.value) }) {
+                        navContent()
+                    }
                 }
             }
         }

@@ -78,6 +78,10 @@ class PreferencesRepository @Inject constructor(
     // Whether the launcher icon follows the cover colour. Off by default — switching it has visible
     // side effects on the home screen, so it should be a choice rather than a surprise.
     private val adaptiveIconKey = booleanPreferencesKey("adaptive_launcher_icon")
+    // The version whose changelog has been shown, and the version the listener said "not now" to.
+    // Both are versions rather than flags, so a later release asks again by itself.
+    private val seenChangelogKey = stringPreferencesKey("seen_changelog_version")
+    private val dismissedUpdateKey = stringPreferencesKey("dismissed_update_version")
     // ── Sound suite (equaliser / bass / loudness) ──────────────────────────────
     private val eqEnabledKey = booleanPreferencesKey("eq_enabled")
     private val eqBandsKey = stringPreferencesKey("eq_band_levels") // JSON List<Int> (millibels)
@@ -155,6 +159,18 @@ class PreferencesRepository @Inject constructor(
         store.data.map { CoverShapeMode.fromName(it[coverShapeKey]) }
 
     val adaptiveIconFlow: Flow<Boolean> = store.data.map { it[adaptiveIconKey] ?: false }
+
+    suspend fun seenChangelogVersion(): String = store.data.first()[seenChangelogKey].orEmpty()
+
+    suspend fun setSeenChangelogVersion(version: String) {
+        store.edit { it[seenChangelogKey] = version }
+    }
+
+    suspend fun dismissedUpdateVersion(): String = store.data.first()[dismissedUpdateKey].orEmpty()
+
+    suspend fun setDismissedUpdateVersion(version: String) {
+        store.edit { it[dismissedUpdateKey] = version }
+    }
 
     /** Subtle vibration synced to the music's bass. Reads playback audio only (same as the glow). */
     val hapticsEnabledFlow: Flow<Boolean> = store.data.map { it[hapticsKey] ?: false }

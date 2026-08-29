@@ -33,6 +33,9 @@ class IconVariant @Inject constructor(
     /** Bucket centres, in degrees. Index matches [ALIASES]. */
     private val hues = floatArrayOf(0f, 40f, 80f, 140f, 180f, 220f, 265f, 300f)
 
+    /** The default entry. Enabled whenever the option is off, so something always launches. */
+    private val defaultAlias = "com.verza.IconDefault"
+
     private val aliases = listOf(
         "com.verza.IconRed", "com.verza.IconAmber", "com.verza.IconLime", "com.verza.IconGreen",
         "com.verza.IconTeal", "com.verza.IconBlue", "com.verza.IconIndigo", "com.verza.IconViolet",
@@ -59,16 +62,14 @@ class IconVariant @Inject constructor(
     suspend fun apply(bucket: Int) = withContext(Dispatchers.IO) {
         runCatching {
             val pm = context.packageManager
+            setState(pm, defaultAlias, PackageManager.COMPONENT_ENABLED_STATE_DISABLED)
             aliases.forEachIndexed { i, alias ->
                 val state = if (i == bucket) {
                     PackageManager.COMPONENT_ENABLED_STATE_ENABLED
                 } else {
                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED
                 }
-                val component = ComponentName(context.packageName, alias)
-                if (pm.getComponentEnabledSetting(component) != state) {
-                    pm.setComponentEnabledSetting(component, state, PackageManager.DONT_KILL_APP)
-                }
+                setState(pm, alias, state)
             }
         }
     }
@@ -77,16 +78,17 @@ class IconVariant @Inject constructor(
     suspend fun reset() = withContext(Dispatchers.IO) {
         runCatching {
             val pm = context.packageManager
-            aliases.forEach { alias ->
-                val component = ComponentName(context.packageName, alias)
-                if (pm.getComponentEnabledSetting(component) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
-                    pm.setComponentEnabledSetting(
-                        component,
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                        PackageManager.DONT_KILL_APP,
-                    )
-                }
-            }
+            // Enable the default first: if every alias were disabled at once the app would have no
+            // launcher entry at all, and it would vanish from the home screen.
+            setState(pm, defaultAlias, PackageManager.COMPONENT_ENABLED_STATE_ENABLED)
+            aliases.forEach { setState(pm, it, PackageManager.COMPONENT_ENABLED_STATE_DISABLED) }
+        }
+    }
+
+    private fun setState(pm: PackageManager, alias: String, state: Int) {
+        val component = ComponentName(context.packageName, alias)
+        if (pm.getComponentEnabledSetting(component) != state) {
+            pm.setComponentEnabledSetting(component, state, PackageManager.DONT_KILL_APP)
         }
     }
 
