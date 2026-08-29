@@ -75,6 +75,9 @@ class PreferencesRepository @Inject constructor(
     // Which silhouette the album art is masked with. Defaults to SHUFFLE — the shape changing per
     // track is the point of having it at all.
     private val coverShapeKey = stringPreferencesKey("cover_shape_mode")
+    // Whether the launcher icon follows the cover colour. Off by default — switching it has visible
+    // side effects on the home screen, so it should be a choice rather than a surprise.
+    private val adaptiveIconKey = booleanPreferencesKey("adaptive_launcher_icon")
     // ── Sound suite (equaliser / bass / loudness) ──────────────────────────────
     private val eqEnabledKey = booleanPreferencesKey("eq_enabled")
     private val eqBandsKey = stringPreferencesKey("eq_band_levels") // JSON List<Int> (millibels)
@@ -150,6 +153,8 @@ class PreferencesRepository @Inject constructor(
 
     val coverShapeFlow: Flow<CoverShapeMode> =
         store.data.map { CoverShapeMode.fromName(it[coverShapeKey]) }
+
+    val adaptiveIconFlow: Flow<Boolean> = store.data.map { it[adaptiveIconKey] ?: false }
 
     /** Subtle vibration synced to the music's bass. Reads playback audio only (same as the glow). */
     val hapticsEnabledFlow: Flow<Boolean> = store.data.map { it[hapticsKey] ?: false }
@@ -260,6 +265,10 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setCoverShape(mode: CoverShapeMode) {
         store.edit { it[coverShapeKey] = mode.name }
+    }
+
+    suspend fun setAdaptiveIcon(enabled: Boolean) {
+        store.edit { it[adaptiveIconKey] = enabled }
     }
 
     suspend fun setHapticsEnabled(enabled: Boolean) {
