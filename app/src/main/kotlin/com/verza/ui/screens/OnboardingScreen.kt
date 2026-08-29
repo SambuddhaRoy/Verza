@@ -3,6 +3,7 @@ package com.verza.ui.screens
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -73,13 +74,16 @@ fun OnboardingScreen(
                 .padding(horizontal = 28.dp, vertical = 32.dp),
         ) {
             // Progress dots — a quiet header signalling there are a few steps.
-            StepDots(current = step, total = 6)
+            StepDots(current = step, total = 4)
             Spacer(Modifier.height(40.dp))
 
             AnimatedContent(
                 targetState = step,
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(280)) togetherWith fadeOut(animationSpec = tween(180))
+                    (fadeIn(tween(240)) + scaleIn(
+                        initialScale = 0.94f,
+                        animationSpec = com.verza.ui.expressive.ExpressiveMotion.spatialDefault(),
+                    )) togetherWith fadeOut(tween(160))
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -99,20 +103,6 @@ fun OnboardingScreen(
                         onPick = { theme ->
                             viewModel.setTheme(theme)
                             step = 3
-                        },
-                    )
-                    3 -> StepAppearance(
-                        onPick = { sleeve ->
-                            viewModel.setSleeveMode(sleeve)
-                            step = 4
-                        },
-                    )
-                    4 -> StepGlow(
-                        onPick = { enabled, preset, reactive ->
-                            viewModel.setGlowEnabled(enabled)
-                            if (preset != null) viewModel.setGlowColor(preset)
-                            viewModel.setGlowReactive(reactive)
-                            step = 5
                         },
                     )
                     else -> StepDone(
@@ -185,7 +175,7 @@ private fun StepSignIn(
         Spacer(Modifier.height(12.dp))
         Text(
             text = "Sync your music.",
-            style = MaterialTheme.typography.displaySmall,
+            style = com.verza.ui.expressive.HeroTitle,
             color = colors.onBackground,
         )
         Spacer(Modifier.height(14.dp))
@@ -228,7 +218,7 @@ private fun StepTheme(
         Spacer(Modifier.height(12.dp))
         Text(
             text = "Choose your look",
-            style = MaterialTheme.typography.displaySmall,
+            style = com.verza.ui.expressive.HeroTitle,
             color = colors.onBackground,
         )
         Spacer(Modifier.height(14.dp))
@@ -261,94 +251,6 @@ private fun StepTheme(
                 label = "Atelier Light",
                 subtitle = "Ink on warm bone",
                 onClick = { onPick(VerzaTheme.ATELIER_LIGHT) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun StepAppearance(onPick: (Boolean) -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Column(modifier = Modifier.fillMaxSize()) {
-        Eyebrow(text = "STEP 03")
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "Pick a layout",
-            style = MaterialTheme.typography.displaySmall,
-            color = colors.onBackground,
-        )
-        Spacer(Modifier.height(14.dp))
-        Text(
-            text = "Standard is a clean Material layout. Sleeve is an editorial mode that recolours " +
-                  "the whole app from the cover art and turns Now Playing into a poster. " +
-                  "You can switch anytime in Settings.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = ext.muted,
-        )
-        Spacer(Modifier.height(24.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AppearanceOptionRow(
-                label = "Standard",
-                subtitle = "Clean Material cards",
-                serif = false,
-                onClick = { onPick(false) },
-            )
-            AppearanceOptionRow(
-                label = "Sleeve",
-                subtitle = "Editorial · cover-driven · poster Now Playing",
-                serif = true,
-                onClick = { onPick(true) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun StepGlow(onPick: (Boolean, GlowColorPreset?, Boolean) -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    var reactive by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxSize()) {
-        Eyebrow(text = "STEP 04")
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "Set the mood",
-            style = MaterialTheme.typography.displaySmall,
-            color = colors.onBackground,
-        )
-        Spacer(Modifier.height(14.dp))
-        Text(
-            text = "A soft glow drifts behind the app and can take on each song's colours. " +
-                  "It appears on dark themes; tweak it anytime in Settings.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = ext.muted,
-        )
-        Spacer(Modifier.height(20.dp))
-
-        // Sound-reactivity toggle — captured and applied when a glow option is chosen below.
-        ReactiveToggleRow(checked = reactive, onCheckedChange = { reactive = it })
-        Spacer(Modifier.height(16.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            GlowOptionRow(
-                label = "Album colours",
-                subtitle = "Glow adapts to the cover art",
-                swatch = GlowSwatch.Album,
-                onClick = { onPick(true, GlowColorPreset.ALBUM_ART, reactive) },
-            )
-            GlowOptionRow(
-                label = "Warm amber",
-                subtitle = "A fixed, warm ambient glow",
-                swatch = GlowSwatch.Solid(GlowColorPreset.WARM_AMBER.resolveColor()),
-                onClick = { onPick(true, GlowColorPreset.WARM_AMBER, reactive) },
-            )
-            GlowOptionRow(
-                label = "Off",
-                subtitle = "No background glow",
-                swatch = GlowSwatch.None,
-                onClick = { onPick(false, null, false) },
             )
         }
     }

@@ -50,10 +50,6 @@
             android:launchMode="singleTop"
             android:theme="@style/Theme.Verza.Starting"
             android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <!-- Shared listening sessions: verza://session/<payload> opens here. -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
@@ -91,9 +87,25 @@
             </intent-filter>
         </service>
 
+
+        <!-- The launcher entry. It lives on an alias rather than on MainActivity so the colour
+             variants below can take over: only the component holding the LAUNCHER filter supplies
+             the icon, so with the filter on the activity the aliases had nothing to replace. -->
+        <activity-alias
+            android:name=".IconDefault"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
         <!-- Launcher icon variants. Android cannot tint an icon at runtime, so each colour is a
-             separate alias and exactly one is enabled at a time. All start disabled; the default
-             icon is MainActivity's own. See IconVariant.kt. -->
+             separate alias and exactly one is enabled at a time. See IconVariant.kt. -->
         <activity-alias
             android:name=".IconRed"
             android:targetActivity=".MainActivity"

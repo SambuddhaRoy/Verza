@@ -112,6 +112,26 @@ class UpdateRepository @Inject constructor(
         }.getOrNull()
     }
 
+    /**
+     * The notes for a specific tag, used by the changelog after an update.
+     *
+     * Fetched rather than bundled: the notes are written when the release is cut, so shipping them
+     * inside the APK would mean writing them twice and letting the two drift.
+     */
+    suspend fun notesFor(version: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder()
+                .url("https://api.github.com/repos/$REPO/releases/tags/v$version")
+                .header("Accept", "application/vnd.github+json")
+                .build()
+            val body = client.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                resp.body?.string() ?: return@withContext null
+            }
+            json.parseToJsonElement(body).jsonObject["body"]?.jsonPrimitive?.contentOrNull?.trim()
+        }.getOrNull()
+    }
+
     /** Hand [apk] to the system installer. Returns false if the OS refuses to start it. */
     fun install(apk: File): Boolean = runCatching {
         val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk)

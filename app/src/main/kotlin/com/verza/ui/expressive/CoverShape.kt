@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -116,10 +118,15 @@ private fun CoverShapeMode.spec(): ScallopSpec? = when (this) {
  * In SHUFFLE the shape is chosen from a hash of the track id, not from a counter, so a given song
  * always gets the same silhouette — going back a track returns you to the shape you just saw
  * instead of advancing to a third one.
+ *
+ * Returns a [State] rather than a [Shape], and the caller is expected to read it inside a
+ * `graphicsLayer` block. That is not ceremony: the previous version handed back a plain Shape built
+ * from `t.value`, which made the morph a *composition* dependency of whoever called it — so every
+ * frame of every track change recomposed the whole Now Playing screen, images and all. Skipping
+ * through a few tracks quickly meant that never stopped, which is what the stutter was.
  */
 @Composable
-fun rememberCoverShape(mode: CoverShapeMode, trackKey: String?): Shape {
-    if (mode == CoverShapeMode.NONE) return ShapeExtraLarge
+fun rememberCoverShape(mode: CoverShapeMode, trackKey: String?): State<Shape> {
 
     // Where the morph is coming from and going to, plus the 0..1 driver between them.
     //
@@ -133,6 +140,7 @@ fun rememberCoverShape(mode: CoverShapeMode, trackKey: String?): Shape {
     val t = remember { Animatable(1f) }
 
     LaunchedEffect(mode, trackKey) {
+        if (mode == CoverShapeMode.NONE) return@LaunchedEffect
         val next = mode.spec() ?: run {
             // Hash the track so the choice is stable for a given song, but draw only from the shapes
             // that are NOT on screen — hashing into the whole list gave a one-in-four chance of
@@ -150,8 +158,10 @@ fun rememberCoverShape(mode: CoverShapeMode, trackKey: String?): Shape {
         }
     }
 
-    return remember(from, to, t.value) { MorphScallopShape(from = from, to = to, t = t.value) }
+    return remember(mode) {
+        derivedStateOf<Shape> {
+            if (mode == CoverShapeMode.NONE) ShapeExtraLarge
+            else MorphScallopShape(from = from, to = to, t = t.value)
+        }
+    }
 }
-
-/** Kept so existing call sites keep compiling; the cover now uses [rememberCoverShape]. */
-val CoverShapeFallback: Shape = RoundedCornerShape(28.dp)

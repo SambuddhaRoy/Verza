@@ -68,8 +68,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -341,8 +339,15 @@ private fun PlayerPane(
             Box(
                 modifier = Modifier
                     .size(side)
-                    .scale(COVER_BOOST)
-                    .clip(coverShape)
+                    // Boost and mask in one layer, with the shape read here rather than in the
+                    // composable body — a draw-phase read, so the morph repaints without
+                    // recomposing anything.
+                    .graphicsLayer {
+                        scaleX = COVER_BOOST
+                        scaleY = COVER_BOOST
+                        shape = coverShape.value
+                        clip = true
+                    }
                     // Drag sideways to change track — the gesture the slide animation implies.
                     .pointerInput(Unit) {
                         var total = 0f
