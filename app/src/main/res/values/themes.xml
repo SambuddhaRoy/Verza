@@ -16,13 +16,12 @@
     -->
     <style name="Theme.Verza.Starting" parent="Theme.SplashScreen">
         <!--
-            Splash background matches the new "Fold" icon's page colour (warm bone) so
-            the icon reads naturally on the splash. The Compose BootScreen that follows
-            picks up the user's chosen theme — Atelier-dark users see a deliberate
-            "lights down" transition into the dark boot reveal.
+            The system splash, which the Compose BootScreen picks up from. Both now show the same
+            mark on the same indigo, so the handover between them is invisible rather than a jump
+            from a light plate to a dark screen.
         -->
-        <item name="windowSplashScreenBackground">#F5F1EA</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenBackground">@color/icon_bg_indigo</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_glyph_indigo</item>
         <item name="postSplashScreenTheme">@style/Theme.Verza</item>
     </style>
 </resources>
