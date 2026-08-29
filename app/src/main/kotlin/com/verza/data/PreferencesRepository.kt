@@ -126,7 +126,9 @@ class PreferencesRepository @Inject constructor(
      * Permission gating (RECORD_AUDIO) is handled at the UI layer; this flag just stores
      * the user's stated preference.
      */
-    val glowReactiveFlow: Flow<Boolean> = store.data.map { it[glowReactiveKey] ?: false }
+    // Drives the spectrum seek bar (and the beat haptics). On by default: it is part of the player's
+    // look now rather than an optional effect, and it degrades to a flat bar without the permission.
+    val glowReactiveFlow: Flow<Boolean> = store.data.map { it[glowReactiveKey] ?: true }
 
     // ── Behaviour / customization ───────────────────────────────────────────────
     val startScreenFlow: Flow<StartScreen> = store.data.map { prefs ->
