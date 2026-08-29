@@ -215,6 +215,7 @@ class AudioVisualizer(private val audioSessionId: Int) {
             treble = smoothTreble,
             // Weight bass slightly higher — kicks/drums dominate perceived "intensity".
             energy = (0.5f * smoothBass + 0.3f * smoothMid + 0.2f * smoothTreble).coerceIn(0f, 1f),
+            bands = bands,
         )
     }
 
