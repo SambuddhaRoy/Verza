@@ -45,6 +45,11 @@ import com.verza.innertube.models.HomeItem
 import com.verza.innertube.models.MusicItem
 import com.verza.ui.components.TrackActionsMenu
 import com.verza.ui.components.rememberSongArtwork
+import com.verza.ui.expressive.BodyStrong
+import com.verza.ui.expressive.BodyText
+import com.verza.ui.expressive.PillShape
+import com.verza.ui.expressive.ShapeLargeIncreased
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.theme.VerzaShape
 
@@ -168,17 +173,17 @@ fun LibraryScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(52.dp)
-                                    .clip(VerzaShape)
-                                    .background(colors.primaryContainer.copy(alpha = 0.5f)),
+                                    .size(50.dp)
+                                    .clip(ShapeMedium)
+                                    .background(xc.accent),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.Filled.Add, contentDescription = null, tint = colors.primary)
+                                Icon(Icons.Filled.Add, contentDescription = null, tint = xc.onAccent)
                             }
                             Text(
                                 "Create playlist",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = colors.onSurface,
+                                style = BodyStrong,
+                                color = xc.onSurface,
                             )
                         }
                     }
@@ -197,10 +202,10 @@ fun LibraryScreen(
                     if (isSignedIn && playlists.isNotEmpty()) {
                         item {
                             Text(
-                                "Saved from YouTube Music",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = ext.muted,
-                                modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 4.dp),
+                                "SAVED FROM YOUTUBE MUSIC",
+                                style = MetaLabel,
+                                color = xc.accent,
+                                modifier = Modifier.padding(start = 6.dp, top = 20.dp, bottom = 8.dp),
                             )
                         }
                         items(playlists) { item ->
@@ -215,9 +220,9 @@ fun LibraryScreen(
                         item {
                             Box(modifier = Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.Center) {
                                 Text(
-                                    "Sign in to also see your YT Music playlists",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = ext.muted,
+                                    "Sign in to see your YouTube Music playlists here too",
+                                    style = BodyText,
+                                    color = xc.onContainerMuted,
                                 )
                             }
                         }
@@ -375,22 +380,24 @@ private fun LibraryRow(
     circularThumb: Boolean = false,
     trailing: @Composable () -> Unit = {},
 ) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
+    val colors = LocalExpressiveColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(ShapeLargeIncreased)
+            .background(colors.surface)
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .clip(if (circularThumb) CircleShape else VerzaShape)
-                .background(colors.surfaceVariant),
+                .size(50.dp)
+                // Artists round, records square. Same rule as Search, so a mixed list reads the
+                // same way wherever you meet it.
+                .clip(if (circularThumb) PillShape else ShapeMedium)
+                .background(colors.surfaceHigh),
         ) {
             if (thumbnailUrl != null) {
                 AsyncImage(model = thumbnailUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
@@ -399,7 +406,7 @@ private fun LibraryRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = BodyStrong,
                 color = colors.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -407,8 +414,8 @@ private fun LibraryRow(
             if (subtitle.isNotBlank()) {
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ext.muted,
+                    style = BodyText,
+                    color = colors.onSurfaceMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -421,6 +428,6 @@ private fun LibraryRow(
 @Composable
 private fun CenterHint(text: String, color: androidx.compose.ui.graphics.Color) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
+        Text(text, style = BodyText, color = color)
     }
 }

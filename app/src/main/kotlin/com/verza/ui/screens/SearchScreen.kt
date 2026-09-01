@@ -37,6 +37,12 @@ import com.verza.innertube.models.HomeItem
 import com.verza.innertube.models.MusicItem
 import com.verza.ui.components.TrackActionsMenu
 import com.verza.ui.components.rememberSongArtwork
+import com.verza.ui.expressive.BodyStrong
+import com.verza.ui.expressive.BodyText
+import com.verza.ui.expressive.ExpressiveChip
+import com.verza.ui.expressive.PillShape
+import com.verza.ui.expressive.ShapeLargeIncreased
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.theme.LocalVerzaExtendedColors
 
 @Composable
@@ -105,12 +111,12 @@ fun SearchScreen(
                     onPick = { viewModel.applyHistory(it) },
                     onClear = { viewModel.clearHistory() },
                 )
-            is SearchUiState.Loading -> CenterBox { CircularProgressIndicator(color = colors.primary) }
+            is SearchUiState.Loading -> CenterBox { CircularProgressIndicator(color = xc.accent) }
             is SearchUiState.Empty -> CenterHint("No results")
             is SearchUiState.Error -> CenterHint(state.message)
             is SearchUiState.Results -> LazyColumn(
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 items(state.items) { item -> ResultRow(item = item, onClick = { onItemClick(item) }) }
             }
@@ -125,81 +131,72 @@ private fun SearchPill(
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
+    val colors = LocalExpressiveColors.current
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(CircleShape)
-            .background(colors.surfaceVariant)
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            .clip(PillShape)
+            .background(colors.surface)
+            .padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.Outlined.Search, contentDescription = null, tint = ext.muted, modifier = Modifier.size(20.dp))
-        Box(modifier = Modifier.weight(1f)) {
+        Icon(
+            Icons.Outlined.Search,
+            contentDescription = null,
+            tint = colors.onSurfaceMuted,
+            modifier = Modifier.size(20.dp),
+        )
+        Box(modifier = Modifier.weight(1f).padding(vertical = 12.dp)) {
             if (value.isEmpty()) {
-                Text(
-                    "Artists, songs, or albums",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ext.muted,
-                )
+                Text("Artists, songs, or albums", style = BodyText, color = colors.onSurfaceMuted)
             }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.onSurface),
-                cursorBrush = SolidColor(colors.primary),
+                textStyle = BodyText.copy(color = colors.onSurface),
+                cursorBrush = SolidColor(colors.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
         if (value.isNotEmpty()) {
-            Icon(
-                Icons.Filled.Close,
-                contentDescription = "Clear",
-                tint = ext.muted,
+            // A 40dp target rather than a bare 20dp glyph. Clearing a query is a thing people do
+            // constantly and it was the smallest tap target on the screen.
+            Box(
                 modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
+                    .size(40.dp)
+                    .clip(PillShape)
+                    .background(colors.surfaceHigh)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = { onValueChange("") },
                     ),
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Clear",
+                    tint = colors.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val bg = if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f)
-    val fg = if (selected) colors.onPrimary else colors.primary
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(bg)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 7.dp),
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = fg,
-            maxLines = 1,
-            softWrap = false,
-        )
-    }
+    // The same chip Home's genre row and Library's tabs use, so all three read as one control.
+    ExpressiveChip(label = label, selected = selected, onClick = onClick)
 }
 
 @Composable
 private fun ResultRow(item: HomeItem, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
+    val colors = LocalExpressiveColors.current
     // Songs benefit from iTunes album art; other result types keep their YT thumbnail.
     val art = if (item.isSong) rememberSongArtwork(item.title, item.subtitle, item.thumbnailUrl)
               else item.thumbnailUrl
@@ -207,17 +204,20 @@ private fun ResultRow(item: HomeItem, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(ShapeLargeIncreased)
+            .background(colors.surface)
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
-                .clip(if (item.browseId?.startsWith("UC") == true) CircleShape else RoundedCornerShape(8.dp))
-                .background(colors.surfaceVariant),
+                .size(50.dp)
+                // Artists are round, everything else is a rounded square. It is the fastest way to
+                // tell a person from a record in a mixed list.
+                .clip(if (item.browseId?.startsWith("UC") == true) PillShape else ShapeMedium)
+                .background(colors.surfaceHigh),
         ) {
             if (art != null) {
                 AsyncImage(model = art, contentDescription = null, modifier = Modifier.fillMaxSize())
@@ -226,7 +226,7 @@ private fun ResultRow(item: HomeItem, onClick: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.titleMedium,
+                style = BodyStrong,
                 color = colors.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -234,8 +234,8 @@ private fun ResultRow(item: HomeItem, onClick: () -> Unit) {
             if (item.subtitle.isNotBlank()) {
                 Text(
                     text = item.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ext.muted,
+                    style = BodyText,
+                    color = colors.onSurfaceMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
