@@ -75,6 +75,7 @@ fun VerzaNavigation(
     // doesn't own — e.g. the Now Playing album-art motion toggle.
     val settingsVm: SettingsViewModel = hiltViewModel()
     val albumArtMotion by settingsVm.albumArtMotion.collectAsStateWithLifecycle()
+    val speed by playbackViewModel.speed.collectAsStateWithLifecycle()
     // Now Playing owns the whole screen. It used to share it with the bottom nav unless Sleeve was
     // on; the redesigned player lays out against the full height, so leaving the nav bar there pushed
     // its content up and clipped the artwork off the top of the screen.
@@ -507,6 +508,8 @@ fun VerzaNavigation(
                     onConsumeFocusComplete = { playbackViewModel.consumeFocusComplete() },
                     onBuildSessionLink = { playbackViewModel.buildSessionShareLink() },
                     albumArtMotion = albumArtMotion,
+                    speed = speed,
+                    onSetSpeed = playbackViewModel::setSpeed,
                 )
             }
             composable(Screen.Lyrics.route) {

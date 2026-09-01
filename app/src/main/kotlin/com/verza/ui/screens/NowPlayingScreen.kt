@@ -76,6 +76,8 @@ import com.verza.ui.theme.glassSurface
 @Composable
 fun NowPlayingScreen(
     onBack: () -> Unit,
+    speed: Float,
+    onSetSpeed: (Float) -> Unit,
     videoId: String?,
     title: String,
     artist: String,
@@ -193,6 +195,8 @@ fun NowPlayingScreen(
             ExpressiveMoreSheet(
                 isDownloading = isDownloading,
                 focusActive = focusActive,
+                speed = speed,
+                onSetSpeed = onSetSpeed,
                 onDiscoveryRadio = { showMore = false; onStartDiscoveryRadio() },
                 onAmbient = { showMore = false; onEnterAmbient() },
                 onLinerNotes = { showMore = false; showLinerNotes = true },
