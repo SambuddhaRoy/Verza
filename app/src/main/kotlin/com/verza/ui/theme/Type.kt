@@ -136,18 +136,6 @@ val VerzaTypography = Typography(
     ),
 )
 
-/**
- * Sleeve-appearance typography. Sleeve keeps its cover-driven colours, poster layout, grain and
- * mono chrome, but its type is now the same modern sans as the rest of the app — set a touch larger
- * with tight, optical em-tracking and near-1.0 line-heights so titles still read as a confident,
- * poster-like display voice (just without the serif). Body / label slots keep Inter; numeric chrome
- * uses [FontMono] at point-of-use.
- */
-private fun sleeveTitle(size: Int, line: Int, track: Float) = TextStyle(
-    fontFamily = FontSleeve, fontWeight = FontWeight.Normal,
-    fontSize = size.sp, lineHeight = line.sp, letterSpacing = track.em,
-)
-
 // ── Editorial extras (used directly via the style refs below) ─────────────────
 // These don't belong in the M3 Typography slots — they're used at point-of-use
 // in screens that want the editorial italic voice or tabular monospace timecode.

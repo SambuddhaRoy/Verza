@@ -259,25 +259,6 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun LibraryPill(entry: LibraryTab, selected: Boolean, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val bg = if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f)
-    val fg = if (selected) colors.onPrimary else colors.primary
-    Row(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(bg)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(entry.icon, contentDescription = null, tint = fg, modifier = Modifier.size(16.dp))
-        Text(entry.label, style = MaterialTheme.typography.labelLarge, color = fg)
-    }
-}
-
-@Composable
 private fun SongList(
     songs: List<MusicItem>,
     onPlaySongs: (List<MusicItem>, Int) -> Unit,

@@ -204,21 +204,6 @@ private fun HomeContent(
     }
 }
 
-/**
- * Spotify-style mixed rhythm — three section sizes spread across the page so it doesn't read as a
- * uniform stack of identical carousels. Falls through to STANDARD for anything unrecognised.
- */
-private fun styleFor(title: String): SectionStyle = when {
-    title.equals("Recently played", ignoreCase = true) -> SectionStyle.DENSE_GRID
-    title.equals("Keep listening", ignoreCase = true) -> SectionStyle.DENSE_GRID
-    title.equals("From your liked songs", ignoreCase = true) -> SectionStyle.DENSE_GRID
-    title.equals("Your daily discover", ignoreCase = true) -> SectionStyle.LARGE
-    title.equals("More like your week", ignoreCase = true) -> SectionStyle.LARGE
-    title.startsWith("Similar to", ignoreCase = true) -> SectionStyle.LARGE
-    title.equals("Browse charts and trending", ignoreCase = true) -> SectionStyle.DENSE_CARDS
-    else -> SectionStyle.STANDARD
-}
-
 @Composable
 private fun MadeForYouRow(
     mixes: List<com.verza.data.CuratedMix>,

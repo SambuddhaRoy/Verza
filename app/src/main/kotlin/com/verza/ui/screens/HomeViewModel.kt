@@ -48,13 +48,30 @@ class HomeViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _state.value = HomeUiState.Loading
+            // Show what is already on disk before waiting on the network. Home used to sit on a
+            // spinner until the slowest of six calls returned, over content that was ready
+            // immediately — which is most of what made opening the app feel slow.
+            val local = runCatching { builder.localSections() }.getOrDefault(emptyList())
+            _state.value = when {
+                local.isNotEmpty() -> HomeUiState.Content(local)
+                _state.value is HomeUiState.Content -> _state.value
+                else -> HomeUiState.Loading
+            }
             builder.build()
                 .onSuccess { sections ->
-                    _state.value =
-                        if (sections.isEmpty()) HomeUiState.Empty else HomeUiState.Content(sections)
+                    if (sections.isNotEmpty()) {
+                        _state.value = HomeUiState.Content(sections)
+                    } else if (local.isEmpty()) {
+                        _state.value = HomeUiState.Empty
+                    }
                 }
-                .onFailure { _state.value = HomeUiState.Error(it.message ?: "Couldn't load home") }
+                .onFailure {
+                    // Offline with a library already on screen is not an error state — keep the
+                    // local sections rather than replacing them with a failure message.
+                    if (local.isEmpty()) {
+                        _state.value = HomeUiState.Error(it.message ?: "Couldn't load home")
+                    }
+                }
         }
     }
 }

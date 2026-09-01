@@ -54,12 +54,16 @@ class SearchViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
-        // If something elsewhere staged a pending search (e.g. "Go to artist" from a row menu),
-        // consume it now and kick off the search automatically.
-        PendingSearch.consume()?.let { (q, f) ->
-            query = q
-            filter = f
-            search()
+        // Collected for as long as this ViewModel lives, rather than read once — the Search tab's
+        // ViewModel is usually already alive by the time a request is staged.
+        viewModelScope.launch {
+            PendingSearch.pending.collect { staged ->
+                val (q, f) = staged ?: return@collect
+                PendingSearch.consume()
+                query = q
+                filter = f
+                search()
+            }
         }
     }
 

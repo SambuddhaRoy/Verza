@@ -96,9 +96,6 @@ class MusicRepository @Inject constructor() {
     suspend fun accountLikedSongs(): Result<List<MusicItem>> =
         runCatching { withContext(Dispatchers.IO) { InnerTube.collectionTracks(browseId = "VLLM") } }
 
-    suspend fun homeSections(): Result<List<HomeSection>> =
-        runCatching { withContext(Dispatchers.IO) { InnerTube.homeFeed() } }
-
     suspend fun collectionTracks(browseId: String?, playlistId: String?): Result<List<MusicItem>> =
         runCatching { withContext(Dispatchers.IO) { InnerTube.collectionTracks(browseId, playlistId) } }
 

@@ -54,24 +54,6 @@ val HeroTitle = TextStyle(
     letterSpacing = (-0.015).em,
 )
 
-/** Upright serif, for card titles that want the editorial voice without the slant. */
-val SerifTitle = TextStyle(
-    fontFamily = FontHero,
-    fontWeight = FontWeight.Normal,
-    fontSize = 26.sp,
-    lineHeight = 28.sp,
-)
-
-/** Big tabular numerals — durations, counts, the "07 30" register in the reference. */
-val NumeralLarge = TextStyle(
-    fontFamily = FontMono,
-    fontWeight = FontWeight.Medium,
-    fontSize = 40.sp,
-    lineHeight = 42.sp,
-    letterSpacing = (-0.03).em,
-    fontFeatureSettings = "tnum",
-)
-
 /** Label/value metadata, the "Where / Echo Bridge" columns. */
 val MetaLabel = TextStyle(
     fontFamily = FontMono,
@@ -79,13 +61,6 @@ val MetaLabel = TextStyle(
     fontSize = 12.sp,
     lineHeight = 16.sp,
     letterSpacing = 0.04.em,
-)
-
-val MetaValue = TextStyle(
-    fontFamily = FontMono,
-    fontWeight = FontWeight.Medium,
-    fontSize = 14.sp,
-    lineHeight = 18.sp,
 )
 
 /** Timecode either side of the seek bar. */

@@ -79,14 +79,18 @@ class IconVariant @Inject constructor(
     suspend fun apply(bucket: Int) = withContext(Dispatchers.IO) {
         runCatching {
             val pm = context.packageManager
+            // Enable first, disable second — the same order reset() uses, and for the same reason.
+            // Disabling the default up front left a window with no enabled launcher component at
+            // all, and launchers that re-read the component list during it drop the app from the
+            // home screen for good.
+            aliases.getOrNull(bucket)?.let {
+                setState(pm, it, PackageManager.COMPONENT_ENABLED_STATE_ENABLED)
+            } ?: return@runCatching
             setState(pm, defaultAlias, PackageManager.COMPONENT_ENABLED_STATE_DISABLED)
             aliases.forEachIndexed { i, alias ->
-                val state = if (i == bucket) {
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                } else {
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                if (i != bucket) {
+                    setState(pm, alias, PackageManager.COMPONENT_ENABLED_STATE_DISABLED)
                 }
-                setState(pm, alias, state)
             }
         }
     }

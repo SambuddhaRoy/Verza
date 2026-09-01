@@ -48,17 +48,12 @@ import com.verza.ui.navigation.Screen
 import com.verza.ui.navigation.VerzaNavigation
 import com.verza.ui.screens.SettingsViewModel
 import com.verza.ui.theme.DefaultCoverColors
-import com.verza.ui.theme.GlowColorPreset
-import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.LocalArtworkColors
 import com.verza.ui.theme.LocalAudioSignal
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.VerzaTheme
-import com.verza.ui.theme.coverColorScheme
 import com.verza.ui.theme.coverColorsFromExpressive
-import com.verza.ui.theme.deriveGlowTriad
 import com.verza.ui.theme.extractCoverColors
-import com.verza.ui.theme.resolveColor
 import com.verza.ui.sleeve.LocalSleeveMode
 import com.verza.ui.sleeve.grain
 import com.verza.ui.sleeve.vignette
@@ -85,8 +80,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // A verza://session/... link or a shared YouTube song may have launched us cold — hand
         // either to the playback owner.
-        handleSessionIntent(intent)
-        handleSharedYouTube(intent)
+        //
+        // Only on a genuinely new start. getIntent() still returns the launching intent after a
+        // rotation or a split-screen change, so re-running this replayed the shared song from the
+        // top mid-listen and put the "Listen along?" dialog back on screen every time.
+        if (savedInstanceState == null) {
+            handleSessionIntent(intent)
+            handleSharedYouTube(intent)
+        }
         // Both bars fully transparent, and — the part that actually matters — contrast
         // enforcement off. Left on, Android paints its own translucent scrim behind the gesture
         // pill, and a solid white or black bar behind three-button navigation, which is why the
@@ -111,11 +112,6 @@ class MainActivity : ComponentActivity() {
             }
 
             val settingsViewModel: SettingsViewModel = hiltViewModel()
-            val glowEnabled by settingsViewModel.glowEnabled.collectAsStateWithLifecycle()
-            val glowColor by settingsViewModel.glowColor.collectAsStateWithLifecycle()
-            val glowIntensity by settingsViewModel.glowIntensity.collectAsStateWithLifecycle()
-            val glowStyle by settingsViewModel.glowStyle.collectAsStateWithLifecycle()
-            val glowChaos by settingsViewModel.glowChaos.collectAsStateWithLifecycle()
             val glowReactive by settingsViewModel.glowReactive.collectAsStateWithLifecycle()
             val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
             val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle()
