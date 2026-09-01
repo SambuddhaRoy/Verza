@@ -1,5 +1,10 @@
 package com.verza.ui.expressive
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
@@ -123,19 +128,36 @@ private fun NavPill(
     Row(
         modifier = Modifier
             .scale(scale)
-            // animateContentSize gives the label its own spring as the pill grows around it.
-            .animateContentSize(animationSpec = ExpressiveMotion.spatialDefault())
             .clip(PillShape)
             .background(bg)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = if (selected) 18.dp else 14.dp, vertical = 11.dp)
+            .padding(horizontal = 14.dp, vertical = 11.dp)
             .semantics { contentDescription = destination.label },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(destination.icon, contentDescription = null, tint = fg, modifier = Modifier.size(22.dp))
-        if (selected) {
-            Text(text = destination.label, style = BodyStrong, color = fg, maxLines = 1)
+        // The label expands the pill open rather than appearing at full width inside one.
+        //
+        // It used to be a bare `if (selected)`, with animateContentSize springing the container
+        // afterwards — so the text popped in at full size and the pill's hard edge slid across it,
+        // which is what read as the label sliding in from a border. Now the label's own width is the
+        // animation and the pill is simply the shape around it, so there is one movement instead of
+        // two fighting.
+        AnimatedVisibility(
+            visible = selected,
+            enter = expandHorizontally(ExpressiveMotion.spatialDefault(), clip = false) +
+                fadeIn(ExpressiveMotion.effectsDefault()),
+            exit = shrinkHorizontally(ExpressiveMotion.spatialFast(), clip = false) +
+                fadeOut(ExpressiveMotion.effectsFast()),
+        ) {
+            Text(
+                text = destination.label,
+                style = BodyStrong,
+                color = fg,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
     }
 }

@@ -321,8 +321,11 @@ private fun PlayerPane(
         // One measurement of the slot, turned into an explicit side length. Everything below is
         // sized from this rather than from a fill modifier, so nothing the image does can change it.
         val side = if (maxWidth < maxHeight) maxWidth else maxHeight
+        // Keyed on the track alone. Keyed on the url as well, this ran twice per skip: once when
+        // the track changed and the metadata thumbnail arrived, and again when the high-resolution
+        // art resolved a moment later — so the cover swiped in, then swiped in again.
         AnimatedContent(
-            targetState = artworkUrl to trackKey,
+            targetState = trackKey,
             transitionSpec = {
                 val dir = if (forward) 1 else -1
                 // Snap the size rather than animating it: an animating container plus fill-based
@@ -335,7 +338,7 @@ private fun PlayerPane(
             },
             modifier = Modifier.size(side),
             label = "artSwap",
-        ) { (url, _) ->
+        ) { _ ->
             Box(
                 modifier = Modifier
                     .size(side)
@@ -360,7 +363,9 @@ private fun PlayerPane(
                     },
             ) {
                 AsyncImage(
-                    model = url,
+                    // Read live rather than from the animation's key, so the high-resolution
+                    // upgrade lands in place instead of starting a second transition.
+                    model = artworkUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     // COVER_BOOST pushes the art past its slot. Scaling is a draw-time transform, so

@@ -148,19 +148,6 @@ private fun sleeveTitle(size: Int, line: Int, track: Float) = TextStyle(
     fontSize = size.sp, lineHeight = line.sp, letterSpacing = track.em,
 )
 
-val VerzaSleeveTypography = VerzaTypography.copy(
-    displayLarge  = sleeveTitle(54, 54, -0.020f),
-    displayMedium = sleeveTitle(42, 44, -0.020f),
-    displaySmall  = sleeveTitle(33, 36, -0.018f),
-    headlineLarge  = sleeveTitle(30, 32, -0.016f),
-    headlineMedium = sleeveTitle(26, 29, -0.014f),
-    headlineSmall  = sleeveTitle(22, 26, -0.012f),
-    titleLarge  = sleeveTitle(22, 26, -0.010f),
-    // Track / card / list titles get the same display sans, a touch larger than the body originals.
-    titleMedium = sleeveTitle(18, 23, -0.010f),
-    titleSmall  = sleeveTitle(16, 20, -0.008f),
-)
-
 // ── Editorial extras (used directly via the style refs below) ─────────────────
 // These don't belong in the M3 Typography slots — they're used at point-of-use
 // in screens that want the editorial italic voice or tabular monospace timecode.
@@ -171,14 +158,6 @@ val CaptionItalic = TextStyle(
     fontWeight = FontWeight.Normal,
     fontStyle = FontStyle.Italic,
     fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = 0.sp,
-)
-
-/** Monospace timecode — for the Now Playing position/duration readout. */
-val MonoTimecode = TextStyle(
-    fontFamily = FontMono,
-    fontWeight = FontWeight.Normal,
-    fontSize = 12.sp, lineHeight = 16.sp,
-    fontFeatureSettings = FEAT_TABULAR,
 )
 
 /** Small-caps-feel eyebrow label — used by [EditorialSectionHeader]. */

@@ -41,6 +41,23 @@ class IconVariant @Inject constructor(
         "com.verza.IconTeal", "com.verza.IconBlue", "com.verza.IconIndigo", "com.verza.IconViolet",
     )
 
+    /**
+     * Which bucket is live right now, or -1 for the default.
+     *
+     * Read back off the system rather than remembered in the composition. The caller used to hold
+     * it in `rememberSaveable`, which is empty after the process is killed — so the first cover of
+     * every cold start looked like a change and re-applied an icon that was already correct.
+     */
+    suspend fun currentBucket(): Int = withContext(Dispatchers.IO) {
+        runCatching {
+            val pm = context.packageManager
+            aliases.indexOfFirst {
+                pm.getComponentEnabledSetting(ComponentName(context.packageName, it)) ==
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            }
+        }.getOrDefault(-1)
+    }
+
     /** Which bucket a colour falls into, by shortest distance around the wheel. */
     fun bucketFor(accent: Color): Int {
         val h = hsv(accent)[0]
