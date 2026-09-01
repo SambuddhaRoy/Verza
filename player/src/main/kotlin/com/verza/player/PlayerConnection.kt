@@ -124,6 +124,19 @@ class PlayerConnection(context: Context) {
         // Intentionally not play() — restore in a paused state.
     }
 
+    /**
+     * Playback speed, pitch-corrected.
+     *
+     * Deliberately not persisted. A music player that quietly resumes at 1.5x three days later is
+     * indistinguishable from a broken one, so this lasts as long as the session does.
+     */
+    fun setSpeed(speed: Float) {
+        controller?.setPlaybackSpeed(speed.coerceIn(0.25f, 3f))
+    }
+
+    /** The speed the player is running at, 1.0 when untouched. */
+    val speed: Float get() = controller?.playbackParameters?.speed ?: 1f
+
     fun disconnect() {
         controller?.removeListener(playerListener)
         controllerFuture?.let { MediaController.releaseFuture(it) }

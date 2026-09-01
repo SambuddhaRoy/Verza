@@ -554,6 +554,16 @@ class PlaybackViewModel @Inject constructor(
         }
     }
 
+    // ── Playback speed ──────────────────────────────────────────────────────────
+
+    private val _speed = MutableStateFlow(1f)
+    val speed: StateFlow<Float> = _speed
+
+    fun setSpeed(value: Float) {
+        playerConnection.setSpeed(value)
+        _speed.value = value
+    }
+
     // ── Sleep timer ─────────────────────────────────────────────────────────────
 
     /**

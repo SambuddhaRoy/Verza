@@ -14,6 +14,24 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.material.icons.filled.Usb
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.verza.audio.AudioOutputs
+import com.verza.audio.OutputKind
+import com.verza.audio.rememberAudioOutput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
@@ -519,6 +537,13 @@ private fun PlayerPane(
                 iconSize = 20.dp,
                 modifier = Modifier.size(50.dp),
             )
+
+            Spacer(Modifier.weight(1f))
+
+            // Where the sound is going. This row had a third of its width empty, and a label is
+            // worth more here than another icon would be — the useful thing is knowing you are
+            // about to play out loud before you press play, not having somewhere to press after.
+            OutputChip(colors = colors)
         }
 
         Spacer(Modifier.height(10.dp))
@@ -553,6 +578,66 @@ private fun PlayerPane(
     }
 }
 
+/**
+ * A pill naming the current output, which opens the system output switcher.
+ *
+ * The name is the interesting half. "Playing on Kitchen speaker" answers a question people
+ * actually have, and answers it before they hit play in a quiet room.
+ */
+@Composable
+private fun OutputChip(colors: ExpressiveColors) {
+    val context = LocalContext.current
+    val output by rememberAudioOutput()
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.94f else 1f,
+        animationSpec = ExpressiveMotion.spatialFast(),
+        label = "outputPress",
+    )
+
+    // Anything that is not the built-in speaker is the notable state, so it takes the accent.
+    val external = output.kind != OutputKind.SPEAKER && output.kind != OutputKind.EARPIECE
+    val container = if (external) colors.accent else colors.surface
+    val content = if (external) colors.onAccent else colors.onSurface
+
+    Row(
+        modifier = Modifier
+            .scale(scale)
+            .heightIn(min = 50.dp)
+            .widthIn(max = 168.dp)
+            .clip(PillShape)
+            .background(container)
+            .clickable(interactionSource = interaction, indication = null) {
+                AudioOutputs.openSwitcher(context)
+            }
+            .padding(horizontal = 16.dp)
+            .semantics { contentDescription = "Playing on ${output.name}. Change output." },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            imageVector = when (output.kind) {
+                OutputKind.BLUETOOTH -> Icons.Filled.Bluetooth
+                OutputKind.WIRED -> Icons.Filled.Headphones
+                OutputKind.USB -> Icons.Filled.Usb
+                OutputKind.HEARING_AID -> Icons.Filled.Hearing
+                OutputKind.REMOTE -> Icons.Filled.Cast
+                else -> Icons.Filled.Speaker
+            },
+            contentDescription = null,
+            tint = content,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            text = output.name,
+            style = BodyStrong,
+            color = content,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
 /**
  * A chevron and the word "Queue", nudging downward.
  *
