@@ -39,6 +39,7 @@ import androidx.compose.foundation.background
 import com.verza.ui.expressive.ExpressiveMotion
 import com.verza.ui.expressive.ExpressiveControl
 import com.verza.ui.expressive.ExpressiveSectionRow
+import com.verza.ui.expressive.SectionDensity
 import com.verza.ui.expressive.HeroTitle
 import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.MetaLabel
@@ -198,12 +199,26 @@ private fun HomeContent(
                     items = section.items,
                     onItemClick = onItemClick,
                     onItemLongPress = onItemLongPress,
+                    density = densityFor(index, section),
                 )
             }
         }
     }
 }
 
+/**
+ * How a section should be laid out.
+ *
+ * By position rather than by content, because the point is to break up the page and the page is
+ * what has a position. The first section gets the room, then the pattern alternates so no two
+ * neighbours are ever the same shape. Sections too short to fill a list column keep the cards,
+ * since three compact rows with one row in them looks like a bug rather than a choice.
+ */
+private fun densityFor(index: Int, section: HomeSection): SectionDensity {
+    if (index == 0) return SectionDensity.FEATURE
+    if (section.items.size < 4) return SectionDensity.STANDARD
+    return if (index % 2 == 1) SectionDensity.LIST else SectionDensity.STANDARD
+}
 @Composable
 private fun MadeForYouRow(
     mixes: List<com.verza.data.CuratedMix>,
