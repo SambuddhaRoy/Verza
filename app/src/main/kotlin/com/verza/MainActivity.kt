@@ -33,9 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.audio.AudioVisualizer
 import com.verza.ui.expressive.LocalExpressiveColors
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.verza.data.IconVariant
 import javax.inject.Inject
 import com.verza.ui.expressive.expressiveColorScheme
 import com.verza.ui.expressive.expressiveColorsFrom
@@ -66,7 +64,6 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     /** Swaps the launcher icon alias when "Icon follows the music" is on. */
-    @Inject lateinit var iconVariant: IconVariant
     // Gate for the system splash screen: stays on screen until we know whether onboarding
     // has been completed. Plain Boolean field rather than a Compose state since the splash
     // screen's keep-on-screen lambda is invoked on the main thread outside the composition.
@@ -227,26 +224,6 @@ class MainActivity : ComponentActivity() {
                 val controller = WindowCompat.getInsetsController(window, view)
                 controller.isAppearanceLightStatusBars = lightBars
                 controller.isAppearanceLightNavigationBars = lightBars
-            }
-
-            // Launcher icon follows the palette, when asked to. Rate-limited and bucketed: the swap
-            // is a visible event on the home screen, so it only happens when the hue actually moves
-            // into a different bucket, and never more than once every few minutes.
-            val adaptiveIcon by settingsViewModel.adaptiveIcon.collectAsStateWithLifecycle()
-            var lastIconAt by rememberSaveable { mutableLongStateOf(0L) }
-            LaunchedEffect(adaptiveIcon, expressive.accent) {
-                if (!adaptiveIcon) return@LaunchedEffect
-                val bucket = iconVariant.bucketFor(expressive.accent)
-                if (bucket == iconVariant.currentBucket()) return@LaunchedEffect
-                // Wait the rate limit out instead of refusing the change. This effect is keyed on
-                // the accent, so a change turned down here was never retried — the icon updated or
-                // did not depending on how long ago the last one happened, which is why it behaved
-                // inconsistently. Cancellation does the right thing on its own: a new colour
-                // arriving mid-wait restarts the effect, so the newest one wins.
-                val wait = IconVariant.MIN_INTERVAL_MS - (System.currentTimeMillis() - lastIconAt)
-                if (wait > 0) kotlinx.coroutines.delay(wait)
-                lastIconAt = System.currentTimeMillis()
-                iconVariant.apply(bucket)
             }
 
             // The Material scheme is the expressive palette. Anything still reading

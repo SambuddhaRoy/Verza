@@ -50,6 +50,19 @@
             android:launchMode="singleTop"
             android:theme="@style/Theme.Verza.Starting"
             android:windowSoftInputMode="adjustResize">
+            <!-- The launcher entry, back on the Activity itself.
+
+                 It lived on an activity-alias so the colour variants could take turns holding
+                 it. Switching between them means disabling the alias the running task is rooted
+                 at, and Android destroys that task when you do — the app vanished mid-song while
+                 the playback service carried on, and the home-screen shortcut, which points at the
+                 component by name, was left pointing at something disabled. There is no ordering
+                 that avoids this: the switch *is* disabling the component you are running on. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
             <!-- Shared listening sessions: verza://session/<payload> opens here. -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
@@ -88,127 +101,6 @@
         </service>
 
 
-        <!-- The launcher entry. It lives on an alias rather than on MainActivity so the colour
-             variants below can take over: only the component holding the LAUNCHER filter supplies
-             the icon, so with the filter on the activity the aliases had nothing to replace. -->
-        <activity-alias
-            android:name=".IconDefault"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher"
-            android:roundIcon="@mipmap/ic_launcher_round"
-            android:exported="true"
-            android:enabled="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <!-- Launcher icon variants. Android cannot tint an icon at runtime, so each colour is a
-             separate alias and exactly one is enabled at a time. See IconVariant.kt. -->
-        <activity-alias
-            android:name=".IconRed"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher_red"
-            android:roundIcon="@mipmap/ic_launcher_red"
-            android:exported="true"
-            android:enabled="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".IconAmber"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher_amber"
-            android:roundIcon="@mipmap/ic_launcher_amber"
-            android:exported="true"
-            android:enabled="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".IconLime"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher_lime"
-            android:roundIcon="@mipmap/ic_launcher_lime"
-            android:exported="true"
-            android:enabled="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".IconGreen"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher_green"
-            android:roundIcon="@mipmap/ic_launcher_green"
-            android:exported="true"
-            android:enabled="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".IconTeal"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher_teal"
-            android:roundIcon="@mipmap/ic_launcher_teal"
-            android:exported="true"
-            android:enabled="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".IconBlue"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher_blue"
-            android:roundIcon="@mipmap/ic_launcher_blue"
-            android:exported="true"
-            android:enabled="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".IconIndigo"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher_indigo"
-            android:roundIcon="@mipmap/ic_launcher_indigo"
-            android:exported="true"
-            android:enabled="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".IconViolet"
-            android:targetActivity=".MainActivity"
-            android:icon="@mipmap/ic_launcher_violet"
-            android:roundIcon="@mipmap/ic_launcher_violet"
-            android:exported="true"
-            android:enabled="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
 
         <!-- Hands exported share-card images to other apps with a temporary read grant. -->
         <provider
