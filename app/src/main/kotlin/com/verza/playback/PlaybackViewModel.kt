@@ -573,6 +573,7 @@ class PlaybackViewModel @Inject constructor(
      */
     fun setSleepTimer(durationMs: Long?, fadeMs: Long = 4_000L) {
         sleepJob?.cancel()
+        com.verza.player.PlayerSettings.setVolumeHeldElsewhere(false)
         playerConnection.setVolume(1f) // undo any in-progress fade from a prior timer
         if (durationMs == null || durationMs <= 0) {
             _sleepTimerEndAt.value = null
@@ -580,6 +581,9 @@ class PlaybackViewModel @Inject constructor(
         }
         _sleepTimerEndAt.value = System.currentTimeMillis() + durationMs
         sleepJob = viewModelScope.launch {
+            // Tell the service's track fade to stand down: two writers on one volume property
+            // means the last one each tick wins, and the wind-down would keep being undone.
+            com.verza.player.PlayerSettings.setVolumeHeldElsewhere(true)
             // coerceIn requires min <= max, and "End of track" on a song with 400ms left passes
             // a duration below the 1s floor — which threw IllegalArgumentException straight out of
             // viewModelScope and took the process with it. Cap first, then floor.
@@ -594,6 +598,7 @@ class PlaybackViewModel @Inject constructor(
             }
             playerConnection.pause()
             playerConnection.setVolume(1f)
+            com.verza.player.PlayerSettings.setVolumeHeldElsewhere(false)
             _sleepTimerEndAt.value = null
         }
     }
