@@ -1,6 +1,7 @@
 package com.verza.ui.expressive
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import com.verza.ui.theme.CoverColors
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -48,9 +49,9 @@ class ExpressiveColorsTest {
     fun `every text pair clears the contrast floor for every possible cover`() {
         val floor = ExpressiveColors.MIN_CONTRAST
         var checked = 0
-        for (seed in seeds()) {
-            val c = expressiveColorsFrom(coverOf(seed))
-            val where = "seed=${seed.value.toString(16)}"
+        for (flavour in ColorFlavour.entries) for (seed in seeds()) {
+            val c = expressiveColorsFrom(coverOf(seed), flavour)
+            val where = "$flavour seed=${seed.value.toString(16)}"
 
             assertTrue(
                 "$where: onContainer only ${contrastRatio(c.container, c.onContainer)}",
@@ -86,23 +87,49 @@ class ExpressiveColorsTest {
     fun `accent is visibly separate from the container it sits on`() {
         // Two tones of the same lightness read as one flat colour — the controls have to pop off the
         // background, not merely be legible against it.
-        for (seed in seeds()) {
-            val c = expressiveColorsFrom(coverOf(seed))
+        for (flavour in ColorFlavour.entries) for (seed in seeds()) {
+            val c = expressiveColorsFrom(coverOf(seed), flavour)
             assertTrue(
-                "accent/container contrast ${contrastRatio(c.accent, c.container)} for ${seed.value.toString(16)}",
+                "accent/container ${contrastRatio(c.accent, c.container)} for $flavour ${seed.value.toString(16)}",
                 contrastRatio(c.accent, c.container) >= ExpressiveColors.MIN_CONTRAST,
             )
         }
     }
 
     @Test
-    fun `container stays in a saturated mid-dark band whatever the cover`() {
+    fun `each flavour keeps the container inside its own declared band`() {
+        // A flavour is only its windows, so this is the one thing that makes it that flavour. Deep
+        // that drifts bright is not a bug in some other file, it is Deep no longer being Deep.
+        for (flavour in ColorFlavour.entries) for (seed in seeds()) {
+            val v = hsv(expressiveColorsFrom(coverOf(seed), flavour).container)[2]
+            assertTrue(
+                "$flavour container value $v outside ${flavour.valRange}",
+                v >= flavour.valRange.start - 0.02f && v <= flavour.valRange.endInclusive + 0.02f,
+            )
+        }
+    }
+
+    @Test
+    fun `the flavours are actually different from one another`() {
+        // Guards against a windows edit that quietly collapses two of them onto the same palette —
+        // which is the failure that made the cover-shape shuffle look broken, in another costume.
+        val mid = fromHsv(210f, 0.7f, 0.7f)
+        val containers = ColorFlavour.entries.map { expressiveColorsFrom(coverOf(mid), it).container }
+        assertEquals("every flavour distinct", containers.size, containers.distinct().size)
+    }
+
+    @Test
+    fun `Pastel is light and the others are not`() {
+        // The point of Pastel is a light room. If the ink rules quietly darken it back down it still
+        // passes every contrast check while being pointless.
         for (seed in seeds()) {
-            val c = expressiveColorsFrom(coverOf(seed))
-            val v = hsv(c.container)[2]
-            // Never so bright it becomes a light theme by accident, never so dark it stops being a
-            // colour at all — both extremes were what made covers feel arbitrary before.
-            assertTrue("container value $v out of band", v in 0.28f..0.56f)
+            val pastel = expressiveColorsFrom(coverOf(seed), ColorFlavour.PASTEL)
+            assertTrue("Pastel container too dark", pastel.container.luminance() > 0.5f)
+            // ...and its ink therefore has to be dark, which is the case white-on-white would fail.
+            assertTrue("Pastel ink too light", pastel.onContainer.luminance() < 0.5f)
+
+            val deep = expressiveColorsFrom(coverOf(seed), ColorFlavour.DEEP)
+            assertTrue("Deep container too light", deep.container.luminance() < 0.35f)
         }
     }
 
@@ -122,10 +149,10 @@ class ExpressiveColorsTest {
     @Test
     fun `the Material scheme derived from the palette is readable too`() {
         val floor = ExpressiveColors.MIN_CONTRAST
-        for (seed in seeds()) {
-            val c = expressiveColorsFrom(coverOf(seed))
+        for (flavour in ColorFlavour.entries) for (seed in seeds()) {
+            val c = expressiveColorsFrom(coverOf(seed), flavour)
             val s = expressiveColorScheme(c)
-            val where = "seed=${seed.value.toString(16)}"
+            val where = "$flavour seed=${seed.value.toString(16)}"
 
             // The pairs that untouched screens actually draw with.
             val pairs = listOf(

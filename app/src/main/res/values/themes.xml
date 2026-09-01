@@ -20,7 +20,7 @@
             mark on the same indigo, so the handover between them is invisible rather than a jump
             from a light plate to a dark screen.
         -->
-        <item name="windowSplashScreenBackground">@color/icon_bg_indigo</item>
+        <item name="windowSplashScreenBackground">@color/splash_bg</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_glyph_indigo</item>
         <item name="postSplashScreenTheme">@style/Theme.Verza</item>
     </style>

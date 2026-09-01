@@ -119,7 +119,6 @@ fun NowPlayingScreen(
     onConsumeFocusComplete: () -> Unit,
     onBuildSessionLink: () -> String?,
     albumArtMotion: Boolean = true,
-    sleeveMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Opens the "share this track as a poster" card; used from both Sleeve and standard layouts.
@@ -146,8 +145,6 @@ fun NowPlayingScreen(
     // NowPlayingExpressive keeps the cover for accent and glow and puts everything readable on a flat
     // near-black canvas at fixed contrast.
     //
-    // sleeveMode stays in the signature because Settings still shows the switch; it no longer picks a
-    // layout. Removing the preference and ui/sleeve is a separate change.
     var showMore by remember { mutableStateOf(false) }
     // The cover-shape preference lives in Settings; read it here so the player can morph the mask.
     val settingsVm: com.verza.ui.screens.SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()

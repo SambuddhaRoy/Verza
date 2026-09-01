@@ -47,9 +47,11 @@ import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowIntensity
 import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.LocalVerzaExtendedColors
-import com.verza.ui.theme.VerzaTheme
+import com.verza.data.CrashLog
+import com.verza.ui.expressive.ColorFlavour
+import com.verza.ui.expressive.expressiveColorsFrom
+import com.verza.ui.theme.LocalArtworkColors
 import com.verza.ui.theme.resolveColor
-import com.verza.ui.theme.toColorScheme
 
 @Composable
 fun SettingsScreen(
@@ -63,7 +65,7 @@ fun SettingsScreen(
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    val currentTheme by viewModel.theme.collectAsStateWithLifecycle()
+    val currentFlavour by viewModel.colorFlavour.collectAsStateWithLifecycle()
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
     val audioQuality by viewModel.audioQuality.collectAsStateWithLifecycle()
     val glowEnabled by viewModel.glowEnabled.collectAsStateWithLifecycle()
@@ -77,7 +79,6 @@ fun SettingsScreen(
     val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
     val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
     val saveSearchHistory by viewModel.saveSearchHistory.collectAsStateWithLifecycle()
-    val sleeveMode by viewModel.sleeveMode.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
     val downloadTree by viewModel.downloadTree.collectAsStateWithLifecycle()
@@ -88,6 +89,8 @@ fun SettingsScreen(
 
     // ── Library backup (export / import) ────────────────────────────────────────
     val context = LocalContext.current
+    // Read once: the file only changes when the process dies, and by then this is gone anyway.
+    var crashReport by remember { mutableStateOf(CrashLog.read(context)) }
     // Re-read on every recomposition so granting the permission lights the feature up without a
     // restart.
     val hasAudioPermission = androidx.core.content.ContextCompat.checkSelfPermission(
@@ -348,10 +351,12 @@ fun SettingsScreen(
             }
         }
 
-        // ── Theme ──────────────────────────────────────────────────────────────
-        item { SectionHeader("Theme") }
-        items(VerzaTheme.entries.filter { it != VerzaTheme.DYNAMIC || DynamicColorSupported }) { theme ->
-            ThemeRow(theme = theme, selected = theme == currentTheme) { viewModel.setTheme(theme) }
+        // ── Colour ─────────────────────────────────────────────────────────────
+        item { SectionHeader("Colour") }
+        items(ColorFlavour.entries) { flavour ->
+            FlavourRow(flavour = flavour, selected = flavour == currentFlavour) {
+                viewModel.setColorFlavour(flavour)
+            }
         }
 
         // ── Background glow ────────────────────────────────────────────────────
@@ -543,8 +548,28 @@ fun SettingsScreen(
                     title = "Take the tour",
                     subtitle = "A quick guide to every feature and where to find it",
                     onClick = onOpenTour,
-                    divider = false,
+                    divider = crashReport != null,
                 )
+                // Only here if there is something to send. A permanent "report a crash" row on a
+                // build that has never crashed is just noise suggesting it might.
+                crashReport?.let { report ->
+                    ActionRow(
+                        title = "Send the last crash report",
+                        subtitle = "Verza closed unexpectedly. Sending this shows what went wrong — " +
+                            "it contains the error and your Android version, nothing else.",
+                        onClick = {
+                            val send = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "Verza crash report")
+                                putExtra(Intent.EXTRA_TEXT, report)
+                            }
+                            context.startActivity(Intent.createChooser(send, "Send crash report"))
+                            CrashLog.clear(context)
+                            crashReport = null
+                        },
+                        divider = false,
+                    )
+                }
             }
         }
 
@@ -1114,11 +1139,17 @@ private fun GlowIntensityRow(
     }
 }
 
+/**
+ * One colour flavour, previewed against the cover that is actually playing.
+ *
+ * The swatches are the real derivation, not stored sample colours — pick a flavour and the row you
+ * tapped is already showing you the palette you are about to get.
+ */
 @Composable
-private fun ThemeRow(theme: VerzaTheme, selected: Boolean, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    val scheme = remember(theme) { theme.toColorScheme() }
+private fun FlavourRow(flavour: ColorFlavour, selected: Boolean, onClick: () -> Unit) {
+    val cover = LocalArtworkColors.current
+    val preview = remember(cover, flavour) { expressiveColorsFrom(cover, flavour) }
+    val colors = LocalExpressiveColors.current
 
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Row(
@@ -1129,44 +1160,40 @@ private fun ThemeRow(theme: VerzaTheme, selected: Boolean, onClick: () -> Unit) 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Swatch trio — kept; this is the only place the theme is *visible* in the row.
-            Row(modifier = Modifier.clip(RoundedCornerShape(6.dp))) {
-                Box(Modifier.size(20.dp).background(scheme.background))
-                Box(Modifier.size(20.dp).background(scheme.primary))
-                Box(Modifier.size(20.dp).background(scheme.secondary))
-                Box(Modifier.size(20.dp).background(scheme.tertiary))
+            Row(modifier = Modifier.clip(RoundedCornerShape(8.dp))) {
+                Box(Modifier.size(22.dp).background(preview.container))
+                Box(Modifier.size(22.dp).background(preview.surface))
+                Box(Modifier.size(22.dp).background(preview.accent))
+                Box(Modifier.size(22.dp).background(preview.tertiary))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    theme.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (selected) colors.primary else colors.onBackground,
+                    flavour.displayName,
+                    style = com.verza.ui.expressive.BodyStrong,
+                    color = if (selected) colors.accent else colors.onContainer,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    when {
-                        theme == VerzaTheme.DYNAMIC -> "Follows system"
-                        theme.isLight -> "Light"
-                        else -> "Dark"
-                    },
-                    style = CaptionItalic,
-                    color = ext.muted,
+                    flavour.blurb,
+                    style = com.verza.ui.expressive.BodyText,
+                    color = colors.onContainerMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            // Quiet 6-dp bullet selected state, matching AudioQualityRow.
             Box(
                 Modifier
-                    .size(8.dp)
+                    .size(10.dp)
                     .clip(CircleShape)
-                    .background(if (selected) colors.primary else Color.Transparent)
+                    .background(if (selected) colors.accent else Color.Transparent)
                     .border(
                         width = if (selected) 0.dp else 1.dp,
-                        color = ext.muted,
+                        color = colors.onContainerMuted,
                         shape = CircleShape,
                     ),
             )
         }
-        HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
+        HorizontalDivider(thickness = 0.5.dp, color = colors.line)
     }
 }
