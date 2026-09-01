@@ -226,11 +226,13 @@ fun SettingsScreen(
                 onToggle = viewModel::setSkipSilence,
             )
             ChoiceRow(
-                title = "Crossfade",
+                // Named for what it does. It fades out and back in rather than overlapping the two
+                // tracks, and calling it crossfade would be promising the thing it is not.
+                title = "Fade between tracks",
                 subtitle = if (crossfade == 0) {
-                    "Tracks change cleanly, with no overlap"
+                    "Tracks change on a hard cut"
                 } else {
-                    "Each track fades into the next over $crossfade seconds"
+                    "Each track fades out and the next fades in, over $crossfade seconds"
                 },
                 options = CROSSFADE_STEPS,
                 selected = crossfade,

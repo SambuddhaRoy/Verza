@@ -23,6 +23,8 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.LibraryResult
+import com.google.common.collect.ImmutableList
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
@@ -222,6 +224,8 @@ class MusicService : MediaLibraryService() {
             PlayerSettings.skipSilence.collect { player.skipSilenceEnabled = it }
         }
 
+        serviceScope.launch { runTrackFade() }
+
         val activityIntent = packageManager
             .getLaunchIntentForPackage(packageName)
             ?.let { PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE) }
@@ -335,6 +339,58 @@ class MusicService : MediaLibraryService() {
     /** Pushes a fresh custom layout to every controller (notification included). Main thread. */
     @OptIn(UnstableApi::class)
     /**
+     * Fade the volume down into a track change and back up out of it.
+     *
+     * This is a fade, not a true crossfade: the two tracks do not overlap. Overlapping them
+     * needs a second ExoPlayer and a forwarding Player to keep one timeline in front of the
+     * session, which is a large amount of subtle code around seeking, queue edits and the
+     * notification. What this does instead is remove the hard cut, which is most of what the
+     * hard cut was costing.
+     *
+     * Lives in the service because it has to keep working with no Activity alive, and polls
+     * rather than scheduling: position is not observable, the window is only a few seconds, and
+     * a seek or a skip has to be picked up immediately.
+     */
+    private val FADE_TICK_MS = 120L
+    private val MAX_FADE_IN_MS = 2_000L
+
+    private suspend fun runTrackFade() {
+        var lastItem: String? = null
+        var enteredAt = 0L
+        while (true) {
+            kotlinx.coroutines.delay(FADE_TICK_MS)
+            val seconds = PlayerSettings.fadeSeconds.value
+            if (seconds == 0 || PlayerSettings.volumeHeldElsewhere.value) {
+                // Restore once on the way out rather than every tick, so this does not fight
+                // whatever else is holding the volume.
+                if (lastItem != null) { player.volume = 1f; lastItem = null }
+                continue
+            }
+
+            val id = player.currentMediaItem?.mediaId
+            if (id != lastItem) {
+                lastItem = id
+                enteredAt = android.os.SystemClock.elapsedRealtime()
+            }
+            if (id == null || !player.isPlaying) continue
+
+            val window = seconds * 1000L
+            val duration = player.duration
+            val position = player.currentPosition
+
+            // Fading in is capped: a twelve second ramp up at the start of a song is a fault,
+            // not a transition. Fading out gets the full window, which is where it is audible.
+            val sinceEntry = android.os.SystemClock.elapsedRealtime() - enteredAt
+            val rampIn = minOf(window, MAX_FADE_IN_MS)
+            val inGain = if (sinceEntry >= rampIn) 1f else sinceEntry.toFloat() / rampIn
+
+            val remaining = if (duration > 0) duration - position else Long.MAX_VALUE
+            val outGain = if (remaining >= window) 1f else (remaining.toFloat() / window)
+
+            player.volume = minOf(inGain, outGain).coerceIn(0f, 1f)
+        }
+    }
+    /**
      * Mirror the current track onto [NowPlayingBridge] so things outside the session — the
      * home-screen widget — can draw it without binding a controller of their own.
      */
@@ -386,7 +442,117 @@ class MusicService : MediaLibraryService() {
     // ── Library callbacks ──────────────────────────────────────────────────────
     private inner class LibrarySessionCallback : MediaLibrarySession.Callback {
 
-/**
+        // ── browsing (Android Auto, Assistant, anything that asks) ──────────────
+        //
+        // The tree comes from :app through MediaBrowseTree. Serving it is three small overrides,
+        // and without them a browser sees an app with nothing in it: transport worked, but there
+        // was no way to start anything without reaching for the phone.
+
+        @OptIn(UnstableApi::class)
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: MediaLibraryService.LibraryParams?,
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val root = MediaItem.Builder()
+                .setMediaId(MediaBrowseTree.ROOT_ID)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setIsBrowsable(true)
+                        .setIsPlayable(false)
+                        .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                        .build(),
+                )
+                .build()
+            return Futures.immediateFuture(LibraryResult.ofItem(root, params))
+        }
+
+        @OptIn(UnstableApi::class)
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: MediaLibraryService.LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            val nodes = if (parentId == MediaBrowseTree.ROOT_ID) {
+                MediaBrowseTree.root.value
+            } else {
+                MediaBrowseTree.find(parentId)?.children.orEmpty()
+            }
+            val items = ImmutableList.copyOf(nodes.map { it.toMediaItem() })
+            return Futures.immediateFuture(LibraryResult.ofItemList(items, params))
+        }
+
+        @OptIn(UnstableApi::class)
+        override fun onGetItem(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            mediaId: String,
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val node = MediaBrowseTree.find(mediaId)
+                ?: return Futures.immediateFuture(LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE))
+            return Futures.immediateFuture(LibraryResult.ofItem(node.toMediaItem(), null))
+        }
+
+        /**
+         * Tapping a track in a car plays its whole folder from that point, not just the one song.
+         *
+         * Anything else is a trap: you pick a song at a junction and the music stops thirty seconds
+         * later with nothing queued behind it.
+         */
+        @OptIn(UnstableApi::class)
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val single = mediaItems.singleOrNull()
+            val parent = single?.let { item ->
+                MediaBrowseTree.root.value.firstOrNull { folder ->
+                    folder.children.any { it.id == item.mediaId }
+                }
+            }
+            if (single == null || parent == null) {
+                return Futures.immediateFuture(
+                    MediaSession.MediaItemsWithStartPosition(
+                        resolveUris(mediaItems, isTrusted(mediaSession, controller)),
+                        startIndex,
+                        startPositionMs,
+                    ),
+                )
+            }
+            val siblings = parent.children.filter { !it.browsable }
+            val index = siblings.indexOfFirst { it.id == single.mediaId }.coerceAtLeast(0)
+            return Futures.immediateFuture(
+                MediaSession.MediaItemsWithStartPosition(
+                    resolveUris(siblings.map { it.toMediaItem() }.toMutableList(), true),
+                    index,
+                    startPositionMs,
+                ),
+            )
+        }
+
+        private fun MediaBrowseTree.Node.toMediaItem(): MediaItem = MediaItem.Builder()
+            .setMediaId(id)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(title)
+                    .setArtist(subtitle.ifBlank { null })
+                    .setArtworkUri(artworkUri?.let { android.net.Uri.parse(it) })
+                    .setIsBrowsable(browsable)
+                    .setIsPlayable(!browsable)
+                    .setMediaType(
+                        if (browsable) MediaMetadata.MEDIA_TYPE_FOLDER_MIXED
+                        else MediaMetadata.MEDIA_TYPE_MUSIC,
+                    )
+                    .build(),
+            )
+            .build()
+        /**
          * Whether a controller is one of ours.
          *
          * This service is exported — it has to be, or the notification, Bluetooth, Wear and Android
@@ -470,17 +636,19 @@ class MusicService : MediaLibraryService() {
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> {
             // Only our own UI may name a path. For anyone else a mediaId is a YouTube video id and
-            // nothing else — otherwise an outside app could ask us to open a file:// inside our own
+            // nothing else, otherwise an outside app could ask us to open a file:// inside our own
             // data directory, using our process's read access to do it.
-            val trusted = isTrusted(mediaSession, controller)
-            val resolved = mediaItems.map { item ->
+            return Futures.immediateFuture(resolveUris(mediaItems, isTrusted(mediaSession, controller)))
+        }
+
+        /** Rebuild each item's playback URI from its mediaId. */
+        private fun resolveUris(items: MutableList<MediaItem>, trusted: Boolean): MutableList<MediaItem> =
+            items.map { item ->
                 val id = item.mediaId
                 val local = id.startsWith("content://") || id.startsWith("file://")
                 val uri = if (local && trusted) id else "$INNERTUBE_SCHEME${sanitiseVideoId(id)}"
                 item.buildUpon().setUri(uri).build()
             }.toMutableList()
-            return Futures.immediateFuture(resolved)
-        }
 
         /**
          * YouTube ids are 11 characters of [A-Za-z0-9_-]. Anything else from an untrusted caller is

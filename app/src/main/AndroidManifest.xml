@@ -90,6 +90,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Android Auto. Without this the car never lists Verza, however well the session
+             behaves. The referenced file declares which of Auto's features we support. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
         <!-- Home-screen widget. Not exported: the only thing that sends it these actions is its
              own PendingIntents, and the transport commands would otherwise be open to any app. -->
         <receiver
