@@ -51,9 +51,39 @@ class PlayerConnection(context: Context) {
     /** Audio session id of the currently-playing ExoPlayer; 0 when no session is active. */
     val audioSessionId: StateFlow<Int> = AudioSessionRegistry.audioSessionId
 
+    /**
+     * Consecutive failures, so a queue of unplayable tracks stops instead of racing to the end.
+     * Reset by the first item that actually starts.
+     */
+    private var consecutiveErrors = 0
+
     private val playerListener = object : Player.Listener {
+        /**
+         * A track that will not resolve skips to the next one.
+         *
+         * Nothing handled this before: ExoPlayer went to STATE_IDLE and the session simply stopped,
+         * with a full queue still loaded and a play button that did nothing, because recovering
+         * needs prepare() and no one was calling it. One region-blocked or expired track ended the
+         * listening session.
+         */
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            val ctrl = controller ?: return
+            consecutiveErrors++
+            if (consecutiveErrors > MAX_CONSECUTIVE_ERRORS || !ctrl.hasNextMediaItem()) {
+                consecutiveErrors = 0
+                syncState()
+                return
+            }
+            ctrl.seekToNextMediaItem()
+            ctrl.prepare()
+            ctrl.play()
+        }
+
         override fun onPlaybackStateChanged(playbackState: Int) = syncState()
-        override fun onIsPlayingChanged(isPlaying: Boolean) = syncState()
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) consecutiveErrors = 0
+            syncState()
+        }
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) = syncState()
         override fun onShuffleModeEnabledChanged(enabled: Boolean) = syncState()
         override fun onRepeatModeChanged(repeatMode: Int) = syncState()
@@ -64,8 +94,17 @@ class PlayerConnection(context: Context) {
         val future = MediaController.Builder(context, sessionToken).buildAsync()
         controllerFuture = future
         future.addListener({
-            controller = future.get().also { ctrl ->
-                ctrl.addListener(playerListener)
+            // buildAsync completes exceptionally when the session service cannot be bound or
+            // started — resuming into a background-start restriction, or the service having been
+            // killed. This runs on a direct executor, so an uncaught get() took the process down
+            // rather than leaving the app merely disconnected.
+            val ctrl = runCatching { future.get() }.getOrNull()
+            if (ctrl == null) {
+                _playbackState.value = PlaybackState()
+                return@addListener
+            }
+            controller = ctrl.also {
+                it.addListener(playerListener)
                 syncState()
             }
             onConnected()
@@ -208,6 +247,9 @@ class PlayerConnection(context: Context) {
     // ── MediaItem factory ─────────────────────────────────────────────────────
 
     companion object {
+        /** Stop after this many failures in a row rather than racing to the end of a dead queue. */
+        private const val MAX_CONSECUTIVE_ERRORS = 3
+
         fun buildMediaItem(
             videoId: String,
             title: String,

@@ -42,21 +42,6 @@ class SettingsViewModel @Inject constructor(
     val audioQuality: StateFlow<AudioQuality> = prefs.audioQualityFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, AudioQuality.HIGH)
 
-    val glowEnabled: StateFlow<Boolean> = prefs.glowEnabledFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
-
-    val glowColor: StateFlow<GlowColorPreset> = prefs.glowColorFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, GlowColorPreset.ALBUM_ART)
-
-    val glowIntensity: StateFlow<GlowIntensity> = prefs.glowIntensityFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, GlowIntensity.MEDIUM)
-
-    val glowStyle: StateFlow<GlowStyle> = prefs.glowStyleFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, GlowStyle.FLUID)
-
-    val glowChaos: StateFlow<Float> = prefs.glowChaosFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0.4f)
-
     /** Null while DataStore is still loading; non-null once we know whether onboarding has run. */
     val onboardingCompleted: StateFlow<Boolean?> = prefs.onboardingCompletedFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -93,26 +78,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setAudioQuality(quality: AudioQuality) {
         viewModelScope.launch { prefs.setAudioQuality(quality) }
-    }
-
-    fun setGlowEnabled(enabled: Boolean) {
-        viewModelScope.launch { prefs.setGlowEnabled(enabled) }
-    }
-
-    fun setGlowColor(preset: GlowColorPreset) {
-        viewModelScope.launch { prefs.setGlowColor(preset) }
-    }
-
-    fun setGlowIntensity(intensity: GlowIntensity) {
-        viewModelScope.launch { prefs.setGlowIntensity(intensity) }
-    }
-
-    fun setGlowStyle(style: GlowStyle) {
-        viewModelScope.launch { prefs.setGlowStyle(style) }
-    }
-
-    fun setGlowChaos(value: Float) {
-        viewModelScope.launch { prefs.setGlowChaos(value) }
     }
 
     fun setOnboardingCompleted() {

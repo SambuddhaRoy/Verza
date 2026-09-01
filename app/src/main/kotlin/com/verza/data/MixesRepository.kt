@@ -66,6 +66,7 @@ class MixesRepository @Inject constructor(
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val mixesKey = stringPreferencesKey("curated_mixes_v1")
+    private val attemptKey = androidx.datastore.preferences.core.longPreferencesKey("curated_mixes_attempt_v1")
 
     private val _mixes = MutableStateFlow<List<CuratedMix>>(emptyList())
     val mixes: StateFlow<List<CuratedMix>> = _mixes.asStateFlow()
@@ -79,16 +80,35 @@ class MixesRepository @Inject constructor(
 
     fun getMix(id: String): CuratedMix? = _mixes.value.firstOrNull { it.id == id }
 
-    /** Regenerates any stale mix (keeping the fresh ones) and persists the result. */
+    /**
+     * Regenerates any stale mix (keeping the fresh ones) and persists the result.
+     *
+     * A generator returns null when there is not enough listening history to build from, and
+     * listOfNotNull drops it — so nothing was written to say the attempt happened, and every single
+     * launch re-ran the whole generation, network calls included, for exactly the users who had the
+     * least to gain from it. A missing mix is now retried on a cooldown rather than immediately.
+     */
     suspend fun refresh() {
         val current = _mixes.value.associateBy { it.id }
+        val sinceAttempt = System.currentTimeMillis() - lastAttemptAt()
+        val retryMissing = sinceAttempt > MISSING_RETRY_MS
+
+        suspend fun regenerate(id: String, generate: suspend () -> CuratedMix?): CuratedMix? {
+            val cached = current[id]
+            if (cached != null && !isStale(cached)) return cached
+            // Stale is always worth redoing; absent only once the cooldown is up.
+            if (cached == null && !retryMissing) return null
+            return generate()
+        }
+
         coroutineScope {
-            val daylist = async { current["daylist"]?.takeUnless { isStale(it) } ?: generateDaylist() }
-            val discover = async { current["discover"]?.takeUnless { isStale(it) } ?: generateDiscover() }
-            val radar = async { current["release_radar"]?.takeUnless { isStale(it) } ?: generateReleaseRadar() }
+            val daylist = async { regenerate("daylist") { generateDaylist() } }
+            val discover = async { regenerate("discover") { generateDiscover() } }
+            val radar = async { regenerate("release_radar") { generateReleaseRadar() } }
             val list = listOfNotNull(daylist.await(), discover.await(), radar.await())
             _mixes.value = list
             persist(list)
+            if (retryMissing) recordAttempt()
         }
     }
 
@@ -214,7 +234,18 @@ class MixesRepository @Inject constructor(
         context.mixesStore.data.first()[mixesKey]?.let { json.decodeFromString<List<CuratedMix>>(it) }
     }.getOrNull() ?: emptyList()
 
+    private suspend fun lastAttemptAt(): Long = runCatching {
+        context.mixesStore.data.first()[attemptKey]
+    }.getOrNull() ?: 0L
+
+    private suspend fun recordAttempt() {
+        runCatching { context.mixesStore.edit { it[attemptKey] = System.currentTimeMillis() } }
+    }
+
     private companion object {
         val RELEASE_SHELVES = listOf("single", "album", "release", "new")
+
+        /** How long to wait before trying again to build a mix there was too little history for. */
+        const val MISSING_RETRY_MS = 6 * 60 * 60 * 1000L
     }
 }

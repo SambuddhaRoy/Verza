@@ -38,7 +38,10 @@ class DownloadManager @Inject constructor(
     private val prefs: PreferencesRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val jobs = mutableMapOf<String, Job>()
+    // Concurrent because download() is called on the main thread while each download's finally
+    // block removes its entry from an IO thread — two threads rehashing one LinkedHashMap, which
+    // loses entries (so the download can no longer be cancelled) or corrupts a bucket outright.
+    private val jobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
 
     private val _inProgress = MutableStateFlow<Set<String>>(emptySet())
     val inProgress: StateFlow<Set<String>> = _inProgress.asStateFlow()
@@ -84,7 +87,15 @@ class DownloadManager @Inject constructor(
      */
     fun downloadAll(items: List<MusicItem>, collection: String) {
         val name = if (items.size > 1) collection else ""
-        scope.launch { items.forEach { download(it, name) } }
+        scope.launch {
+            // download() is fire-and-forget, so forEach alone started every track at once — the
+            // hundred parallel extractions the comment above says this avoids. Wait for each job so
+            // "sequential on purpose" is actually true.
+            for (item in items) {
+                download(item, name)
+                jobs[item.id]?.join()
+            }
+        }
     }
 
     /** Cancels an in-flight download (if any) and removes the saved file + DB marker. */

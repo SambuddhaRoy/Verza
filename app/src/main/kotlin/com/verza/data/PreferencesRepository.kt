@@ -19,6 +19,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
@@ -44,7 +45,6 @@ class PreferencesRepository @Inject constructor(
     private val store = context.dataStore
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val themeKey = stringPreferencesKey("theme")
     // Legacy plaintext cookie key (pre-0.4.1). Migrated to the encrypted key on first launch.
     private val cookieKey = stringPreferencesKey("account_cookie")
     // Cookie ciphertext (AES/GCM via the Android Keystore — see CookieCrypto).
@@ -54,18 +54,15 @@ class PreferencesRepository @Inject constructor(
     // Tracks Discovery radio has already offered — excluded next time so it never repeats itself.
     private val discoveryServedKey = stringPreferencesKey("discovery_served")
     private val audioQualityKey = stringPreferencesKey("audio_quality")
-    private val glowEnabledKey = booleanPreferencesKey("glow_enabled")
-    private val glowColorKey = stringPreferencesKey("glow_color_preset")
-    private val glowIntensityKey = stringPreferencesKey("glow_intensity")
-    private val glowStyleKey = stringPreferencesKey("glow_style")
-    private val glowChaosKey = floatPreferencesKey("glow_chaos")
     private val onboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
-    private val glowReactiveKey = booleanPreferencesKey("glow_reactive")
     private val startScreenKey = stringPreferencesKey("start_screen")
     private val resumeOnOpenKey = booleanPreferencesKey("resume_on_open")
     private val skipSilenceKey = booleanPreferencesKey("skip_silence")
     private val saveSearchHistoryKey = booleanPreferencesKey("save_search_history")
     private val albumArtMotionKey = booleanPreferencesKey("album_art_motion")
+    // Drives the spectrum seek bar and the music haptics. Named for the glow it used to
+    // feed; the key is kept as-is so existing installs do not lose the setting.
+    private val glowReactiveKey = booleanPreferencesKey("glow_reactive")
     private val hapticsKey = booleanPreferencesKey("music_haptics")
     private val gentleStartKey = booleanPreferencesKey("gentle_start")
     // SAF tree Uri for the folder downloads are written to. Blank = app-private storage, which is
@@ -91,9 +88,22 @@ class PreferencesRepository @Inject constructor(
 
 
     // Prefer the encrypted cookie; fall back to any not-yet-migrated legacy plaintext value.
-    val cookieFlow: Flow<String?> = store.data.map { prefs ->
-        prefs[cookieEncKey]?.let { CookieCrypto.decrypt(it) } ?: prefs[cookieKey]
-    }
+    //
+    // Keyed on the ciphertext and memoised, because the map runs on every emission of the whole
+    // Preferences object and an AES-GCM unwrap is a Keystore IPC round trip. Five collectors
+    // subscribe to this, and playback rewrites the saved queue into the same DataStore every ten
+    // seconds — which was about thirty Keystore decryptions a minute for a value that had not
+    // changed since sign-in.
+    @Volatile private var cookieCache: Pair<String, String?>? = null
+
+    val cookieFlow: Flow<String?> = store.data
+        .map { prefs -> Pair(prefs[cookieEncKey], prefs[cookieKey]) }
+        .distinctUntilChanged()
+        .map { (encrypted, legacy) ->
+            if (encrypted == null) return@map legacy
+            cookieCache?.takeIf { it.first == encrypted }?.second
+                ?: CookieCrypto.decrypt(encrypted).also { cookieCache = encrypted to it }
+        }
 
     val audioQualityFlow: Flow<AudioQuality> = store.data.map { prefs ->
         prefs[audioQualityKey]?.let { runCatching { AudioQuality.valueOf(it) }.getOrNull() } ?: AudioQuality.HIGH
@@ -102,22 +112,6 @@ class PreferencesRepository @Inject constructor(
     val searchHistoryFlow: Flow<List<String>> = store.data.map { prefs ->
         prefs[historyKey]?.let { runCatching { json.decodeFromString<List<String>>(it) }.getOrNull() } ?: emptyList()
     }
-
-    // ── Background glow (dark themes only; the UI is rendered regardless and short-circuits in light themes)
-    val glowEnabledFlow: Flow<Boolean> = store.data.map { it[glowEnabledKey] ?: true }
-    val glowColorFlow: Flow<GlowColorPreset> = store.data.map { prefs ->
-        // Default the glow to adapt to album-cover colours.
-        prefs[glowColorKey]?.let { runCatching { GlowColorPreset.valueOf(it) }.getOrNull() } ?: GlowColorPreset.ALBUM_ART
-    }
-    val glowIntensityFlow: Flow<GlowIntensity> = store.data.map { prefs ->
-        prefs[glowIntensityKey]?.let { runCatching { GlowIntensity.valueOf(it) }.getOrNull() } ?: GlowIntensity.MEDIUM
-    }
-    /** Glow pattern — the flowing album-art wash (Cover, default) is the Verza identity; Fluid/Halftone remain. */
-    val glowStyleFlow: Flow<GlowStyle> = store.data.map { prefs ->
-        prefs[glowStyleKey]?.let { runCatching { GlowStyle.valueOf(it) }.getOrNull() } ?: GlowStyle.COVER
-    }
-    /** How freely the Cover wash flows / the Halftone blob roams, 0..1 ("Movement" slider). Default max, like desktop. */
-    val glowChaosFlow: Flow<Float> = store.data.map { (it[glowChaosKey] ?: 1.0f).coerceIn(0f, 1f) }
 
     /** False on a fresh install; set to true the first time the user finishes the onboarding flow. */
     val onboardingCompletedFlow: Flow<Boolean> = store.data.map { it[onboardingCompletedKey] ?: false }
@@ -210,26 +204,6 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setAudioQuality(quality: AudioQuality) {
         store.edit { it[audioQualityKey] = quality.name }
-    }
-
-    suspend fun setGlowEnabled(enabled: Boolean) {
-        store.edit { it[glowEnabledKey] = enabled }
-    }
-
-    suspend fun setGlowColor(preset: GlowColorPreset) {
-        store.edit { it[glowColorKey] = preset.name }
-    }
-
-    suspend fun setGlowIntensity(intensity: GlowIntensity) {
-        store.edit { it[glowIntensityKey] = intensity.name }
-    }
-
-    suspend fun setGlowStyle(style: GlowStyle) {
-        store.edit { it[glowStyleKey] = style.name }
-    }
-
-    suspend fun setGlowChaos(value: Float) {
-        store.edit { it[glowChaosKey] = value.coerceIn(0f, 1f) }
     }
 
     suspend fun setOnboardingCompleted(completed: Boolean) {

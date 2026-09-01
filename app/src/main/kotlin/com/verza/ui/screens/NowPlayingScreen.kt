@@ -158,6 +158,7 @@ fun NowPlayingScreen(
             artworkUrl = artworkUrl,
             trackKey = videoId,
             coverShapeMode = coverShapeMode,
+            albumArtMotion = albumArtMotion,
             queue = queue,
             currentIndex = currentIndex,
             onPlayQueueItem = onPlayQueueItem,
@@ -435,143 +436,6 @@ private fun rememberSleepCountdown(endAt: Long?): String? {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/**
- * A one-shot particle burst fired when [active] flips to true (i.e. the song gets liked):
- * twelve dots in the theme's accent pair radiate out from behind the heart, shrinking and
- * fading as they fly. Doesn't fire for the initial state, only for a fresh like.
- */
-@Composable
-private fun LikeBurst(active: Boolean) {
-    val colors = MaterialTheme.colorScheme
-    val anim = remember { Animatable(1f) }
-    var seen by remember { mutableStateOf(active) }
-    LaunchedEffect(active) {
-        if (active && !seen) {
-            anim.snapTo(0f)
-            anim.animateTo(1f, tween(durationMillis = 620, easing = FastOutSlowInEasing))
-        }
-        seen = active
-    }
-    val t = anim.value
-    if (t < 1f) {
-        Canvas(Modifier.size(68.dp)) {
-            val count = 12
-            val maxReach = size.minDimension / 2f
-            for (i in 0 until count) {
-                val angle = i / count.toFloat() * 2f * Math.PI.toFloat() + 0.26f
-                val reach = maxReach * (0.35f + 0.65f * t)
-                drawCircle(
-                    color = if (i % 2 == 0) colors.primary else colors.tertiary,
-                    radius = (1f - t) * 2.6.dp.toPx() + 0.6.dp.toPx(),
-                    center = center + Offset(kotlin.math.cos(angle) * reach, kotlin.math.sin(angle) * reach),
-                    alpha = (1f - t).coerceIn(0f, 1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    tinted: Boolean = false,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    val tint = if (tinted) colors.primary else colors.onBackground
-
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = if (tinted) colors.primary else ext.muted)
-    }
-}
-
-@Composable
-private fun QueueRow(
-    item: QueueItem,
-    isCurrent: Boolean,
-    onClick: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    val art = rememberSongArtwork(item.title, item.artist, item.artworkUrl)
-    // The playing item reads as a glass row floating over the wash; the rest stay as a clean list.
-    val rowShape = RoundedCornerShape(12.dp)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 2.dp)
-            .then(if (isCurrent) Modifier.glassSurface(rowShape) else Modifier.clip(rowShape))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(VerzaShape)
-                .background(colors.surface),
-        ) {
-            if (art != null) {
-                AsyncImage(model = art, contentDescription = null, modifier = Modifier.fillMaxSize())
-            }
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleSmall,
-                color = if (isCurrent) colors.primary else colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = item.artist,
-                style = MaterialTheme.typography.bodySmall,
-                color = ext.muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (!isCurrent) {
-            IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = "Remove from queue",
-                    tint = ext.muted,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-    }
-}
-
-/** Pops the system share sheet with a YT Music URL prefilled. */
-private fun shareSong(context: Context, title: String, artist: String, url: String) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, title)
-        putExtra(Intent.EXTRA_TEXT, "$title — $artist\n$url")
-    }
-    context.startActivity(Intent.createChooser(intent, "Share song"))
-}
-
-private fun copyToClipboard(context: Context, text: String) {
-    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    cm.setPrimaryClip(ClipData.newPlainText("Song link", text))
-}
-
 /** Shares a verza:// "listen along" session link via the system chooser. */
 private fun shareSessionLink(context: Context, link: String) {
     val intent = Intent(Intent.ACTION_SEND).apply {
@@ -583,11 +447,4 @@ private fun shareSessionLink(context: Context, link: String) {
         )
     }
     context.startActivity(Intent.createChooser(intent, "Share listening session"))
-}
-
-private fun formatTime(ms: Long): String {
-    val totalSeconds = (ms / 1000).coerceAtLeast(0)
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%d:%02d".format(minutes, seconds)
 }

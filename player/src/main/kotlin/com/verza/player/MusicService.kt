@@ -78,6 +78,16 @@ class MusicService : MediaLibraryService() {
     private val streamUrlCache = java.util.concurrent.ConcurrentHashMap<String, CachedStreamUrl>()
     private val STREAM_URL_TTL_MS = 5 * 60 * 60 * 1000L // 5h; googlevideo URLs last ~6h
 
+    /**
+     * Stream URLs a load has already failed on, so the cache above cannot keep serving one.
+     *
+     * Bounded and cleared wholesale: the interesting case is a network change, which invalidates
+     * every URL resolved before it at once, so there is nothing worth ageing out individually.
+     */
+    private val failedStreamUrls = java.util.Collections.newSetFromMap(
+        java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    )
+
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
@@ -127,11 +137,19 @@ class MusicService : MediaLibraryService() {
                 // re-ran the (multi-second) NewPipe extraction every time, which is why seeks were
                 // slow. googlevideo URLs stay valid for hours, so a short-TTL cache makes seeks
                 // instant while still re-resolving once the URL would have expired.
+                // Skipped once the entry has been blamed for a failure: googlevideo URLs are
+                // bound to the address that resolved them, so changing network makes every cached
+                // URL 403 while still looking fresh. Without this, moving from Wi-Fi to mobile data
+                // left a track unplayable until the TTL ran out — and each retry and each seek got
+                // handed the same dead URL.
                 streamUrlCache[videoId]?.let { c ->
-                    if (System.currentTimeMillis() - c.resolvedAt < STREAM_URL_TTL_MS) {
+                    if (System.currentTimeMillis() - c.resolvedAt < STREAM_URL_TTL_MS &&
+                        !failedStreamUrls.contains(c.url)
+                    ) {
                         if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Using cached stream URL for $videoId")
                         return@Resolver dataSpec.withUri(Uri.parse(c.url))
                     }
+                    streamUrlCache.remove(videoId)
                 }
 
                 val stream = runBlocking { InnerTube.resolveAudioStream(videoId) }
@@ -183,6 +201,19 @@ class MusicService : MediaLibraryService() {
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 AudioSessionRegistry.set(audioSessionId)
+            }
+
+            /**
+             * Mark the URL the failure happened on so the resolver stops handing it back.
+             *
+             * A googlevideo URL is tied to the address that resolved it, so walking from Wi-Fi to
+             * mobile data turns every cached URL into a 403 while it still looks fresh for hours.
+             * Re-resolving costs one extraction; not re-resolving cost the track.
+             */
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                val id = player.currentMediaItem?.mediaId ?: return
+                streamUrlCache.remove(id)?.let { failedStreamUrls.add(it.url) }
+                if (failedStreamUrls.size > 256) failedStreamUrls.clear()
             }
         })
 
@@ -335,23 +366,40 @@ class MusicService : MediaLibraryService() {
     // ── Library callbacks ──────────────────────────────────────────────────────
     private inner class LibrarySessionCallback : MediaLibrarySession.Callback {
 
+/**
+         * Whether a controller is one of ours.
+         *
+         * This service is exported — it has to be, or the notification, Bluetooth, Wear and Android
+         * Auto cannot reach it — which means any installed app can open a MediaController against
+         * it. Those callers still get ordinary transport control, the same as a Bluetooth remote.
+         * What they must not get is [ACTION_TOGGLE_LIKE], which writes to the signed-in Google
+         * account, or the ability to hand us a file:// path to open.
+         */
+        private fun isTrusted(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): Boolean = controller.packageName == packageName ||
+            session.isMediaNotificationController(controller) ||
+            session.isAutoCompanionController(controller) ||
+            session.isAutomotiveController(controller)
+
         /**
-         * Grant every controller (the system notification controller included) permission to send
-         * our custom "toggle like" command, on top of the default media + library commands, and
-         * hand it the current heart layout.
+         * Default media + library commands for everyone, and the private "toggle like" command only
+         * for controllers we trust.
          */
         @OptIn(UnstableApi::class)
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
+            val trusted = isTrusted(session, controller)
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
-                .add(SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY))
+                .apply { if (trusted) add(SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)) }
                 .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(sessionCommands)
-                .setCustomLayout(buildCustomLayout())
+                .apply { if (trusted) setCustomLayout(buildCustomLayout()) }
                 .build()
         }
 
@@ -367,7 +415,9 @@ class MusicService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
-            if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
+            // Checked again here rather than relying on the command list alone: onConnect decides
+            // what a controller may ask for, this decides what it may actually do.
+            if (customCommand.customAction == ACTION_TOGGLE_LIKE && isTrusted(session, controller)) {
                 player.currentMediaItem?.let { item ->
                     val md = item.mediaMetadata
                     NowPlayingBridge.requestLikeToggle(
@@ -399,13 +449,25 @@ class MusicService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> {
+            // Only our own UI may name a path. For anyone else a mediaId is a YouTube video id and
+            // nothing else — otherwise an outside app could ask us to open a file:// inside our own
+            // data directory, using our process's read access to do it.
+            val trusted = isTrusted(mediaSession, controller)
             val resolved = mediaItems.map { item ->
                 val id = item.mediaId
-                val uri = if (id.startsWith("content://") || id.startsWith("file://")) id
-                          else "$INNERTUBE_SCHEME$id"
+                val local = id.startsWith("content://") || id.startsWith("file://")
+                val uri = if (local && trusted) id else "$INNERTUBE_SCHEME${sanitiseVideoId(id)}"
                 item.buildUpon().setUri(uri).build()
             }.toMutableList()
             return Futures.immediateFuture(resolved)
         }
+
+        /**
+         * YouTube ids are 11 characters of [A-Za-z0-9_-]. Anything else from an untrusted caller is
+         * replaced rather than rejected, so the load fails at resolve time like any other bad id.
+         */
+        private fun sanitiseVideoId(id: String): String =
+            if (id.length in 1..64 && id.all { it.isLetterOrDigit() || it == '_' || it == '-' }) id
+            else "invalid"
     }
 }

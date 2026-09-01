@@ -48,7 +48,6 @@ import javax.inject.Inject
  * is up. [endAt] is null for an open-ended session.
  */
 data class FocusSession(val startedAt: Long, val endAt: Long?) {
-    val openEnded: Boolean get() = endAt == null
 }
 
 /**
@@ -571,11 +570,14 @@ class PlaybackViewModel @Inject constructor(
         }
         _sleepTimerEndAt.value = System.currentTimeMillis() + durationMs
         sleepJob = viewModelScope.launch {
-            val fade = fadeMs.coerceIn(1_000L, durationMs)
+            // coerceIn requires min <= max, and "End of track" on a song with 400ms left passes
+            // a duration below the 1s floor — which threw IllegalArgumentException straight out of
+            // viewModelScope and took the process with it. Cap first, then floor.
+            val fade = fadeMs.coerceAtMost(durationMs).coerceIn(0L, durationMs)
             delay((durationMs - fade).coerceAtLeast(0L))
             // Soft volume ramp so the music dissolves rather than cutting out — finer steps for the
             // long wind-down so it's imperceptibly smooth.
-            val steps = (fade / 250L).toInt().coerceIn(16, 320)
+            val steps = (fade / 250L).toInt().coerceIn(1, 320)
             for (i in steps downTo 0) {
                 playerConnection.setVolume(i / steps.toFloat())
                 delay(fade / steps)
@@ -679,7 +681,10 @@ class PlaybackViewModel @Inject constructor(
         flushListen()
         sleepJob?.cancel()
         focusJob?.cancel()
-        audioEffects.bind(0)
+        // Deliberately NOT audioEffects.bind(0). The equaliser is attached to the *service's* audio
+        // session, which outlives this ViewModel — swiping the app off recents while music keeps
+        // playing used to release the effects here and the rest of the album played flat, with
+        // nothing to indicate why.
         playerConnection.disconnect()
     }
 }
