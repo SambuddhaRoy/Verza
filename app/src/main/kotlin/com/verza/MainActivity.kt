@@ -2,16 +2,21 @@ package com.verza
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.foundation.layout.Box
 import com.verza.ui.expressive.ExpressiveMotion
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.verza.ui.expressive.ColorFlavour
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -28,7 +33,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.audio.AudioVisualizer
 import com.verza.ui.expressive.LocalExpressiveColors
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.verza.data.IconVariant
@@ -83,7 +87,17 @@ class MainActivity : ComponentActivity() {
         // either to the playback owner.
         handleSessionIntent(intent)
         handleSharedYouTube(intent)
-        enableEdgeToEdge()
+        // Both bars fully transparent, and — the part that actually matters — contrast
+        // enforcement off. Left on, Android paints its own translucent scrim behind the gesture
+        // pill, and a solid white or black bar behind three-button navigation, which is why the
+        // bottom of the screen stayed uncoloured no matter what the app drew.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT),
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         setContent {
             // Ask for notification permission so the media-playback foreground service
             // can show its notification on Android 13+.
@@ -97,7 +111,6 @@ class MainActivity : ComponentActivity() {
             }
 
             val settingsViewModel: SettingsViewModel = hiltViewModel()
-            val theme by settingsViewModel.theme.collectAsStateWithLifecycle()
             val glowEnabled by settingsViewModel.glowEnabled.collectAsStateWithLifecycle()
             val glowColor by settingsViewModel.glowColor.collectAsStateWithLifecycle()
             val glowIntensity by settingsViewModel.glowIntensity.collectAsStateWithLifecycle()
@@ -107,7 +120,6 @@ class MainActivity : ComponentActivity() {
             val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
             val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle()
             val startScreen by settingsViewModel.startScreen.collectAsStateWithLifecycle()
-            val sleeveMode by settingsViewModel.sleeveMode.collectAsStateWithLifecycle()
 
             // ── Visualizer lifecycle ─────────────────────────────────────────────
             // PlaybackViewModel here just for audioSessionId + isPlaying — same VM is used by the
@@ -205,30 +217,46 @@ class MainActivity : ComponentActivity() {
             // Pure functions of the cover, so they are computed when the cover changes rather than on
             // every playback emission. Both walk contrast searches; rebuilding them per recomposition
             // was doing that work dozens of times a second for an unchanged colour.
-            val expressive = remember(artworkColors) { expressiveColorsFrom(artworkColors) }
+            val flavour by settingsViewModel.colorFlavour.collectAsStateWithLifecycle()
+            val expressive = remember(artworkColors, flavour) {
+                expressiveColorsFrom(artworkColors, flavour)
+            }
             val materialScheme = remember(expressive) { expressiveColorScheme(expressive) }
+
+            // System bar glyphs follow the canvas, not the system's dark-mode flag. Pastel puts a
+            // light container behind them, and white-on-white status icons are invisible.
+            val view = LocalView.current
+            val lightBars = expressive.container.luminance() > 0.45f
+            LaunchedEffect(lightBars, view) {
+                val controller = WindowCompat.getInsetsController(window, view)
+                controller.isAppearanceLightStatusBars = lightBars
+                controller.isAppearanceLightNavigationBars = lightBars
+            }
 
             // Launcher icon follows the palette, when asked to. Rate-limited and bucketed: the swap
             // is a visible event on the home screen, so it only happens when the hue actually moves
             // into a different bucket, and never more than once every few minutes.
             val adaptiveIcon by settingsViewModel.adaptiveIcon.collectAsStateWithLifecycle()
-            var lastIconBucket by rememberSaveable { mutableIntStateOf(-1) }
             var lastIconAt by rememberSaveable { mutableLongStateOf(0L) }
             LaunchedEffect(adaptiveIcon, expressive.accent) {
                 if (!adaptiveIcon) return@LaunchedEffect
                 val bucket = iconVariant.bucketFor(expressive.accent)
-                val now = System.currentTimeMillis()
-                if (bucket != lastIconBucket && now - lastIconAt > IconVariant.MIN_INTERVAL_MS) {
-                    lastIconBucket = bucket
-                    lastIconAt = now
-                    iconVariant.apply(bucket)
-                }
+                if (bucket == iconVariant.currentBucket()) return@LaunchedEffect
+                // Wait the rate limit out instead of refusing the change. This effect is keyed on
+                // the accent, so a change turned down here was never retried — the icon updated or
+                // did not depending on how long ago the last one happened, which is why it behaved
+                // inconsistently. Cancellation does the right thing on its own: a new colour
+                // arriving mid-wait restarts the effect, so the newest one wins.
+                val wait = IconVariant.MIN_INTERVAL_MS - (System.currentTimeMillis() - lastIconAt)
+                if (wait > 0) kotlinx.coroutines.delay(wait)
+                lastIconAt = System.currentTimeMillis()
+                iconVariant.apply(bucket)
             }
 
             // The Material scheme is the expressive palette. Anything still reading
             // MaterialTheme.colorScheme therefore agrees with the canvas it is drawn on, instead of
             // colouring text from a theme chosen independently of the background.
-            VerzaTheme(theme = theme, coverScheme = materialScheme, sleeve = sleeveMode) {
+            VerzaTheme(scheme = materialScheme) {
                 // Screens not yet rewritten read LocalCoverColors; mapping it onto the expressive
                 // palette converts them without each one having to be touched.
                 val chromeCover = remember(expressive) {

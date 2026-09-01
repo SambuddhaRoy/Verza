@@ -10,11 +10,11 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.verza.di.ApplicationScope
 import com.verza.innertube.AudioQuality
 import com.verza.innertube.InnerTube
+import com.verza.ui.expressive.ColorFlavour
 import com.verza.ui.expressive.CoverShapeMode
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowIntensity
 import com.verza.ui.theme.GlowStyle
-import com.verza.ui.theme.VerzaTheme
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -66,7 +66,6 @@ class PreferencesRepository @Inject constructor(
     private val skipSilenceKey = booleanPreferencesKey("skip_silence")
     private val saveSearchHistoryKey = booleanPreferencesKey("save_search_history")
     private val albumArtMotionKey = booleanPreferencesKey("album_art_motion")
-    private val sleeveModeKey = booleanPreferencesKey("sleeve_mode")
     private val hapticsKey = booleanPreferencesKey("music_haptics")
     private val gentleStartKey = booleanPreferencesKey("gentle_start")
     // SAF tree Uri for the folder downloads are written to. Blank = app-private storage, which is
@@ -75,6 +74,7 @@ class PreferencesRepository @Inject constructor(
     // Which silhouette the album art is masked with. Defaults to SHUFFLE — the shape changing per
     // track is the point of having it at all.
     private val coverShapeKey = stringPreferencesKey("cover_shape_mode")
+    private val colorFlavourKey = stringPreferencesKey("color_flavour")
     // Whether the launcher icon follows the cover colour. Off by default — switching it has visible
     // side effects on the home screen, so it should be a choice rather than a surprise.
     private val adaptiveIconKey = booleanPreferencesKey("adaptive_launcher_icon")
@@ -89,11 +89,6 @@ class PreferencesRepository @Inject constructor(
     private val bassStrengthKey = intPreferencesKey("bass_strength") // 0..1000
     private val loudnessKey = booleanPreferencesKey("loudness_enabled")
 
-    val themeFlow: Flow<VerzaTheme> = store.data.map { prefs ->
-        // Default to VERZA — the neutral liquid-glass + green-accent identity (matches Verza-Desktop).
-        // Colour comes from the cover-art wash behind glass panels; users can still pick Dynamic/Atelier/etc.
-        prefs[themeKey]?.let { runCatching { VerzaTheme.valueOf(it) }.getOrNull() } ?: VerzaTheme.VERZA
-    }
 
     // Prefer the encrypted cookie; fall back to any not-yet-migrated legacy plaintext value.
     val cookieFlow: Flow<String?> = store.data.map { prefs ->
@@ -150,13 +145,14 @@ class PreferencesRepository @Inject constructor(
     /** Whether the Now Playing album art gently "breathes" while playing. Default on. */
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
 
-    /** Editorial "Sleeve" appearance — poster Now Playing + translucent surfaces over the glow. */
-    val sleeveModeFlow: Flow<Boolean> = store.data.map { it[sleeveModeKey] ?: false }
-
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
 
     val coverShapeFlow: Flow<CoverShapeMode> =
         store.data.map { CoverShapeMode.fromName(it[coverShapeKey]) }
+
+    /** How hard to push the cover's colours. Replaced the fixed palettes. */
+    val colorFlavourFlow: Flow<ColorFlavour> =
+        store.data.map { ColorFlavour.fromName(it[colorFlavourKey]) }
 
     val adaptiveIconFlow: Flow<Boolean> = store.data.map { it[adaptiveIconKey] ?: false }
 
@@ -212,10 +208,6 @@ class PreferencesRepository @Inject constructor(
         scope.launch { audioQualityFlow.collect { InnerTube.audioQuality = it } }
     }
 
-    suspend fun setTheme(theme: VerzaTheme) {
-        store.edit { it[themeKey] = theme.name }
-    }
-
     suspend fun setAudioQuality(quality: AudioQuality) {
         store.edit { it[audioQualityKey] = quality.name }
     }
@@ -268,10 +260,6 @@ class PreferencesRepository @Inject constructor(
         store.edit { it[albumArtMotionKey] = enabled }
     }
 
-    suspend fun setSleeveMode(enabled: Boolean) {
-        store.edit { it[sleeveModeKey] = enabled }
-    }
-
     /** [treeUri] comes from the system folder picker; blank resets to app-private storage. */
     suspend fun setDownloadTree(treeUri: String) {
         store.edit { it[downloadTreeKey] = treeUri }
@@ -281,6 +269,10 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setCoverShape(mode: CoverShapeMode) {
         store.edit { it[coverShapeKey] = mode.name }
+    }
+
+    suspend fun setColorFlavour(flavour: ColorFlavour) {
+        store.edit { it[colorFlavourKey] = flavour.name }
     }
 
     suspend fun setAdaptiveIcon(enabled: Boolean) {

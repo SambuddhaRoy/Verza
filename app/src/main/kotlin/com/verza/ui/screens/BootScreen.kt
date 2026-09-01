@@ -23,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
@@ -31,26 +30,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.verza.R
 import com.verza.ui.expressive.BodyText
-import com.verza.ui.expressive.CookieShape
+import com.verza.ui.expressive.DefaultExpressiveColors
 import com.verza.ui.expressive.ExpressiveMotion
 import com.verza.ui.expressive.HeroDisplay
-import com.verza.ui.expressive.LocalExpressiveColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
  * The launch sequence.
  *
- * The mark springs in inside a scalloped plate — the same silhouette the album art wears — so the
- * first thing the app shows is the shape language everything else is built from. Colours come from
- * the expressive palette, which on a cold start is Verza's own indigo and lime and on a warm start
- * is whatever was last playing.
+ * Deliberately pinned to Verza's own indigo and lime rather than the live palette. Reading the
+ * live palette meant boot ran through every colour the app resolved on its way up — the stored
+ * theme landing from disk, then the default cover palette, then the real cover — which is why the
+ * launch flashed through several schemes before settling. The mark on indigo is also exactly what
+ * the system splash draws, so the handover into this screen is invisible.
  *
  * Everything is a spring rather than a timed curve, matching the rest of the app. Tap to skip.
  */
 @Composable
 fun BootScreen(onFinished: () -> Unit) {
-    val colors = LocalExpressiveColors.current
+    val colors = DefaultExpressiveColors
 
     val markScale = remember { Animatable(0.6f) }
     val markAlpha = remember { Animatable(0f) }
@@ -97,22 +96,17 @@ fun BootScreen(onFinished: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
+            // The glyph straight on the canvas, not on a plate: the system splash draws it this
+            // way, and matching it exactly is what makes the two screens read as one.
+            Image(
+                painter = painterResource(id = R.drawable.ic_verza_glyph),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(colors.accent),
                 modifier = Modifier
                     .size(148.dp)
                     .scale(markScale.value)
-                    .alpha(markAlpha.value)
-                    .clip(CookieShape)
-                    .background(colors.accent),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_verza_glyph),
-                    contentDescription = null,
-                    colorFilter = ColorFilter.tint(colors.onAccent),
-                    modifier = Modifier.size(148.dp),
-                )
-            }
+                    .alpha(markAlpha.value),
+            )
 
             Spacer(Modifier.height(26.dp))
 

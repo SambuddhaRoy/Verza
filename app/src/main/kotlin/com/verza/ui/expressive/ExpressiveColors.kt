@@ -63,6 +63,59 @@ data class ExpressiveColors(
     }
 }
 
+/**
+ * How far to push the cover.
+ *
+ * Every flavour runs the same derivation — the cover picks the hues, contrast decides the inks — and
+ * only moves the windows the container and its surfaces are allowed to live in. That is the whole
+ * mechanism: a flavour cannot produce an illegible palette, because it never gets to choose an ink.
+ *
+ * These replaced a dozen fixed palettes. A fixed palette either fights the artwork or ignores it, and
+ * the app is built around the artwork; what people actually wanted from a theme picker here was the
+ * same cover taken lighter, darker or louder.
+ */
+enum class ColorFlavour(
+    val displayName: String,
+    val blurb: String,
+    /** The saturation and value windows the container is held inside. */
+    val satRange: ClosedFloatingPointRange<Float>,
+    val valRange: ClosedFloatingPointRange<Float>,
+    /** Multipliers taking the container to the card surface. */
+    val surfaceSat: Float,
+    val surfaceVal: Float,
+    /** Clamp for the surface tone ladder, so it cannot walk out of the flavour's register. */
+    val toneRange: ClosedFloatingPointRange<Float>,
+    /** Scales the accent's saturation — the one knob that makes a flavour quiet. */
+    val accentSat: Float,
+) {
+    SIGNATURE(
+        "Signature", "The cover, at full strength",
+        0.45f..0.82f, 0.30f..0.52f, 0.90f, 0.62f, 0.10f..0.60f, 1.00f,
+    ),
+    DEEP(
+        "Deep", "The same colours, further down",
+        0.50f..0.88f, 0.13f..0.24f, 0.92f, 0.70f, 0.06f..0.34f, 1.00f,
+    ),
+    HUSHED(
+        "Hushed", "Dark, and desaturated to a whisper",
+        0.08f..0.22f, 0.11f..0.20f, 0.85f, 0.78f, 0.05f..0.30f, 0.45f,
+    ),
+    VIVID(
+        "Vivid", "Pushed to full saturation",
+        0.82f..1.00f, 0.44f..0.64f, 0.95f, 0.66f, 0.14f..0.74f, 1.00f,
+    ),
+    PASTEL(
+        "Pastel", "A light room, tinted by the cover",
+        0.08f..0.20f, 0.90f..0.98f, 0.70f, 0.97f, 0.78f..1.00f, 1.00f,
+    ),
+    ;
+
+    companion object {
+        fun fromName(name: String?): ColorFlavour =
+            entries.firstOrNull { it.name == name } ?: SIGNATURE
+    }
+}
+
 /** Until a cover resolves. Verza's indigo/lime, in the reference's register. */
 val DefaultExpressiveColors = ExpressiveColors(
     container = Color(0xFF5B4BE0),
@@ -185,20 +238,21 @@ private fun mutedOn(bg: Color, ink: Color): Color {
  * the more expressive read; drops to dark only if the hue cannot get bright enough to clear the
  * floor (a deep blue, for instance, goes pale before it goes contrasty).
  */
-private fun separate(seed: Color, from: Color): Color {
+private fun separate(seed: Color, from: Color, satScale: Float = 1f): Color {
     val floor = ExpressiveColors.MIN_CONTRAST
     val h = hsv(seed)
     // Bright first: the reference's controls are light-on-dark and that is the more expressive read.
     var v = 1f
     while (v > 0.72f) {
-        val candidate = fromHsv(h[0], h[1].coerceIn(0.35f, 0.85f), v)
+        val candidate = fromHsv(h[0], h[1].coerceIn(0.35f, 0.85f) * satScale, v)
         if (contrastRatio(candidate, from) >= floor) return candidate
         v -= 0.02f
     }
     // Some hues go pale before they go contrasty against a light container, so try dark instead.
+    // A light container (Pastel) always lands here: nothing bright can clear 4.5:1 against it.
     v = 0.30f
     while (v > 0.0f) {
-        val candidate = fromHsv(h[0], h[1].coerceIn(0.4f, 1f), v)
+        val candidate = fromHsv(h[0], h[1].coerceIn(0.4f, 1f) * satScale, v)
         if (contrastRatio(candidate, from) >= floor) return candidate
         v -= 0.02f
     }
@@ -215,30 +269,48 @@ private fun separate(seed: Color, from: Color): Color {
  * off the same swatch. Two tones from the same hue read as one flat colour; the reference's indigo
  * and yellow are most of what makes it feel alive.
  */
-fun expressiveColorsFrom(cover: CoverColors): ExpressiveColors {
+fun expressiveColorsFrom(
+    cover: CoverColors,
+    flavour: ColorFlavour = ColorFlavour.SIGNATURE,
+): ExpressiveColors {
     val seed = hsv(cover.accent)
 
-    // Container: the cover's hue, held to a saturated mid-dark band so it is unmistakably coloured
+    // Container: the cover's hue, held inside the flavour's window so it is unmistakably coloured
     // without ever being bright enough to fight the text on top of it.
-    val container = fromHsv(seed[0], seed[1].coerceIn(0.45f, 0.82f), seed[2].coerceIn(0.30f, 0.52f))
+    val container = fromHsv(seed[0], seed[1].coerceIn(flavour.satRange), seed[2].coerceIn(flavour.valRange))
     val onContainer = readableOn(container)
 
     // Accent: the true complement, 180° opposite the container, then separated by measured
     // contrast. 55° was only adjacent — near enough in hue that accent text on the container read as
     // a shade of it rather than as a different colour, which is what made toggles and labels hard to
     // pick out. Opposite hues are maximally distinguishable at equal luminance.
-    val accent = separate(fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2]), container)
+    val accent = separate(
+        fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2]),
+        container,
+        flavour.accentSat,
+    )
     val onAccent = readableOn(accent)
 
-    // Cards sit one tone below the canvas so they read as contained rather than floating.
-    val surface = fromHsv(seed[0], (seed[1] * 0.9f).coerceIn(0.35f, 0.8f), (seed[2] * 0.62f).coerceIn(0.18f, 0.34f))
+    // Cards sit one step off the canvas so they read as contained rather than floating. Which
+    // direction that step goes is the flavour's business: darker on the dark flavours, barely at all
+    // on Pastel, where a light card on a light ground is the correct register.
+    val containerHsv = hsv(container)
+    val surface = fromHsv(
+        containerHsv[0],
+        (containerHsv[1] * flavour.surfaceSat).coerceIn(flavour.satRange),
+        (containerHsv[2] * flavour.surfaceVal).coerceIn(flavour.toneRange),
+    )
     val surfaceHsv = hsv(surface)
-    fun tone(v: Float) = fromHsv(surfaceHsv[0], surfaceHsv[1], v.coerceIn(0.10f, 0.60f))
+    fun tone(v: Float) = fromHsv(surfaceHsv[0], surfaceHsv[1], v.coerceIn(flavour.toneRange))
     val onSurface = readableOn(surface)
 
     // Tertiary sits on the far side of the wheel from the accent, so a secondary highlight cannot be
     // mistaken for the primary one.
-    val tertiary = separate(fromHsv((seed[0] + 100f) % 360f, seed[1].coerceAtLeast(0.45f), seed[2]), container)
+    val tertiary = separate(
+        fromHsv((seed[0] + 100f) % 360f, seed[1].coerceAtLeast(0.45f), seed[2]),
+        container,
+        flavour.accentSat,
+    )
 
     return ExpressiveColors(
         container = container,

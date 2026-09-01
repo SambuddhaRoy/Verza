@@ -2,6 +2,7 @@ package com.verza.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.verza.ui.expressive.ColorFlavour
 import com.verza.ui.expressive.CoverShapeMode
 import com.verza.data.IconVariant
 import com.verza.data.UpdateRepository
@@ -16,7 +17,6 @@ import com.verza.innertube.AudioQuality
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowIntensity
 import com.verza.ui.theme.GlowStyle
-import com.verza.ui.theme.VerzaTheme
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,9 +34,6 @@ class SettingsViewModel @Inject constructor(
     private val iconVariant: IconVariant,
     private val downloads: DownloadStore,
 ) : ViewModel() {
-
-    val theme: StateFlow<VerzaTheme> = prefs.themeFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, VerzaTheme.DYNAMIC)
 
     val isSignedIn: StateFlow<Boolean> = prefs.cookieFlow
         .map { !it.isNullOrBlank() }
@@ -78,8 +75,6 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val albumArtMotion: StateFlow<Boolean> = prefs.albumArtMotionFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
-    val sleeveMode: StateFlow<Boolean> = prefs.sleeveModeFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val hapticsEnabled: StateFlow<Boolean> = prefs.hapticsEnabledFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val gentleStart: StateFlow<Boolean> = prefs.gentleStartFlow
@@ -89,9 +84,11 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
     val coverShape: StateFlow<CoverShapeMode> = prefs.coverShapeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, CoverShapeMode.SHUFFLE)
+    val colorFlavour: StateFlow<ColorFlavour> = prefs.colorFlavourFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ColorFlavour.SIGNATURE)
 
-    fun setTheme(theme: VerzaTheme) {
-        viewModelScope.launch { prefs.setTheme(theme) }
+    fun setColorFlavour(flavour: ColorFlavour) {
+        viewModelScope.launch { prefs.setColorFlavour(flavour) }
     }
 
     fun setAudioQuality(quality: AudioQuality) {
@@ -144,10 +141,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setAlbumArtMotion(enabled: Boolean) {
         viewModelScope.launch { prefs.setAlbumArtMotion(enabled) }
-    }
-
-    fun setSleeveMode(enabled: Boolean) {
-        viewModelScope.launch { prefs.setSleeveMode(enabled) }
     }
 
     // ── app updates ─────────────────────────────────────────────────────────

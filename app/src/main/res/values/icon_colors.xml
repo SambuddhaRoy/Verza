@@ -17,5 +17,9 @@
     <color name="icon_bg_indigo">#3B2FA8</color>
     <color name="icon_fg_indigo">#EDF27A</color>
     <color name="icon_bg_violet">#5C227A</color>
+
+    <!-- The launch canvas. Must equal DefaultExpressiveColors.container, or the system splash and
+         the boot screen that replaces it are two different indigos and the handover shows. -->
+    <color name="splash_bg">#5B4BE0</color>
     <color name="icon_fg_violet">#B9F27A</color>
 </resources>

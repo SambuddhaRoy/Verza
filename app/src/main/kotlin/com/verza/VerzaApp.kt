@@ -6,6 +6,7 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.verza.data.CrashLog
 import com.verza.playback.MediaSessionLikeBridge
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -20,6 +21,8 @@ class VerzaApp : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        // First thing, before anything else can throw.
+        CrashLog.install(this)
         mediaSessionLikeBridge.start()
     }
 
