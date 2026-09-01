@@ -1,25 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher icon variants. One pair per hue bucket; the app enables the alias whose bucket is
-     closest to the current cover colour. See IconVariant.kt. -->
+<!-- The app mark. There used to be eight of these, one per hue, for a launcher icon that followed
+     the music; swapping between them meant disabling the component the running task was rooted at,
+     which Android answers by destroying the task. -->
 <resources>
-    <color name="icon_bg_red">#7A2233</color>
-    <color name="icon_fg_red">#F2E27A</color>
-    <color name="icon_bg_amber">#7A5322</color>
-    <color name="icon_fg_amber">#7ADCF2</color>
-    <color name="icon_bg_lime">#4F7A22</color>
-    <color name="icon_fg_lime">#E27AF2</color>
-    <color name="icon_bg_green">#227A47</color>
-    <color name="icon_fg_green">#F27A8E</color>
-    <color name="icon_bg_teal">#227A7A</color>
-    <color name="icon_fg_teal">#F2A87A</color>
-    <color name="icon_bg_blue">#22477A</color>
-    <color name="icon_fg_blue">#F2D67A</color>
     <color name="icon_bg_indigo">#3B2FA8</color>
     <color name="icon_fg_indigo">#EDF27A</color>
-    <color name="icon_bg_violet">#5C227A</color>
 
     <!-- The launch canvas. Must equal DefaultExpressiveColors.container, or the system splash and
          the boot screen that replaces it are two different indigos and the handover shows. -->
     <color name="splash_bg">#5B4BE0</color>
-    <color name="icon_fg_violet">#B9F27A</color>
 </resources>

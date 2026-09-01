@@ -74,7 +74,6 @@ class PreferencesRepository @Inject constructor(
     private val colorFlavourKey = stringPreferencesKey("color_flavour")
     // Whether the launcher icon follows the cover colour. Off by default — switching it has visible
     // side effects on the home screen, so it should be a choice rather than a surprise.
-    private val adaptiveIconKey = booleanPreferencesKey("adaptive_launcher_icon")
     // The version whose changelog has been shown, and the version the listener said "not now" to.
     // Both are versions rather than flags, so a later release asks again by itself.
     private val seenChangelogKey = stringPreferencesKey("seen_changelog_version")
@@ -147,8 +146,6 @@ class PreferencesRepository @Inject constructor(
     /** How hard to push the cover's colours. Replaced the fixed palettes. */
     val colorFlavourFlow: Flow<ColorFlavour> =
         store.data.map { ColorFlavour.fromName(it[colorFlavourKey]) }
-
-    val adaptiveIconFlow: Flow<Boolean> = store.data.map { it[adaptiveIconKey] ?: false }
 
     suspend fun seenChangelogVersion(): String = store.data.first()[seenChangelogKey].orEmpty()
 
@@ -247,10 +244,6 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setColorFlavour(flavour: ColorFlavour) {
         store.edit { it[colorFlavourKey] = flavour.name }
-    }
-
-    suspend fun setAdaptiveIcon(enabled: Boolean) {
-        store.edit { it[adaptiveIconKey] = enabled }
     }
 
     suspend fun setHapticsEnabled(enabled: Boolean) {
