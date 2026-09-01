@@ -145,8 +145,7 @@ fun VerzaNavigation(
                 context.startActivity(Intent.createChooser(intent, "Share song"))
             },
             onGoToArtist = { item ->
-                PendingSearch.query = item.artist
-                PendingSearch.filter = SearchFilter.ARTISTS
+                PendingSearch.request(item.artist, SearchFilter.ARTISTS)
                 navController.navigate(Screen.Search.route) { launchSingleTop = true }
             },
             onAddToPlaylist = { item -> pendingAdd = item },

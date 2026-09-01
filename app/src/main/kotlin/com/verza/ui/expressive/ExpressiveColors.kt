@@ -135,18 +135,6 @@ val DefaultExpressiveColors = ExpressiveColors(
     line = Color(0x33FFFFFF),
 )
 
-/**
- * State-layer opacities. A solid overlay of the content colour at these alphas is how M3 expresses
- * interaction, instead of each component inventing its own hover/press tint.
- */
-object StateLayer {
-    const val HOVER = 0.08f
-    const val FOCUS = 0.10f
-    const val PRESSED = 0.10f
-    const val DRAGGED = 0.16f
-    const val DISABLED = 0.38f
-}
-
 val LocalExpressiveColors = staticCompositionLocalOf { DefaultExpressiveColors }
 
 /** WCAG relative-luminance contrast ratio. 1.0 identical, 21.0 black on white. */

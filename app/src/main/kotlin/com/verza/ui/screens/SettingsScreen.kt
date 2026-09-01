@@ -43,15 +43,11 @@ import com.verza.ui.components.EditorialSectionHeader
 import com.verza.ui.components.pressableScale
 import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.DynamicColorSupported
-import com.verza.ui.theme.GlowColorPreset
-import com.verza.ui.theme.GlowIntensity
-import com.verza.ui.theme.GlowStyle
 import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.data.CrashLog
 import com.verza.ui.expressive.ColorFlavour
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.ui.theme.LocalArtworkColors
-import com.verza.ui.theme.resolveColor
 
 @Composable
 fun SettingsScreen(
@@ -68,12 +64,6 @@ fun SettingsScreen(
     val currentFlavour by viewModel.colorFlavour.collectAsStateWithLifecycle()
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
     val audioQuality by viewModel.audioQuality.collectAsStateWithLifecycle()
-    val glowEnabled by viewModel.glowEnabled.collectAsStateWithLifecycle()
-    val glowColor by viewModel.glowColor.collectAsStateWithLifecycle()
-    val glowIntensity by viewModel.glowIntensity.collectAsStateWithLifecycle()
-    val glowStyle by viewModel.glowStyle.collectAsStateWithLifecycle()
-    val glowChaos by viewModel.glowChaos.collectAsStateWithLifecycle()
-    val glowReactive by viewModel.glowReactive.collectAsStateWithLifecycle()
     val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
     val resumeOnOpen by viewModel.resumeOnOpen.collectAsStateWithLifecycle()
     val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
@@ -461,6 +451,15 @@ fun SettingsScreen(
             }
         }
         item {
+            // Restored: music haptics are wired end to end in MainActivity, but the row that turns
+            // them on had been orphaned when the glow section around it was removed — so the
+            // feature existed and could not be reached.
+            MusicHapticsRow(
+                enabled = hapticsEnabled,
+                onToggle = viewModel::setHapticsEnabled,
+            )
+        }
+        item {
             ToggleRow(
                 title = "Spectrum seek bar",
                 subtitle = if (hasAudioPermission) {
@@ -801,163 +800,6 @@ private fun AudioQualityRow(
 // ── Glow rows ────────────────────────────────────────────────────────────────
 
 @Composable
-private fun GlowPatternRow(selected: GlowStyle, onSelect: (GlowStyle) -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Column(
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text("Pattern", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
-        SegmentedChoice(
-            options = GlowStyle.entries,
-            selected = selected,
-            label = { it.displayName },
-            onSelect = onSelect,
-        )
-        Text(
-            "Halftone drifts a blob of comic-print dots through a sea of darkness; Cover is a flowing, blurred wash of the current album art. Both need Android 13+.",
-            style = CaptionItalic,
-            color = ext.muted,
-        )
-    }
-}
-
-/** "Movement" slider — how fast / freely the Halftone blob roams the screen. */
-@Composable
-private fun GlowMovementRow(value: Float, onChange: (Float) -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Column(
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text("Movement", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
-        Slider(
-            value = value,
-            onValueChange = onChange,
-            valueRange = 0f..1f,
-            colors = SliderDefaults.colors(
-                thumbColor = colors.primary,
-                activeTrackColor = colors.primary,
-                inactiveTrackColor = colors.outlineVariant,
-            ),
-        )
-        Text(
-            "Calm at the left, restless at the right — how far and fast the pattern roams. It always stays on screen, however high you go.",
-            style = CaptionItalic,
-            color = ext.muted,
-        )
-    }
-}
-
-@Composable
-private fun GlowToggleRow(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit,
-    availableInTheme: Boolean,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "Ambient glow",
-                style = MaterialTheme.typography.titleMedium,
-                color = if (availableInTheme) colors.onBackground else ext.muted,
-            )
-            Text(
-                text = if (availableInTheme)
-                    "Soft warm halo behind the content."
-                else
-                    "Only visible on dark themes.",
-                style = CaptionItalic,
-                color = ext.muted,
-            )
-        }
-        Switch(
-            checked = enabled,
-            enabled = availableInTheme,
-            onCheckedChange = onToggle,
-        )
-    }
-}
-
-@Composable
-private fun GlowReactivityRow(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    val context = androidx.compose.ui.platform.LocalContext.current
-
-    // We re-check the permission every recomposition rather than caching it, so a user who
-    // grants the permission via system settings while this screen is open sees the toggle
-    // light up immediately.
-    val hasPermission = remember(enabled) {
-        androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.RECORD_AUDIO,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
-    // Launcher for the runtime permission ask. If granted, persist the toggle; if denied,
-    // surface a brief Toast so the user knows why nothing changed and where to flip it on.
-    val permLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            onToggle(true)
-        } else {
-            android.widget.Toast.makeText(
-                context,
-                "Sound reactivity needs the audio permission. You can grant it later in system settings.",
-                android.widget.Toast.LENGTH_LONG,
-            ).show()
-        }
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "Sound reactivity",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onBackground,
-            )
-            Text(
-                text = "Glow moves with the music. Reads playback audio only — never the microphone. Needs the audio permission.",
-                style = CaptionItalic,
-                color = ext.muted,
-            )
-        }
-        Switch(
-            checked = enabled && hasPermission,
-            onCheckedChange = { newState ->
-                if (newState) {
-                    if (hasPermission) onToggle(true)
-                    else permLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                } else {
-                    onToggle(false)
-                }
-            },
-        )
-    }
-}
-
-@Composable
 private fun MusicHapticsRow(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
@@ -1013,129 +855,6 @@ private fun MusicHapticsRow(
                 }
             },
         )
-    }
-}
-
-@Composable
-private fun GlowColorRow(
-    selected: GlowColorPreset,
-    onSelect: (GlowColorPreset) -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    val available = GlowColorPreset.entries.filter {
-        it != GlowColorPreset.SYSTEM || com.verza.ui.theme.DynamicColorSupported
-    }
-    Column(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            "Glow color",
-            style = MaterialTheme.typography.labelSmall,
-            color = ext.muted,
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            available.forEach { preset ->
-                val swatch = preset.resolveColor()
-                val isSelected = preset == selected
-                // "From album art" has no fixed colour — show a multi-hue sweep so the swatch
-                // reads as "adaptive" rather than a single flat colour.
-                val swatchModifier = if (preset == GlowColorPreset.ALBUM_ART) {
-                    Modifier.background(
-                        androidx.compose.ui.graphics.Brush.sweepGradient(
-                            listOf(
-                                androidx.compose.ui.graphics.Color(0xFFE0556E),
-                                androidx.compose.ui.graphics.Color(0xFFE8B14A),
-                                androidx.compose.ui.graphics.Color(0xFF5A8068),
-                                androidx.compose.ui.graphics.Color(0xFF6B8BA8),
-                                androidx.compose.ui.graphics.Color(0xFFE0556E),
-                            )
-                        )
-                    )
-                } else {
-                    Modifier.background(swatch)
-                }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onSelect(preset) }
-                        .padding(6.dp),
-                ) {
-                    Box(
-                        Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .then(swatchModifier)
-                            .border(
-                                width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) colors.onBackground else ext.borderGlass,
-                                shape = CircleShape,
-                            ),
-                    )
-                    Text(
-                        preset.displayName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isSelected) colors.onBackground else ext.muted,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GlowIntensityRow(
-    selected: GlowIntensity,
-    onSelect: (GlowIntensity) -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Column(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            "Intensity",
-            style = MaterialTheme.typography.labelSmall,
-            color = ext.muted,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            GlowIntensity.entries.forEach { intensity ->
-                val isSelected = intensity == selected
-                Surface(
-                    onClick = { onSelect(intensity) },
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (isSelected) colors.primaryContainer.copy(alpha = 0.4f) else Color.Transparent,
-                    border = androidx.compose.foundation.BorderStroke(
-                        width = 1.dp,
-                        color = if (isSelected) colors.primary else ext.borderGlass,
-                    ),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        text = intensity.displayName,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isSelected) colors.onBackground else ext.muted,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 10.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
-                }
-            }
-        }
     }
 }
 

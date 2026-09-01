@@ -180,17 +180,6 @@ class DownloadStore @Inject constructor(
         }.getOrDefault("Chosen folder")
     }
 
-    /** True if the chosen folder is still readable — an ejected card or a revoked grant is not. */
-    fun canWrite(treeUri: String?): Boolean {
-        if (treeUri.isNullOrBlank()) return false
-        return runCatching {
-            val tree = Uri.parse(treeUri)
-            val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
-            context.contentResolver.query(parent, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)
-                ?.use { true } ?: false
-        }.getOrDefault(false)
-    }
-
     private fun uniqueFile(dir: File, name: String): File {
         val dot = name.lastIndexOf('.')
         val stem = if (dot > 0) name.substring(0, dot) else name

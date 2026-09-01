@@ -10,6 +10,8 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -31,12 +33,17 @@ suspend fun GraphicsLayer.shareAsPng(
     fileName: String,
     chooserTitle: String = "Share",
 ) {
+    // The layer can only be read on the thread that recorded it, so the snapshot stays here.
     val bitmap = toImageBitmap().asAndroidBitmap()
-    val dir = File(context.cacheDir, "shared").apply { mkdirs() }
-    val file = File(dir, fileName)
-    file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    // Everything after it is a full-quality PNG encode of a screen-sized bitmap plus a file
+    // write, which has no business on the main thread — its sibling ShareVideoExporter already
+    // does this correctly.
+    val uri = withContext(Dispatchers.IO) {
+        val dir = File(context.cacheDir, "shared").apply { mkdirs() }
+        val file = File(dir, fileName)
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "image/png"
         putExtra(Intent.EXTRA_STREAM, uri)

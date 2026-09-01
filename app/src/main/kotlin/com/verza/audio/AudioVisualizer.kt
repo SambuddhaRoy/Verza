@@ -6,7 +6,6 @@ import com.verza.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.sqrt
 
@@ -234,10 +233,3 @@ class AudioVisualizer(private val audioSessionId: Int) {
         private const val ALPHA_FALL = 0.10f // ~10-frame fall-time
     }
 }
-
-/**
- * Returns the raw magnitude of a complex FFT sample — re-exported for unit tests / preview use.
- * Kept top-level so it isn't tied to the [AudioVisualizer] instance.
- */
-internal fun fftMagnitude(real: Byte, imag: Byte): Float =
-    sqrt((real.toInt() * real.toInt() + imag.toInt() * imag.toInt()).toFloat()).let { abs(it) }

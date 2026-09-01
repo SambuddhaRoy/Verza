@@ -36,6 +36,29 @@ class HomeFeedBuilder @Inject constructor(
     private val library: LibraryRepository,
     private val stats: StatsRepository,
 ) {
+    /**
+     * The half of Home that needs no network, for painting while the rest is still in flight.
+     *
+     * Both sections come straight out of Room and are ready in milliseconds, but they used to be
+     * held behind the slowest of six network calls because everything was awaited before anything
+     * was shown. Same sections, same titles, same order as [compose] — this only brings them
+     * forward, so the feed folding in afterwards replaces like with like instead of reshuffling.
+     */
+    suspend fun localSections(): List<HomeSection> {
+        val recent = library.recentlyPlayed().first().take(20)
+        val liked = library.liked().first()
+        return buildList {
+            if (recent.isNotEmpty()) {
+                add(HomeSection("Recently played", recent.take(15).map { it.toHomeSong() }))
+            }
+            val recentIds = recent.mapTo(mutableSetOf()) { it.id }
+            val fresh = liked.filter { it.id !in recentIds }.take(15)
+            if (fresh.isNotEmpty()) {
+                add(HomeSection("From your liked songs", fresh.map { it.toHomeSong() }))
+            }
+        }
+    }
+
     suspend fun build(): Result<List<HomeSection>> = runCatching {
         coroutineScope {
             val ytAsync = async(Dispatchers.IO) {

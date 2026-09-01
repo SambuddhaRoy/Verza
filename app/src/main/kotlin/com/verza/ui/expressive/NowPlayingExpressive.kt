@@ -104,6 +104,7 @@ fun NowPlayingExpressive(
     artworkUrl: String?,
     trackKey: String?,
     coverShapeMode: CoverShapeMode,
+    albumArtMotion: Boolean,
     isPlaying: Boolean,
     isLiked: Boolean,
     isDownloaded: Boolean,
@@ -150,6 +151,7 @@ fun NowPlayingExpressive(
                 artworkUrl = artworkUrl,
                 trackKey = trackKey,
                 coverShapeMode = coverShapeMode,
+                albumArtMotion = albumArtMotion,
                 isPlaying = isPlaying,
                 isLiked = isLiked,
                 isDownloaded = isDownloaded,
@@ -224,6 +226,7 @@ private fun PlayerPane(
     artworkUrl: String?,
     trackKey: String?,
     coverShapeMode: CoverShapeMode,
+    albumArtMotion: Boolean,
     isPlaying: Boolean,
     isLiked: Boolean,
     isDownloaded: Boolean,
@@ -260,12 +263,22 @@ private fun PlayerPane(
     // The artwork's bass pulse, smoothed on the frame clock. Held in state that is only read inside
     // the graphicsLayer block below, so a new value invalidates the layer rather than the tree.
     val artScale = remember { mutableFloatStateOf(1f) }
-    LaunchedEffect(signalFlow, isPlaying) {
+    LaunchedEffect(signalFlow, isPlaying, albumArtMotion) {
+        if (!albumArtMotion) {
+            artScale.floatValue = 1f
+            return@LaunchedEffect
+        }
         while (true) {
             withFrameNanos { }
             val target = if (isPlaying) 1f + signalFlow.value.bass * 0.035f else 1f
             // Ease toward the target instead of snapping; the capture is coarser than the frame rate.
             artScale.floatValue += (target - artScale.floatValue) * 0.12f
+            // Paused, there is nothing to follow. Settle and stop asking for frames — this loop used
+            // to keep waking on every vsync for the whole time the app sat paused on screen.
+            if (!isPlaying && kotlin.math.abs(artScale.floatValue - 1f) < 0.0005f) {
+                artScale.floatValue = 1f
+                break
+            }
         }
     }
     val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f

@@ -39,13 +39,30 @@ private fun WebView.deWebViewUserAgent(): String =
  * hosts means a hijacked redirect can't load an arbitrary, attacker-controlled page inside this
  * cookie-bearing, JavaScript-enabled WebView.
  */
-private val ALLOWED_LOGIN_HOSTS = listOf(
-    "google", "youtube", "gstatic", "ggpht", "ytimg", "googleusercontent", "googleapis",
+private val ALLOWED_LOGIN_DOMAINS = listOf(
+    "google.com", "youtube.com", "youtu.be", "gstatic.com", "ggpht.com", "ytimg.com",
+    "googleusercontent.com", "googleapis.com", "withgoogle.com",
 )
 
-private fun isAllowedLoginHost(host: String?): Boolean {
-    if (host.isNullOrBlank()) return false
-    return ALLOWED_LOGIN_HOSTS.any { host.contains(it, ignoreCase = true) }
+/**
+ * Google routes sign-in through country domains (google.co.uk, google.com.au, google.de), so those
+ * cannot be enumerated — but they can be shaped. Anchored at both ends, and the label before
+ * "google" has to end in a dot, so "notgoogle.com" and "google.com.evil.com" both fail.
+ */
+private val GOOGLE_COUNTRY_DOMAIN = Regex("^(?:[a-z0-9-]+\\.)*google\\.[a-z]{2,3}(?:\\.[a-z]{2})?$")
+
+/**
+ * Exact registrable-domain match, not a substring test.
+ *
+ * This used to be `host.contains("youtube")`, which "youtube.evil.example" satisfies — so the check
+ * that exists to keep an attacker's page out of a cookie-bearing, JavaScript-enabled WebView was
+ * letting any domain with the right word in it straight through.
+ */
+internal fun isAllowedLoginHost(host: String?): Boolean {
+    val h = host?.lowercase()?.trimEnd('.').orEmpty()
+    if (h.isBlank()) return false
+    if (ALLOWED_LOGIN_DOMAINS.any { h == it || h.endsWith(".$it") }) return true
+    return GOOGLE_COUNTRY_DOMAIN.matches(h)
 }
 
 @SuppressLint("SetJavaScriptEnabled")

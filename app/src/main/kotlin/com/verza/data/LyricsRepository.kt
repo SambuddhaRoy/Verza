@@ -25,6 +25,9 @@ class LyricsRepository @Inject constructor(
     // share one entry. Negative results are cached too (as a failure) to avoid re-querying misses.
     private val cache = java.util.concurrent.ConcurrentHashMap<String, Result<LyricsResult>>()
 
+    /** LRCLIB looked and there is nothing — worth remembering, unlike a failure to reach it. */
+    private class NoLyrics : Exception("no lyrics for this track")
+
     private fun keyOf(title: String, artist: String) =
         "${title.trim().lowercase()}|${artist.trim().lowercase()}"
 
@@ -46,12 +49,16 @@ class LyricsRepository @Inject constructor(
                 .build()
             withContext(Dispatchers.IO) {
                 client.newCall(request).execute().use { resp ->
+                    if (resp.code == 404) throw NoLyrics()
                     if (!resp.isSuccessful) error("HTTP ${resp.code}")
                     json.decodeFromString<LyricsResult>(resp.body!!.string())
                 }
             }
         }
-        cache[key] = result
+        // Only definitive answers are remembered. A timeout or a dead network is not "this track has
+        // no lyrics", and caching it meant a single moment in a tunnel made the song permanently
+        // lyric-less — the prefetch on every track change ran straight into it.
+        if (result.isSuccess || result.exceptionOrNull() is NoLyrics) cache[key] = result
         return result
     }
 
