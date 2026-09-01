@@ -258,7 +258,10 @@ class MusicService : MediaLibraryService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 refreshLikeLayout()
                 embedArtwork(mediaItem)
+                publishNowPlaying()
             }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) = publishNowPlaying()
         })
         serviceScope.launch {
             NowPlayingBridge.likedIds.collect { refreshLikeLayout() }
@@ -331,6 +334,23 @@ class MusicService : MediaLibraryService() {
 
     /** Pushes a fresh custom layout to every controller (notification included). Main thread. */
     @OptIn(UnstableApi::class)
+    /**
+     * Mirror the current track onto [NowPlayingBridge] so things outside the session — the
+     * home-screen widget — can draw it without binding a controller of their own.
+     */
+    private fun publishNowPlaying() {
+        val item = player.currentMediaItem
+        NowPlayingBridge.publishNowPlaying(
+            item?.let {
+                NowPlayingBridge.NowPlaying(
+                    title = it.mediaMetadata.title?.toString().orEmpty(),
+                    artist = it.mediaMetadata.artist?.toString().orEmpty(),
+                    artworkUri = it.mediaMetadata.artworkUri?.toString(),
+                    isPlaying = player.isPlaying,
+                )
+            },
+        )
+    }
     private fun refreshLikeLayout() {
         if (::session.isInitialized) session.setCustomLayout(buildCustomLayout())
     }
