@@ -1,8 +1,8 @@
 # Privacy Policy
 
-_Last updated: 2026-05-30_
+_Last updated: 2026-09-01_
 
-Verza is an open-source, unofficial YouTube Music client for Android. It has **no backend of its own** — there are no Verza servers, no Verza accounts, **no analytics, no tracking, no advertising, and no crash/usage telemetry**. Nothing about how you use the app is ever sent to the developer.
+Verza is an open-source, unofficial YouTube Music client for Android. It has **no backend of its own** — there are no Verza servers, no Verza accounts, **no analytics, no tracking, no advertising, and no automatic crash/usage telemetry**. Nothing about how you use the app is ever sent to the developer, and a crash report reaches anyone only if you choose to send it yourself.
 
 This document explains exactly what data the app handles, where it goes, and what stays on your device.
 
@@ -27,7 +27,16 @@ The following never leaves your phone (except via your own Android backup, subje
 
 - **Liked songs, playlists, play history, and listening stats** — stored in a local Room database.
 - **Preferences and the saved playback queue** — stored in DataStore.
-- **Downloads** — saved in the app's private storage.
+- **Downloads** — written to the folder you choose, `Music/Verza` by default, as ordinary audio
+  files any other player can read.
+- **The last crash, if there has been one** — see below.
+
+### Crash reports
+
+If Verza closes unexpectedly it writes the error and your Android version to a file on your device.
+Nothing is sent anywhere on its own. A row appears in **Settings → Help** offering to share it, and it
+goes only where you send it. It contains the stack trace, the app version and the device model — no
+account details, and nothing about what you listen to.
 
 ### Your account credential
 
