@@ -2,8 +2,8 @@ package com.verza.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.verza.ui.expressive.AccentSource
 import com.verza.ui.expressive.ColorFlavour
-import com.verza.ui.expressive.CoverShapeMode
 import com.verza.data.UpdateRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.verza.data.DownloadStore
@@ -65,13 +65,23 @@ class SettingsViewModel @Inject constructor(
     /** Where downloads are written. Blank = app-private storage. */
     val downloadTree: StateFlow<String> = prefs.downloadTreeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
-    val coverShape: StateFlow<CoverShapeMode> = prefs.coverShapeFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, CoverShapeMode.SHUFFLE)
     val colorFlavour: StateFlow<ColorFlavour> = prefs.colorFlavourFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, ColorFlavour.SIGNATURE)
+    val accentSource: StateFlow<AccentSource> = prefs.accentSourceFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AccentSource.COMPLEMENT)
+    val crossfadeSeconds: StateFlow<Int> = prefs.crossfadeSecondsFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     fun setColorFlavour(flavour: ColorFlavour) {
         viewModelScope.launch { prefs.setColorFlavour(flavour) }
+    }
+
+    fun setAccentSource(source: AccentSource) {
+        viewModelScope.launch { prefs.setAccentSource(source) }
+    }
+
+    fun setCrossfadeSeconds(seconds: Int) {
+        viewModelScope.launch { prefs.setCrossfadeSeconds(seconds) }
     }
 
     fun setAudioQuality(quality: AudioQuality) {
@@ -161,10 +171,6 @@ class SettingsViewModel @Inject constructor(
 
     /** A check that does not touch the Settings row state — used by the launch-time offer. */
     suspend fun checkForUpdateQuietly(): UpdateRepository.Release? = updates.checkForUpdate()
-
-    fun setCoverShape(mode: CoverShapeMode) {
-        viewModelScope.launch { prefs.setCoverShape(mode) }
-    }
 
     fun setDownloadTree(treeUri: String) {
         viewModelScope.launch { prefs.setDownloadTree(treeUri) }

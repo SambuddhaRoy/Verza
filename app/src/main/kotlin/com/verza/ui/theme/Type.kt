@@ -45,12 +45,17 @@ val FontBody = FontFamily(
 val FontDisplay = FontBody
 val FontSleeve = FontBody
 
-// IBM Plex Mono — reserved for numeric / timecode chrome (durations, indices, datelines).
-// Static instances (Plex Mono ships no variable font); Regular + Medium are all we use.
-val FontMono = FontFamily(
-    Font(R.font.ibm_plex_mono_regular, FontWeight.Normal),
-    Font(R.font.ibm_plex_mono_medium, FontWeight.Medium),
-)
+/**
+ * The small-caps metadata voice: eyebrows, timecodes, counts, indices.
+ *
+ * This was IBM Plex Mono. A typewriter face at 9 to 12sp reads as technical rather than as
+ * quiet, and beside Inter everywhere else it looked like a different app pasted in. It is Inter
+ * now, with the letterspacing at each call site doing the work the monospacing used to.
+ *
+ * Digits stay steady without a monospaced face because the styles showing numbers ask for
+ * tabular figures, which Inter has.
+ */
+val FontMono = FontBody
 
 // ── Typography ─────────────────────────────────────────────────────────────────
 // Everything is set in Inter (a clean modern sans) — display, headline, title, body, label.

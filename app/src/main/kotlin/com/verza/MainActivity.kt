@@ -16,6 +16,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.verza.ui.expressive.AccentSource
 import com.verza.ui.expressive.ColorFlavour
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -211,8 +212,9 @@ class MainActivity : ComponentActivity() {
             // every playback emission. Both walk contrast searches; rebuilding them per recomposition
             // was doing that work dozens of times a second for an unchanged colour.
             val flavour by settingsViewModel.colorFlavour.collectAsStateWithLifecycle()
-            val expressive = remember(artworkColors, flavour) {
-                expressiveColorsFrom(artworkColors, flavour)
+            val accentSource by settingsViewModel.accentSource.collectAsStateWithLifecycle()
+            val expressive = remember(artworkColors, flavour, accentSource) {
+                expressiveColorsFrom(artworkColors, flavour, accentSource)
             }
             val materialScheme = remember(expressive) { expressiveColorScheme(expressive) }
 
