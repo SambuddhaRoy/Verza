@@ -116,6 +116,29 @@ enum class ColorFlavour(
     }
 }
 
+/**
+ * Where the accent comes from.
+ *
+ * The complement is a computed colour: take the container's hue, cross to the far side of the wheel
+ * and force it far enough away to read. Always distinct, and sometimes a colour that appears nowhere
+ * in the sleeve you are looking at.
+ *
+ * From the artwork instead: a second colour the cover genuinely contains, preferring one already far
+ * from the canvas in hue and lightness. More of a piece with the image, at the cost of less punch on
+ * covers that are essentially one colour. Either way the result still goes through the same contrast
+ * search, so neither can produce an unreadable control.
+ */
+enum class AccentSource(val displayName: String, val blurb: String) {
+    COMPLEMENT("Complementary", "The opposite of the cover on the colour wheel"),
+    ARTWORK("From the artwork", "A second colour taken out of the cover itself"),
+    ;
+
+    companion object {
+        fun fromName(name: String?): AccentSource =
+            entries.firstOrNull { it.name == name } ?: COMPLEMENT
+    }
+}
+
 /** Until a cover resolves. Verza's indigo/lime, in the reference's register. */
 val DefaultExpressiveColors = ExpressiveColors(
     container = Color(0xFF5B4BE0),
@@ -257,9 +280,29 @@ private fun separate(seed: Color, from: Color, satScale: Float = 1f): Color {
  * off the same swatch. Two tones from the same hue read as one flat colour; the reference's indigo
  * and yellow are most of what makes it feel alive.
  */
+/**
+ * The swatch that will make the best accent on [container], or null if the cover gave us nothing.
+ *
+ * Scored rather than filtered, because a cover can be monochrome and still needs an answer. Hue
+ * distance dominates: a colour differing from the canvas only in brightness reads as a lighter
+ * patch of the same thing rather than as a control. Saturation counts next, since a grey swatch
+ * technically contrasts and looks like a mistake. Contrast is weighted least, because separate()
+ * enforces the floor afterwards regardless.
+ */
+private fun pickFromArtwork(swatches: List<Color>, container: Color): Color? {
+    if (swatches.isEmpty()) return null
+    val base = hsv(container)
+    return swatches.maxByOrNull { candidate ->
+        val c = hsv(candidate)
+        val hueGap = kotlin.math.abs(c[0] - base[0]).let { minOf(it, 360f - it) } / 180f
+        val valueGap = kotlin.math.abs(c[2] - base[2])
+        hueGap * 2f + c[1] + valueGap * 0.5f + contrastRatio(candidate, container) / 21f
+    }
+}
 fun expressiveColorsFrom(
     cover: CoverColors,
     flavour: ColorFlavour = ColorFlavour.SIGNATURE,
+    accentSource: AccentSource = AccentSource.COMPLEMENT,
 ): ExpressiveColors {
     val seed = hsv(cover.accent)
 
@@ -272,11 +315,12 @@ fun expressiveColorsFrom(
     // contrast. 55° was only adjacent — near enough in hue that accent text on the container read as
     // a shade of it rather than as a different colour, which is what made toggles and labels hard to
     // pick out. Opposite hues are maximally distinguishable at equal luminance.
-    val accent = separate(
-        fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2]),
-        container,
-        flavour.accentSat,
-    )
+    val accentSeed = when (accentSource) {
+        AccentSource.COMPLEMENT -> fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2])
+        AccentSource.ARTWORK -> pickFromArtwork(cover.swatches, container)
+            ?: fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2])
+    }
+    val accent = separate(accentSeed, container, flavour.accentSat)
     val onAccent = readableOn(accent)
 
     // Cards sit one step off the canvas so they read as contained rather than floating. Which

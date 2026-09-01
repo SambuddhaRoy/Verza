@@ -121,7 +121,6 @@ fun NowPlayingExpressive(
     artist: String,
     artworkUrl: String?,
     trackKey: String?,
-    coverShapeMode: CoverShapeMode,
     albumArtMotion: Boolean,
     isPlaying: Boolean,
     isLiked: Boolean,
@@ -168,7 +167,6 @@ fun NowPlayingExpressive(
                 artist = artist,
                 artworkUrl = artworkUrl,
                 trackKey = trackKey,
-                coverShapeMode = coverShapeMode,
                 albumArtMotion = albumArtMotion,
                 isPlaying = isPlaying,
                 isLiked = isLiked,
@@ -243,7 +241,6 @@ private fun PlayerPane(
     artist: String,
     artworkUrl: String?,
     trackKey: String?,
-    coverShapeMode: CoverShapeMode,
     albumArtMotion: Boolean,
     isPlaying: Boolean,
     isLiked: Boolean,
@@ -307,7 +304,6 @@ private fun PlayerPane(
     val forward = currentIndex >= lastIndex
     if (currentIndex != lastIndex) lastIndex = currentIndex
 
-    val coverShape = rememberCoverShape(coverShapeMode, trackKey)
 
     Column(
         modifier = modifier
@@ -373,13 +369,13 @@ private fun PlayerPane(
             Box(
                 modifier = Modifier
                     .size(side)
-                    // Boost and mask in one layer, with the shape read here rather than in the
-                    // composable body — a draw-phase read, so the morph repaints without
-                    // recomposing anything.
+                    // One rounded square, always. The mask used to morph between scalloped
+                    // silhouettes on every track, which drew attention to itself rather than to
+                    // the artwork, and the artwork is the thing worth looking at.
                     .graphicsLayer {
                         scaleX = COVER_BOOST
                         scaleY = COVER_BOOST
-                        shape = coverShape.value
+                        shape = ShapeExtraLarge
                         clip = true
                     }
                     // Drag sideways to change track — the gesture the slide animation implies.

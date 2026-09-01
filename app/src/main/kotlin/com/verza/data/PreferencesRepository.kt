@@ -10,8 +10,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.verza.di.ApplicationScope
 import com.verza.innertube.AudioQuality
 import com.verza.innertube.InnerTube
+import com.verza.ui.expressive.AccentSource
 import com.verza.ui.expressive.ColorFlavour
-import com.verza.ui.expressive.CoverShapeMode
 import com.verza.ui.theme.GlowColorPreset
 import com.verza.ui.theme.GlowIntensity
 import com.verza.ui.theme.GlowStyle
@@ -70,8 +70,9 @@ class PreferencesRepository @Inject constructor(
     private val downloadTreeKey = stringPreferencesKey("download_tree_uri")
     // Which silhouette the album art is masked with. Defaults to SHUFFLE — the shape changing per
     // track is the point of having it at all.
-    private val coverShapeKey = stringPreferencesKey("cover_shape_mode")
     private val colorFlavourKey = stringPreferencesKey("color_flavour")
+    private val accentSourceKey = stringPreferencesKey("accent_source")
+    private val crossfadeKey = intPreferencesKey("crossfade_seconds")
     // Whether the launcher icon follows the cover colour. Off by default — switching it has visible
     // side effects on the home screen, so it should be a choice rather than a surprise.
     // The version whose changelog has been shown, and the version the listener said "not now" to.
@@ -140,12 +141,17 @@ class PreferencesRepository @Inject constructor(
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
 
-    val coverShapeFlow: Flow<CoverShapeMode> =
-        store.data.map { CoverShapeMode.fromName(it[coverShapeKey]) }
-
     /** How hard to push the cover's colours. Replaced the fixed palettes. */
     val colorFlavourFlow: Flow<ColorFlavour> =
         store.data.map { ColorFlavour.fromName(it[colorFlavourKey]) }
+
+    /** Whether controls take the opposite colour or a second one out of the cover. */
+    val accentSourceFlow: Flow<AccentSource> =
+        store.data.map { AccentSource.fromName(it[accentSourceKey]) }
+
+    /** Seconds of overlap between tracks. 0 is off, which is the default. */
+    val crossfadeSecondsFlow: Flow<Int> =
+        store.data.map { (it[crossfadeKey] ?: 0).coerceIn(0, 12) }
 
     suspend fun seenChangelogVersion(): String = store.data.first()[seenChangelogKey].orEmpty()
 
@@ -238,12 +244,16 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun downloadTree(): String = store.data.first()[downloadTreeKey].orEmpty()
 
-    suspend fun setCoverShape(mode: CoverShapeMode) {
-        store.edit { it[coverShapeKey] = mode.name }
-    }
-
     suspend fun setColorFlavour(flavour: ColorFlavour) {
         store.edit { it[colorFlavourKey] = flavour.name }
+    }
+
+    suspend fun setAccentSource(source: AccentSource) {
+        store.edit { it[accentSourceKey] = source.name }
+    }
+
+    suspend fun setCrossfadeSeconds(seconds: Int) {
+        store.edit { it[crossfadeKey] = seconds.coerceIn(0, 12) }
     }
 
     suspend fun setHapticsEnabled(enabled: Boolean) {
