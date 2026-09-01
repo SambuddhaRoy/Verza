@@ -65,6 +65,13 @@ data class CoverColors(
     val sub: Color,
     val faint: Color,
     val line: Color,
+    /**
+     * Every colour the palette pulled out of the cover, most prominent first.
+     *
+     * Kept so the accent can be chosen from the artwork rather than computed off the wheel. Empty
+     * for the built-in defaults, which is the signal to fall back to the complement.
+     */
+    val swatches: List<Color> = emptyList(),
 )
 
 /** UMBRA "Terracotta"-style defaults, used until a cover resolves. */
@@ -136,7 +143,13 @@ suspend fun extractCoverColors(context: Context, url: String): CoverColors? {
     val accent = floorSaturation(Color(accentSwatch.rgb))
     val bg = darkCanvasFrom(Color(darkSwatch.rgb))
     val ink = Color(0xFFF2E9DD)
+    // Ordered by population so the first candidates are the colours the cover is actually made of,
+    // not a stray pixel in a corner.
+    val swatches = palette.swatches
+        .sortedByDescending { it.population }
+        .map { Color(it.rgb) }
     return CoverColors(
+        swatches = swatches,
         accent = accent,
         bg = bg,
         ink = ink,

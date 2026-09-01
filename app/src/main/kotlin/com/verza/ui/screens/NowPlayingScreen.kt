@@ -150,7 +150,6 @@ fun NowPlayingScreen(
     var showMore by remember { mutableStateOf(false) }
     // The cover-shape preference lives in Settings; read it here so the player can morph the mask.
     val settingsVm: com.verza.ui.screens.SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
-    val coverShapeMode by settingsVm.coverShape.collectAsStateWithLifecycle()
 
     Box(modifier = modifier.fillMaxSize()) {
         NowPlayingExpressive(
@@ -159,7 +158,6 @@ fun NowPlayingScreen(
             artist = artist,
             artworkUrl = artworkUrl,
             trackKey = videoId,
-            coverShapeMode = coverShapeMode,
             albumArtMotion = albumArtMotion,
             queue = queue,
             currentIndex = currentIndex,

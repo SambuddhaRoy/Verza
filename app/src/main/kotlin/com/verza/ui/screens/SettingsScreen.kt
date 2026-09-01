@@ -1,35 +1,47 @@
 package com.verza.ui.screens
 
 import android.content.Intent
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import com.verza.ui.expressive.BodyStrong
-import com.verza.ui.expressive.BodyText
-import com.verza.ui.expressive.CoverShapeMode
-import com.verza.ui.expressive.ExpressiveChipRow
-import com.verza.ui.expressive.HeroTitle
-import com.verza.ui.expressive.LocalExpressiveColors
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,18 +49,35 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
-import com.verza.data.StartScreen
 import com.verza.innertube.AudioQuality
-import com.verza.ui.components.EditorialSectionHeader
-import com.verza.ui.components.pressableScale
-import com.verza.ui.theme.CaptionItalic
-import com.verza.ui.theme.DynamicColorSupported
-import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.data.CrashLog
+import com.verza.data.StartScreen
+import com.verza.ui.expressive.AccentSource
+import com.verza.ui.expressive.BodyStrong
+import com.verza.ui.expressive.BodyText
 import com.verza.ui.expressive.ColorFlavour
+import com.verza.ui.expressive.ExpressiveMotion
+import com.verza.ui.expressive.HeroTitle
+import com.verza.ui.expressive.LocalExpressiveColors
+import com.verza.ui.expressive.MetaLabel
+import com.verza.ui.expressive.PillShape
+import com.verza.ui.expressive.ShapeExtraLarge
+import com.verza.ui.expressive.ShapeLargeIncreased
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.ui.theme.LocalArtworkColors
 
+/**
+ * Settings, grouped by what a setting is for rather than by when it was written.
+ *
+ * The old screen had fifteen sections in the order features had arrived, so "Sound" and "Now
+ * Playing" both held audio controls, "Appearance" and "Colour" were separate, and the equalizer was
+ * three screens from the thing it affects. The order here is: who you are, what you hear, what you
+ * see, where files go, what Verza has learned about you, and finally the app itself.
+ *
+ * Every row is one of four shapes, so the page has a rhythm rather than fifteen bespoke layouts:
+ * a switch, a link, a set of choices, or a card.
+ */
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
@@ -59,70 +88,44 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    val currentFlavour by viewModel.colorFlavour.collectAsStateWithLifecycle()
+    val colors = LocalExpressiveColors.current
+    val cover = LocalArtworkColors.current
+    val context = LocalContext.current
+
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
+    val flavour by viewModel.colorFlavour.collectAsStateWithLifecycle()
+    val accentSource by viewModel.accentSource.collectAsStateWithLifecycle()
     val audioQuality by viewModel.audioQuality.collectAsStateWithLifecycle()
     val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
     val resumeOnOpen by viewModel.resumeOnOpen.collectAsStateWithLifecycle()
     val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
+    val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
+    val crossfade by viewModel.crossfadeSeconds.collectAsStateWithLifecycle()
     val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
     val saveSearchHistory by viewModel.saveSearchHistory.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
-    val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
-    val downloadTree by viewModel.downloadTree.collectAsStateWithLifecycle()
-    val coverShape by viewModel.coverShape.collectAsStateWithLifecycle()
     val spectrumOn by viewModel.glowReactive.collectAsStateWithLifecycle()
-    var showResetStatsDialog by remember { mutableStateOf(false) }
+    val downloadTree by viewModel.downloadTree.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
 
-    // ── Library backup (export / import) ────────────────────────────────────────
-    val context = LocalContext.current
-    // Read once: the file only changes when the process dies, and by then this is gone anyway.
     var crashReport by remember { mutableStateOf(CrashLog.read(context)) }
-    // Re-read on every recomposition so granting the permission lights the feature up without a
-    // restart.
+    var confirmResetStats by remember { mutableStateOf(false) }
+
     val hasAudioPermission = androidx.core.content.ContextCompat.checkSelfPermission(
         context,
         android.Manifest.permission.RECORD_AUDIO,
     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    val audioPermissionLauncher = rememberLauncherForActivityResult(
+
+    val audioPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> if (granted) viewModel.setGlowReactive(true) }
-    val scope = rememberCoroutineScope()
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri ->
-        if (uri != null) scope.launch {
-            val ok = runCatching {
-                val data = viewModel.exportLibraryJson()
-                context.contentResolver.openOutputStream(uri)?.use { it.write(data.toByteArray()) }
-            }.isSuccess
-            Toast.makeText(context, if (ok) "Library exported" else "Export failed", Toast.LENGTH_SHORT).show()
-        }
-    }
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) scope.launch {
-            runCatching {
-                val text = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                    ?: error("empty file")
-                viewModel.importLibraryJson(text)
-            }.onSuccess { r ->
-                Toast.makeText(context, "Imported ${r.songs} songs · ${r.playlists} playlists", Toast.LENGTH_LONG).show()
-            }.onFailure {
-                Toast.makeText(context, "Couldn't read that backup", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
-    // Where downloaded music is written. Taking the permission persistably is the whole point: without
-    // it the grant dies with the process and the next download silently falls back to app storage.
-    val downloadFolderLauncher = rememberLauncherForActivityResult(
+    val pickFolder = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
         if (uri != null) {
+            // Without a persistable grant the permission dies with the process and the next
+            // download silently falls back to app storage.
             val kept = runCatching {
                 context.contentResolver.takePersistableUriPermission(
                     uri,
@@ -131,776 +134,684 @@ fun SettingsScreen(
             }.isSuccess
             if (kept) {
                 viewModel.setDownloadTree(uri.toString())
-                Toast.makeText(context, "Downloads will be saved here", Toast.LENGTH_SHORT).show()
+                toast(context, "Downloads will be saved here")
             } else {
-                Toast.makeText(context, "Couldn't keep access to that folder", Toast.LENGTH_LONG).show()
+                toast(context, "Couldn't keep access to that folder")
             }
         }
     }
 
-    val xc = LocalExpressiveColors.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    val exportFile = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            val ok = runCatching {
+                val data = viewModel.exportLibraryJson()
+                context.contentResolver.openOutputStream(uri)?.use { it.write(data.toByteArray()) }
+            }.isSuccess
+            toast(context, if (ok) "Library exported" else "Export failed")
+        }
+    }
+
+    val importFile = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            runCatching {
+                val text = context.contentResolver.openInputStream(uri)?.bufferedReader()
+                    ?.use { it.readText() } ?: error("empty file")
+                viewModel.importLibraryJson(text)
+            }.onSuccess { toast(context, "Imported ${it.songs} songs and ${it.playlists} playlists") }
+                .onFailure { toast(context, "Couldn't read that backup") }
+        }
+    }
+
     LazyColumn(
-        modifier = modifier.fillMaxSize().background(xc.container),
-        contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.container)
+            .windowInsetsPadding(WindowInsets.systemBars),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
     ) {
-        // ── Header ─────────────────────────────────────────────────────────
         item {
-            Column(modifier = Modifier.padding(start = 12.dp, end = 20.dp, top = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onBackground)
-                    }
-                    Spacer(Modifier.weight(1f))
-                }
-                Box(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .width(40.dp)
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(colors.primary),
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Preferences",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.primary,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Settings",
-                    style = HeroTitle,
-                    color = xc.onContainer,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
-        }
-
-        // ── Account ──────────────────────────────────────────────────────────
-        item { SectionHeader("Account") }
-        item {
-            Card(
+            Row(
                 modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = colors.surface),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 20.dp, top = 8.dp, bottom = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Text(
-                        text = if (isSignedIn) "Signed in to YouTube Music" else "Not signed in",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.onSurface,
-                    )
-                    Text(
-                        text = if (isSignedIn)
-                            "Your home feed, recommendations and library are personalised."
-                        else
-                            "Sign in to get your personal YT Music feed and library.",
-                        style = CaptionItalic,
-                        color = ext.muted,
-                    )
-                    if (isSignedIn) {
-                        OutlinedButton(
-                            onClick = viewModel::signOut,
-                            shape = CircleShape,
-                            modifier = Modifier.align(Alignment.Start),
-                        ) { Text("Sign out") }
-                    } else {
-                        Button(
-                            onClick = onSignIn,
-                            shape = CircleShape,
-                            modifier = Modifier.align(Alignment.Start),
-                        ) { Text("Sign in") }
-                    }
-                }
-            }
-        }
-
-        // ── Insights ─────────────────────────────────────────────────────────
-        item { SectionHeader("Insights") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pressableScale(onClick = onOpenStats)
-                        .padding(vertical = 14.dp, horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Your Sound", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
-                        Text("Listening stats — top tracks, artists, streaks", style = CaptionItalic, color = ext.muted)
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = ext.muted,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
-            }
-        }
-
-        // ── General ──────────────────────────────────────────────────────────
-        item { SectionHeader("General") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Start screen", style = CaptionItalic, color = ext.muted)
-                SegmentedChoice(
-                    options = StartScreen.entries,
-                    selected = startScreen,
-                    label = { it.label },
-                    onSelect = viewModel::setStartScreen,
+                com.verza.ui.expressive.ExpressiveControl(
+                    onClick = onBack,
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    container = colors.surface,
+                    content = colors.onSurface,
+                    iconSize = 22.dp,
+                    modifier = Modifier.size(46.dp),
                 )
+                Spacer(Modifier.width(14.dp))
+                Text("Settings", style = HeroTitle, color = colors.onContainer)
             }
         }
 
-        // ── Playback ─────────────────────────────────────────────────────────
-        item { SectionHeader("Playback") }
+        // ── account ─────────────────────────────────────────────────────────
         item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                ToggleRow(
-                    title = "Resume on open",
-                    subtitle = "Pick up where you left off when the app reopens",
-                    checked = resumeOnOpen,
-                    onToggle = viewModel::setResumeOnOpen,
-                )
-                ToggleRow(
-                    title = "Skip silence",
-                    subtitle = "Trim silent gaps within tracks",
-                    checked = skipSilence,
-                    onToggle = viewModel::setSkipSilence,
-                )
-                ToggleRow(
-                    title = "Gentle start",
-                    subtitle = "Ease the volume up when you resume — a soft sunrise",
-                    checked = gentleStart,
-                    onToggle = viewModel::setGentleStart,
-                    divider = false,
-                )
-            }
-        }
-
-        // ── Audio quality ──────────────────────────────────────────────────────
-        item { SectionHeader("Audio quality") }
-        item {
-            // Flat list with continuous hairlines — no inter-row gap so dividers form one rule.
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                AudioQualityRow(AudioQuality.HIGH, "High", "Best available bitrate", audioQuality == AudioQuality.HIGH) { viewModel.setAudioQuality(AudioQuality.HIGH) }
-                AudioQualityRow(AudioQuality.MEDIUM, "Medium", "About 128 kbps", audioQuality == AudioQuality.MEDIUM) { viewModel.setAudioQuality(AudioQuality.MEDIUM) }
-                AudioQualityRow(AudioQuality.LOW, "Low", "Data saver", audioQuality == AudioQuality.LOW) { viewModel.setAudioQuality(AudioQuality.LOW) }
-            }
-        }
-
-        // ── Sound ───────────────────────────────────────────────────────────────
-        item { SectionHeader("Sound") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pressableScale(onClick = onOpenEqualizer)
-                        .padding(vertical = 14.dp, horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Equalizer", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
-                        Text("Tune the bands, bass, and volume leveling", style = CaptionItalic, color = ext.muted)
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = ext.muted,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
-            }
-        }
-
-        // ── Appearance ─────────────────────────────────────────────────────────
-        item { SectionHeader("Appearance") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                ToggleRow(
-                    title = "Album art motion",
-                    subtitle = "Gently animate the cover while playing",
-                    checked = albumArtMotion,
-                    onToggle = viewModel::setAlbumArtMotion,
-                    divider = false,
-                )
-            }
-        }
-
-        // ── Colour ─────────────────────────────────────────────────────────────
-        item { SectionHeader("Colour") }
-        items(ColorFlavour.entries) { flavour ->
-            FlavourRow(flavour = flavour, selected = flavour == currentFlavour) {
-                viewModel.setColorFlavour(flavour)
-            }
-        }
-
-        // ── Background glow ────────────────────────────────────────────────────
-        // The glow now renders on light schemes too (as soft colour washes), so its controls are
-        // available whenever it's enabled, regardless of theme.
-        item { SectionHeader("Search") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                ToggleRow(
-                    title = "Save search history",
-                    subtitle = "Remember recent searches for quick access",
-                    checked = saveSearchHistory,
-                    onToggle = viewModel::setSaveSearchHistory,
-                )
-                ActionRow(
-                    title = "Clear search history",
-                    subtitle = "Remove all remembered searches",
-                    onClick = viewModel::clearSearchHistory,
-                    divider = false,
-                )
-            }
-        }
-
-
-        // ── Updates ──────────────────────────────────────────────────────────
-        item { SectionHeader("Updates") }
-        item {
-            val update by viewModel.updateState.collectAsStateWithLifecycle()
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                when (val u = update) {
-                    is SettingsViewModel.UpdateState.Idle -> ActionRow(
-                        title = "Check for updates",
-                        subtitle = "Verza is sideloaded, so it looks for new versions on GitHub itself",
-                        onClick = { viewModel.checkForUpdate() },
-                        divider = false,
-                    )
-                    is SettingsViewModel.UpdateState.Checking -> ActionRow(
-                        title = "Checking\u2026",
-                        subtitle = "Asking GitHub for the latest release",
-                        onClick = {},
-                        divider = false,
-                    )
-                    is SettingsViewModel.UpdateState.UpToDate -> ActionRow(
-                        title = "Up to date",
-                        subtitle = "You are on ${com.verza.BuildConfig.VERSION_NAME}. Tap to check again.",
-                        onClick = { viewModel.checkForUpdate() },
-                        divider = false,
-                    )
-                    is SettingsViewModel.UpdateState.Available -> ActionRow(
-                        title = "Download ${u.release.version}",
-                        subtitle = u.release.notes.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() }
-                            ?: "A newer version is available",
-                        onClick = { viewModel.downloadUpdate(u.release) },
-                        divider = false,
-                    )
-                    is SettingsViewModel.UpdateState.Downloading -> ActionRow(
-                        title = "Downloading ${(u.progress * 100).toInt()}%",
-                        subtitle = "Keep Verza open until this finishes",
-                        onClick = {},
-                        divider = false,
-                    )
-                    is SettingsViewModel.UpdateState.Ready -> ActionRow(
-                        title = "Install ${u.version}",
-                        subtitle = "Android will ask you to confirm",
-                        onClick = { viewModel.installUpdate(u.file) },
-                        divider = false,
-                    )
-                    is SettingsViewModel.UpdateState.Failed -> ActionRow(
-                        title = "Update failed",
-                        subtitle = "${u.message}. Tap to try again.",
-                        tint = colors.error,
-                        onClick = { viewModel.checkForUpdate() },
-                        divider = false,
-                    )
-                }
-            }
-        }
-
-        // ── Now Playing ──────────────────────────────────────────────────────
-        item { SectionHeader("Now Playing") }
-        item {
-            Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                Text(
-                    text = "Cover shape",
-                    style = BodyStrong,
-                    color = xc.onContainer,
-                    modifier = Modifier.padding(start = 20.dp, bottom = 2.dp),
-                )
-                Text(
-                    text = "The silhouette the album art is masked with. \"Change each track\" morphs " +
-                        "into a new one as the song changes.",
-                    style = BodyText,
-                    color = xc.onContainerMuted,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
-                )
-                ExpressiveChipRow(
-                    options = CoverShapeMode.entries.toList(),
-                    selected = coverShape,
-                    label = { it.label },
-                    onSelect = { viewModel.setCoverShape(it) },
-                )
-            }
-        }
-        item {
-            // Restored: music haptics are wired end to end in MainActivity, but the row that turns
-            // them on had been orphaned when the glow section around it was removed — so the
-            // feature existed and could not be reached.
-            MusicHapticsRow(
-                enabled = hapticsEnabled,
-                onToggle = viewModel::setHapticsEnabled,
+            AccountCard(
+                signedIn = isSignedIn,
+                onSignIn = onSignIn,
+                onSignOut = viewModel::signOut,
             )
         }
-        item {
-            ToggleRow(
+
+        // ── what you hear ───────────────────────────────────────────────────
+        group("Playback") {
+            SwitchRow(
+                title = "Resume on open",
+                subtitle = "Pick up where you left off",
+                checked = resumeOnOpen,
+                onToggle = viewModel::setResumeOnOpen,
+            )
+            SwitchRow(
+                title = "Gentle start",
+                subtitle = "Ease the volume up when playback resumes",
+                checked = gentleStart,
+                onToggle = viewModel::setGentleStart,
+            )
+            SwitchRow(
+                title = "Skip silence",
+                subtitle = "Trim silent gaps inside a track",
+                checked = skipSilence,
+                onToggle = viewModel::setSkipSilence,
+            )
+            ChoiceRow(
+                title = "Crossfade",
+                subtitle = if (crossfade == 0) {
+                    "Tracks change cleanly, with no overlap"
+                } else {
+                    "Each track fades into the next over $crossfade seconds"
+                },
+                options = CROSSFADE_STEPS,
+                selected = crossfade,
+                label = { if (it == 0) "Off" else "${it}s" },
+                onSelect = viewModel::setCrossfadeSeconds,
+            )
+            ChoiceRow(
+                title = "Audio quality",
+                subtitle = when (audioQuality) {
+                    AudioQuality.HIGH -> "The best bitrate the track offers"
+                    AudioQuality.MEDIUM -> "About 128 kbps"
+                    AudioQuality.LOW -> "The smallest stream, for saving data"
+                },
+                options = listOf(AudioQuality.LOW, AudioQuality.MEDIUM, AudioQuality.HIGH),
+                selected = audioQuality,
+                label = { it.name.lowercase().replaceFirstChar(Char::titlecase) },
+                onSelect = viewModel::setAudioQuality,
+            )
+        }
+
+        group("Sound") {
+            LinkRow(
+                title = "Equalizer",
+                subtitle = "Ten bands, bass boost and loudness",
+                onClick = onOpenEqualizer,
+            )
+            SwitchRow(
                 title = "Spectrum seek bar",
                 subtitle = if (hasAudioPermission) {
-                    "The played half of the progress bar becomes a live spectrum"
+                    "The played part of the progress bar becomes a live spectrum"
                 } else {
-                    "Needs the audio-capture permission \u2014 it reads Verza's own playback, never the microphone"
+                    "Needs the audio capture permission. It reads Verza's own playback, never the microphone."
                 },
                 checked = spectrumOn && hasAudioPermission,
                 onToggle = { on ->
                     if (on && !hasAudioPermission) {
-                        audioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                        audioPermission.launch(android.Manifest.permission.RECORD_AUDIO)
                     } else {
                         viewModel.setGlowReactive(on)
                     }
                 },
-                divider = false,
+            )
+            SwitchRow(
+                title = "Feel the beat",
+                subtitle = if (hasAudioPermission) {
+                    "A soft vibration on the bass"
+                } else {
+                    "Needs the same audio capture permission as the spectrum"
+                },
+                checked = hapticsEnabled && hasAudioPermission,
+                onToggle = { on ->
+                    if (on && !hasAudioPermission) {
+                        audioPermission.launch(android.Manifest.permission.RECORD_AUDIO)
+                    } else {
+                        viewModel.setHapticsEnabled(on)
+                    }
+                },
             )
         }
 
-        // ── Downloads ────────────────────────────────────────────────────────
-        item { SectionHeader("Downloads") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                ActionRow(
-                    title = "Save music to",
-                    subtitle = if (downloadTree.isBlank()) {
-                        "Music/Verza \u2014 playlists and albums get their own folder"
-                    } else {
-                        viewModel.downloadFolderLabel(downloadTree)
+        // ── what you see ────────────────────────────────────────────────────
+        group("Colour") {
+            item {
+                Text(
+                    "Verza takes its colours from the cover. This decides how far to push them.",
+                    style = BodyText,
+                    color = colors.onContainerMuted,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                )
+            }
+            items(ColorFlavour.entries.toList()) { option ->
+                FlavourRow(
+                    flavour = option,
+                    selected = option == flavour,
+                    onClick = { viewModel.setColorFlavour(option) },
+                )
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+            items(AccentSource.entries.toList()) { option ->
+                AccentRow(
+                    source = option,
+                    selected = option == accentSource,
+                    preview = remember(cover, flavour, option) {
+                        expressiveColorsFrom(cover, flavour, option).accent
                     },
-                    onClick = { downloadFolderLauncher.launch(null) },
-                    divider = downloadTree.isNotBlank(),
-                )
-                if (downloadTree.isNotBlank()) {
-                    ActionRow(
-                        title = "Use the Music folder instead",
-                        subtitle = "Go back to Music/Verza. Music already saved stays where it is.",
-                        onClick = { viewModel.setDownloadTree("") },
-                        divider = false,
-                    )
-                }
-            }
-        }
-
-        // ── Data ─────────────────────────────────────────────────────────────
-        item { SectionHeader("Data") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                ActionRow(
-                    title = "Export library",
-                    subtitle = "Save your playlists, likes & stats to a file you own",
-                    onClick = { exportLauncher.launch("verza-library-backup.json") },
-                )
-                ActionRow(
-                    title = "Import library",
-                    subtitle = "Merge a Verza backup from another device",
-                    onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
-                )
-                ActionRow(
-                    title = "Reset listening stats",
-                    subtitle = "Wipe the play history behind Your Sound",
-                    tint = colors.error,
-                    onClick = { showResetStatsDialog = true },
-                    divider = false,
+                    onClick = { viewModel.setAccentSource(option) },
                 )
             }
         }
 
-        // ── Help ─────────────────────────────────────────────────────────────
-        item { SectionHeader("Help") }
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                ActionRow(
-                    title = "Take the tour",
-                    subtitle = "A quick guide to every feature and where to find it",
-                    onClick = onOpenTour,
-                    divider = crashReport != null,
+        group("Appearance") {
+            SwitchRow(
+                title = "Album art motion",
+                subtitle = "The cover breathes with the bass",
+                checked = albumArtMotion,
+                onToggle = viewModel::setAlbumArtMotion,
+            )
+            ChoiceRow(
+                title = "Start screen",
+                subtitle = "Where Verza opens",
+                options = StartScreen.entries.toList(),
+                selected = startScreen,
+                label = { it.label },
+                onSelect = viewModel::setStartScreen,
+            )
+        }
+
+        // ── where things go ─────────────────────────────────────────────────
+        group("Downloads") {
+            LinkRow(
+                title = "Save music to",
+                subtitle = if (downloadTree.isBlank()) {
+                    "Music/Verza"
+                } else {
+                    viewModel.downloadFolderLabel(downloadTree)
+                },
+                onClick = { pickFolder.launch(null) },
+            )
+            if (downloadTree.isNotBlank()) {
+                LinkRow(
+                    title = "Use the Music folder instead",
+                    subtitle = "Back to Music/Verza. Files already saved stay where they are.",
+                    onClick = { viewModel.setDownloadTree(""); toast(context, "Back to Music/Verza") },
                 )
-                // Only here if there is something to send. A permanent "report a crash" row on a
-                // build that has never crashed is just noise suggesting it might.
-                crashReport?.let { report ->
-                    ActionRow(
-                        title = "Send the last crash report",
-                        subtitle = "Verza closed unexpectedly. Sending this shows what went wrong — " +
-                            "it contains the error and your Android version, nothing else.",
-                        onClick = {
-                            val send = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Verza crash report")
-                                putExtra(Intent.EXTRA_TEXT, report)
-                            }
-                            context.startActivity(Intent.createChooser(send, "Send crash report"))
-                            CrashLog.clear(context)
-                            crashReport = null
-                        },
-                        divider = false,
-                    )
-                }
             }
         }
 
-        // ── Credits ────────────────────────────────────────────────────────────
-        item { Spacer(Modifier.height(8.dp)) }
-        item { SectionHeader("About") }
-        item {
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text("Verza", style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
-                    Text(
-                        "A YouTube Music client",
-                        style = CaptionItalic,
-                        color = ext.muted,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Designed and built by",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ext.muted,
-                    )
-                    Text(
-                        "Sambuddha Roy",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = colors.primary,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                    Text(
-                        "Privacy policy",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = colors.primary,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable {
-                                runCatching {
-                                    ctx.startActivity(
-                                        android.content.Intent(
-                                            android.content.Intent.ACTION_VIEW,
-                                            android.net.Uri.parse("https://github.com/SambuddhaRoy/Verza/blob/main/PRIVACY.md"),
-                                        ),
-                                    )
-                                }
-                            }
-                            .padding(8.dp),
-                    )
-                }
+        // ── what Verza knows ────────────────────────────────────────────────
+        group("Your library") {
+            LinkRow(
+                title = "Your Sound",
+                subtitle = "Top tracks, artists and genres",
+                onClick = onOpenStats,
+            )
+            LinkRow(
+                title = "Export",
+                subtitle = "Save playlists, likes and stats to a file you own",
+                onClick = { exportFile.launch("verza-library-backup.json") },
+            )
+            LinkRow(
+                title = "Import",
+                subtitle = "Merge a backup from another device",
+                onClick = { importFile.launch(arrayOf("application/json", "text/plain", "*/*")) },
+            )
+            LinkRow(
+                title = "Reset listening stats",
+                subtitle = "Wipe the play history behind Your Sound",
+                onClick = { confirmResetStats = true },
+                destructive = true,
+            )
+        }
+
+        group("Search") {
+            SwitchRow(
+                title = "Save search history",
+                subtitle = "Remember recent searches",
+                checked = saveSearchHistory,
+                onToggle = viewModel::setSaveSearchHistory,
+            )
+            LinkRow(
+                title = "Clear search history",
+                subtitle = "Forget everything searched so far",
+                onClick = viewModel::clearSearchHistory,
+            )
+        }
+
+        // ── the app itself ──────────────────────────────────────────────────
+        group("Updates") {
+            item { UpdateRow(state = updateState, viewModel = viewModel) }
+        }
+
+        group("About") {
+            LinkRow(
+                title = "Take the tour",
+                subtitle = "A quick guide to what is where",
+                onClick = onOpenTour,
+            )
+            crashReport?.let { report ->
+                LinkRow(
+                    title = "Send the last crash report",
+                    subtitle = "Verza closed unexpectedly. This contains the error and your Android version, nothing else.",
+                    onClick = {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Verza crash report")
+                            putExtra(Intent.EXTRA_TEXT, report)
+                        }
+                        context.startActivity(Intent.createChooser(send, "Send crash report"))
+                        CrashLog.clear(context)
+                        crashReport = null
+                    },
+                )
             }
+            item { VersionCard() }
         }
     }
 
-    if (showResetStatsDialog) {
+    if (confirmResetStats) {
         AlertDialog(
-            onDismissRequest = { showResetStatsDialog = false },
-            title = { Text("Reset listening stats?") },
-            text = { Text("This permanently clears the play history behind Your Sound. Your liked songs and playlists are untouched.") },
+            onDismissRequest = { confirmResetStats = false },
+            containerColor = colors.surface,
+            titleContentColor = colors.onSurface,
+            textContentColor = colors.onSurfaceMuted,
+            shape = ShapeExtraLarge,
+            title = { Text("Reset listening stats?", style = BodyStrong) },
+            text = {
+                Text(
+                    "Your play history is what builds Your Sound, your mixes and the home page. " +
+                        "This cannot be undone.",
+                    style = BodyText,
+                )
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.resetListeningStats()
-                    showResetStatsDialog = false
-                }) { Text("Reset", color = colors.error) }
+                TextButton(onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
+                    Text("Reset", color = colors.accent, style = BodyStrong)
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showResetStatsDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmResetStats = false }) {
+                    Text("Cancel", color = colors.onSurfaceMuted, style = BodyText)
+                }
             },
         )
     }
 }
 
-@Composable
-private fun SectionHeader(title: String) {
-    EditorialSectionHeader(title = title)
+private fun toast(context: android.content.Context, message: String) {
+    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
 }
 
-/** Title + subtitle row with a trailing Switch, hairline rule below (unless [divider] is false). */
-@Composable
-private fun ToggleRow(
+/** Crossfade lengths worth offering. Beyond about twelve seconds it stops being a transition. */
+private val CROSSFADE_STEPS = listOf(0, 2, 4, 6, 8, 12)
+
+// ── the four row shapes ──────────────────────────────────────────────────────
+
+/**
+ * A titled group.
+ *
+ * Written as an extension on the list scope so a section reads as its contents rather than as a
+ * pile of `item { }` wrappers, which is what made the old file hard to reorder.
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.group(
+    title: String,
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+) {
+    item { GroupHeader(title) }
+    content()
+    item { Spacer(Modifier.height(18.dp)) }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.SwitchRow(
     title: String,
     subtitle: String,
     checked: Boolean,
     onToggle: (Boolean) -> Unit,
-    divider: Boolean = true,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
-                Text(subtitle, style = CaptionItalic, color = ext.muted)
-            }
-            Switch(checked = checked, onCheckedChange = onToggle)
-        }
-        if (divider) HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
-    }
-}
+) = item { SettingSwitch(title, subtitle, checked, onToggle) }
 
-/** Tappable title + subtitle row (for one-shot actions like clear/reset). */
-@Composable
-private fun ActionRow(
+private fun androidx.compose.foundation.lazy.LazyListScope.LinkRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    tint: Color? = null,
-    divider: Boolean = true,
+    destructive: Boolean = false,
+) = item { SettingLink(title, subtitle, onClick, destructive) }
+
+private fun <T> androidx.compose.foundation.lazy.LazyListScope.ChoiceRow(
+    title: String,
+    subtitle: String,
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+) = item { SettingChoice(title, subtitle, options, selected, label, onSelect) }
+
+@Composable
+private fun GroupHeader(title: String) {
+    val colors = LocalExpressiveColors.current
+    Text(
+        text = title.uppercase(),
+        style = MetaLabel,
+        color = colors.accent,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 10.dp),
+    )
+}
+
+/** The shared body of a tappable row: a squash on press, and a card that fills the width. */
+@Composable
+private fun RowSurface(
+    onClick: () -> Unit,
+    content: RowScopeContent,
 ) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Column {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .pressableScale(onClick = onClick)
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = tint ?: colors.onBackground)
-            Text(subtitle, style = CaptionItalic, color = ext.muted)
+    val colors = LocalExpressiveColors.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = ExpressiveMotion.spatialFast(),
+        label = "settingPress",
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 3.dp)
+            .scale(scale)
+            .clip(ShapeLargeIncreased)
+            .background(colors.surface)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) { content() }
+}
+
+private typealias RowScopeContent = @Composable androidx.compose.foundation.layout.RowScope.() -> Unit
+
+@Composable
+private fun SettingSwitch(title: String, subtitle: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
+    val colors = LocalExpressiveColors.current
+    RowSurface(onClick = { onToggle(!checked) }) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = BodyStrong, color = colors.onSurface)
+            Text(subtitle, style = BodyText, color = colors.onSurfaceMuted)
         }
-        if (divider) HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
+        Spacer(Modifier.width(14.dp))
+        // A pill that fills rather than a Material switch, so it matches the chips and the nav bar.
+        val trackWidth by animateFloatAsState(
+            targetValue = if (checked) 1f else 0f,
+            animationSpec = ExpressiveMotion.spatialDefault(),
+            label = "switchTrack",
+        )
+        Box(
+            modifier = Modifier
+                .size(width = 52.dp, height = 32.dp)
+                .clip(PillShape)
+                .background(
+                    androidx.compose.ui.graphics.lerp(colors.surfaceHigh, colors.accent, trackWidth),
+                ),
+            // The knob rides the alignment bias from one end to the other, so the spring moves it
+            // without a layout pass per frame.
+            contentAlignment = androidx.compose.ui.BiasAlignment(-1f + 2f * trackWidth, 0f),
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .size(24.dp)
+                    .clip(PillShape)
+                    .background(if (checked) colors.onAccent else colors.onSurfaceMuted),
+            )
+        }
     }
 }
 
-/** Horizontal segmented selector — a tracked row of pill options with one active. */
 @Composable
-private fun <T> SegmentedChoice(
+private fun SettingLink(title: String, subtitle: String, onClick: () -> Unit, destructive: Boolean) {
+    val colors = LocalExpressiveColors.current
+    RowSurface(onClick = onClick) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                style = BodyStrong,
+                color = if (destructive) colors.accent else colors.onSurface,
+            )
+            Text(subtitle, style = BodyText, color = colors.onSurfaceMuted)
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = colors.onSurfaceMuted,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
+private fun <T> SettingChoice(
+    title: String,
+    subtitle: String,
     options: List<T>,
     selected: T,
     label: (T) -> String,
     onSelect: (T) -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        options.forEach { option ->
-            val isSelected = option == selected
-            Surface(
-                onClick = { onSelect(option) },
-                shape = RoundedCornerShape(10.dp),
-                color = if (isSelected) colors.primaryContainer.copy(alpha = 0.4f) else Color.Transparent,
-                border = androidx.compose.foundation.BorderStroke(
-                    width = 1.dp,
-                    color = if (isSelected) colors.primary else ext.borderGlass,
-                ),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(
-                    text = label(option),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (isSelected) colors.onBackground else ext.muted,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AudioQualityRow(
-    quality: AudioQuality,
-    label: String,
-    description: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    // Hairline-rule treatment: no card, no fill. Selected state is communicated by a small
-    // filled primary bullet on the left and the title shifting to primary; cleaner and more
-    // editorial than a tinted background.
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .pressableScale(onClick = onClick)
-                .padding(horizontal = 4.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            // Bullet — 6 dp filled primary circle when selected, hollow outline otherwise.
-            Box(
-                Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(if (selected) colors.primary else Color.Transparent)
-                    .border(
-                        width = if (selected) 0.dp else 1.dp,
-                        color = ext.muted,
-                        shape = CircleShape,
-                    ),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    label,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (selected) colors.primary else colors.onBackground,
-                )
-                Text(description, style = CaptionItalic, color = ext.muted)
-            }
-        }
-        HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
-    }
-}
-
-// ── Glow rows ────────────────────────────────────────────────────────────────
-
-@Composable
-private fun MusicHapticsRow(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    val context = LocalContext.current
-
-    val hasPermission = remember(enabled) {
-        androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.RECORD_AUDIO,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-    val permLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) onToggle(true)
-        else Toast.makeText(
-            context,
-            "Music haptics needs the audio permission. You can grant it later in system settings.",
-            Toast.LENGTH_LONG,
-        ).show()
-    }
-
-    Row(
+    val colors = LocalExpressiveColors.current
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp, vertical = 3.dp)
+            .clip(ShapeLargeIncreased)
+            .background(colors.surface)
+            .padding(18.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Text(title, style = BodyStrong, color = colors.onSurface)
+        Text(subtitle, style = BodyText, color = colors.onSurfaceMuted)
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            for (option in options) {
+                val isSelected = option == selected
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .clip(PillShape)
+                        .background(if (isSelected) colors.accent else colors.surfaceHigh)
+                        .clickable { onSelect(option) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        label(option),
+                        style = BodyText,
+                        color = if (isSelected) colors.onAccent else colors.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── the pieces that are not rows ─────────────────────────────────────────────
+
+@Composable
+private fun AccountCard(signedIn: Boolean, onSignIn: () -> Unit, onSignOut: () -> Unit) {
+    val colors = LocalExpressiveColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(ShapeExtraLarge)
+            .background(colors.surface)
+            .padding(20.dp),
+    ) {
+        Text(
+            if (signedIn) "Signed in to YouTube Music" else "Not signed in",
+            style = BodyStrong,
+            color = colors.onSurface,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (signedIn) {
+                "Your home feed, library and recommendations are yours."
+            } else {
+                "Sign in to bring your feed, playlists and liked songs along. Everything else works without it."
+            },
+            style = BodyText,
+            color = colors.onSurfaceMuted,
+        )
+        Spacer(Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .height(46.dp)
+                .clip(PillShape)
+                .background(if (signedIn) colors.surfaceHigh else colors.accent)
+                .clickable(onClick = if (signedIn) onSignOut else onSignIn)
+                .padding(horizontal = 24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(
-                "Feel the beat",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onBackground,
-            )
-            Text(
-                text = "Subtle vibration in time with the bass. Reads playback audio only — never the microphone. Needs the audio permission.",
-                style = CaptionItalic,
-                color = ext.muted,
+                if (signedIn) "Sign out" else "Sign in",
+                style = BodyStrong,
+                color = if (signedIn) colors.onSurface else colors.onAccent,
             )
         }
-        Switch(
-            checked = enabled && hasPermission,
-            onCheckedChange = { newState ->
-                if (newState) {
-                    if (hasPermission) onToggle(true)
-                    else permLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                } else {
-                    onToggle(false)
-                }
-            },
+    }
+}
+
+@Composable
+private fun FlavourRow(flavour: ColorFlavour, selected: Boolean, onClick: () -> Unit) {
+    val colors = LocalExpressiveColors.current
+    val cover = LocalArtworkColors.current
+    val preview = remember(cover, flavour) { expressiveColorsFrom(cover, flavour) }
+    RowSurface(onClick = onClick) {
+        Row(modifier = Modifier.clip(ShapeMedium)) {
+            Box(Modifier.size(22.dp).background(preview.container))
+            Box(Modifier.size(22.dp).background(preview.surface))
+            Box(Modifier.size(22.dp).background(preview.accent))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(flavour.displayName, style = BodyStrong, color = colors.onSurface)
+            Text(flavour.blurb, style = BodyText, color = colors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        SelectedDot(selected)
+    }
+}
+
+@Composable
+private fun AccentRow(source: AccentSource, selected: Boolean, preview: Color, onClick: () -> Unit) {
+    val colors = LocalExpressiveColors.current
+    RowSurface(onClick = onClick) {
+        Box(Modifier.size(22.dp).clip(PillShape).background(preview))
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(source.displayName, style = BodyStrong, color = colors.onSurface)
+            Text(source.blurb, style = BodyText, color = colors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        SelectedDot(selected)
+    }
+}
+
+@Composable
+private fun SelectedDot(selected: Boolean) {
+    val colors = LocalExpressiveColors.current
+    Box(
+        modifier = Modifier.size(22.dp).clip(PillShape).background(
+            if (selected) colors.accent else Color.Transparent,
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Icon(Icons.Filled.Check, contentDescription = "Selected", tint = colors.onAccent, modifier = Modifier.size(15.dp))
+        }
+    }
+}
+
+@Composable
+private fun UpdateRow(state: SettingsViewModel.UpdateState, viewModel: SettingsViewModel) {
+    when (state) {
+        is SettingsViewModel.UpdateState.Idle -> SettingLink(
+            "Check for updates",
+            "Verza is sideloaded, so it looks for new versions on GitHub itself",
+            viewModel::checkForUpdate,
+            false,
+        )
+        is SettingsViewModel.UpdateState.Checking -> SettingLink(
+            "Checking", "Asking GitHub for the latest release", {}, false,
+        )
+        is SettingsViewModel.UpdateState.UpToDate -> SettingLink(
+            "Up to date",
+            "You are on ${com.verza.BuildConfig.VERSION_NAME}. Tap to check again.",
+            viewModel::checkForUpdate,
+            false,
+        )
+        is SettingsViewModel.UpdateState.Available -> SettingLink(
+            "Download ${state.release.version}",
+            state.release.notes.lineSequence().firstOrNull().orEmpty().ifBlank { "A new version is ready" },
+            { viewModel.downloadUpdate(state.release) },
+            false,
+        )
+        is SettingsViewModel.UpdateState.Downloading -> SettingLink(
+            "Downloading ${(state.progress * 100).toInt()}%",
+            "Keep Verza open until this finishes",
+            {},
+            false,
+        )
+        is SettingsViewModel.UpdateState.Ready -> SettingLink(
+            "Install ${state.version}",
+            "Android will ask you to confirm",
+            { viewModel.installUpdate(state.file) },
+            false,
+        )
+        is SettingsViewModel.UpdateState.Failed -> SettingLink(
+            "Update failed",
+            "${state.message}. Tap to try again.",
+            viewModel::checkForUpdate,
+            false,
         )
     }
 }
 
-/**
- * One colour flavour, previewed against the cover that is actually playing.
- *
- * The swatches are the real derivation, not stored sample colours — pick a flavour and the row you
- * tapped is already showing you the palette you are about to get.
- */
 @Composable
-private fun FlavourRow(flavour: ColorFlavour, selected: Boolean, onClick: () -> Unit) {
-    val cover = LocalArtworkColors.current
-    val preview = remember(cover, flavour) { expressiveColorsFrom(cover, flavour) }
+private fun VersionCard() {
     val colors = LocalExpressiveColors.current
-
-    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .pressableScale(onClick = onClick)
-                .padding(vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(modifier = Modifier.clip(RoundedCornerShape(8.dp))) {
-                Box(Modifier.size(22.dp).background(preview.container))
-                Box(Modifier.size(22.dp).background(preview.surface))
-                Box(Modifier.size(22.dp).background(preview.accent))
-                Box(Modifier.size(22.dp).background(preview.tertiary))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    flavour.displayName,
-                    style = com.verza.ui.expressive.BodyStrong,
-                    color = if (selected) colors.accent else colors.onContainer,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    flavour.blurb,
-                    style = com.verza.ui.expressive.BodyText,
-                    color = colors.onContainerMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Box(
-                Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(if (selected) colors.accent else Color.Transparent)
-                    .border(
-                        width = if (selected) 0.dp else 1.dp,
-                        color = colors.onContainerMuted,
-                        shape = CircleShape,
-                    ),
-            )
-        }
-        HorizontalDivider(thickness = 0.5.dp, color = colors.line)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 3.dp)
+            .clip(ShapeExtraLarge)
+            .background(colors.surface)
+            .padding(20.dp),
+    ) {
+        Text("Verza", style = HeroTitle, color = colors.onSurface)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Version ${com.verza.BuildConfig.VERSION_NAME}",
+            style = MetaLabel,
+            color = colors.onSurfaceMuted,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "An unofficial YouTube Music client. No account of its own, no telemetry, no ads.",
+            style = BodyText,
+            color = colors.onSurfaceMuted,
+        )
     }
 }
