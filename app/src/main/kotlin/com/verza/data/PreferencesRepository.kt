@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.verza.di.ApplicationScope
 import com.verza.innertube.AudioQuality
 import com.verza.innertube.InnerTube
+import com.verza.player.PlayerSettings
 import com.verza.ui.expressive.AccentSource
 import com.verza.ui.expressive.ColorFlavour
 import com.verza.ui.theme.GlowColorPreset
@@ -203,6 +204,7 @@ class PreferencesRepository @Inject constructor(
         // Mirror the persisted cookie + audio quality into the InnerTube client for the app lifetime.
         scope.launch { cookieFlow.collect { InnerTube.cookie = it } }
         scope.launch { audioQualityFlow.collect { InnerTube.audioQuality = it } }
+        scope.launch { crossfadeSecondsFlow.collect { PlayerSettings.setFadeSeconds(it) } }
     }
 
     suspend fun setAudioQuality(quality: AudioQuality) {
