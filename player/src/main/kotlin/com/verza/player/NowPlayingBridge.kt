@@ -31,6 +31,21 @@ object NowPlayingBridge {
         val artworkUri: String?,
     )
 
+    /** What the notification is showing, for anything outside the session that needs to mirror it. */
+    data class NowPlaying(
+        val title: String,
+        val artist: String,
+        val artworkUri: String?,
+        val isPlaying: Boolean,
+    )
+
+    private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
+    val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
+
+    fun publishNowPlaying(value: NowPlaying?) {
+        _nowPlaying.value = value
+    }
+
     private val _likedIds = MutableStateFlow<Set<String>>(emptySet())
     val likedIds: StateFlow<Set<String>> = _likedIds.asStateFlow()
 
