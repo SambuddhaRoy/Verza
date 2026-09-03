@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -306,287 +307,326 @@ private fun PlayerPane(
     if (currentIndex != lastIndex) lastIndex = currentIndex
 
 
+    // Three pieces, so the same content can stack or sit side by side. On a phone this is the
+    // column it has always been; on a wide window the artwork takes one half and everything else
+    // the other, because a tall column of controls on a landscape tablet leaves the cover small
+    // and most of the screen empty.
+    val header: @Composable () -> Unit = {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ExpressiveControl(
+                    onClick = onBack,
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    container = colors.surface,
+                    content = colors.onSurface,
+                    iconSize = 22.dp,
+                    modifier = Modifier.size(46.dp),
+                )
+                Spacer(Modifier.weight(1f))
+                ExpressiveControl(
+                    onClick = onShare,
+                    icon = Icons.Filled.Share,
+                    contentDescription = "Share",
+                    container = colors.surface,
+                    content = colors.onSurface,
+                    iconSize = 20.dp,
+                    modifier = Modifier.size(46.dp),
+                )
+            }
+
+    }
+
+    val artworkPane: @Composable (Modifier) -> Unit = { paneModifier ->
+            // ── artwork ──────────────────────────────────────────────────────────────
+            // Keyed on the track so a change animates. Slide plus fade, springing in from the side the
+            // queue moved; the mask morphs underneath at the same time.
+            BoxWithConstraints(
+                modifier = paneModifier,
+                contentAlignment = Alignment.Center,
+            ) {
+            // One measurement of the slot, turned into an explicit side length. Everything below is
+            // sized from this rather than from a fill modifier, so nothing the image does can change it.
+            val side = if (maxWidth < maxHeight) maxWidth else maxHeight
+            // Keyed on the track alone. Keyed on the url as well, this ran twice per skip: once when
+            // the track changed and the metadata thumbnail arrived, and again when the high-resolution
+            // art resolved a moment later — so the cover swiped in, then swiped in again.
+            AnimatedContent(
+                targetState = trackKey,
+                transitionSpec = {
+                    val dir = if (forward) 1 else -1
+                    // Snap the size rather than animating it: an animating container plus fill-based
+                    // children is what made the cover shrink a little more with every track.
+                    ((slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 3 } +
+                        fadeIn(ExpressiveMotion.effectsDefault())) togetherWith
+                        (slideOutHorizontally(ExpressiveMotion.spatialDefault()) { w -> -dir * w / 3 } +
+                            fadeOut(ExpressiveMotion.effectsFast())))
+                        .using(SizeTransform(clip = false) { _, _ -> snap() })
+                },
+                modifier = Modifier.size(side),
+                label = "artSwap",
+            ) { _ ->
+                // A cover that vanishes mid-song is worse than a slightly stale one.
+                //
+                // The URL can change under us while a track plays, because the iTunes cover arrives
+                // after the YouTube thumbnail has already drawn. If the newcomer fails to load there is
+                // nothing behind it, and Coil has no reason to retry, so the artwork went blank for the
+                // rest of the song. Remembering the last URL that actually drew means a failure falls
+                // back instead of erasing. Reset per track, so nothing carries across a change.
+                var lastGood by remember(trackKey) { mutableStateOf<String?>(null) }
+                var failed by remember(trackKey) { mutableStateOf<String?>(null) }
+                val model = if (artworkUrl != null && artworkUrl == failed) lastGood else artworkUrl
+
+                Box(
+                    modifier = Modifier
+                        .size(side)
+                        // One rounded square, always. The mask used to morph between scalloped
+                        // silhouettes on every track, which drew attention to itself rather than to
+                        // the artwork, and the artwork is the thing worth looking at.
+                        .graphicsLayer {
+                            scaleX = COVER_BOOST
+                            scaleY = COVER_BOOST
+                            shape = ShapeExtraLarge
+                            clip = true
+                        }
+                        // Drag sideways to change track — the gesture the slide animation implies.
+                        .pointerInput(Unit) {
+                            var total = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = { total = 0f },
+                                onDragEnd = {
+                                    if (total < -60f) onNext() else if (total > 60f) onPrevious()
+                                },
+                            ) { change, drag -> total += drag; change.consume() }
+                        },
+                ) {
+                    AsyncImage(
+                        // Read live rather than from the animation's key, so the high-resolution
+                        // upgrade lands in place instead of starting a second transition.
+                        model = model,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        onSuccess = { lastGood = model },
+                        // Only blame a URL that is not already the fallback, or a cover with genuinely
+                        // no art would flip between the two forever.
+                        onError = { if (model != lastGood) failed = model },
+                        // COVER_BOOST pushes the art past its slot. Scaling is a draw-time transform, so
+                        // it overlaps its neighbours instead of displacing them, and the bass pulse costs
+                        // no relayout.
+                        modifier = Modifier.fillMaxSize().background(colors.surface)
+                            .graphicsLayer {
+                                // The bass pulse only. COVER_BOOST is applied once, on the mask above —
+                                // applying it here as well drew the art at 1.49x inside a 1.22x clip.
+                                scaleX = artScale.floatValue
+                                scaleY = artScale.floatValue
+                            },
+                    )
+                }
+            }
+            }
+    }
+
+    val controls: @Composable ColumnScope.() -> Unit = {
+            // No spacer: the boosted cover is meant to crowd the title slightly, which is what stops
+            // the two reading as separate stacked blocks.
+
+            // ── title ────────────────────────────────────────────────────────────────
+            AnimatedContent(
+                targetState = title to artist,
+                transitionSpec = {
+                    val dir = if (forward) 1 else -1
+                    ((slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 4 } +
+                        fadeIn(ExpressiveMotion.effectsDefault())) togetherWith
+                        fadeOut(ExpressiveMotion.effectsFast()))
+                        .using(SizeTransform(clip = false) { _, _ -> snap() })
+                },
+                label = "titleSwap",
+            ) { (t, a) ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = t,
+                        style = HeroDisplay,
+                        color = colors.accent,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = a,
+                        style = BodyStrong,
+                        color = colors.onContainerMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            VisualizerSeekBar(
+                progress = progress,
+                onSeek = { f -> onSeek((f * durationMs).toLong()) },
+                accent = colors.accent,
+                trackColor = colors.accentMuted,
+                signalFlow = signalFlow,
+                animating = isPlaying,
+            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(formatDuration(positionMs), style = Timecode, color = colors.onContainerMuted)
+                Spacer(Modifier.weight(1f))
+                Text(formatDuration(durationMs), style = Timecode, color = colors.onContainerMuted)
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ExpressiveControl(
+                    onClick = onPrevious,
+                    icon = Icons.Filled.SkipPrevious,
+                    contentDescription = "Previous track",
+                    container = colors.accent,
+                    content = colors.onAccent,
+                    iconSize = 30.dp,
+                    modifier = Modifier.size(70.dp),
+                )
+                PlayPill(
+                    playing = isPlaying,
+                    onClick = onTogglePlay,
+                    container = colors.accent,
+                    content = colors.onAccent,
+                    modifier = Modifier.weight(1f).height(70.dp),
+                )
+                ExpressiveControl(
+                    onClick = onNext,
+                    icon = Icons.Filled.SkipNext,
+                    contentDescription = "Next track",
+                    container = colors.accent,
+                    content = colors.onAccent,
+                    iconSize = 30.dp,
+                    modifier = Modifier.size(70.dp),
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ExpressiveControl(
+                    onClick = onToggleShuffle,
+                    icon = Icons.Filled.Shuffle,
+                    contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
+                    container = if (shuffleEnabled) colors.accent else colors.surface,
+                    content = if (shuffleEnabled) colors.onAccent else colors.onSurface,
+                    shape = CookieShape,
+                    iconSize = 20.dp,
+                    modifier = Modifier.size(50.dp),
+                )
+                ExpressiveControl(
+                    onClick = onCycleRepeat,
+                    icon = if (repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                    contentDescription = when (repeatMode) {
+                        1 -> "Repeat one"
+                        2 -> "Repeat all"
+                        else -> "Repeat off"
+                    },
+                    container = if (repeatMode != 0) colors.accent else colors.surface,
+                    content = if (repeatMode != 0) colors.onAccent else colors.onSurface,
+                    iconSize = 20.dp,
+                    modifier = Modifier.size(50.dp),
+                )
+                ExpressiveControl(
+                    onClick = onToggleLike,
+                    icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    contentDescription = if (isLiked) "Remove from liked songs" else "Add to liked songs",
+                    container = if (isLiked) colors.accent else colors.surface,
+                    content = if (isLiked) colors.onAccent else colors.onSurface,
+                    iconSize = 20.dp,
+                    modifier = Modifier.size(50.dp),
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                // Where the sound is going. This row had a third of its width empty, and a label is
+                // worth more here than another icon would be — the useful thing is knowing you are
+                // about to play out loud before you press play, not having somewhere to press after.
+                OutputChip(colors = colors)
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Its own full-width row. Sharing one with the toggles above left no room for six items, so
+            // half of them were clipped off the edge rather than wrapped.
+            Row(modifier = Modifier.fillMaxWidth()) {
+                ExpressiveToolbar(
+                    modifier = Modifier.fillMaxWidth(),
+                    spread = true,
+                    items = listOf(
+                        ToolbarItem(Icons.Filled.Lyrics, "Lyrics", onOpenLyrics),
+                        ToolbarItem(Icons.Filled.Radio, "Start radio", onStartRadio),
+                        ToolbarItem(Icons.Filled.PlaylistAdd, "Add to playlist", onAddToPlaylist),
+                        ToolbarItem(
+                            icon = if (isDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
+                            label = if (isDownloaded) "Remove download" else "Download",
+                            onClick = if (isDownloaded) onRemoveDownload else onDownload,
+                            active = isDownloaded,
+                        ),
+                        ToolbarItem(Icons.Filled.Bedtime, "Sleep timer", onOpenSleepTimer, active = sleepTimerActive),
+                        ToolbarItem(Icons.Filled.MoreHoriz, "More", onOpenMore),
+                    ),
+                    colors = colors,
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            // ── the hint that there is more below ────────────────────────────────────
+            QueueHint(count = queueCount, onClick = onShowQueue)
+    }
+
+    if (useTwoPane()) {
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            artworkPane(Modifier.weight(1f).fillMaxHeight())
+            Column(
+                modifier = Modifier.weight(1f),
+                // Centred rather than filling: the controls are shorter than the cover is tall,
+                // and spreading them to match would put the transport buttons somewhere arbitrary.
+                verticalArrangement = Arrangement.Center,
+            ) {
+                header()
+                controls()
+            }
+        }
+    } else {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.systemBars)
             .padding(horizontal = 20.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ExpressiveControl(
-                onClick = onBack,
-                icon = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                container = colors.surface,
-                content = colors.onSurface,
-                iconSize = 22.dp,
-                modifier = Modifier.size(46.dp),
-            )
-            Spacer(Modifier.weight(1f))
-            ExpressiveControl(
-                onClick = onShare,
-                icon = Icons.Filled.Share,
-                contentDescription = "Share",
-                container = colors.surface,
-                content = colors.onSurface,
-                iconSize = 20.dp,
-                modifier = Modifier.size(46.dp),
-            )
-        }
+        header()
 
         Spacer(Modifier.height(8.dp))
 
-        // ── artwork ──────────────────────────────────────────────────────────────
-        // Keyed on the track so a change animates. Slide plus fade, springing in from the side the
-        // queue moved; the mask morphs underneath at the same time.
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            contentAlignment = Alignment.Center,
-        ) {
-        // One measurement of the slot, turned into an explicit side length. Everything below is
-        // sized from this rather than from a fill modifier, so nothing the image does can change it.
-        val side = if (maxWidth < maxHeight) maxWidth else maxHeight
-        // Keyed on the track alone. Keyed on the url as well, this ran twice per skip: once when
-        // the track changed and the metadata thumbnail arrived, and again when the high-resolution
-        // art resolved a moment later — so the cover swiped in, then swiped in again.
-        AnimatedContent(
-            targetState = trackKey,
-            transitionSpec = {
-                val dir = if (forward) 1 else -1
-                // Snap the size rather than animating it: an animating container plus fill-based
-                // children is what made the cover shrink a little more with every track.
-                ((slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 3 } +
-                    fadeIn(ExpressiveMotion.effectsDefault())) togetherWith
-                    (slideOutHorizontally(ExpressiveMotion.spatialDefault()) { w -> -dir * w / 3 } +
-                        fadeOut(ExpressiveMotion.effectsFast())))
-                    .using(SizeTransform(clip = false) { _, _ -> snap() })
-            },
-            modifier = Modifier.size(side),
-            label = "artSwap",
-        ) { _ ->
-            // A cover that vanishes mid-song is worse than a slightly stale one.
-            //
-            // The URL can change under us while a track plays, because the iTunes cover arrives
-            // after the YouTube thumbnail has already drawn. If the newcomer fails to load there is
-            // nothing behind it, and Coil has no reason to retry, so the artwork went blank for the
-            // rest of the song. Remembering the last URL that actually drew means a failure falls
-            // back instead of erasing. Reset per track, so nothing carries across a change.
-            var lastGood by remember(trackKey) { mutableStateOf<String?>(null) }
-            var failed by remember(trackKey) { mutableStateOf<String?>(null) }
-            val model = if (artworkUrl != null && artworkUrl == failed) lastGood else artworkUrl
+        artworkPane(Modifier.fillMaxWidth().weight(1f))
 
-            Box(
-                modifier = Modifier
-                    .size(side)
-                    // One rounded square, always. The mask used to morph between scalloped
-                    // silhouettes on every track, which drew attention to itself rather than to
-                    // the artwork, and the artwork is the thing worth looking at.
-                    .graphicsLayer {
-                        scaleX = COVER_BOOST
-                        scaleY = COVER_BOOST
-                        shape = ShapeExtraLarge
-                        clip = true
-                    }
-                    // Drag sideways to change track — the gesture the slide animation implies.
-                    .pointerInput(Unit) {
-                        var total = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { total = 0f },
-                            onDragEnd = {
-                                if (total < -60f) onNext() else if (total > 60f) onPrevious()
-                            },
-                        ) { change, drag -> total += drag; change.consume() }
-                    },
-            ) {
-                AsyncImage(
-                    // Read live rather than from the animation's key, so the high-resolution
-                    // upgrade lands in place instead of starting a second transition.
-                    model = model,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { lastGood = model },
-                    // Only blame a URL that is not already the fallback, or a cover with genuinely
-                    // no art would flip between the two forever.
-                    onError = { if (model != lastGood) failed = model },
-                    // COVER_BOOST pushes the art past its slot. Scaling is a draw-time transform, so
-                    // it overlaps its neighbours instead of displacing them, and the bass pulse costs
-                    // no relayout.
-                    modifier = Modifier.fillMaxSize().background(colors.surface)
-                        .graphicsLayer {
-                            // The bass pulse only. COVER_BOOST is applied once, on the mask above —
-                            // applying it here as well drew the art at 1.49x inside a 1.22x clip.
-                            scaleX = artScale.floatValue
-                            scaleY = artScale.floatValue
-                        },
-                )
-            }
-        }
-        }
-
-        // No spacer: the boosted cover is meant to crowd the title slightly, which is what stops
-        // the two reading as separate stacked blocks.
-
-        // ── title ────────────────────────────────────────────────────────────────
-        AnimatedContent(
-            targetState = title to artist,
-            transitionSpec = {
-                val dir = if (forward) 1 else -1
-                ((slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 4 } +
-                    fadeIn(ExpressiveMotion.effectsDefault())) togetherWith
-                    fadeOut(ExpressiveMotion.effectsFast()))
-                    .using(SizeTransform(clip = false) { _, _ -> snap() })
-            },
-            label = "titleSwap",
-        ) { (t, a) ->
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = t,
-                    style = HeroDisplay,
-                    color = colors.accent,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = a,
-                    style = BodyStrong,
-                    color = colors.onContainerMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        VisualizerSeekBar(
-            progress = progress,
-            onSeek = { f -> onSeek((f * durationMs).toLong()) },
-            accent = colors.accent,
-            trackColor = colors.accentMuted,
-            signalFlow = signalFlow,
-            animating = isPlaying,
-        )
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(formatDuration(positionMs), style = Timecode, color = colors.onContainerMuted)
-            Spacer(Modifier.weight(1f))
-            Text(formatDuration(durationMs), style = Timecode, color = colors.onContainerMuted)
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ExpressiveControl(
-                onClick = onPrevious,
-                icon = Icons.Filled.SkipPrevious,
-                contentDescription = "Previous track",
-                container = colors.accent,
-                content = colors.onAccent,
-                iconSize = 30.dp,
-                modifier = Modifier.size(70.dp),
-            )
-            PlayPill(
-                playing = isPlaying,
-                onClick = onTogglePlay,
-                container = colors.accent,
-                content = colors.onAccent,
-                modifier = Modifier.weight(1f).height(70.dp),
-            )
-            ExpressiveControl(
-                onClick = onNext,
-                icon = Icons.Filled.SkipNext,
-                contentDescription = "Next track",
-                container = colors.accent,
-                content = colors.onAccent,
-                iconSize = 30.dp,
-                modifier = Modifier.size(70.dp),
-            )
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ExpressiveControl(
-                onClick = onToggleShuffle,
-                icon = Icons.Filled.Shuffle,
-                contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
-                container = if (shuffleEnabled) colors.accent else colors.surface,
-                content = if (shuffleEnabled) colors.onAccent else colors.onSurface,
-                shape = CookieShape,
-                iconSize = 20.dp,
-                modifier = Modifier.size(50.dp),
-            )
-            ExpressiveControl(
-                onClick = onCycleRepeat,
-                icon = if (repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-                contentDescription = when (repeatMode) {
-                    1 -> "Repeat one"
-                    2 -> "Repeat all"
-                    else -> "Repeat off"
-                },
-                container = if (repeatMode != 0) colors.accent else colors.surface,
-                content = if (repeatMode != 0) colors.onAccent else colors.onSurface,
-                iconSize = 20.dp,
-                modifier = Modifier.size(50.dp),
-            )
-            ExpressiveControl(
-                onClick = onToggleLike,
-                icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                contentDescription = if (isLiked) "Remove from liked songs" else "Add to liked songs",
-                container = if (isLiked) colors.accent else colors.surface,
-                content = if (isLiked) colors.onAccent else colors.onSurface,
-                iconSize = 20.dp,
-                modifier = Modifier.size(50.dp),
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            // Where the sound is going. This row had a third of its width empty, and a label is
-            // worth more here than another icon would be — the useful thing is knowing you are
-            // about to play out loud before you press play, not having somewhere to press after.
-            OutputChip(colors = colors)
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        // Its own full-width row. Sharing one with the toggles above left no room for six items, so
-        // half of them were clipped off the edge rather than wrapped.
-        Row(modifier = Modifier.fillMaxWidth()) {
-            ExpressiveToolbar(
-                modifier = Modifier.fillMaxWidth(),
-                spread = true,
-                items = listOf(
-                    ToolbarItem(Icons.Filled.Lyrics, "Lyrics", onOpenLyrics),
-                    ToolbarItem(Icons.Filled.Radio, "Start radio", onStartRadio),
-                    ToolbarItem(Icons.Filled.PlaylistAdd, "Add to playlist", onAddToPlaylist),
-                    ToolbarItem(
-                        icon = if (isDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
-                        label = if (isDownloaded) "Remove download" else "Download",
-                        onClick = if (isDownloaded) onRemoveDownload else onDownload,
-                        active = isDownloaded,
-                    ),
-                    ToolbarItem(Icons.Filled.Bedtime, "Sleep timer", onOpenSleepTimer, active = sleepTimerActive),
-                    ToolbarItem(Icons.Filled.MoreHoriz, "More", onOpenMore),
-                ),
-                colors = colors,
-            )
-        }
-
-        Spacer(Modifier.height(6.dp))
-
-        // ── the hint that there is more below ────────────────────────────────────
-        QueueHint(count = queueCount, onClick = onShowQueue)
+        controls()
+    }
     }
 }
 

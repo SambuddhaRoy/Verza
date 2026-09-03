@@ -28,6 +28,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.widthIn
+import com.verza.ui.expressive.readableWidth
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -115,6 +117,9 @@ fun SearchScreen(
             is SearchUiState.Empty -> CenterHint("No results")
             is SearchUiState.Error -> CenterHint(state.message)
             is SearchUiState.Results -> LazyColumn(
+                // A result row the full width of a tablet is a thumbnail with an acre of empty
+                // space after it. Rows stop growing and the list centres.
+                modifier = Modifier.fillMaxWidth().widthIn(max = readableWidth()),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
