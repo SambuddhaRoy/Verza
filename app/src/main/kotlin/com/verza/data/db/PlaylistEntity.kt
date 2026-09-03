@@ -5,12 +5,19 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/** A user-created local playlist (lives entirely in Room, no server sync). */
+/** A user-created playlist, mirrored to the signed-in YouTube Music account when there is one. */
 @Entity(tableName = "playlists")
 data class PlaylistEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val createdAt: Long = System.currentTimeMillis(),
+    /**
+     * The YouTube playlist this maps to, once it has been created there.
+     *
+     * Null while signed out, and null for every playlist made before this existed. Both are the
+     * same state to the sync queue: nowhere to send tracks yet, so make the playlist first.
+     */
+    val remoteId: String? = null,
 )
 
 /**

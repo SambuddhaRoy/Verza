@@ -7,6 +7,7 @@ import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.verza.data.CrashLog
+import com.verza.data.YouTubeSync
 import com.verza.di.ApplicationScope
 import com.verza.playback.BrowseTreePublisher
 import com.verza.playback.MediaSessionLikeBridge
@@ -30,6 +31,9 @@ class VerzaApp : Application(), SingletonImageLoader.Factory {
     lateinit var browseTreePublisher: BrowseTreePublisher
 
     @Inject
+    lateinit var youTubeSync: YouTubeSync
+
+    @Inject
     @ApplicationScope
     lateinit var scope: CoroutineScope
 
@@ -39,6 +43,8 @@ class VerzaApp : Application(), SingletonImageLoader.Factory {
         CrashLog.install(this)
         mediaSessionLikeBridge.start()
         browseTreePublisher.start()
+        // Anything queued while offline goes out now.
+        youTubeSync.start()
 
         // Keep the home-screen widget in step. Done at process scope rather than from an Activity,
         // because the widget has to stay right while the app is nowhere on screen — which is most

@@ -283,6 +283,58 @@ object InnerTube {
     }
 
     /**
+     * Creates a playlist on the signed-in account and returns its id, or null.
+
+     * Private by default. A playlist made on a phone is not a publication, and the account owner
+     * can change that on YouTube if they want to.
+     */
+    suspend fun createPlaylist(title: String): String? {
+        if (cookie.isNullOrBlank()) return null
+        val c = YouTubeClient.WEB_REMIX
+        val response = client.post("${c.apiBaseUrl}/playlist/create") {
+            applyClient(c)
+            setBody(buildJsonObject {
+                putContext(c)
+                put("title", title)
+                put("privacyStatus", "PRIVATE")
+            }.toString())
+        }
+        val body = runCatching { defaultJson.parseToJsonElement(response.bodyAsText()).jsonObject }.getOrNull()
+            ?: return null
+        // The field has moved between responses over the years; take whichever is present rather
+        // than betting on one and silently returning null forever when it changes again.
+        return body["playlistId"]?.jsonPrimitive?.contentOrNull
+            ?: body["playlistEditResults"]?.let { null }
+    }
+
+    /**
+     * Adds [videoId] to [playlistId] on the account. Returns whether it was accepted.
+     *
+     * The result is checked rather than assumed: a rejected edit that reports success would leave
+     * the queue believing it had delivered something it had not, which is worse than not syncing.
+     */
+    suspend fun addToPlaylist(playlistId: String, videoId: String): Boolean {
+        if (cookie.isNullOrBlank()) return false
+        val c = YouTubeClient.WEB_REMIX
+        val response = client.post("${c.apiBaseUrl}/browse/edit_playlist") {
+            applyClient(c)
+            setBody(buildJsonObject {
+                putContext(c)
+                // YouTube wants the list id without the leading VL that browse ids carry.
+                put("playlistId", playlistId.removePrefix("VL"))
+                put("actions", buildJsonArray {
+                    add(buildJsonObject {
+                        put("action", "ACTION_ADD_VIDEO")
+                        put("addedVideoId", videoId)
+                    })
+                })
+            }.toString())
+        }
+        val body = runCatching { defaultJson.parseToJsonElement(response.bodyAsText()).jsonObject }.getOrNull()
+            ?: return false
+        return body["status"]?.jsonPrimitive?.contentOrNull == "STATUS_SUCCEEDED"
+    }
+    /**
      * Resolves the best audio stream for [videoId] via NewPipeExtractor (handles signature/n
      * deciphering that the raw player endpoint can't do anonymously). Returns null if unplayable.
      */

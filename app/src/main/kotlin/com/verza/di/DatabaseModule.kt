@@ -7,6 +7,8 @@ import com.verza.data.db.VerzaDatabase
 import com.verza.data.db.MIGRATION_1_2
 import com.verza.data.db.MIGRATION_2_3
 import com.verza.data.db.MIGRATION_3_4
+import com.verza.data.db.MIGRATION_4_5
+import com.verza.data.db.SyncOpDao
 import com.verza.data.db.PlayEventDao
 import com.verza.data.db.PlaylistDao
 import com.verza.data.db.SongDao
@@ -34,7 +36,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VerzaDatabase =
         Room.databaseBuilder(context, VerzaDatabase::class.java, "verza.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             // Last-resort: if a future schema change ships without a migration we drop tables
             // rather than crash; users only lose their local likes/history.
             .fallbackToDestructiveMigration(dropAllTables = true)
@@ -48,4 +50,7 @@ object DatabaseModule {
 
     @Provides
     fun providePlayEventDao(db: VerzaDatabase): PlayEventDao = db.playEventDao()
+
+    @Provides
+    fun provideSyncOpDao(db: VerzaDatabase) = db.syncOpDao()
 }
