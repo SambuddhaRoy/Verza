@@ -134,6 +134,49 @@ class ExpressiveColorsTest {
     }
 
     @Test
+    fun `a colourless cover produces a colourless palette`() {
+        // A black and white sleeve used to come out saturated: the extractor floored every
+        // swatch to 0.42 saturation and the flavour floored it again into its own window, so the
+        // hue being amplified was JPEG rounding noise. The answer for a grey cover is grey.
+        val greys = listOf(0f, 0.12f, 0.35f, 0.5f, 0.78f, 1f).map { fromHsv(210f, 0f, it) }
+        for (flavour in ColorFlavour.entries) for (grey in greys) {
+            val c = expressiveColorsFrom(coverOf(grey).copy(monochrome = true), flavour)
+            val where = "$flavour grey=${grey.value.toString(16)}"
+            for ((name, colour) in listOf(
+                "container" to c.container,
+                "surface" to c.surface,
+                "accent" to c.accent,
+                "tertiary" to c.tertiary,
+                "surfaceHigh" to c.surfaceHigh,
+            )) {
+                assertEquals("$where: $name has colour in it", 0f, hsv(colour)[1], 0.02f)
+            }
+        }
+    }
+
+    @Test
+    fun `a colourless palette is still readable`() {
+        // Removing the colour must not remove the contrast guarantee with it. Grey on grey is
+        // exactly where a palette quietly stops being legible.
+        val floor = ExpressiveColors.MIN_CONTRAST
+        val greys = listOf(0f, 0.2f, 0.45f, 0.7f, 1f).map { fromHsv(0f, 0f, it) }
+        for (flavour in ColorFlavour.entries) for (grey in greys) {
+            val c = expressiveColorsFrom(coverOf(grey).copy(monochrome = true), flavour)
+            val where = "$flavour grey=${grey.value.toString(16)}"
+            assertTrue("$where: onContainer", contrastRatio(c.container, c.onContainer) >= floor)
+            assertTrue("$where: onSurface", contrastRatio(c.surface, c.onSurface) >= floor)
+            assertTrue("$where: onAccent", contrastRatio(c.accent, c.onAccent) >= floor)
+            assertTrue("$where: accent vs container", contrastRatio(c.accent, c.container) >= floor)
+        }
+    }
+
+    @Test
+    fun `a cover with colour still gets colour`() {
+        // The other half of the promise: the monochrome path must not swallow real covers.
+        val c = expressiveColorsFrom(coverOf(fromHsv(280f, 0.7f, 0.6f)), ColorFlavour.SIGNATURE)
+        assertTrue("container should be saturated", hsv(c.container)[1] > 0.3f)
+    }
+    @Test
     fun `hsv round-trips`() {
         // The maths moved out of android.graphics so this file could be tested at all; check it did
         // not quietly change meaning on the way.

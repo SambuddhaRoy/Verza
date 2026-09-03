@@ -28,6 +28,14 @@ private fun hsv(h: Float, s: Float, v: Float): Color =
     Color(AndroidColor.HSVToColor(floatArrayOf(h, s.coerceIn(0f, 1f), v.coerceIn(0f, 1f))))
 
 /** Bumps a colour's saturation up to a floor so dull album swatches still produce a visible glow. */
+/**
+ * Below this population-weighted mean saturation a cover counts as having no colour.
+ *
+ * A true black and white sleeve lands near 0.02. Something with one small coloured element on
+ * an otherwise grey ground also lands low, and a grey theme is the right answer there too.
+ */
+private const val MONOCHROME_SATURATION = 0.10
+
 private fun floorSaturation(color: Color, floor: Float = 0.42f): Color {
     val hsv = FloatArray(3)
     AndroidColor.colorToHSV(color.toArgb(), hsv)
@@ -72,6 +80,14 @@ data class CoverColors(
      * for the built-in defaults, which is the signal to fall back to the complement.
      */
     val swatches: List<Color> = emptyList(),
+    /**
+     * True when the cover has essentially no colour in it.
+     *
+     * A black and white sleeve has no hue worth honouring: what little the palette reports is
+     * rounding noise from JPEG artefacts, and treating it as a hue produces a confidently wrong
+     * colour. Carried through so the palette can stay grey rather than inventing one.
+     */
+    val monochrome: Boolean = false,
 )
 
 /** UMBRA "Terracotta"-style defaults, used until a cover resolves. */
@@ -140,7 +156,24 @@ suspend fun extractCoverColors(context: Context, url: String): CoverColors? {
     val darkSwatch = palette.darkMutedSwatch ?: palette.darkVibrantSwatch
         ?: palette.mutedSwatch ?: palette.dominantSwatch ?: accentSwatch
 
-    val accent = floorSaturation(Color(accentSwatch.rgb))
+    // How much colour the cover actually has, weighted by how much of the cover each swatch is.
+    // A stray saturated pixel should not make a grey sleeve count as colourful.
+    val monochrome = run {
+        val hsv = FloatArray(3)
+        var weighted = 0.0
+        var total = 0.0
+        for (sw in palette.swatches) {
+            AndroidColor.colorToHSV(sw.rgb, hsv)
+            weighted += hsv[1].toDouble() * sw.population
+            total += sw.population.toDouble()
+        }
+        total > 0 && weighted / total < MONOCHROME_SATURATION
+    }
+
+    // Only floor the saturation on a cover that has some to begin with. Flooring a grey swatch to
+    // 0.42 is what turned black and white sleeves into a confidently wrong colour: the hue being
+    // amplified was rounding noise.
+    val accent = if (monochrome) Color(accentSwatch.rgb) else floorSaturation(Color(accentSwatch.rgb))
     val bg = darkCanvasFrom(Color(darkSwatch.rgb))
     val ink = Color(0xFFF2E9DD)
     // Ordered by population so the first candidates are the colours the cover is actually made of,
@@ -150,6 +183,7 @@ suspend fun extractCoverColors(context: Context, url: String): CoverColors? {
         .map { Color(it.rgb) }
     return CoverColors(
         swatches = swatches,
+        monochrome = monochrome,
         accent = accent,
         bg = bg,
         ink = ink,
