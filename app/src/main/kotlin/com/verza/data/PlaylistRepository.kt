@@ -13,6 +13,7 @@ import javax.inject.Singleton
 class PlaylistRepository @Inject constructor(
     private val playlistDao: PlaylistDao,
     private val songDao: SongDao,
+    private val sync: YouTubeSync,
 ) {
     fun all(): Flow<List<PlaylistWithCover>> = playlistDao.all()
 
@@ -20,8 +21,14 @@ class PlaylistRepository @Inject constructor(
 
     suspend fun nameOf(id: Long): String? = playlistDao.nameOf(id)
 
-    suspend fun create(name: String): Long =
-        playlistDao.create(com.verza.data.db.PlaylistEntity(name = name.trim().ifBlank { "Untitled" }))
+    suspend fun create(name: String): Long {
+        val clean = name.trim().ifBlank { "Untitled" }
+        val id = playlistDao.create(com.verza.data.db.PlaylistEntity(name = clean))
+        // Mirrored to the account so the same playlist shows up in Verza on the desktop. Queued
+        // rather than called, so making one offline still arrives later.
+        sync.createPlaylist(id, clean)
+        return id
+    }
 
     suspend fun rename(id: Long, name: String) =
         playlistDao.rename(id, name.trim().ifBlank { "Untitled" })
@@ -50,8 +57,17 @@ class PlaylistRepository @Inject constructor(
             )
         )
         playlistDao.addTrack(playlistId, item.id)
+        sync.addToPlaylist(playlistId, item.id)
     }
 
+    /**
+     * Removes a track locally.
+     *
+     * ponytail: not mirrored to the account. Removing from a YouTube playlist needs the setVideoId
+     * of that specific entry, which only comes back from reading the playlist, so it means a fetch
+     * and a search before the edit. Worth doing when someone asks; adding was the half that made
+     * the two libraries diverge.
+     */
     suspend fun removeTrack(playlistId: Long, songId: String) =
         playlistDao.removeTrack(playlistId, songId)
 }

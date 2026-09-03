@@ -19,6 +19,13 @@ interface PlaylistDao {
     @Query("UPDATE playlists SET name = :name WHERE id = :id")
     suspend fun rename(id: Long, name: String)
 
+    /** Records which YouTube playlist a local one maps to, once it has been created there. */
+    @Query("UPDATE playlists SET remoteId = :remoteId WHERE id = :id")
+    suspend fun setRemoteId(id: Long, remoteId: String)
+
+    @Query("SELECT remoteId FROM playlists WHERE id = :id")
+    suspend fun remoteIdOf(id: Long): String?
+
     /**
      * All playlists, each with the first track's thumbnail (if any) and a track count, so the
      * Library can render rich playlist cards in one query.
