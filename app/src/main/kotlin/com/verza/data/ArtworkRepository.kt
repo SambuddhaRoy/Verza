@@ -1,5 +1,10 @@
 package com.verza.data
 
+import android.content.Context
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,20 +32,49 @@ import javax.inject.Singleton
 @Singleton
 class ArtworkRepository @Inject constructor(
     private val client: OkHttpClient,
+    @ApplicationContext private val context: Context,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val mutex = Mutex()
     private val cache: MutableMap<String, String?> = mutableMapOf()
 
+    /**
+     * A better cover for this track, or null to keep whatever the track already had.
+     *
+     * The returned URL is one that has been loaded successfully, not merely one iTunes named. That
+     * distinction is the whole point of this function: the caller replaces a working YouTube
+     * thumbnail with whatever comes back, so handing over an unverified guess meant a cover that
+     * appeared for a moment and then vanished for the rest of the track, with nothing to fall back
+     * to and nothing to trigger a retry.
+     *
+     * Verifying costs nothing after the fact. Coil caches the bytes, so the AsyncImage that shows
+     * this a moment later is reading from the disk cache rather than fetching again.
+     */
     suspend fun resolve(title: String, artist: String): String? {
         val key = "${artist.trim().lowercase()}|${title.trim().lowercase()}"
         if (key == "|") return null
         mutex.withLock { if (cache.containsKey(key)) return cache[key] }
 
-        val resolved = runCatching { fetch(title, artist) }.getOrNull()
-        mutex.withLock { cache[key] = resolved }
-        return resolved
+        val found = runCatching { fetch(title, artist) }
+        // A lookup that could not reach iTunes is not the same as iTunes having nothing, and
+        // caching the two the same way meant one moment without signal denied a track its real
+        // cover for the rest of the process.
+        if (found.isFailure) return null
+
+        val url = found.getOrNull()
+        val usable = url?.takeIf { loads(it) }
+        mutex.withLock { cache[key] = usable }
+        return usable
     }
+
+    /** Whether [url] actually produces an image. Small on purpose: this is a check, not a render. */
+    private suspend fun loads(url: String): Boolean = runCatching {
+        val request = ImageRequest.Builder(context)
+            .data(url)
+            .size(160)
+            .build()
+        SingletonImageLoader.get(context).execute(request) is SuccessResult
+    }.getOrDefault(false)
 
     private suspend fun fetch(title: String, artist: String): String? = withContext(Dispatchers.IO) {
         val term = listOf(artist, title).filter { it.isNotBlank() }.joinToString(" ")
