@@ -82,16 +82,27 @@ class ArtworkRepository @Inject constructor(
         val url = "https://itunes.apple.com/search".toHttpUrl().newBuilder()
             .addQueryParameter("term", term)
             .addQueryParameter("entity", "song")
-            .addQueryParameter("limit", "1")
+            // Several, not one. iTunes matches loosely, so the top hit for a common title is often
+            // a different recording by a different artist; asking for a handful gives the matcher
+            // something to choose between rather than something to accept.
+            .addQueryParameter("limit", "8")
             .build()
         val request = Request.Builder().url(url).get().build()
         client.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) return@use null
             val body = json.parseToJsonElement(resp.body!!.string()) as? JsonObject ?: return@use null
-            val first = (body["results"] as? JsonArray)?.firstOrNull() as? JsonObject ?: return@use null
-            val art100 = first["artworkUrl100"]?.jsonPrimitive?.contentOrNull
-            // iTunes thumbnail URLs encode size — swap to 600x600 for retina-friendly artwork.
-            art100?.replace("100x100bb", "600x600bb")
+            val results = (body["results"] as? JsonArray).orEmpty()
+            val candidates = results.mapNotNull { element ->
+                val row = element as? JsonObject ?: return@mapNotNull null
+                val art = row["artworkUrl100"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                ArtworkCandidate(
+                    trackName = row["trackName"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    artistName = row["artistName"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    // iTunes thumbnail URLs encode their size in the path.
+                    artworkUrl = art.replace("100x100bb", "600x600bb"),
+                )
+            }
+            bestArtworkMatch(candidates, title, artist)?.artworkUrl
         }
     }
 }

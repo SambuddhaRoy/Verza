@@ -2,10 +2,7 @@ package com.verza.data
 
 import com.verza.data.db.SongDao
 import com.verza.data.db.SongEntity
-import com.verza.innertube.InnerTube
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,6 +10,7 @@ import javax.inject.Singleton
 @Singleton
 class LibraryRepository @Inject constructor(
     private val dao: SongDao,
+    private val sync: YouTubeSync,
 ) {
     fun recentlyPlayed(): Flow<List<SongEntity>> = dao.recentlyPlayed()
     fun liked(): Flow<List<SongEntity>> = dao.liked()
@@ -81,7 +79,9 @@ class LibraryRepository @Inject constructor(
                 likedAt = if (nowLiked) System.currentTimeMillis() else null,
             )
         )
-        // Mirror the like to the signed-in YouTube Music account (no-op when signed out).
-        runCatching { withContext(Dispatchers.IO) { InnerTube.setLikeStatus(song.id, nowLiked) } }
+        // Queue it for the account rather than firing it off here. This was an inline call
+        // wrapped in runCatching, so a like made with no signal was swallowed and never sent: the
+        // app looked synced and was not.
+        sync.like(song.id, nowLiked)
     }
 }

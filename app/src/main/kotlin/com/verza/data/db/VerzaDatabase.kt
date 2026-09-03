@@ -6,14 +6,21 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [SongEntity::class, PlaylistEntity::class, PlaylistTrackEntity::class, PlayEventEntity::class],
-    version = 4,
+    entities = [
+        SongEntity::class,
+        PlaylistEntity::class,
+        PlaylistTrackEntity::class,
+        PlayEventEntity::class,
+        SyncOpEntity::class,
+    ],
+    version = 5,
     exportSchema = false,
 )
 abstract class VerzaDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun playEventDao(): PlayEventDao
+    abstract fun syncOpDao(): SyncOpDao
 }
 
 /** v1 → v2: adds `downloadPath` so songs can be cached for offline playback. */
@@ -66,5 +73,32 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
             """.trimIndent()
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS index_play_events_songId ON play_events(songId)")
+    }
+}
+
+/**
+ * v4 to v5: the outbound queue, and the YouTube id a local playlist maps to.
+ *
+ * remoteId is nullable and starts null on every existing playlist, which is correct: those were
+ * created before there was anywhere to send them, and back-filling would mean inventing playlists
+ * on the account that the user never asked for.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE playlists ADD COLUMN remoteId TEXT")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS sync_ops (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                op TEXT NOT NULL,
+                videoId TEXT NOT NULL,
+                playlistId INTEGER NOT NULL,
+                remoteId TEXT NOT NULL,
+                title TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                attempts INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 }
