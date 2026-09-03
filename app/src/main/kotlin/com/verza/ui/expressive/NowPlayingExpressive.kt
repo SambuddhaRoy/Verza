@@ -80,6 +80,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -366,6 +367,17 @@ private fun PlayerPane(
             modifier = Modifier.size(side),
             label = "artSwap",
         ) { _ ->
+            // A cover that vanishes mid-song is worse than a slightly stale one.
+            //
+            // The URL can change under us while a track plays, because the iTunes cover arrives
+            // after the YouTube thumbnail has already drawn. If the newcomer fails to load there is
+            // nothing behind it, and Coil has no reason to retry, so the artwork went blank for the
+            // rest of the song. Remembering the last URL that actually drew means a failure falls
+            // back instead of erasing. Reset per track, so nothing carries across a change.
+            var lastGood by remember(trackKey) { mutableStateOf<String?>(null) }
+            var failed by remember(trackKey) { mutableStateOf<String?>(null) }
+            val model = if (artworkUrl != null && artworkUrl == failed) lastGood else artworkUrl
+
             Box(
                 modifier = Modifier
                     .size(side)
@@ -392,9 +404,13 @@ private fun PlayerPane(
                 AsyncImage(
                     // Read live rather than from the animation's key, so the high-resolution
                     // upgrade lands in place instead of starting a second transition.
-                    model = artworkUrl,
+                    model = model,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    onSuccess = { lastGood = model },
+                    // Only blame a URL that is not already the fallback, or a cover with genuinely
+                    // no art would flip between the two forever.
+                    onError = { if (model != lastGood) failed = model },
                     // COVER_BOOST pushes the art past its slot. Scaling is a draw-time transform, so
                     // it overlaps its neighbours instead of displacing them, and the bass pulse costs
                     // no relayout.
