@@ -306,9 +306,15 @@ fun expressiveColorsFrom(
 ): ExpressiveColors {
     val seed = hsv(cover.accent)
 
+    // A colourless cover keeps a colourless palette. Every saturation below is either the cover's
+    // own or zero, and the flavour's saturation window is skipped entirely rather than flooring a
+    // grey up into a hue that was never there.
+    val chroma = if (cover.monochrome) 0f else 1f
+    fun sat(value: Float) = if (cover.monochrome) 0f else value
+
     // Container: the cover's hue, held inside the flavour's window so it is unmistakably coloured
     // without ever being bright enough to fight the text on top of it.
-    val container = fromHsv(seed[0], seed[1].coerceIn(flavour.satRange), seed[2].coerceIn(flavour.valRange))
+    val container = fromHsv(seed[0], sat(seed[1].coerceIn(flavour.satRange)), seed[2].coerceIn(flavour.valRange))
     val onContainer = readableOn(container)
 
     // Accent: the true complement, 180° opposite the container, then separated by measured
@@ -320,7 +326,7 @@ fun expressiveColorsFrom(
         AccentSource.ARTWORK -> pickFromArtwork(cover.swatches, container)
             ?: fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2])
     }
-    val accent = separate(accentSeed, container, flavour.accentSat)
+    val accent = separate(accentSeed, container, flavour.accentSat * chroma)
     val onAccent = readableOn(accent)
 
     // Cards sit one step off the canvas so they read as contained rather than floating. Which
@@ -329,7 +335,7 @@ fun expressiveColorsFrom(
     val containerHsv = hsv(container)
     val surface = fromHsv(
         containerHsv[0],
-        (containerHsv[1] * flavour.surfaceSat).coerceIn(flavour.satRange),
+        sat((containerHsv[1] * flavour.surfaceSat).coerceIn(flavour.satRange)),
         (containerHsv[2] * flavour.surfaceVal).coerceIn(flavour.toneRange),
     )
     val surfaceHsv = hsv(surface)
@@ -339,9 +345,9 @@ fun expressiveColorsFrom(
     // Tertiary sits on the far side of the wheel from the accent, so a secondary highlight cannot be
     // mistaken for the primary one.
     val tertiary = separate(
-        fromHsv((seed[0] + 100f) % 360f, seed[1].coerceAtLeast(0.45f), seed[2]),
+        fromHsv((seed[0] + 100f) % 360f, sat(seed[1].coerceAtLeast(0.45f)), seed[2]),
         container,
-        flavour.accentSat,
+        flavour.accentSat * chroma,
     )
 
     return ExpressiveColors(

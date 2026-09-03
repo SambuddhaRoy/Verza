@@ -2,6 +2,7 @@ package com.verza.data
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.verza.BuildConfig
@@ -131,6 +132,26 @@ class UpdateRepository @Inject constructor(
             json.parseToJsonElement(body).jsonObject["body"]?.jsonPrimitive?.contentOrNull?.trim()
         }.getOrNull()
     }
+
+    /**
+     * Whether Android will let Verza start an install at all.
+     *
+     * From Android 8 an app needs "install unknown apps" granted to it specifically. Without it the
+     * installer opens and immediately refuses, which reads as the update being broken rather than as
+     * a permission being missing, so it is worth asking first.
+     */
+    fun canInstall(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            context.packageManager.canRequestPackageInstalls()
+
+    /** Send the user to the one settings page that can grant it. */
+    fun requestInstallPermission(): Boolean = runCatching {
+        val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+            .setData(Uri.parse("package:${context.packageName}"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        true
+    }.getOrDefault(false)
 
     /** Hand [apk] to the system installer. Returns false if the OS refuses to start it. */
     fun install(apk: File): Boolean = runCatching {
