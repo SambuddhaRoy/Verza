@@ -45,6 +45,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.widthIn
+import com.verza.ui.expressive.readableWidth
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -168,10 +170,16 @@ fun SettingsScreen(
         }
     }
 
+    // A settings row stretched across a thirteen inch tablet is one enormous line with a switch
+    // marooned at the far end. The column stops growing and centres instead.
+    Box(
+        modifier = modifier.fillMaxSize().background(colors.container),
+        contentAlignment = Alignment.TopCenter,
+    ) {
     LazyColumn(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .background(colors.container)
+            .widthIn(max = readableWidth())
             .windowInsetsPadding(WindowInsets.systemBars),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
     ) {
@@ -428,6 +436,7 @@ fun SettingsScreen(
             }
             item { VersionCard() }
         }
+    }
     }
 
     if (confirmResetStats) {
