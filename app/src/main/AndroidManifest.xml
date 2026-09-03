@@ -44,9 +44,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Verza">
 
+        <!-- configChanges: handle resizes rather than being destroyed by them. Unfolding a
+             phone or rotating a tablet was tearing the Activity down and building it again,
+             which is a visible reload in the middle of whatever you were doing. Compose reads
+             the new configuration and recomposes, and there are no orientation-specific
+             resources here for the framework to need to reload. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|keyboardHidden|uiMode"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Verza.Starting"
             android:windowSoftInputMode="adjustResize">

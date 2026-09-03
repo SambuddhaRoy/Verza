@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -100,6 +102,45 @@ fun ExpressiveNavBar(
     }
 }
 
+/**
+ * The same navigation, down the side.
+ *
+ * A bottom bar on a tablet puts every destination as far from your hands as the layout allows and
+ * spends a full-width strip of a large screen saying four words. On anything wider than a phone
+ * the destinations move to a rail, which is both closer to where a tablet is held and out of the
+ * way of the content.
+ *
+ * The pills are the ones the bottom bar uses, so the selected tab still opens to carry its label
+ * and the two layouts are recognisably the same control rather than two designs.
+ */
+@Composable
+fun ExpressiveNavRail(
+    destinations: List<NavDestination>,
+    currentRoute: String?,
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalExpressiveColors.current
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .windowInsetsPadding(WindowInsets.systemBars)
+            .padding(horizontal = 10.dp, vertical = 12.dp)
+            .clip(ShapeExtraLargeIncreased)
+            .background(colors.surface)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        destinations.forEach { d ->
+            NavPill(
+                destination = d,
+                selected = currentRoute == d.route,
+                onClick = { onNavigate(d.route) },
+            )
+        }
+    }
+}
 @Composable
 private fun NavPill(
     destination: NavDestination,

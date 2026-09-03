@@ -87,7 +87,13 @@ private fun FeatureRow(
                 subtitle = item.subtitle,
                 artworkUrl = item.thumbnailUrl,
                 onClick = { onItemClick(item) },
-                width = 208.dp,
+                // Bigger where there is room. A phone-sized card on a tablet is not wrong so much
+                // as timid: it fits eight across and reads as a list of thumbnails.
+                width = when (windowClass()) {
+                    WindowClass.COMPACT -> 208.dp
+                    WindowClass.MEDIUM -> 244.dp
+                    WindowClass.EXPANDED -> 280.dp
+                },
                 aspect = 1f,
                 modifier = if (onItemLongPress == null) Modifier else Modifier.combinedClickable(
                     onClick = { onItemClick(item) },
@@ -117,7 +123,11 @@ private fun StandardRow(
                 subtitle = item.subtitle,
                 artworkUrl = item.thumbnailUrl,
                 onClick = { onItemClick(item) },
-                width = if (wide) 200.dp else 152.dp,
+                width = when (windowClass()) {
+                    WindowClass.COMPACT -> if (wide) 200.dp else 152.dp
+                    WindowClass.MEDIUM -> if (wide) 232.dp else 178.dp
+                    WindowClass.EXPANDED -> if (wide) 264.dp else 200.dp
+                },
                 aspect = if (wide) 1.32f else 1f,
                 modifier = if (onItemLongPress == null) Modifier else Modifier.combinedClickable(
                     onClick = { onItemClick(item) },
@@ -149,7 +159,9 @@ private fun ListRow(
     ) {
         items(columns) { column ->
             Column(
-                modifier = Modifier.width(300.dp),
+                // Wider columns on a wider window, so a list section fills the row rather than
+                // repeating a phone-width card across a tablet.
+                modifier = Modifier.width(if (windowClass() == WindowClass.COMPACT) 300.dp else 380.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 for (item in column) {

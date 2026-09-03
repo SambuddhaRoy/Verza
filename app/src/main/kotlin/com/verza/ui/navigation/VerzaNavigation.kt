@@ -18,6 +18,9 @@ import com.verza.data.UpdateRepository
 import com.verza.ui.expressive.ChangelogSheet
 import com.verza.ui.expressive.UpdateAvailableSheet
 import com.verza.ui.screens.SettingsViewModel
+import androidx.compose.foundation.layout.Row
+import com.verza.ui.expressive.ExpressiveNavRail
+import com.verza.ui.expressive.useNavigationRail
 import com.verza.ui.expressive.ExpressiveMiniPlayer
 import com.verza.ui.expressive.ExpressiveNavBar
 import com.verza.ui.expressive.NavDestination
@@ -183,14 +186,50 @@ fun VerzaNavigation(
         }
     }
 
+    // Switching tabs, shared by the bottom bar and the rail, so widening the window changes where
+    // navigation is drawn and nothing about how it behaves.
+    val onSelectTab: (String) -> Unit = onSelect@{ route ->
+        val screen = SCREEN_FOR_ROUTE[route] ?: return@onSelect
+        if (currentRoute == screen.route) return@onSelect
+        // Two-phase nav for tab taps:
+        // 1. If the target tab is already in the back stack (the common case for Home, which is the
+        //    start destination and always present), pop straight back to it. This is the only path
+        //    that reliably "goes home" from a deep destination like Settings or Now Playing; the
+        //    navigate + popUpTo + restoreState combo silently no-op'd in that case.
+        // 2. Otherwise, navigate fresh, anchored under Home so the stack stays flat.
+        val popped = navController.popBackStack(screen.route, inclusive = false)
+        if (popped) return@onSelect
+        navController.navigate(screen.route) {
+            popUpTo(Screen.Home.route) {
+                saveState = true
+                inclusive = false
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    // A bottom bar on a tablet puts every destination as far from your hands as the layout allows
+    // and spends a full-width strip saying four words, so anything wider than a phone gets a rail
+    // instead. The mini player stays along the bottom of the content either way: it belongs to what
+    // is playing rather than to navigation.
+    val showChrome = !isChromeHidden && !immersiveNowPlaying
+    val rail = showChrome && useNavigationRail()
+
+    Row(modifier = modifier) {
+    if (rail) {
+        ExpressiveNavRail(
+            destinations = EXPRESSIVE_NAV,
+            currentRoute = currentRoute,
+            onNavigate = onSelectTab,
+        )
+    }
     Scaffold(
-        modifier = modifier,
+        modifier = Modifier.weight(1f),
         containerColor = Color.Transparent,
         bottomBar = {
-            // Hide the entire bottom chrome (mini-player + nav) on Onboarding/Login so the
-            // pre-app screens get the full canvas. AnimatedVisibility on each piece keeps the
-            // re-appear smooth on exit from onboarding.
-            if (!isChromeHidden && !immersiveNowPlaying) Column {
+            // Hidden entirely on Onboarding and Login so the pre-app screens get the full canvas.
+            if (showChrome) Column {
                 AnimatedVisibility(
                     visible = showMiniPlayer,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
@@ -212,32 +251,13 @@ fun VerzaNavigation(
                         onTogglePlay = { playbackViewModel.togglePlay() },
                     )
                 }
-                ExpressiveNavBar(
-                    destinations = EXPRESSIVE_NAV,
-                    currentRoute = currentRoute,
-                    onNavigate = { route ->
-                        val screen = SCREEN_FOR_ROUTE[route] ?: return@ExpressiveNavBar
-                        if (currentRoute == screen.route) return@ExpressiveNavBar
-                        // Two-phase nav for bottom-bar taps:
-                        // 1. If the target tab is already in the back stack (the common case for
-                        //    Home — it's the start destination, always present), pop straight back
-                        //    to it. This is the only path that reliably "goes home" from a deep
-                        //    destination like Settings or Now Playing; the previous navigate(…)
-                        //    + popUpTo + restoreState combo silently no-op'd in that case.
-                        // 2. Otherwise (e.g. tapping Search for the first time), navigate fresh,
-                        //    anchored under Home so the stack stays flat across tab switches.
-                        val popped = navController.popBackStack(screen.route, inclusive = false)
-                        if (popped) return@ExpressiveNavBar
-                        navController.navigate(screen.route) {
-                            popUpTo(Screen.Home.route) {
-                                saveState = true
-                                inclusive = false
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                )
+                if (!rail) {
+                    ExpressiveNavBar(
+                        destinations = EXPRESSIVE_NAV,
+                        currentRoute = currentRoute,
+                        onNavigate = onSelectTab,
+                    )
+                }
             }
         },
     ) { innerPadding ->
@@ -542,6 +562,7 @@ fun VerzaNavigation(
             }
         }
       }
+    }
     }
 
     // A YouTube song was shared into Verza (Share → Verza, or a youtu.be link). Play it and jump
