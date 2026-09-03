@@ -105,6 +105,15 @@ fun VerzaNavigation(
     val noticesVm: SettingsViewModel = hiltViewModel()
     var changelog by remember { mutableStateOf<Pair<String, String>?>(null) }
     var updateOffer by remember { mutableStateOf<UpdateRepository.Release?>(null) }
+    val updateState by noticesVm.updateState.collectAsStateWithLifecycle()
+
+    // The download finishing is the cue to install, not another button. Accepting an update once
+    // should be enough; Android still asks for its own confirmation, and that is the one step an
+    // app is not allowed to skip.
+    LaunchedEffect(updateState) {
+        val ready = updateState as? SettingsViewModel.UpdateState.Ready ?: return@LaunchedEffect
+        noticesVm.installUpdate(ready.file)
+    }
 
     LaunchedEffect(Unit) {
         val installed = com.verza.BuildConfig.VERSION_NAME
@@ -239,9 +248,18 @@ fun VerzaNavigation(
           UpdateAvailableSheet(
               version = release.version,
               notes = release.notes,
+              progress = (updateState as? SettingsViewModel.UpdateState.Downloading)?.progress,
+              installing = updateState is SettingsViewModel.UpdateState.Ready,
+              error = (updateState as? SettingsViewModel.UpdateState.Failed)?.message,
               onUpdate = {
-                  updateOffer = null
-                  navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+                  // Ask for the install permission before spending a download on a file Android
+                  // will refuse to open. The sheet stays put, so the button still works on the way
+                  // back from that settings page.
+                  if (noticesVm.canInstallUpdates()) {
+                      noticesVm.downloadUpdate(release)
+                  } else {
+                      noticesVm.requestInstallPermission()
+                  }
               },
               onLater = {
                   noticesVm.setDismissedUpdateVersion(release.version)

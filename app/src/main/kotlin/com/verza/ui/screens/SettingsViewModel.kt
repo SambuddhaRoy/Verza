@@ -154,6 +154,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Whether Android will let us start an install without sending the user to settings first. */
+    fun canInstallUpdates(): Boolean = updates.canInstall()
+
+    /** Opens the "install unknown apps" page for Verza. */
+    fun requestInstallPermission() { updates.requestInstallPermission() }
+
     fun installUpdate(file: java.io.File) {
         if (!updates.install(file)) {
             _updateState.value = UpdateState.Failed("Android would not open the installer")

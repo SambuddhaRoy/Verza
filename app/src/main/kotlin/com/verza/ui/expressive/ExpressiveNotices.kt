@@ -98,14 +98,73 @@ fun ChangelogSheet(
 }
 
 /**
+ * A labelled bar. [fraction] null means "working, no idea how long", which is the honest state
+ * while the system installer is being handed the file.
+ */
+@Composable
+private fun Progress(label: String, fraction: Float?, colors: ExpressiveColors) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = BodyStrong, color = colors.onSurface, modifier = Modifier.weight(1f))
+            if (fraction != null) {
+                Text("${(fraction * 100).toInt()}%", style = BodyText, color = colors.onSurfaceMuted)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(PillShape)
+                .background(colors.surfaceHigh),
+        ) {
+            if (fraction != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                        .height(8.dp)
+                        .clip(PillShape)
+                        .background(colors.accent),
+                )
+            } else {
+                androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(PillShape),
+                    color = colors.accent,
+                    trackColor = colors.surfaceHigh,
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Keep Verza open until this finishes",
+            style = BodyText,
+            color = colors.onSurfaceMuted,
+        )
+    }
+}
+/**
  * Shown when a newer release exists. Deliberately not a nag: it offers the update and a way to say
  * not now, and the caller remembers the answer so the same version is not offered again.
+ *
+ * Saying yes does the whole thing from here. It used to send you to Settings to find the same offer
+ * a second time and press download, then find it a third time and press install; three taps in two
+ * places to accept something you had already accepted. Now the only thing left for you to do is the
+ * one step Android will not let an app skip, which is confirming the install itself.
+ *
+ * [progress] is null until a download starts, then runs 0 to 1. [installing] covers the moment
+ * between the file landing and the system installer appearing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateAvailableSheet(
     version: String,
     notes: String,
+    progress: Float?,
+    installing: Boolean,
+    error: String?,
     onUpdate: () -> Unit,
     onLater: () -> Unit,
 ) {
@@ -143,47 +202,54 @@ fun UpdateAvailableSheet(
 
             Spacer(Modifier.height(18.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp)
-                        .clip(PillShape)
-                        .background(colors.container)
-                        .clickable(onClick = onLater),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("Not now", style = BodyStrong, color = colors.onContainer)
-                }
-                Row(
-                    modifier = Modifier
-                        .weight(1.4f)
-                        .height(56.dp)
-                        .clip(PillShape)
-                        .background(colors.accent)
-                        .clickable(onClick = onUpdate)
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
+            if (error != null) {
+                Text(error, style = BodyText, color = colors.onSurfaceMuted)
+                Spacer(Modifier.height(12.dp))
+            }
+
+            when {
+                installing -> Progress("Opening the installer", null, colors)
+                progress != null -> Progress("Downloading", progress, colors)
+                else -> Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    androidx.compose.material3.Icon(
-                        Icons.Filled.Download,
-                        contentDescription = null,
-                        tint = colors.onAccent,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(Modifier.size(8.dp))
-                    // "See update", not "Update": this hands off to Settings, where the download and
-                    // its progress live. Labelling it as the download itself would be a lie by one tap.
-                    Text(
-                        "See update",
-                        style = BodyStrong.copy(fontWeight = FontWeight.Bold),
-                        color = colors.onAccent,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .clip(PillShape)
+                            .background(colors.container)
+                            .clickable(onClick = onLater),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Not now", style = BodyStrong, color = colors.onContainer)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .weight(1.4f)
+                            .height(56.dp)
+                            .clip(PillShape)
+                            .background(colors.accent)
+                            .clickable(onClick = onUpdate)
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.Icon(
+                            Icons.Filled.Download,
+                            contentDescription = null,
+                            tint = colors.onAccent,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            if (error != null) "Try again" else "Update",
+                            style = BodyStrong.copy(fontWeight = FontWeight.Bold),
+                            color = colors.onAccent,
+                        )
+                    }
                 }
             }
 
