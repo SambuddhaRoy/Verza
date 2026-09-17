@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pause, rounded, at 36dp.
+     Generated; the widgets tint it at runtime, so it is drawn in plain white. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8,5h1.5a1.5,1.5 0 0,1 1.5,1.5v11a1.5,1.5 0 0,1 -1.5,1.5H8a1.5,1.5 0 0,1 -1.5,-1.5v-11A1.5,1.5 0 0,1 8,5zM14.5,5H16a1.5,1.5 0 0,1 1.5,1.5v11A1.5,1.5 0 0,1 16,19h-1.5a1.5,1.5 0 0,1 -1.5,-1.5v-11A1.5,1.5 0 0,1 14.5,5z" />
+</vector>

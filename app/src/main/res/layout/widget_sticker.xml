@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sticker: the cover as a scalloped badge on a spiky burst, a crooked title tag slapped on the
+     corner, and play as a clover peeling off the other one. No background: it sits on the wallpaper
+     like a sticker would, so every loose shape has a cream die-cut rim to stay visible on any
+     wallpaper, light or dark. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:rotation="7"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_shape_burst"
+        android:tint="@color/widget_paper" />
+
+    <ImageView
+        android:id="@+id/widget_burst"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="5dp"
+        android:importantForAccessibility="no"
+        android:rotation="7"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_shape_burst"
+        android:tint="@color/widget_container" />
+
+    <ImageView
+        android:id="@+id/widget_cover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="26dp"
+        android:importantForAccessibility="no"
+        android:rotation="-6"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_cover_cookie12" />
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="2dp"
+        android:layout_marginTop="14dp"
+        android:rotation="-9">
+
+        <!-- The rim is also what makes the pill draw at all: a wrap_content FrameLayout only stretches
+             match_parent children to its size when there are at least two of them. -->
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_shape_pill"
+            android:tint="@color/widget_paper" />
+
+        <ImageView
+            android:id="@+id/widget_tag_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="3dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_shape_pill"
+            android:tint="@color/widget_tertiary" />
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-black"
+            android:maxLines="1"
+            android:maxWidth="136dp"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="9dp"
+            android:text="@string/widget_nothing_playing"
+            android:textAllCaps="true"
+            android:textColor="@color/widget_on_tertiary"
+            android:textSize="12sp" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="bottom|end"
+        android:rotation="12">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:src="@drawable/widget_shape_clover4"
+            android:tint="@color/widget_paper" />
+
+        <ImageView
+            android:id="@+id/widget_toggle_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="4dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/widget_shape_clover4"
+            android:tint="@color/widget_accent" />
+
+        <ImageView
+            android:id="@+id/widget_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/widget_play"
+            android:padding="20dp"
+            android:rotation="-12"
+            android:src="@drawable/ic_widget_play"
+            android:tint="@color/widget_on_accent" />
+    </FrameLayout>
+</FrameLayout>

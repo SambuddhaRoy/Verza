@@ -1,71 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Deliberately plain. A widget is drawn by the launcher's process against the launcher's theme,
-     so the cover-derived palette the rest of the app uses is not available here; trying to fake it
-     produces something that matches neither Verza nor the home screen. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Strip: a pill in the cover's colour, the art punched into a cookie, and a flower for play.
+     Shapes are white drawables tinted at runtime; the android:tint values here are only what the
+     picker preview shows. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:padding="12dp">
+    android:layout_height="match_parent">
 
     <ImageView
-        android:id="@+id/widget_cover"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:contentDescription="@string/app_name"
-        android:scaleType="centerCrop" />
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_pill"
+        android:tint="@color/widget_container" />
 
     <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
 
-        <TextView
-            android:id="@+id/widget_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+        <ImageView
+            android:id="@+id/widget_cover"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_cover_cookie9" />
 
-        <TextView
-            android:id="@+id/widget_artist"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="#B3FFFFFF"
-            android:textSize="13sp" />
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="serif"
+                android:maxLines="1"
+                android:text="@string/widget_nothing_playing"
+                android:textColor="@color/widget_on_container"
+                android:textSize="19sp"
+                android:textStyle="italic" />
+
+            <TextView
+                android:id="@+id/widget_artist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:textColor="@color/widget_on_container_muted"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp">
+
+            <ImageView
+                android:id="@+id/widget_previous_bg"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no"
+                android:src="@drawable/widget_shape_circle"
+                android:tint="@color/widget_surface" />
+
+            <ImageView
+                android:id="@+id/widget_previous"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/widget_previous"
+                android:padding="10dp"
+                android:src="@drawable/ic_widget_previous"
+                android:tint="@color/widget_on_surface" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp">
+
+            <ImageView
+                android:id="@+id/widget_toggle_bg"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no"
+                android:src="@drawable/widget_shape_flower8"
+                android:tint="@color/widget_accent" />
+
+            <ImageView
+                android:id="@+id/widget_toggle"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/widget_play"
+                android:padding="17dp"
+                android:src="@drawable/ic_widget_play"
+                android:tint="@color/widget_on_accent" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp">
+
+            <ImageView
+                android:id="@+id/widget_next_bg"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no"
+                android:src="@drawable/widget_shape_circle"
+                android:tint="@color/widget_surface" />
+
+            <ImageView
+                android:id="@+id/widget_next"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/widget_next"
+                android:padding="10dp"
+                android:src="@drawable/ic_widget_next"
+                android:tint="@color/widget_on_surface" />
+        </FrameLayout>
     </LinearLayout>
-
-    <ImageView
-        android:id="@+id/widget_previous"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:contentDescription="Previous"
-        android:padding="8dp"
-        android:src="@drawable/ic_widget_previous" />
-
-    <ImageView
-        android:id="@+id/widget_toggle"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:contentDescription="Play or pause"
-        android:padding="8dp"
-        android:src="@drawable/ic_tile_play" />
-
-    <ImageView
-        android:id="@+id/widget_next"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:contentDescription="Next"
-        android:padding="8dp"
-        android:src="@drawable/ic_widget_next" />
-</LinearLayout>
+</FrameLayout>

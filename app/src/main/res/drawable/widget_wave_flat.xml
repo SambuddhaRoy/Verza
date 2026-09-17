@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The squiggle at rest: paused is a flat line.
+     Generated; the widgets tint it at runtime, so it is drawn in plain white. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="24dp"
+    android:viewportWidth="240"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4,12Q10.44,12 16.89,12Q23.33,12 29.78,12Q36.22,12 42.67,12Q49.11,12 55.56,12Q62,12 68.44,12Q74.89,12 81.33,12Q87.78,12 94.22,12Q100.67,12 107.11,12Q113.56,12 120,12Q126.44,12 132.89,12Q139.33,12 145.78,12Q152.22,12 158.67,12Q165.11,12 171.56,12Q178,12 184.44,12Q190.89,12 197.33,12Q203.78,12 210.22,12Q216.67,12 223.11,12Q229.56,12 236,12" />
+</vector>

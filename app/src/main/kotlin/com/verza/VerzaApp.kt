@@ -7,6 +7,7 @@ import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.verza.data.CrashLog
+import com.verza.data.PreferencesRepository
 import com.verza.data.YouTubeSync
 import com.verza.di.ApplicationScope
 import com.verza.playback.BrowseTreePublisher
@@ -15,6 +16,7 @@ import com.verza.player.NowPlayingBridge
 import com.verza.widget.NowPlayingWidgetUpdater
 import com.verza.widget.WidgetState
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -34,6 +36,9 @@ class VerzaApp : Application(), SingletonImageLoader.Factory {
     lateinit var youTubeSync: YouTubeSync
 
     @Inject
+    lateinit var preferences: PreferencesRepository
+
+    @Inject
     @ApplicationScope
     lateinit var scope: CoroutineScope
 
@@ -49,18 +54,23 @@ class VerzaApp : Application(), SingletonImageLoader.Factory {
         // Keep the home-screen widget in step. Done at process scope rather than from an Activity,
         // because the widget has to stay right while the app is nowhere on screen — which is most
         // of the time anyone looks at it.
+        // The theme choices ride along so the widgets recolour when the app does.
         scope.launch {
-            NowPlayingBridge.nowPlaying.collect { np ->
-                NowPlayingWidgetUpdater.publish(
-                    context = this@VerzaApp,
-                    scope = scope,
-                    state = WidgetState(
-                        title = np?.title.orEmpty(),
-                        artist = np?.artist.orEmpty(),
-                        artworkUrl = np?.artworkUri,
-                        isPlaying = np?.isPlaying == true,
-                    ),
+            combine(
+                NowPlayingBridge.nowPlaying,
+                preferences.colorFlavourFlow,
+                preferences.accentSourceFlow,
+            ) { np, flavour, accentSource ->
+                WidgetState(
+                    title = np?.title.orEmpty(),
+                    artist = np?.artist.orEmpty(),
+                    artworkUrl = np?.artworkUri,
+                    isPlaying = np?.isPlaying == true,
+                    flavour = flavour,
+                    accentSource = accentSource,
                 )
+            }.collect { state ->
+                NowPlayingWidgetUpdater.publish(context = this@VerzaApp, scope = scope, state = state)
             }
         }
     }
