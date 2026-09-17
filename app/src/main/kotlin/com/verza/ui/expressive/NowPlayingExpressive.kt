@@ -1,5 +1,16 @@
 package com.verza.ui.expressive
 
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.LookaheadScope
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.RepeatMode
@@ -156,6 +167,7 @@ fun NowPlayingExpressive(
     val colors = LocalExpressiveColors.current
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val queueWidth = animatedReadableWidth()
 
     LazyColumn(
         state = listState,
@@ -200,7 +212,15 @@ fun NowPlayingExpressive(
         }
 
         item(key = "queue-header") {
-            Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 10.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentWidth()
+                    .widthIn(max = queueWidth)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 10.dp),
+            ) {
                 Text("UP NEXT", style = MetaLabel, color = colors.onContainerMuted)
                 Spacer(Modifier.height(4.dp))
                 Text("Queue", style = HeroTitle, color = colors.onContainer)
@@ -208,7 +228,15 @@ fun NowPlayingExpressive(
         }
 
         itemsIndexed(queue, key = { i, item -> "q-$i-${item.mediaId}" }) { index, item ->
-            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentWidth()
+                    .widthIn(max = queueWidth)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                    .padding(horizontal = 20.dp, vertical = 2.dp),
+            ) {
                 ExpressiveListItem(
                     title = item.title,
                     subtitle = item.artist,
@@ -231,7 +259,14 @@ fun NowPlayingExpressive(
             }
         }
 
-        item(key = "queue-tail") { Spacer(Modifier.height(24.dp)) }
+        // The foot of the queue clears the navigation bar, so the last track is not sitting under the
+        // buttons on a device that has them.
+        item(key = "queue-tail") {
+            Column {
+                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+            }
+        }
     }
 }
 
@@ -311,6 +346,20 @@ private fun PlayerPane(
     // column it has always been; on a wide window the artwork takes one half and everything else
     // the other, because a tall column of controls on a landscape tablet leaves the cover small
     // and most of the screen empty.
+    val twoPane = useTwoPane()
+    // The boost lets the cover crowd the title on a phone, which is the look. Beside the controls on
+    // a landscape screen it only runs the art off the top and bottom edges, and on a portrait tablet
+    // it pushes the cover wider than the controls and into the header buttons. So it is phone-only,
+    // and it eases out as the layout changes instead of switching off with a jump. Read inside the
+    // graphics layer, so the animation repaints without recomposing.
+    val boostCover = !twoPane && deviceSize() == DeviceSize.PHONE
+    val coverBoost by animateFloatAsState(
+        targetValue = if (boostCover) COVER_BOOST else 1f,
+        animationSpec = ExpressiveMotion.spatialSlow(),
+        label = "coverBoost",
+    )
+    val controlsScroll = rememberScrollState()
+
     val header: @Composable () -> Unit = {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -350,6 +399,10 @@ private fun PlayerPane(
             // One measurement of the slot, turned into an explicit side length. Everything below is
             // sized from this rather than from a fill modifier, so nothing the image does can change it.
             val side = if (maxWidth < maxHeight) maxWidth else maxHeight
+            // The boost only grows into spare height. On a short screen (a folded Fold, a phone with
+            // button navigation) the cover already fills the slot's height, and the full boost ran it
+            // over the back button and behind the title.
+            val boostRoom = maxHeight / side
             // Keyed on the track alone. Keyed on the url as well, this ran twice per skip: once when
             // the track changed and the metadata thumbnail arrived, and again when the high-resolution
             // art resolved a moment later — so the cover swiped in, then swiped in again.
@@ -386,8 +439,9 @@ private fun PlayerPane(
                         // silhouettes on every track, which drew attention to itself rather than to
                         // the artwork, and the artwork is the thing worth looking at.
                         .graphicsLayer {
-                            scaleX = COVER_BOOST
-                            scaleY = COVER_BOOST
+                            val boost = coverBoost.coerceAtMost(boostRoom)
+                            scaleX = boost
+                            scaleY = boost
                             shape = ShapeExtraLarge
                             clip = true
                         }
@@ -592,41 +646,92 @@ private fun PlayerPane(
             QueueHint(count = queueCount, onClick = onShowQueue)
     }
 
-    if (useTwoPane()) {
-        Row(
+    // One adaptive layout, not a Row in one orientation and a Column in the other.
+    //
+    // Switching between two different parents threw the header, the cover and the controls away and
+    // built them again on every rotation, so nothing could move from where it was to where it was
+    // going: the artwork reloaded and the screen cut to a new arrangement. Here the three pieces never
+    // change parent, only where this layout places them, and each springs from its old bounds to its
+    // new ones. Rotating a tablet or opening a fold rearranges the player in front of you.
+    LookaheadScope {
+        val headerSlot: @Composable () -> Unit = {
+            Box(Modifier.animateBoundsIn(this@LookaheadScope)) { header() }
+        }
+        val artworkSlot: @Composable () -> Unit = {
+            Box(Modifier.animateBoundsIn(this@LookaheadScope)) { artworkPane(Modifier.fillMaxSize()) }
+        }
+        val controlsSlot: @Composable () -> Unit = {
+            Column(
+                modifier = Modifier
+                    .animateBoundsIn(this@LookaheadScope)
+                    // Only ever scrolls when the controls genuinely do not fit, which is a phone on
+                    // its side. Everywhere else they are shorter than their slot and this is inert.
+                    .verticalScroll(controlsScroll),
+            ) { controls() }
+        }
+
+        Layout(
+            contents = listOf(headerSlot, artworkSlot, controlsSlot),
             modifier = modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.systemBars)
+                // safeDrawing rather than systemBars, so a camera cutout in landscape does not sit
+                // on top of the artwork.
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            artworkPane(Modifier.weight(1f).fillMaxHeight())
-            Column(
-                modifier = Modifier.weight(1f),
-                // Centred rather than filling: the controls are shorter than the cover is tall,
-                // and spreading them to match would put the transport buttons somewhere arbitrary.
-                verticalArrangement = Arrangement.Center,
-            ) {
-                header()
-                controls()
+        ) { (headerMeasurables, artworkMeasurables, controlsMeasurables), constraints ->
+            val width = constraints.maxWidth
+            val height = if (constraints.hasBoundedHeight) constraints.maxHeight else (width * 1.8f).toInt()
+
+            if (twoPane) {
+                val gap = 24.dp.roundToPx()
+                val half = ((width - gap) / 2).coerceAtLeast(0)
+                // The controls stop growing at a comfortable width and centre in their half, so the
+                // transport buttons do not spread to the edges of a thirteen inch screen.
+                val column = minOf(half, 560.dp.roundToPx())
+                val header = headerMeasurables.first().measure(Constraints.fixedWidth(column))
+                val controls = controlsMeasurables.first().measure(
+                    Constraints(
+                        minWidth = column,
+                        maxWidth = column,
+                        maxHeight = (height - header.height).coerceAtLeast(0),
+                    ),
+                )
+                val artwork = artworkMeasurables.first().measure(Constraints.fixed(half, height))
+                // The header and controls sit as one group, centred against the cover beside them.
+                val group = header.height + controls.height
+                val top = ((height - group) / 2).coerceAtLeast(0)
+                val left = half + gap + (half - column) / 2
+                layout(width, height) {
+                    artwork.place(0, 0)
+                    header.place(left, top)
+                    controls.place(left, top + header.height)
+                }
+            } else {
+                val gap = 8.dp.roundToPx()
+                // On a phone this is the full width, exactly as before. On a tablet held upright the
+                // cover and controls stop at a size that still reads as a player rather than a
+                // poster, and centre.
+                val column = minOf(width, 620.dp.roundToPx())
+                val left = (width - column) / 2
+                val header = headerMeasurables.first().measure(Constraints.fixedWidth(width))
+                val controls = controlsMeasurables.first().measure(
+                    Constraints(
+                        minWidth = column,
+                        maxWidth = column,
+                        maxHeight = (height - header.height).coerceAtLeast(0),
+                    ),
+                )
+                // The cover takes whatever height is left between the header and the controls,
+                // which is what the weighted slot used to do.
+                val artworkHeight = (height - header.height - gap - controls.height).coerceAtLeast(0)
+                val artwork = artworkMeasurables.first().measure(Constraints.fixed(column, artworkHeight))
+                layout(width, height) {
+                    header.place(0, 0)
+                    artwork.place(left, header.height + gap)
+                    controls.place(left, height - controls.height)
+                }
             }
         }
-    } else {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.systemBars)
-            .padding(horizontal = 20.dp),
-    ) {
-        header()
-
-        Spacer(Modifier.height(8.dp))
-
-        artworkPane(Modifier.fillMaxWidth().weight(1f))
-
-        controls()
-    }
     }
 }
 
@@ -657,7 +762,8 @@ private fun OutputChip(colors: ExpressiveColors) {
         modifier = Modifier
             .scale(scale)
             .heightIn(min = 50.dp)
-            .widthIn(max = 168.dp)
+            // Room for "Phone speaker" and most headphone names; 168 cut even the built-in speaker off.
+            .widthIn(max = 240.dp)
             .clip(PillShape)
             .background(container)
             .clickable(interactionSource = interaction, indication = null) {

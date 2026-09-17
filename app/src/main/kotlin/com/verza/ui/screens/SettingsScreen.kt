@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,7 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.widthIn
-import com.verza.ui.expressive.readableWidth
+import com.verza.ui.expressive.animatedReadableWidth
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -178,8 +179,10 @@ fun SettingsScreen(
     ) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
-            .widthIn(max = readableWidth())
+            // Width after the cap: fillMaxSize first fixes the width to the screen and the cap never bites.
+            .fillMaxHeight()
+            .widthIn(max = animatedReadableWidth())
+            .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.systemBars),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
     ) {

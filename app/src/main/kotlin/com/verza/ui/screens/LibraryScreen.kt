@@ -1,5 +1,10 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import com.verza.ui.expressive.animatedReadableWidth
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -111,6 +116,11 @@ fun LibraryScreen(
         modifier = modifier
             .fillMaxSize()
             .background(xc.container)
+            // Capped and centred as a whole, so a row on a tablet is not a thumbnail followed by an
+            // acre, and the header, chips and lists keep one left edge.
+            .wrapContentWidth()
+            .widthIn(max = animatedReadableWidth())
+            .fillMaxWidth()
             .padding(top = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -157,6 +167,7 @@ fun LibraryScreen(
                         "Download songs to listen offline",
                     )
                 LibraryTab.PLAYLISTS -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
@@ -275,6 +286,7 @@ private fun SongList(
         return
     }
     LazyColumn(
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -356,6 +368,7 @@ private fun CollectionList(
     circularArt: Boolean = false,
 ) {
     LazyColumn(
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {

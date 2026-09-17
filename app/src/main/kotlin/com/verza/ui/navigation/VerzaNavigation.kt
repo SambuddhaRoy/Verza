@@ -1,5 +1,21 @@
 package com.verza.ui.navigation
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.Alignment
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.*
@@ -21,6 +37,7 @@ import com.verza.ui.screens.SettingsViewModel
 import androidx.compose.foundation.layout.Row
 import com.verza.ui.expressive.ExpressiveNavRail
 import com.verza.ui.expressive.useNavigationRail
+import com.verza.ui.expressive.animatedDp
 import com.verza.ui.expressive.ExpressiveMiniPlayer
 import com.verza.ui.expressive.ExpressiveNavBar
 import com.verza.ui.expressive.NavDestination
@@ -216,26 +233,63 @@ fun VerzaNavigation(
     val showChrome = !isChromeHidden && !immersiveNowPlaying
     val rail = showChrome && useNavigationRail()
 
+    // Every inset is owned by exactly one thing. The status bar and the outer side edge go to the
+    // content, the bottom edge goes to the bottom chrome, and the start edge goes to the rail when
+    // there is one. Before this only the compact nav bar ever took the bottom inset, so on a tablet,
+    // where the rail replaced it, three-button navigation drew straight over the mini player and the
+    // foot of every list.
+    //
+    // The keyboard is left out on purpose. Including it would lift the whole bottom chrome above the
+    // keyboard while searching, and take the results' space with it.
+    val chromeInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
+    val bottomSides =
+        if (rail) WindowInsetsSides.Bottom + WindowInsetsSides.End
+        else WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+
     Row(modifier = modifier) {
-    if (rail) {
+    // The rail slides in while the bottom bar folds away, rather than one replacing the other in a
+    // single frame, so rotating a tablet or opening a fold reads as the app rearranging itself.
+    AnimatedVisibility(
+        visible = rail,
+        enter = expandHorizontally(ExpressiveMotion.spatialDefault()) + fadeIn(ExpressiveMotion.effectsDefault()),
+        exit = shrinkHorizontally(ExpressiveMotion.spatialDefault()) + fadeOut(ExpressiveMotion.effectsFast()),
+    ) {
         ExpressiveNavRail(
             destinations = EXPRESSIVE_NAV,
             currentRoute = currentRoute,
             onNavigate = onSelectTab,
+            modifier = Modifier.windowInsetsPadding(
+                chromeInsets.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical),
+            ),
         )
     }
     Scaffold(
         modifier = Modifier.weight(1f),
         containerColor = Color.Transparent,
+        contentWindowInsets = when {
+            // Pre-app screens and Now Playing lay out against the whole window and inset themselves.
+            // Giving them the Scaffold's insets as well padded the top of Now Playing twice.
+            !showChrome -> WindowInsets(0, 0, 0, 0)
+            rail -> chromeInsets.only(WindowInsetsSides.Top + WindowInsetsSides.End)
+            else -> chromeInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        },
         bottomBar = {
             // Hidden entirely on Onboarding and Login so the pre-app screens get the full canvas.
-            if (showChrome) Column {
+            if (showChrome) Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(chromeInsets.only(bottomSides)),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 AnimatedVisibility(
                     visible = showMiniPlayer,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200)),
                 ) {
                     ExpressiveMiniPlayer(
+                        // A mini player the width of a tablet is a very long bar with a thumbnail at
+                        // one end and a play button at the other. It stops and centres instead.
+                        modifier = Modifier.widthIn(max = 720.dp),
                         title = currentTitle,
                         artist = currentArtist,
                         isPlaying = playback.isPlaying,
@@ -251,13 +305,19 @@ fun VerzaNavigation(
                         onTogglePlay = { playbackViewModel.togglePlay() },
                     )
                 }
-                if (!rail) {
+                AnimatedVisibility(
+                    visible = !rail,
+                    enter = expandVertically(ExpressiveMotion.spatialDefault()) + fadeIn(ExpressiveMotion.effectsDefault()),
+                    exit = shrinkVertically(ExpressiveMotion.spatialDefault()) + fadeOut(ExpressiveMotion.effectsFast()),
+                ) {
                     ExpressiveNavBar(
                         destinations = EXPRESSIVE_NAV,
                         currentRoute = currentRoute,
                         onNavigate = onSelectTab,
                     )
                 }
+                // With the rail there is no bar under the mini player to hold it off the bottom edge.
+                Spacer(Modifier.height(animatedDp(if (rail) 12.dp else 0.dp, "miniPlayerGap")))
             }
         },
     ) { innerPadding ->
@@ -291,7 +351,7 @@ fun VerzaNavigation(
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
             // Two motion idioms, chosen per-navigation (see helpers at the bottom of the file):
             //  • Switching between the bottom-bar tabs uses Material **fade-through** — the
             //    outgoing screen dissolves to reveal the live glow, then the new one fades and
