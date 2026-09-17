@@ -1,5 +1,8 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
@@ -100,11 +103,20 @@ fun OnboardingScreen(
         if (step == 1 && isSignedIn) step = 2
     }
 
-    Box(modifier = modifier.fillMaxSize().background(colors.container)) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.container)
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+        // Centred and capped. Full-width buttons across a tablet are a pill the length of the screen
+        // with one word in the middle of it.
+        contentAlignment = Alignment.TopCenter,
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.systemBars)
+                .fillMaxHeight()
+                .widthIn(max = 560.dp)
+                .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 28.dp),
         ) {
             StepDots(current = step, total = 4)

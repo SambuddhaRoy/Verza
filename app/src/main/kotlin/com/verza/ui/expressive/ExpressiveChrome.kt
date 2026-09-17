@@ -84,7 +84,6 @@ fun ExpressiveNavBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 14.dp, vertical = 10.dp)
             .clip(PillShape)
             .background(colors.surface)
@@ -105,13 +104,14 @@ fun ExpressiveNavBar(
 /**
  * The same navigation, down the side.
  *
- * A bottom bar on a tablet puts every destination as far from your hands as the layout allows and
- * spends a full-width strip of a large screen saying four words. On anything wider than a phone
- * the destinations move to a rail, which is both closer to where a tablet is held and out of the
- * way of the content.
+ * Fixed width, with each label always under its icon. The first version reused the bottom bar's
+ * pill, whose label opens out sideways when selected; down a rail that meant the rail itself changed
+ * width on every tab switch, and the whole screen beside it reflowed with it. Here only the
+ * indicator behind the icon grows, inside a column that never moves.
  *
- * The pills are the ones the bottom bar uses, so the selected tab still opens to carry its label
- * and the two layouts are recognisably the same control rather than two designs.
+ * A floating pill centred on the edge rather than a slab the full height of the screen, so it reads
+ * as the same object as the bottom bar, turned on its side, and sits where a thumb reaches on a
+ * tablet held in landscape.
  */
 @Composable
 fun ExpressiveNavRail(
@@ -121,24 +121,99 @@ fun ExpressiveNavRail(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalExpressiveColors.current
-    Column(
+    Box(
         modifier = modifier
             .fillMaxHeight()
-            .windowInsetsPadding(WindowInsets.systemBars)
-            .padding(horizontal = 10.dp, vertical = 12.dp)
-            .clip(ShapeExtraLargeIncreased)
-            .background(colors.surface)
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+            .padding(start = 12.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .width(RAIL_WIDTH)
+                .clip(ShapeExtraLargeIncreased)
+                .background(colors.surface)
+                .padding(vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            destinations.forEach { d ->
+                RailItem(
+                    destination = d,
+                    selected = currentRoute == d.route,
+                    onClick = { onNavigate(d.route) },
+                )
+            }
+        }
+    }
+}
+
+private val RAIL_WIDTH = 80.dp
+
+@Composable
+private fun RailItem(
+    destination: NavDestination,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = LocalExpressiveColors.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.9f else 1f,
+        animationSpec = ExpressiveMotion.spatialFast(),
+        label = "railPress",
+    )
+    // The indicator grows sideways out of the icon, overshooting slightly and settling, inside a
+    // column whose own width is fixed.
+    val indicatorWidth by animateDpAsState(
+        targetValue = if (selected) 56.dp else 36.dp,
+        animationSpec = ExpressiveMotion.spatialDefault(),
+        label = "railIndicator",
+    )
+    val fill by animateColorAsState(
+        targetValue = if (selected) colors.accent else Color.Transparent,
+        animationSpec = ExpressiveMotion.effectsDefault(),
+        label = "railFill",
+    )
+    val iconTint by animateColorAsState(
+        targetValue = if (selected) colors.onAccent else colors.onSurfaceMuted,
+        animationSpec = ExpressiveMotion.effectsDefault(),
+        label = "railIcon",
+    )
+    val labelTint by animateColorAsState(
+        targetValue = if (selected) colors.onSurface else colors.onSurfaceMuted,
+        animationSpec = ExpressiveMotion.effectsDefault(),
+        label = "railLabel",
+    )
+
+    Column(
+        modifier = Modifier
+            .width(RAIL_WIDTH)
+            .scale(scale)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            // The visible label already names it; merging makes the item one thing to a screen
+            // reader instead of an unlabelled icon followed by some text.
+            .semantics(mergeDescendants = true) {},
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        destinations.forEach { d ->
-            NavPill(
-                destination = d,
-                selected = currentRoute == d.route,
-                onClick = { onNavigate(d.route) },
-            )
+        Box(
+            modifier = Modifier
+                .width(indicatorWidth)
+                .height(34.dp)
+                .clip(PillShape)
+                .background(fill),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(destination.icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
         }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = destination.label,
+            style = MetaLabel,
+            color = labelTint,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 @Composable
