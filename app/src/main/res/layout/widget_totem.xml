@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Totem: one column of stacked shapes. The cover as a four-leaf clover, play as a burst, next as a
+     capsule, each with a cream die-cut rim so it holds up on any wallpaper. Each piece takes a share
+     of the height, so it stretches as tall as it is made. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="2dp">
+
+    <ImageView
+        android:id="@+id/widget_cover"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.25"
+        android:importantForAccessibility="no"
+        android:rotation="-8"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_cover_clover4" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="2dp"
+        android:layout_weight="1">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_shape_burst"
+            android:tint="@color/widget_paper" />
+
+        <ImageView
+            android:id="@+id/widget_toggle_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="4dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_shape_burst"
+            android:tint="@color/widget_accent" />
+
+        <ImageView
+            android:id="@+id/widget_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/widget_play"
+            android:scaleType="center"
+            android:src="@drawable/ic_widget_play_large"
+            android:tint="@color/widget_on_accent" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="6dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="6dp"
+        android:layout_weight="0.55">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_shape_pill"
+            android:tint="@color/widget_paper" />
+
+        <ImageView
+            android:id="@+id/widget_next_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="3dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_shape_pill"
+            android:tint="@color/widget_container" />
+
+        <ImageView
+            android:id="@+id/widget_next"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/widget_next"
+            android:scaleType="center"
+            android:src="@drawable/ic_widget_next"
+            android:tint="@color/widget_on_container" />
+    </FrameLayout>
+</LinearLayout>

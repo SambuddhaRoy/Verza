@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the widgets look like in the picker and for the moment before the first real update.
+     Once a track plays, every one of these is replaced by colours taken from its cover. -->
+<resources>
+    <color name="widget_container">#FF2D1B4E</color>
+    <color name="widget_on_container">#FFF6EFFF</color>
+    <color name="widget_on_container_muted">#FFBFB0DA</color>
+    <color name="widget_surface">#FF46306E</color>
+    <color name="widget_on_surface">#FFF3EAFF</color>
+    <color name="widget_accent">#FFFF8A3D</color>
+    <color name="widget_on_accent">#FF241000</color>
+    <color name="widget_tertiary">#FFC6F432</color>
+    <color name="widget_on_tertiary">#FF1B2400</color>
+    <!-- The die-cut rim around shapes that float on the wallpaper. Fixed, not from the cover: its job
+         is to separate a shape from whatever wallpaper is behind it. -->
+    <color name="widget_paper">#FFFFF8EC</color>
+</resources>

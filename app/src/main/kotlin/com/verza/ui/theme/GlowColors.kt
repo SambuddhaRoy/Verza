@@ -147,8 +147,11 @@ private fun darkCanvasFrom(c: Color): Color {
  * Builds a full [CoverColors] palette from the cover at [url]: vibrant swatch → accent,
  * a dark swatch → tinted near-black canvas, warm near-white ink. Returns null on failure.
  */
-suspend fun extractCoverColors(context: Context, url: String): CoverColors? {
-    val bitmap = loadCoverBitmap(context, url) ?: return null
+suspend fun extractCoverColors(context: Context, url: String): CoverColors? =
+    loadCoverBitmap(context, url)?.let(::coverColorsFrom)
+
+/** [extractCoverColors] for a bitmap already in hand, such as the one the widgets load. */
+fun coverColorsFrom(bitmap: android.graphics.Bitmap): CoverColors? {
     val palette = runCatching { Palette.from(bitmap).maximumColorCount(24).generate() }.getOrNull() ?: return null
 
     val accentSwatch = palette.vibrantSwatch ?: palette.lightVibrantSwatch

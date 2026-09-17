@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_totem_description"
+    android:initialLayout="@layout/widget_totem"
+    android:minWidth="50dp"
+    android:minHeight="180dp"
+    android:minResizeWidth="50dp"
+    android:minResizeHeight="180dp"
+    android:previewLayout="@layout/widget_totem"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="1"
+    android:targetCellHeight="3"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

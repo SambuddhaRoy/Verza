@@ -1,5 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Verza</string>
-    <string name="widget_description">Now playing, with transport controls</string>
+
+    <!-- Widgets. The label is the name in the widget picker, the description the line under it. -->
+    <string name="widget_description">A pill with the cover, the song and transport controls</string>
+    <string name="widget_strip_label">Verza Strip</string>
+    <string name="widget_sticker_label">Verza Sticker</string>
+    <string name="widget_sticker_description">The cover as a badge on a burst, with a play button stuck on</string>
+    <string name="widget_poster_label">Verza Poster</string>
+    <string name="widget_poster_description">A big title, the cover in an arch and full controls</string>
+    <string name="widget_record_label">Verza Record</string>
+    <string name="widget_record_description">The cover as a record label. The arm drops on while it plays</string>
+    <string name="widget_totem_label">Verza Totem</string>
+    <string name="widget_totem_description">A tall stack: cover, play and skip</string>
+
+    <string name="widget_nothing_playing">Nothing playing</string>
+    <string name="widget_tap_to_start">Tap to open Verza</string>
+    <string name="widget_play">Play</string>
+    <string name="widget_pause">Pause</string>
+    <string name="widget_next">Next track</string>
+    <string name="widget_previous">Previous track</string>
+    <string name="widget_play_label">PLAY</string>
+    <string name="widget_pause_label">PAUSE</string>
+    <string name="widget_status_idle">READY</string>
+    <string name="widget_status_playing">NOW PLAYING</string>
+    <string name="widget_status_paused">PAUSED</string>
 </resources>

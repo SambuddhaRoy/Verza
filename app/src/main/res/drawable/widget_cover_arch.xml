@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The arch cover shape in the preview colour, for the widget picker. Generated. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:fillColor="@color/widget_tertiary"
+        android:pathData="M0,92V50A50,50 0 0,1 100,50V92Q100,100 92,100H8Q0,100 0,92Z" />
+</vector>
