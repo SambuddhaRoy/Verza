@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A squiggle, like the expressive progress indicator mid-play.
+     Generated; the widgets tint it at runtime, so it is drawn in plain white. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="24dp"
+    android:viewportWidth="240"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4,12Q10.44,5 16.89,12Q23.33,19 29.78,12Q36.22,5 42.67,12Q49.11,19 55.56,12Q62,5 68.44,12Q74.89,19 81.33,12Q87.78,5 94.22,12Q100.67,19 107.11,12Q113.56,5 120,12Q126.44,19 132.89,12Q139.33,5 145.78,12Q152.22,19 158.67,12Q165.11,5 171.56,12Q178,19 184.44,12Q190.89,5 197.33,12Q203.78,19 210.22,12Q216.67,5 223.11,12Q229.56,19 236,12" />
+</vector>

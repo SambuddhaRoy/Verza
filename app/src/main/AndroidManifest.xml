@@ -105,7 +105,8 @@
              own PendingIntents, and the transport commands would otherwise be open to any app. -->
         <receiver
             android:name="com.verza.widget.NowPlayingWidget"
-            android:exported="false">
+            android:exported="false"
+            android:label="@string/widget_strip_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.verza.widget.TOGGLE" />
@@ -115,6 +116,52 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_now_playing_info" />
+        </receiver>
+        <!-- The other widgets only draw. Their buttons send to NowPlayingWidget above, which is the
+             one receiver that handles transport. -->
+        <receiver
+            android:name="com.verza.widget.StickerWidget"
+            android:exported="false"
+            android:label="@string/widget_sticker_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_sticker_info" />
+        </receiver>
+        <receiver
+            android:name="com.verza.widget.PosterWidget"
+            android:exported="false"
+            android:label="@string/widget_poster_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_poster_info" />
+        </receiver>
+        <receiver
+            android:name="com.verza.widget.RecordWidget"
+            android:exported="false"
+            android:label="@string/widget_record_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_record_info" />
+        </receiver>
+        <receiver
+            android:name="com.verza.widget.TotemWidget"
+            android:exported="false"
+            android:label="@string/widget_totem_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_totem_info" />
         </receiver>
         <!-- Play/pause from the notification shade. BIND_QUICK_SETTINGS_TILE is what stops
              anything other than SystemUI binding this. -->

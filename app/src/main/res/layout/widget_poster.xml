@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Poster: the player in miniature. The cover in an arch, a status tag, a title that grows to fill
+     whatever height the widget is given, a squiggle that goes flat when paused, and the same
+     wide PLAY pill as the app. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_card"
+        android:tint="@color/widget_container" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:padding="14dp">
+
+        <ImageView
+            android:id="@+id/widget_cover"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:adjustViewBounds="true"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_cover_arch" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <!-- A rim, like the stickers. It is also what makes the pill draw: a wrap_content
+                     FrameLayout only stretches match_parent children when there are at least two. -->
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/widget_shape_pill"
+                    android:tint="@color/widget_paper" />
+
+                <ImageView
+                    android:id="@+id/widget_tag_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="2dp"
+                    android:importantForAccessibility="no"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/widget_shape_pill"
+                    android:tint="@color/widget_tertiary" />
+
+                <TextView
+                    android:id="@+id/widget_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-black"
+                    android:letterSpacing="0.12"
+                    android:paddingStart="12dp"
+                    android:paddingTop="5dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="@string/widget_status_idle"
+                    android:textColor="@color/widget_on_tertiary"
+                    android:textSize="10sp" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/widget_title"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="2dp"
+                android:layout_weight="1"
+                android:autoSizeMaxTextSize="44sp"
+                android:autoSizeMinTextSize="16sp"
+                android:autoSizeStepGranularity="2sp"
+                android:autoSizeTextType="uniform"
+                android:ellipsize="end"
+                android:fontFamily="serif"
+                android:gravity="bottom"
+                android:lineSpacingMultiplier="0.88"
+                android:maxLines="2"
+                android:text="@string/widget_nothing_playing"
+                android:textColor="@color/widget_on_container"
+                android:textStyle="italic" />
+
+            <TextView
+                android:id="@+id/widget_artist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:textColor="@color/widget_on_container_muted"
+                android:textSize="13sp" />
+
+            <ImageView
+                android:id="@+id/widget_wave"
+                android:layout_width="match_parent"
+                android:layout_height="12dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="8dp"
+                android:importantForAccessibility="no"
+                android:scaleType="fitXY"
+                android:src="@drawable/widget_wave_flat"
+                android:tint="@color/widget_accent" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <FrameLayout
+                    android:layout_width="46dp"
+                    android:layout_height="46dp">
+
+                    <ImageView
+                        android:id="@+id/widget_previous_bg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/widget_shape_circle"
+                        android:tint="@color/widget_surface" />
+
+                    <ImageView
+                        android:id="@+id/widget_previous"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="@string/widget_previous"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_widget_previous"
+                        android:tint="@color/widget_on_surface" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/widget_toggle"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/widget_play">
+
+                    <ImageView
+                        android:id="@+id/widget_toggle_bg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:importantForAccessibility="no"
+                        android:scaleType="fitXY"
+                        android:src="@drawable/widget_shape_pill"
+                        android:tint="@color/widget_accent" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center_vertical"
+                        android:importantForAccessibility="noHideDescendants"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/widget_toggle_icon"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_widget_play"
+                            android:tint="@color/widget_on_accent" />
+
+                        <TextView
+                            android:id="@+id/widget_toggle_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:fontFamily="sans-serif-black"
+                            android:letterSpacing="0.06"
+                            android:text="@string/widget_play_label"
+                            android:textColor="@color/widget_on_accent"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </FrameLayout>
+
+                <FrameLayout
+                    android:layout_width="46dp"
+                    android:layout_height="46dp">
+
+                    <ImageView
+                        android:id="@+id/widget_next_bg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/widget_shape_circle"
+                        android:tint="@color/widget_surface" />
+
+                    <ImageView
+                        android:id="@+id/widget_next"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="@string/widget_next"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_widget_next"
+                        android:tint="@color/widget_on_surface" />
+                </FrameLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
