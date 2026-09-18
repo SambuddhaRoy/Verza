@@ -24,6 +24,9 @@ class StatsRepository @Inject constructor(
     fun mostReplayed(limit: Int = 5): Flow<List<SongStat>> = dao.mostReplayed(limit)
     val firstPlayedAt: Flow<Long?> = dao.firstPlayedAt()
 
+    /** Every song ever played, scored by how much and how lately it has been listened to. See [Taste]. */
+    suspend fun taste(): List<Taste.ScoredSong> = Taste.songs(dao.playsWithSongs(), System.currentTimeMillis())
+
     /** Wipes all listening stats. */
     suspend fun reset() = dao.clearAll()
 

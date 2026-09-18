@@ -28,7 +28,7 @@ import javax.inject.Singleton
 
 // ── Curated mix model ────────────────────────────────────────────────────────
 
-enum class MixKind { DAYLIST, DISCOVER, RELEASE_RADAR }
+enum class MixKind { DAYLIST, DISCOVER, RELEASE_RADAR, GENRE, VIBE }
 
 /**
  * A Verza-curated playlist generated *on device* from the user's own play history plus YouTube's
@@ -63,10 +63,13 @@ class MixesRepository @Inject constructor(
     @ApplicationScope private val scope: CoroutineScope,
     private val dao: PlayEventDao,
     private val music: MusicRepository,
+    private val genres: GenreRepository,
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private val mixesKey = stringPreferencesKey("curated_mixes_v1")
-    private val attemptKey = androidx.datastore.preferences.core.longPreferencesKey("curated_mixes_attempt_v1")
+    // v2: Daylist and Discover are seeded by Taste now. A new key regenerates them straight away
+    // rather than showing the recency-seeded versions for up to a week.
+    private val mixesKey = stringPreferencesKey("curated_mixes_v2")
+    private val attemptKey = androidx.datastore.preferences.core.longPreferencesKey("curated_mixes_attempt_v2")
 
     private val _mixes = MutableStateFlow<List<CuratedMix>>(emptyList())
     val mixes: StateFlow<List<CuratedMix>> = _mixes.asStateFlow()
@@ -105,7 +108,18 @@ class MixesRepository @Inject constructor(
             val daylist = async { regenerate("daylist") { generateDaylist() } }
             val discover = async { regenerate("discover") { generateDiscover() } }
             val radar = async { regenerate("release_radar") { generateReleaseRadar() } }
-            val list = listOfNotNull(daylist.await(), discover.await(), radar.await())
+            // Genre and vibe mixes are generated together, since they share one set of lookups, and
+            // how many there are depends on the listener. Kept if a regeneration comes back empty
+            // (offline, MusicBrainz down) rather than disappearing.
+            val cachedTaste = current.values.filter { it.kind == MixKind.GENRE || it.kind == MixKind.VIBE }
+            val taste = async {
+                when {
+                    cachedTaste.isNotEmpty() && cachedTaste.none(::isStale) -> cachedTaste
+                    cachedTaste.isEmpty() && !retryMissing -> emptyList()
+                    else -> generateTasteMixes().ifEmpty { cachedTaste }
+                }
+            }
+            val list = listOfNotNull(daylist.await(), discover.await(), radar.await()) + taste.await()
             _mixes.value = list
             persist(list)
             if (retryMissing) recordAttempt()
@@ -121,12 +135,22 @@ class MixesRepository @Inject constructor(
         if (seeds.isEmpty()) seeds = dao.topSongsOnce(8).filter { isStreamable(it.id) }
         if (seeds.isEmpty()) return null
 
-        val items = LinkedHashMap<String, HomeItem>()
-        seeds.forEach { items[it.id] = it.toHomeSong() }
-        music.radio(seeds.first().id).getOrNull()?.drop(1)?.forEach { m ->
-            if (isStreamable(m.id)) items.putIfAbsent(m.id, m.toHomeSong())
+        // The daypart's favourites first, then radio from up to three of them by different artists,
+        // blended by how much each is played. Only the top seed's radio was used before, so one song
+        // decided the whole mix.
+        val radioSeeds = seeds.distinctBy { Taste.cleanArtist(it.artist).lowercase() }.take(3)
+        val radios = coroutineScope {
+            radioSeeds.map { seed ->
+                async {
+                    music.radio(seed.id).getOrDefault(emptyList()).drop(1)
+                        .filter { isStreamable(it.id) }
+                        .map { it.toHomeSong() } to seed.totalMs.toDouble()
+                }
+            }.map { it.await() }
         }
-        val list = items.values.toList().take(40)
+        val list = (seeds.map { it.toHomeSong() } + Taste.blend(radios, limit = 40) { it.videoId })
+            .distinctBy { it.videoId }
+            .take(40)
         if (list.size < 5) return null
         return CuratedMix(
             id = "daylist",
@@ -140,18 +164,21 @@ class MixesRepository @Inject constructor(
 
     /** Discover: radio seeded from your most-listened tracks, minus anything you've already heard. */
     private suspend fun generateDiscover(): CuratedMix? {
-        val seeds = dao.topSongsOnce(8).filter { isStreamable(it.id) }.take(5)
-        if (seeds.size < 2) return null
+        // One seed per favourite artist, so a single band cannot fill it. The loop used to stop once
+        // the first seed's radio had filled the mix, which meant the other four were never asked.
+        val loved = favouriteArtists().take(5)
+        if (loved.size < 2) return null
         val heard = dao.playedSongIds().toHashSet()
-        val seedIds = seeds.mapTo(hashSetOf()) { it.id }
-        val out = LinkedHashMap<String, HomeItem>()
-        for (seed in seeds) {
-            music.radio(seed.id).getOrDefault(emptyList()).drop(1).forEach { m ->
-                if (isStreamable(m.id) && m.id !in heard && m.id !in seedIds) out.putIfAbsent(m.id, m.toHomeSong())
-            }
-            if (out.size >= 45) break
+        val radios = coroutineScope {
+            loved.map { artist ->
+                async {
+                    music.radio(artist.songs.first().id).getOrDefault(emptyList()).drop(1)
+                        .filter { isStreamable(it.id) && it.id !in heard }
+                        .map { it.toHomeSong() } to artist.score
+                }
+            }.map { it.await() }
         }
-        val list = out.values.shuffled().take(30)
+        val list = Taste.blend(radios, limit = 30) { it.videoId }
         if (list.size < 8) return null
         return CuratedMix(
             id = "discover",
@@ -201,6 +228,108 @@ class MixesRepository @Inject constructor(
         )
     }
 
+    /**
+     * Playlists by genre and by vibe, built from the listener's own favourites.
+     *
+     * The top artists by [Taste] are looked up on MusicBrainz (cached for good after the first time),
+     * grouped into broad genres and into vibes, and each group weighted by how much its artists are
+     * actually played. The strongest few become mixes: the listener's favourite songs by those artists
+     * blended with radio from each, so a mix is recognisably theirs and still has new things in it.
+     */
+    private suspend fun generateTasteMixes(): List<CuratedMix> {
+        val artists = favouriteArtists().take(TASTE_ARTISTS)
+        if (artists.size < 2) return emptyList()
+        val tags = artists.associateWith { genres.tagsFor(it.name) }
+        // Nothing came back at all: offline, or MusicBrainz is down. Try again later instead of
+        // concluding the listener has no genres.
+        if (tags.values.all { it == null }) return emptyList()
+
+        val genreBuckets = Taste.buckets(artists) { a -> tags[a]?.let { Taste.genreShares(it.genres) }.orEmpty() }
+        val vibeBuckets = Taste.buckets(artists) { a -> tags[a]?.let { Taste.vibeShares(it.genres, it.tags) }.orEmpty() }
+
+        val now = System.currentTimeMillis()
+        val used = mutableSetOf<Set<String>>()
+
+        // The strongest buckets worth a mix. A bucket made of exactly the same artists as one already
+        // chosen is skipped: one band tagged both "britpop" and "rock" would otherwise be two
+        // identical playlists.
+        fun <K> strongest(buckets: List<Taste.Bucket<K>>): List<Taste.Bucket<K>> {
+            val top = buckets.firstOrNull()?.weight ?: return emptyList()
+            return buckets
+                .filter { it.weight >= top * MIN_BUCKET_SHARE }
+                .filter { bucket -> used.add(bucket.artists.take(4).map { it.name }.toSet()) }
+                .take(MAX_PER_KIND)
+        }
+
+        val genreMixes = strongest(genreBuckets).map { bucket ->
+            suspend {
+                mixFrom(
+                    id = "genre_" + bucket.key.replace(' ', '_'),
+                    kind = MixKind.GENRE,
+                    title = Taste.displayName(bucket.key),
+                    subtitle = "From ${names(bucket.artists)}, and more like them",
+                    artists = bucket.artists,
+                    generatedAt = now,
+                )
+            }
+        }
+        val vibeMixes = strongest(vibeBuckets).map { bucket ->
+            suspend {
+                mixFrom(
+                    id = "vibe_" + bucket.key.name.lowercase(),
+                    kind = MixKind.VIBE,
+                    title = bucket.key.title,
+                    subtitle = bucket.key.subtitle,
+                    artists = bucket.artists,
+                    generatedAt = now,
+                )
+            }
+        }
+        return coroutineScope {
+            (genreMixes + vibeMixes).map { build -> async { build() } }.mapNotNull { it.await() }
+        }
+    }
+
+    /** A mix from a group of artists: their best-loved songs, blended with radio from each. */
+    private suspend fun mixFrom(
+        id: String,
+        kind: MixKind,
+        title: String,
+        subtitle: String,
+        artists: List<Taste.ScoredArtist>,
+        generatedAt: Long,
+    ): CuratedMix? {
+        val members = artists.take(4)
+        val favourites = members.flatMap { it.songs.take(3) }
+            .sortedByDescending { it.score }
+            .map { it.toHomeSong() }
+        val radios = coroutineScope {
+            members.map { artist ->
+                async {
+                    music.radio(artist.songs.first().id).getOrDefault(emptyList()).drop(1)
+                        .filter { isStreamable(it.id) }
+                        .map { it.toHomeSong() } to artist.score
+                }
+            }.map { it.await() }
+        }
+        // Favourites carry a bit over a third of the weight until they run out, so the mix opens on
+        // songs the listener knows and keeps finding new ones.
+        val total = members.sumOf { it.score }
+        val items = Taste.blend(listOf(favourites to total * 0.6) + radios, limit = 40) { it.videoId }
+        if (items.size < 8) return null
+        return CuratedMix(id, kind, title, subtitle, items, generatedAt)
+    }
+
+    /** The listener's artists by [Taste], keeping only songs that can seed a YouTube radio. */
+    private suspend fun favouriteArtists(): List<Taste.ScoredArtist> =
+        Taste.artists(Taste.songs(dao.playsWithSongs(), System.currentTimeMillis()))
+            .map { a -> a.copy(songs = a.songs.filter { isStreamable(it.id) }) }
+            .filter { it.songs.isNotEmpty() }
+
+    /** "Oasis, Blur" or "Oasis", for a subtitle. */
+    private fun names(artists: List<Taste.ScoredArtist>): String =
+        artists.take(2).joinToString(", ") { it.name }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private fun isStale(mix: CuratedMix): Boolean {
@@ -224,6 +353,7 @@ class MixesRepository @Inject constructor(
         id.isNotBlank() && !id.startsWith("content://") && !id.startsWith("file://")
 
     private fun SongStat.toHomeSong() = HomeItem(title = title, subtitle = artist, thumbnailUrl = thumbnailUrl, videoId = id)
+    private fun Taste.ScoredSong.toHomeSong() = HomeItem(title = title, subtitle = artist, thumbnailUrl = thumbnailUrl, videoId = id)
     private fun MusicItem.toHomeSong() = HomeItem(title = title, subtitle = artist, thumbnailUrl = thumbnailUrl, videoId = id)
 
     private suspend fun persist(list: List<CuratedMix>) {
@@ -247,5 +377,14 @@ class MixesRepository @Inject constructor(
 
         /** How long to wait before trying again to build a mix there was too little history for. */
         const val MISSING_RETRY_MS = 6 * 60 * 60 * 1000L
+
+        /** Favourite artists looked up for genres and vibes. Two MusicBrainz requests each, once ever. */
+        const val TASTE_ARTISTS = 12
+
+        /** Genre and vibe mixes each, at most. */
+        const val MAX_PER_KIND = 3
+
+        /** A genre or vibe needs this share of the strongest one's weight to get a mix. */
+        const val MIN_BUCKET_SHARE = 0.2
     }
 }

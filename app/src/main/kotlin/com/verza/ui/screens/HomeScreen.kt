@@ -154,13 +154,19 @@ private fun HomeContent(
             }
         }
 
-        // "Made for you" — Verza's on-device curated mixes (Daylist / Discover / Release radar).
-        if (mixes.isNotEmpty()) {
-            item { MadeForYouRow(mixes = mixes, onOpenMix = onOpenMix) }
+        // "Made for you": Verza's on-device curated mixes (Daylist / Discover / Release radar).
+        val core = mixes.filter { it.kind != com.verza.data.MixKind.GENRE && it.kind != com.verza.data.MixKind.VIBE }
+        if (core.isNotEmpty()) {
+            item { MadeForYouRow(title = "Made for you", mixes = core, onOpenMix = onOpenMix) }
         }
 
-        // Decorative genre chip row — visual filter affordance, not wired yet.
-        item { GenreChipRow() }
+        // Playlists by genre and vibe, from the listener's own favourites. These took the place of a
+        // row of genre chips that looked like a filter and did nothing.
+        val byTaste = mixes.filter { it.kind == com.verza.data.MixKind.GENRE } +
+            mixes.filter { it.kind == com.verza.data.MixKind.VIBE }
+        if (byTaste.isNotEmpty()) {
+            item { MadeForYouRow(title = "Your genres and vibes", mixes = byTaste, onOpenMix = onOpenMix) }
+        }
 
         itemsIndexed(items = sections, key = { _, s -> s.title }) { index, section ->
             // Per-section stagger: each row's `visible` flips on 40 ms after the previous,
@@ -221,6 +227,7 @@ private fun densityFor(index: Int, section: HomeSection): SectionDensity {
 }
 @Composable
 private fun MadeForYouRow(
+    title: String,
     mixes: List<com.verza.data.CuratedMix>,
     onOpenMix: (String) -> Unit,
 ) {
@@ -230,7 +237,7 @@ private fun MadeForYouRow(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = "Made for you",
+            text = title,
             style = MaterialTheme.typography.titleLarge,
             color = colors.onBackground,
             modifier = Modifier.padding(horizontal = 20.dp),
@@ -255,14 +262,16 @@ private fun MadeForYouRow(
  */
 @Composable
 private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
-    val (top, bottom) = mixGradient(mix.kind)
+    val (top, bottom) = mixGradient(mix)
     val eyebrow = when (mix.kind) {
         com.verza.data.MixKind.DAYLIST -> "DAYLIST"
         com.verza.data.MixKind.DISCOVER -> "DISCOVERY"
         com.verza.data.MixKind.RELEASE_RADAR -> "NEW RELEASES"
+        com.verza.data.MixKind.GENRE -> "GENRE"
+        com.verza.data.MixKind.VIBE -> "VIBE"
     }
     // The first item with art fronts the mix — stable for the life of the generated mix.
-    val coverArt = remember(mix.items) { mix.items.firstNotNullOfOrNull { it.thumbnailUrl } }
+    val coverArt = remember(mix.id, mix.items) { mixCoverArt(mix) }
     Box(
         modifier = Modifier
             .size(154.dp)
@@ -292,8 +301,12 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
             Text(
                 text = eyebrow,
                 style = TextStyle(fontFamily = FontMono, fontSize = 10.sp, letterSpacing = 0.12.em),
-                color = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.align(Alignment.TopStart),
+                color = Color.White,
+                // On a dark pill, so it reads over whatever lettering the cover has at the top.
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
             )
             Text(
                 text = mix.title,
@@ -302,64 +315,6 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
                 maxLines = 2,
                 modifier = Modifier.align(Alignment.BottomStart),
             )
-        }
-    }
-}
-
-/** Distinct vivid gradient per mix kind — playlist-cover identity, independent of the app theme. */
-private fun mixGradient(kind: com.verza.data.MixKind): Pair<Color, Color> = when (kind) {
-    com.verza.data.MixKind.DAYLIST -> Color(0xFFE0894A) to Color(0xFF6E2F1A)
-    com.verza.data.MixKind.DISCOVER -> Color(0xFF6C5CE7) to Color(0xFF241F4D)
-    com.verza.data.MixKind.RELEASE_RADAR -> Color(0xFF2FA37C) to Color(0xFF123A30)
-}
-
-@Composable
-private fun GenreChipRow() {
-    val colors = MaterialTheme.colorScheme
-    val sleeve = LocalSleeveMode.current
-    val cover = LocalCoverColors.current
-    val genres = listOf("All", "Electronic", "Indie", "Jazz", "Lo-fi", "Ambient", "Classical")
-    var active by remember { mutableStateOf(genres.first()) }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        genres.forEach { g ->
-            val selected = g == active
-            if (sleeve) {
-                // Mono filter pills: the active one is ink-filled, the rest use the translucent
-                // glass wash (slightly lighter than the background, no outline).
-                val base = if (selected) Modifier.clip(VerzaShape).background(cover.ink.copy(alpha = 0.92f))
-                           else Modifier.sleeveButton(VerzaShape)
-                val fg = if (selected) cover.bg else cover.sub
-                Box(
-                    modifier = base
-                        .clickable(onClick = { active = g })
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Text(
-                        g,
-                        style = TextStyle(fontFamily = FontMono, fontSize = 12.5.sp, letterSpacing = 0.02.em),
-                        color = fg,
-                    )
-                }
-            } else {
-                val bg = if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f)
-                val fg = if (selected) colors.onPrimary else colors.primary
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(bg)
-                        .clickable(onClick = { active = g })
-                        .padding(horizontal = 18.dp, vertical = 8.dp),
-                ) {
-                    Text(g, style = MaterialTheme.typography.labelLarge, color = fg)
-                }
-            }
         }
     }
 }

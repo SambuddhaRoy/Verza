@@ -104,8 +104,8 @@ fun MixScreen(
             item {
                 // Banner fronted by real art from inside the mix, washed with the kind tint
                 // (same treatment as the Home "Made for you" cards); falls back to the gradient.
-                val (top, bottom) = mixGradient(m.kind)
-                val bannerArt = remember(m.items) { m.items.firstNotNullOfOrNull { it.thumbnailUrl } }
+                val (top, bottom) = mixGradient(m)
+                val bannerArt = remember(m.id, m.items) { mixCoverArt(m) }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -195,9 +195,34 @@ private fun MixRow(item: HomeItem, onClick: () -> Unit) {
     }
 }
 
-/** Same vivid per-kind gradient as the Home "Made for you" cards. */
-private fun mixGradient(kind: MixKind): Pair<Color, Color> = when (kind) {
+/**
+ * A mix's signature gradient, shared by its Home card and its page. The three fixed mixes each have
+ * one. Genre and vibe mixes vary per listener, so each picks from a set by its id, which keeps a given
+ * mix the same colour every time it is generated.
+ */
+/**
+ * The artwork that fronts a mix. Mixes built from the same favourites all opened on the same song, so
+ * three cards in a row wore one album cover. Each picks among its first few covers by its id instead,
+ * which varies them and keeps any one mix's cover the same between visits.
+ */
+internal fun mixCoverArt(mix: com.verza.data.CuratedMix): String? {
+    val covers = mix.items.mapNotNull { it.thumbnailUrl }.distinct().take(6)
+    return covers.getOrNull(Math.floorMod(mix.id.hashCode(), covers.size.coerceAtLeast(1)))
+}
+
+internal fun mixGradient(mix: com.verza.data.CuratedMix): Pair<Color, Color> = when (mix.kind) {
     MixKind.DAYLIST -> Color(0xFFE0894A) to Color(0xFF6E2F1A)
     MixKind.DISCOVER -> Color(0xFF6C5CE7) to Color(0xFF241F4D)
     MixKind.RELEASE_RADAR -> Color(0xFF2FA37C) to Color(0xFF123A30)
+    MixKind.GENRE, MixKind.VIBE -> TASTE_GRADIENTS[Math.floorMod(mix.id.hashCode(), TASTE_GRADIENTS.size)]
 }
+
+private val TASTE_GRADIENTS = listOf(
+    Color(0xFFE84A7F) to Color(0xFF5A1530),
+    Color(0xFF3FA9F5) to Color(0xFF123A5C),
+    Color(0xFFF2B33D) to Color(0xFF5E3B0B),
+    Color(0xFF8BC34A) to Color(0xFF26440F),
+    Color(0xFFB36AE2) to Color(0xFF3A1650),
+    Color(0xFF26C6B9) to Color(0xFF0C4540),
+    Color(0xFFFF7043) to Color(0xFF5C1E0C),
+)
