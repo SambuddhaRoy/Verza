@@ -58,13 +58,19 @@ private fun parseSearchListItem(renderer: JsonObject): HomeItem? {
     val flexColumns = renderer["flexColumns"] as? JsonArray ?: return null
     val title = flexColumns.getOrNull(0)?.findFirst("runs")?.array
         ?.firstOrNull()?.child("text").string ?: return null
-    val subtitle = flexColumns.getOrNull(1)?.findFirst("runs")?.array
+    val videoId = renderer.findFirst("watchEndpoint")?.child("videoId").string
+    val runs = flexColumns.getOrNull(1)?.findFirst("runs")?.array
         ?.mapNotNull { it.child("text").string }
         ?.filter { it.isNotBlank() && it.trim() != "•" }
-        ?.joinToString(" ") .orEmpty()
+        .orEmpty()
+    // Kept apart with bullets, and without the "Song" or "Video" label on playable rows, so the
+    // artist is the first part. The runs used to be joined with plain spaces, and playing a result
+    // saved all of it as the artist: "Song Radiohead", "Radiohead OK Computer 4:22". That split one
+    // band into many in the play history, so taste, stats and artwork lookups all saw nonsense.
+    val parts = if (videoId != null && runs.firstOrNull() in PLAYABLE_TYPE_LABELS) runs.drop(1) else runs
+    val subtitle = parts.joinToString(" • ")
     val thumbnailUrl = renderer.findFirst("thumbnails")?.array?.lastOrNull()?.child("url").string
 
-    val videoId = renderer.findFirst("watchEndpoint")?.child("videoId").string
     // For non-song results, prefer the item's own navigation target over any nested
     // (e.g. artist) browse links found deeper in the subtitle runs.
     val browseId = renderer["navigationEndpoint"]?.findFirst("browseEndpoint")?.child("browseId").string
@@ -83,6 +89,9 @@ private fun parseSearchListItem(renderer: JsonObject): HomeItem? {
 }
 
 private val durationRegex = Regex("""^\d{1,2}(:\d{2}){1,2}$""")
+
+/** The result-type label YouTube Music puts first on unfiltered song and video results. */
+private val PLAYABLE_TYPE_LABELS = setOf("Song", "Video", "Episode")
 
 /** Parses a `musicResponsiveListItemRenderer` (search rows, shelf rows) into a playable song. */
 internal fun parseResponsiveListItem(renderer: JsonObject): MusicItem? {
