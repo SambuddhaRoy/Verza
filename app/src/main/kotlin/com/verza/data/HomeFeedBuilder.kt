@@ -24,7 +24,7 @@ import javax.inject.Singleton
  *   4. Keep listening             (YT "Listen again", or a derived local fallback)
  *   5. From your liked songs      (local Room, deduped against #1)
  *   6. Your YouTube playlists     (the user's saved YT playlists, signed-in only)
- *   7+. Similar to <artist>       (radio mix for up to two distinct recent artists)
+ *   7+. Because you love <artist> (radio for the two artists played most, by Taste)
  *   N. Browse charts and trending (everything else — Trending, Languages, New releases, Charts,
  *                                  community playlists — flattened into one row at the bottom)
  *
@@ -70,49 +70,47 @@ class HomeFeedBuilder @Inject constructor(
             val recent = library.recentlyPlayed().first().take(20)
             val liked = library.liked().first()
 
-            // On-device recommendations with zero tracking: blend NewPipe "related" results seeded
-            // by the user's *most-listened* tracks (by real time), so it reflects taste rather than
-            // just recency. Local-only tracks (content:// ids) can't seed YT related.
-            val topSeeds = stats.topSongs(8).first()
-                .filter { !it.id.startsWith("content://") && it.artist.isNotBlank() }
-                .distinctBy { it.artist.trim().lowercase() }
-                .take(2)
-            val recommendedAsync = async(Dispatchers.IO) {
-                val recentIds = recent.mapTo(mutableSetOf()) { it.id }
-                val seedIds = topSeeds.mapTo(mutableSetOf()) { it.id }
-                topSeeds
-                    .flatMap { seed ->
-                        runCatching { InnerTube.radio(seed.id).drop(1).take(12) }.getOrDefault(emptyList())
-                    }
-                    .map { it.toHomeSong() }
-                    .filter { it.videoId != null && it.videoId !in recentIds && it.videoId !in seedIds }
-                    .distinctBy { it.videoId }
-                    .shuffled()
-                    .take(15)
-            }
-
-            // Pick up to two distinct recent artists; fetch a radio mix for each in parallel so
-            // the user sees both "Similar to A" and "Similar to B" rather than just one.
-            val seedTracks = recent
-                .filter { it.artist.isNotBlank() }
-                .distinctBy { it.artist.trim().lowercase() }
-                .take(2)
-            val similarAsyncs = seedTracks.map { seed ->
-                async(Dispatchers.IO) {
-                    val items = runCatching {
-                        // Skip the seed itself (always first in the mix); cap to a tidy carousel.
-                        InnerTube.radio(seed.id).drop(1).take(15).map { it.toHomeSong() }
-                    }.getOrDefault(emptyList())
-                    items to seed.artist
+            // Seeds come from taste, not from whatever played last. Every one of these rows used to be
+            // seeded by the most recent artists, so trying one new song swung the whole page towards
+            // it while the band on repeat for a month went unmentioned. See Taste for the scoring.
+            // Local files (content:// ids) have no YouTube radio, so they cannot seed.
+            val loved = runCatching { Taste.artists(stats.taste()) }.getOrDefault(emptyList())
+                .map { a -> a.copy(songs = a.songs.filter { !it.id.startsWith("content://") }) }
+                .filter { it.songs.isNotEmpty() }
+                .take(FAVOURITE_SEEDS)
+            // A brand-new install has plays too short or too few to score; fall back to recent artists
+            // so it still gets something rather than nothing.
+            val seeds: List<Pair<String, String>> = loved.map { it.songs.first().id to it.name }
+                .ifEmpty {
+                    recent.filter { Taste.cleanArtist(it.artist).isNotEmpty() && !it.id.startsWith("content://") }
+                        .distinctBy { Taste.cleanArtist(it.artist).lowercase() }
+                        .take(2)
+                        .map { it.id to Taste.cleanArtist(it.artist) }
                 }
-            }
+            val radios = seeds.map { (id, _) ->
+                async(Dispatchers.IO) {
+                    // Skip the seed itself, which always comes first.
+                    runCatching { InnerTube.radio(id).drop(1).map { it.toHomeSong() } }.getOrDefault(emptyList())
+                }
+            }.awaitAll()
 
             val yt = ytAsync.await()
             val ytPl = ytPlaylistsAsync.await()
-            val recommended = recommendedAsync.await()
-            val similarSections = similarAsyncs.awaitAll()
-                .filter { it.first.isNotEmpty() }
-                .map { (items, artist) -> HomeSection("Similar to $artist", items) }
+
+            // "Because you love" for the top two artists, each its own radio.
+            val label = if (loved.isNotEmpty()) "Because you love" else "Similar to"
+            val similarSections = seeds.zip(radios).take(2)
+                .filter { (_, items) -> items.isNotEmpty() }
+                .map { (seed, items) -> HomeSection("$label ${seed.second}", items.take(15)) }
+
+            // "More of what you love" draws on all of them, each in proportion to how much that artist
+            // is played, minus what the two rows above already show and what was just played.
+            val shown = similarSections.flatMap { it.items }.mapNotNullTo(HashSet()) { it.videoId }
+            val skip = shown + recent.map { it.id } + seeds.map { it.first }
+            val recommended = if (loved.isEmpty()) emptyList() else Taste.blend(
+                lists = loved.zip(radios).map { (artist, items) -> items.filter { it.videoId !in skip } to artist.score },
+                limit = 15,
+            ) { it.videoId }
 
             compose(yt, ytPl, recent, liked, similarSections, recommended)
         }
@@ -139,10 +137,10 @@ class HomeFeedBuilder @Inject constructor(
             out += HomeSection("Recently played", recent.take(15).map { it.toHomeSong() })
         }
 
-        // 1.5 More like your week — a private, on-device blend of related tracks seeded by the
-        //     songs you've actually listened to most. No account, no tracking.
+        // 1.5 More of what you love: a private, on-device blend of radio from the artists you
+        //     actually play most. No account, no tracking.
         if (recommended.isNotEmpty()) {
-            out += HomeSection("More like your week", recommended)
+            out += HomeSection("More of what you love", recommended)
         }
 
         // 2. Quick picks — YT personalised home shelf, present when signed in.
@@ -180,7 +178,7 @@ class HomeFeedBuilder @Inject constructor(
             out += HomeSection("Your YouTube playlists", ytPlaylists.take(20))
         }
 
-        // 7+. Similar to <artist1>, Similar to <artist2> — already built above.
+        // 7+. Because you love <artist1>, <artist2>: already built above.
         out += similarSections
 
         // BOTTOM. Single consolidated section for everything generic / editorial — Trending,
@@ -197,6 +195,11 @@ class HomeFeedBuilder @Inject constructor(
         }
 
         return out.filter { it.items.isNotEmpty() }
+    }
+
+    private companion object {
+        /** How many of the listener's favourite artists seed Home. One radio request each. */
+        const val FAVOURITE_SEEDS = 5
     }
 
     private fun find(

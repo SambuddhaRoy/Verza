@@ -53,6 +53,12 @@ data class HomeItem(
     val playlistId: String? = null,
 ) {
     val isSong: Boolean get() = videoId != null
+
+    /**
+     * Who a song is by: the first part of the subtitle. Search results carry "Artist • Album •
+     * 3:45"; everything else carries the artist alone. Not serialised, just read from the subtitle.
+     */
+    val artist: String get() = subtitle.substringBefore(" • ").trim()
 }
 
 // A titled row of items on the home/explore feed (e.g. "Quick picks", "Listen again").

@@ -110,6 +110,20 @@ interface PlayEventDao {
     )
     suspend fun topSongsInHours(hours: List<Int>, limit: Int): List<SongStat>
 
+    /**
+     * Every listen with its song, for [com.verza.data.Taste]. The aggregates above rank by total time,
+     * which cannot tell a song played thirty times from one long session; taste needs each listen.
+     */
+    @Query(
+        """
+        SELECT e.songId AS songId, s.title AS title, s.artist AS artist, s.thumbnailUrl AS thumbnailUrl,
+               e.playedAt AS playedAt, e.listenedMs AS listenedMs
+        FROM play_events e
+        JOIN songs s ON s.id = e.songId
+        """
+    )
+    suspend fun playsWithSongs(): List<PlayWithSong>
+
     /** Distinct song ids the user has ever played — the "already heard" set for Discover. */
     @Query("SELECT DISTINCT songId FROM play_events")
     suspend fun playedSongIds(): List<String>

@@ -47,3 +47,13 @@ data class HourStat(
     val hour: Int,
     @ColumnInfo("totalMs") val totalMs: Long,
 )
+
+/** One listen with the display fields of its song, for scoring taste (see Taste). */
+data class PlayWithSong(
+    val songId: String,
+    val title: String,
+    val artist: String,
+    val thumbnailUrl: String?,
+    val playedAt: Long,
+    val listenedMs: Long,
+)

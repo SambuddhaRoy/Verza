@@ -308,7 +308,7 @@ class PlaybackViewModel @Inject constructor(
     /** Adds a home card to the queue: a song directly, or an album/playlist expanded into tracks. */
     fun enqueueHomeItem(item: HomeItem) {
         if (item.isSong && item.videoId != null) {
-            enqueue(MusicItem(id = item.videoId!!, title = item.title, artist = item.subtitle, thumbnailUrl = item.thumbnailUrl))
+            enqueue(MusicItem(id = item.videoId!!, title = item.title, artist = item.artist, thumbnailUrl = item.thumbnailUrl))
         } else {
             viewModelScope.launch {
                 repository.collectionTracks(item.browseId, item.playlistId)
@@ -344,7 +344,7 @@ class PlaybackViewModel @Inject constructor(
                 MusicItem(
                     id = item.videoId!!,
                     title = item.title,
-                    artist = item.subtitle,
+                    artist = item.artist,
                     thumbnailUrl = item.thumbnailUrl,
                 )
             )
@@ -361,7 +361,7 @@ class PlaybackViewModel @Inject constructor(
     /** Plays the playable songs of a curated mix (Home item rows), from the top. */
     fun playSongItems(items: List<HomeItem>) {
         val songs = items.mapNotNull { item ->
-            item.videoId?.let { MusicItem(id = it, title = item.title, artist = item.subtitle, thumbnailUrl = item.thumbnailUrl) }
+            item.videoId?.let { MusicItem(id = it, title = item.title, artist = item.artist, thumbnailUrl = item.thumbnailUrl) }
         }
         if (songs.isNotEmpty()) playSongs(songs, 0)
     }
