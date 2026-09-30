@@ -1,5 +1,6 @@
 package com.verza.ui.expressive
 
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Icon
@@ -139,7 +139,7 @@ fun ExpressiveCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspect)
-                .clip(RoundedCornerShape(radius))
+                .clip(RectangleShape)
                 .background(colors.surface),
         ) {
             AsyncImage(
@@ -194,10 +194,10 @@ fun ExpressiveListItem(
     val big = 20.dp
     val small = 6.dp
     val shape = when (position) {
-        SegmentPosition.SINGLE -> RoundedCornerShape(big)
-        SegmentPosition.FIRST -> RoundedCornerShape(topStart = big, topEnd = big, bottomStart = small, bottomEnd = small)
-        SegmentPosition.MIDDLE -> RoundedCornerShape(small)
-        SegmentPosition.LAST -> RoundedCornerShape(topStart = small, topEnd = small, bottomStart = big, bottomEnd = big)
+        SegmentPosition.SINGLE -> RectangleShape
+        SegmentPosition.FIRST -> RectangleShape
+        SegmentPosition.MIDDLE -> RectangleShape
+        SegmentPosition.LAST -> RectangleShape
     }
     // Effects spring: this is a colour, so it must not overshoot.
     val bg by animateColorAsState(
@@ -289,7 +289,7 @@ fun ExpressiveChip(
 
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(radius))
+            .clip(RectangleShape)
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),

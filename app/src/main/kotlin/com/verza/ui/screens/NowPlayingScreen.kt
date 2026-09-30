@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.graphics.RectangleShape
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -31,8 +32,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -308,7 +307,7 @@ private fun SleepOption(label: String, tint: Color? = null, onClick: () -> Unit)
         color = tint ?: colors.onSurface,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RectangleShape)
             .clickable(onClick = onClick)
             .padding(vertical = 14.dp, horizontal = 4.dp),
     )
@@ -394,7 +393,7 @@ private fun FocusCompleteBanner(
             modifier = Modifier
                 .statusBarsPadding()
                 .padding(top = 12.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(RectangleShape)
                 .background(colors.primaryContainer)
                 .clickable(onClick = onConsume)
                 .padding(horizontal = 18.dp, vertical = 10.dp),

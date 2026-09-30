@@ -1,12 +1,12 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlaylistPlay
@@ -69,7 +69,7 @@ fun AddToPlaylistSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RectangleShape)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -114,7 +114,7 @@ fun AddToPlaylistSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RectangleShape)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
@@ -158,7 +158,7 @@ fun AddToPlaylistSheet(
             onDismissRequest = { showCreate = false },
             title = { Text("New playlist") },
             text = {
-                OutlinedTextField(
+                OutlinedTextField(shape = RectangleShape, 
                     value = newName,
                     onValueChange = { newName = it },
                     placeholder = { Text("Playlist name") },
@@ -166,7 +166,7 @@ fun AddToPlaylistSheet(
                 )
             },
             confirmButton = {
-                TextButton(
+                TextButton(shape = RectangleShape, 
                     onClick = {
                         val name = newName.trim()
                         if (name.isNotEmpty()) {
@@ -177,7 +177,7 @@ fun AddToPlaylistSheet(
                     },
                 ) { Text("Create") }
             },
-            dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(shape = RectangleShape, onClick = { showCreate = false }) { Text("Cancel") } },
         )
     }
 }

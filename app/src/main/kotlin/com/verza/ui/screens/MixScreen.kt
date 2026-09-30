@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -110,7 +109,7 @@ fun MixScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(RectangleShape)
                         .background(Brush.linearGradient(listOf(top, bottom))),
                 ) {
                     if (bannerArt != null) {
@@ -144,7 +143,7 @@ fun MixScreen(
                 if (playable.isNotEmpty()) {
                     Row(
                         modifier = Modifier
-                            .clip(CircleShape)
+                            .clip(RectangleShape)
                             .background(colors.primary)
                             .clickable { onPlayAll(playable) }
                             .padding(horizontal = 22.dp, vertical = 12.dp),
@@ -170,7 +169,7 @@ private fun MixRow(item: HomeItem, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RectangleShape)
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -179,7 +178,7 @@ private fun MixRow(item: HomeItem, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RectangleShape)
                 .background(colors.surfaceVariant),
         ) {
             if (item.thumbnailUrl != null) {

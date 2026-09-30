@@ -1,5 +1,6 @@
 package com.verza.ui.expressive
 
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Explore
@@ -163,7 +163,7 @@ private fun SheetHeader(title: String, subtitle: String?, onDismiss: () -> Unit)
             contentDescription = "Close",
             container = colors.container,
             content = colors.onSurface,
-            shape = CircleShape,
+            shape = RectangleShape,
             iconSize = 18.dp,
             modifier = Modifier.size(40.dp),
         )
