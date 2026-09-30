@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.graphics.RectangleShape
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
@@ -8,8 +9,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
@@ -113,7 +112,7 @@ fun LoginScreen(
             )
             TextButton(
                 onClick = { showManual = !showManual },
-                shape = CircleShape,
+                shape = RectangleShape,
             ) {
                 Text(if (showManual) "Browser" else "Paste cookie")
             }
@@ -196,13 +195,13 @@ private fun ManualCookieEntry(
                 )
             },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RectangleShape,
             minLines = 4,
             textStyle = MaterialTheme.typography.bodySmall,
         )
         Button(
             onClick = onSubmit,
-            shape = CircleShape,
+            shape = RectangleShape,
             enabled = value.contains("SAPISID"),
         ) { Text("Use this cookie") }
     }

@@ -1,5 +1,13 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.border
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -15,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -24,8 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -124,7 +129,7 @@ fun EqualizerScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RectangleShape)
                     .then(if (state.enabled) Modifier.clickable(onClick = viewModel::resetBands) else Modifier)
                     .padding(vertical = 12.dp),
             )
@@ -162,7 +167,7 @@ private fun PresetChips(active: EqPreset?, onPick: (EqPreset) -> Unit) {
             val selected = preset == active
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(100))
+                    .clip(RectangleShape)
                     .background(if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f))
                     .clickable { onPick(preset) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -197,14 +202,7 @@ private fun ToggleLine(
                 Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
                 Text(subtitle, style = CaptionItalic, color = ext.muted)
             }
-            Switch(
-                checked = checked,
-                onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = colors.onPrimary,
-                    checkedTrackColor = colors.primary,
-                ),
-            )
+            SquareSwitch(checked = checked, onCheckedChange = onToggle)
         }
         HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
     }
@@ -234,7 +232,7 @@ private fun BandSlider(
             color = if (enabled) colors.onBackground else ext.muted,
             modifier = Modifier.width(56.dp),
         )
-        Slider(
+        SquareSlider(
             value = live,
             onValueChange = { live = it },
             onValueChangeFinished = { onCommit(live.roundToInt()) },
@@ -262,7 +260,7 @@ private fun BassSlider(strength: Int, onCommit: (Int) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Slider(
+        SquareSlider(
             value = live,
             onValueChange = { live = it },
             onValueChangeFinished = { onCommit(live.roundToInt()) },
@@ -275,6 +273,67 @@ private fun BassSlider(strength: Int, onCommit: (Int) -> Unit) {
             color = if (live > 0f) colors.primary else ext.muted,
             textAlign = TextAlign.End,
             modifier = Modifier.width(52.dp),
+        )
+    }
+}
+
+/**
+ * Material's slider is a pill track under a round thumb, and neither takes a shape. The track and
+ * thumb slots do, so this is the same slider (same gestures, same accessibility) drawn square.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SquareSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val colors = MaterialTheme.colorScheme
+    val on = if (enabled) colors.primary else colors.onSurface.copy(alpha = 0.38f)
+    val off = colors.onSurface.copy(alpha = 0.16f)
+    val span = (valueRange.endInclusive - valueRange.start).takeIf { it > 0f } ?: 1f
+    val fraction = ((value - valueRange.start) / span).coerceIn(0f, 1f)
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        onValueChangeFinished = onValueChangeFinished,
+        valueRange = valueRange,
+        enabled = enabled,
+        modifier = modifier,
+        thumb = { Box(Modifier.size(width = 8.dp, height = 24.dp).background(on)) },
+        track = {
+            Box(Modifier.fillMaxWidth().height(4.dp).background(off)) {
+                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(on))
+            }
+        },
+    )
+}
+
+/**
+ * A switch with square ends. Material's has no shape parameter at all, so this is a toggleable
+ * box: a block that slides from one end of a bordered well to the other. `toggleable` with
+ * [Role.Switch] gives it the same semantics TalkBack reads for the real one.
+ */
+@Composable
+private fun SquareSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val offset by animateDpAsState(if (checked) 22.dp else 0.dp, label = "switch")
+    Box(
+        modifier = Modifier
+            .size(width = 48.dp, height = 26.dp)
+            .background(if (checked) colors.primary else colors.onSurface.copy(alpha = 0.12f))
+            .border(2.dp, if (checked) colors.primary else colors.onSurface.copy(alpha = 0.5f))
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(4.dp),
+    ) {
+        Box(
+            Modifier
+                .offset(x = offset)
+                .size(18.dp)
+                .background(if (checked) colors.onPrimary else colors.onSurface.copy(alpha = 0.6f)),
         )
     }
 }

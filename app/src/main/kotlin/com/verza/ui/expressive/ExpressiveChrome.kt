@@ -1,5 +1,6 @@
 package com.verza.ui.expressive
 
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -28,7 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -315,7 +315,7 @@ fun ExpressiveMiniPlayer(
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(radius))
+            .clip(RectangleShape)
             .background(colors.surface)
             .clickable(interactionSource = interaction, indication = null, onClick = onExpand),
     ) {

@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.graphics.RectangleShape
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -458,12 +458,12 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
+                TextButton(shape = RectangleShape, onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
                     Text("Reset", color = colors.accent, style = BodyStrong)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmResetStats = false }) {
+                TextButton(shape = RectangleShape, onClick = { confirmResetStats = false }) {
                     Text("Cancel", color = colors.onSurfaceMuted, style = BodyText)
                 }
             },

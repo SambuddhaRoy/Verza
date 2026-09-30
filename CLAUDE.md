@@ -27,11 +27,40 @@ minSdk 26, target/compile 35. A separate Electron desktop port lives at
 - NEVER log or leak the YouTube Music auth cookie. Library backups (export/import) AND shared
   session links must EXCLUDE the cookie.
 
-## Current state (latest = v1.3.1 / versionCode 38)
+## Current state (latest = v1.14.0 / versionCode 57)
 - Branch `main` is the live app. `UI-Redesign` ("Verso" living-thread redesign) is parked on GitHub,
   NOT merged.
 - Last published GitHub *release* is v1.0.0; everything since (mixes, sound suite, OS media
   integration, halftone glow, cover-flow, EQ presets, share-to-Verza) is on `main` only.
+
+## Branch `feat/gass-design` — square, colourful, poster Now Playing
+
+Off `main`, not merged, not released. Keeps main's cover-derived colours; the references are GASS
+Records (flat slabs of colour) and Uncut's display type.
+
+- **No rounded edges anywhere.** `VerzaShape`, the Expressive shape names, `PillShape`, `CloudShape`
+  and `CookieShape` are all `RectangleShape` (names kept as aliases). Material's theme slots are a
+  zero-radius `RoundedCornerShape` because they are typed `CornerBasedShape`. Material hardwires
+  `Button`/`TextButton`/`OutlinedButton` to a full circle whatever the theme says, so every call
+  site passes `shape = RectangleShape`; the equalizer's `Switch` and `Slider`s have no shape
+  parameter and are replaced by `SquareSwitch`/`SquareSlider` in `EqualizerScreen.kt`. The ten widget
+  mask drawables are all the same square. **A new Material button without an explicit shape comes
+  back round.**
+- **Now Playing hides its controls** after 4s untouched while playing (`CONTROLS_HIDE_MS`); paused
+  they stay. Any touch brings them back (an Initial-pass pointer watcher on the player, never
+  consuming). Never hides with touch exploration on; otherwise honours the system's "time to take
+  action". The layout has exactly two arrangements and `animateBoundsIn` springs between them;
+  **do not drive the layout with an animated value**, or animateBoundsIn chases a moving target
+  every frame. Hidden controls are un-placed, not parked off-screen, because parked below the
+  player they caught touches meant for the queue.
+- **A different display face for every song** (`TitleFonts.kt`, `pickTitleFace`): twelve OFL faces
+  from uncut.wtf in `res/font/display_*`, licence texts in `assets/font-licenses/`. Stable per song
+  (hash of the track key), never the previous song's face, and a face missing any character of the
+  title is skipped (`Paint.hasGlyph`), falling back to the app's type if none fit (Devanagari).
+  `FitTitle` sizes it: 120sp down, max three lines, no word split, at most 22% of screen height.
+  PicNic is not included: Uncut still lists it as OFL but it has moved to a licence with conditions.
+  Five more OFL faces (Getai Grotesk Display, LC Mogi, Cakra, Queering, Slibinas) need a manual
+  download from their foundries.
 
 ## Architecture pointers
 - **Background glow** (app-wide, behind the NavHost in `MainActivity`): `ui/theme/Glow.kt`.

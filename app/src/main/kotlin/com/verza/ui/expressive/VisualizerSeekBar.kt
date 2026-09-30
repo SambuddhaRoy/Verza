@@ -121,7 +121,7 @@ fun VisualizerSeekBar(
                     start = Offset(x, midY - h),
                     end = Offset(x, midY + h),
                     strokeWidth = barWidth,
-                    cap = StrokeCap.Round,
+                    cap = StrokeCap.Butt,
                 )
                 i++
             }
@@ -132,7 +132,7 @@ fun VisualizerSeekBar(
                     start = Offset(playedEnd + 8.dp.toPx(), midY),
                     end = Offset(size.width, midY),
                     strokeWidth = stroke,
-                    cap = StrokeCap.Round,
+                    cap = StrokeCap.Butt,
                 )
             }
 
@@ -141,7 +141,7 @@ fun VisualizerSeekBar(
                 start = Offset(playedEnd.coerceIn(stroke, size.width - stroke), midY - 10.dp.toPx()),
                 end = Offset(playedEnd.coerceIn(stroke, size.width - stroke), midY + 10.dp.toPx()),
                 strokeWidth = stroke,
-                cap = StrokeCap.Round,
+                cap = StrokeCap.Butt,
             )
         }
     }

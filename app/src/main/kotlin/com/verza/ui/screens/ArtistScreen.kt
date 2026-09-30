@@ -1,10 +1,10 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -46,7 +46,7 @@ fun ArtistScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(s.message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
-                OutlinedButton(onClick = viewModel::load, shape = CircleShape) { Text("Retry") }
+                OutlinedButton(onClick = viewModel::load, shape = RectangleShape) { Text("Retry") }
             }
             is ArtistUiState.Content -> ArtistContent(s.detail, onItemClick)
         }
@@ -57,7 +57,7 @@ fun ArtistScreen(
                 .align(Alignment.TopStart)
                 .padding(12.dp)
                 .size(40.dp)
-                .clip(CircleShape)
+                .clip(RectangleShape)
                 .background(colors.surface),
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onSurface)

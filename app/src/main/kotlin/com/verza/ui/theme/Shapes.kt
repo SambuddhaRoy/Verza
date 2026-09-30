@@ -2,27 +2,33 @@ package com.verza.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 
 /**
- * Verza uses a **single corner radius** for every rounded rectangle in the app — cards,
- * thumbnails, sheets, dialogs, buttons, chips and surfaces all share [VerzaCorner] so the UI
- * reads as one consistent system. Genuinely circular elements (icon buttons, avatars, the play
- * control) stay circular; everything else curves by exactly this much.
+ * Verza has no rounded edges.
+ *
+ * Every surface is a hard-cornered block: cards, thumbnails, sheets, dialogs, buttons, chips, the
+ * play control, the artist photos. The look this is going for (GASS Records, the flat poster slab)
+ * gets its energy from colour meeting colour at a straight line, and a corner radius, of any size,
+ * is what turns a slab back into a component.
+ *
+ * [VerzaShape] stays as a name so call sites read as "the Verza surface" rather than as a
+ * primitive, and so the day a single radius comes back it is one line.
  */
-val VerzaCorner: Dp = 14.dp
+val VerzaShape = RectangleShape
 
-/** The one rounded-rectangle shape, derived from [VerzaCorner]. Use this anywhere you'd reach for
- *  `RoundedCornerShape(...)` on a surface/card/button. */
-val VerzaShape = RoundedCornerShape(VerzaCorner)
+/**
+ * Every Material shape slot, square. This reaches sheets, dialogs, menus and cards. It does **not**
+ * reach buttons, switches or slider thumbs, which Material hardwires to a full circle regardless of
+ * the theme; those take an explicit shape at the call site.
+ */
+private val Square = RoundedCornerShape(0.dp)
 
-/** Every Material shape slot maps to the single [VerzaShape], so themed components (cards, sheets,
- *  dialogs, menus) are uniform with our hand-styled surfaces. */
 val VerzaShapes = Shapes(
-    extraSmall = VerzaShape,
-    small = VerzaShape,
-    medium = VerzaShape,
-    large = VerzaShape,
-    extraLarge = VerzaShape,
+    extraSmall = Square,
+    small = Square,
+    medium = Square,
+    large = Square,
+    extraLarge = Square,
 )

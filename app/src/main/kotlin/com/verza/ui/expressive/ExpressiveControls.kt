@@ -1,5 +1,6 @@
 package com.verza.ui.expressive
 
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,7 +59,7 @@ fun ExpressiveControl(
     container: Color,
     content: Color,
     modifier: Modifier = Modifier,
-    shape: Shape = CircleShape,
+    shape: Shape = RectangleShape,
     iconSize: Dp = 28.dp,
     enabled: Boolean = true,
 ) {
@@ -141,7 +141,7 @@ fun ExpressiveToolbar(
                 contentDescription = item.label,
                 container = if (item.active) colors.accent else Color.Transparent,
                 content = if (item.active) colors.onAccent else colors.onSurface,
-                shape = CircleShape,
+                shape = RectangleShape,
                 iconSize = 21.dp,
                 modifier = Modifier.size(46.dp),
             )

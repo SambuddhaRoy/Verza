@@ -1,5 +1,23 @@
 package com.verza.ui.expressive
 
+import android.content.Context
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
@@ -9,6 +27,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.animation.AnimatedContent
@@ -360,6 +379,69 @@ private fun PlayerPane(
     )
     val controlsScroll = rememberScrollState()
 
+    // ── the controls get out of the way ──────────────────────────────────────────────────────
+    // While a song plays, the controls fade after a few seconds without a touch and leave a poster:
+    // the cover, as large as the screen allows, with the title set over its lower edge. Any touch
+    // brings them back. Paused, they stay, because the one thing you are about to want is play.
+    val context = LocalContext.current
+    val a11y = LocalAccessibilityManager.current
+    // Buttons that vanish are hostile to anyone who reads the screen by touch: they would be
+    // hunting for controls that are not there. With touch exploration on they never hide, and
+    // otherwise the wait honours the system's "time to take action" setting.
+    val touchExploring = remember(context) {
+        (context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? android.view.accessibility.AccessibilityManager)
+            ?.isTouchExplorationEnabled == true
+    }
+    val hideAfterMs = remember(a11y) {
+        a11y?.calculateRecommendedTimeoutMillis(
+            CONTROLS_HIDE_MS, containsIcons = true, containsText = true, containsControls = true,
+        ) ?: CONTROLS_HIDE_MS
+    }
+    var controlsShown by remember { mutableStateOf(true) }
+    var touches by remember { mutableIntStateOf(0) }
+    LaunchedEffect(isPlaying, touches, controlsShown, touchExploring) {
+        if (!isPlaying || touchExploring) {
+            controlsShown = true
+            return@LaunchedEffect
+        }
+        if (!controlsShown) return@LaunchedEffect
+        delay(hideAfterMs)
+        controlsShown = false
+    }
+    // The layout only ever sits in one of two arrangements, shown or hidden, and animateBoundsIn
+    // springs every piece from one to the other, so the cover growing, the title sliding over it
+    // and the controls leaving are the same motion the player already uses on rotation. This value
+    // is the fade on top of that, and it is what decides when the controls are gone enough to take
+    // out of the layout.
+    val controlsAlpha = animateFloatAsState(
+        targetValue = if (controlsShown) 1f else 0f,
+        animationSpec = tween(if (controlsShown) 180 else 420),
+        label = "controlsAlpha",
+    )
+
+    // ── the title's typeface ─────────────────────────────────────────────────────────────────
+    // A different display face for every song (see TitleFonts). Keyed on the track, and told which
+    // face the previous track had, so two songs in a row never share one; when the title arrives
+    // late for the same track it keeps the face it already has.
+    val faceMemory = remember { FaceMemory() }
+    val face = remember(trackKey, title) {
+        if (trackKey != faceMemory.key) {
+            faceMemory.before = faceMemory.face
+            faceMemory.key = trackKey
+        }
+        pickTitleFace(trackKey ?: title, TitleFonts.faces.size, faceMemory.before) { i ->
+            TitleFonts.covers(context, TitleFonts.faces[i], title)
+        }.also { faceMemory.face = it }
+    }
+    val titleFamily = remember(face) { face?.let { FontFamily(Font(TitleFonts.faces[it])) } }
+    // A hard shadow in the canvas colour, straight down and unblurred. The title now sits on the
+    // cover as well as beside it, and a cover can be any colour at all, including the title's; the
+    // slab of canvas behind each letter is what keeps it legible there, and it is the flat, printed
+    // kind of shadow rather than a glow.
+    val titleShadow = with(LocalDensity.current) {
+        Shadow(color = colors.container, offset = Offset(0f, 4.dp.toPx()), blurRadius = 0f)
+    }
+
     val header: @Composable () -> Unit = {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -394,7 +476,8 @@ private fun PlayerPane(
             // queue moved; the mask morphs underneath at the same time.
             BoxWithConstraints(
                 modifier = paneModifier,
-                contentAlignment = Alignment.Center,
+                // To the bottom of its slot, so the square meets the title however tall the slot is.
+                contentAlignment = Alignment.BottomCenter,
             ) {
             // One measurement of the slot, turned into an explicit side length. Everything below is
             // sized from this rather than from a fill modifier, so nothing the image does can change it.
@@ -439,7 +522,10 @@ private fun PlayerPane(
                         // silhouettes on every track, which drew attention to itself rather than to
                         // the artwork, and the artwork is the thing worth looking at.
                         .graphicsLayer {
-                            val boost = coverBoost.coerceAtMost(boostRoom)
+                            // The boost is how the cover crowds the title with the controls up.
+                            // Hidden, the cover is already the width of the screen, and boosting it
+                            // would only crop the sides.
+                            val boost = (1f + (coverBoost - 1f) * controlsAlpha.value).coerceAtMost(boostRoom)
                             scaleX = boost
                             scaleY = boost
                             shape = ShapeExtraLarge
@@ -482,13 +568,10 @@ private fun PlayerPane(
             }
     }
 
-    val controls: @Composable ColumnScope.() -> Unit = {
-            // No spacer: the boosted cover is meant to crowd the title slightly, which is what stops
-            // the two reading as separate stacked blocks.
-
+    val titleBlock: @Composable () -> Unit = {
             // ── title ────────────────────────────────────────────────────────────────
             AnimatedContent(
-                targetState = title to artist,
+                targetState = Triple(title, artist, titleFamily),
                 transitionSpec = {
                     val dir = if (forward) 1 else -1
                     ((slideInHorizontally(ExpressiveMotion.spatialDefault()) { w -> dir * w / 4 } +
@@ -497,26 +580,37 @@ private fun PlayerPane(
                         .using(SizeTransform(clip = false) { _, _ -> snap() })
                 },
                 label = "titleSwap",
-            ) { (t, a) ->
+            ) { (t, a, family) ->
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
+                    FitTitle(
                         text = t,
-                        style = HeroDisplay,
+                        // The face is drawn as it was cut: most of these have one weight and no
+                        // italic, and asking for either only gets a synthesised imitation.
+                        style = if (family != null) {
+                            HeroDisplay.copy(
+                                fontFamily = family,
+                                fontStyle = FontStyle.Normal,
+                                fontWeight = FontWeight.Normal,
+                                shadow = titleShadow,
+                            )
+                        } else {
+                            HeroDisplay.copy(shadow = titleShadow)
+                        },
                         color = colors.accent,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = a,
-                        style = BodyStrong,
+                        style = BodyStrong.copy(shadow = titleShadow),
                         color = colors.onContainerMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
+    }
 
+    val controls: @Composable ColumnScope.() -> Unit = {
             Spacer(Modifier.height(10.dp))
 
             VisualizerSeekBar(
@@ -660,6 +754,9 @@ private fun PlayerPane(
         val artworkSlot: @Composable () -> Unit = {
             Box(Modifier.animateBoundsIn(this@LookaheadScope)) { artworkPane(Modifier.fillMaxSize()) }
         }
+        val titleSlot: @Composable () -> Unit = {
+            Box(Modifier.animateBoundsIn(this@LookaheadScope)) { titleBlock() }
+        }
         val controlsSlot: @Composable () -> Unit = {
             Column(
                 modifier = Modifier
@@ -671,16 +768,32 @@ private fun PlayerPane(
         }
 
         Layout(
-            contents = listOf(headerSlot, artworkSlot, controlsSlot),
+            contents = listOf(headerSlot, artworkSlot, titleSlot, controlsSlot),
             modifier = modifier
                 .fillMaxSize()
                 // safeDrawing rather than systemBars, so a camera cutout in landscape does not sit
                 // on top of the artwork.
                 .windowInsetsPadding(WindowInsets.safeDrawing)
+                // Any touch on the player is a sign of life: it brings the controls back and restarts
+                // the wait. Watched on the Initial pass and never consumed, so the touch still reaches
+                // whatever it landed on, dragging the cover to skip included.
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        controlsShown = true
+                        touches++
+                    }
+                }
                 .padding(horizontal = 20.dp),
-        ) { (headerMeasurables, artworkMeasurables, controlsMeasurables), constraints ->
+        ) { (headerMeasurables, artworkMeasurables, titleMeasurables, controlsMeasurables), constraints ->
             val width = constraints.maxWidth
             val height = if (constraints.hasBoundedHeight) constraints.maxHeight else (width * 1.8f).toInt()
+            // 1 shown, 0 hidden. Not animated: see controlsAlpha.
+            val shown = if (controlsShown) 1f else 0f
+            val hidden = 1f - shown
+            // Gone enough to take out of the layout. Left in, controls parked below the player
+            // would still catch touches meant for the queue underneath them.
+            val placeControls = controlsShown || controlsAlpha.value > 0.01f
 
             if (twoPane) {
                 val gap = 24.dp.roundToPx()
@@ -689,49 +802,152 @@ private fun PlayerPane(
                 // transport buttons do not spread to the edges of a thirteen inch screen.
                 val column = minOf(half, 560.dp.roundToPx())
                 val header = headerMeasurables.first().measure(Constraints.fixedWidth(column))
+                val title = titleMeasurables.first().measure(Constraints(minWidth = column, maxWidth = column))
                 val controls = controlsMeasurables.first().measure(
                     Constraints(
                         minWidth = column,
                         maxWidth = column,
-                        maxHeight = (height - header.height).coerceAtLeast(0),
+                        maxHeight = (height - header.height - title.height).coerceAtLeast(0),
                     ),
                 )
-                val artwork = artworkMeasurables.first().measure(Constraints.fixed(half, height))
-                // The header and controls sit as one group, centred against the cover beside them.
-                val group = header.height + controls.height
+                // Shown, the cover has its half. Hidden, it has the width of the window and centres.
+                val artworkWidth = lerpPx(half, width, hidden)
+                val artwork = artworkMeasurables.first().measure(Constraints.fixed(artworkWidth, height))
+                val side = minOf(artworkWidth, height)
+                val coverLeft = (artworkWidth - side) / 2
+                // Header, title and controls sit as one group, centred against the cover beside them.
+                val group = header.height + title.height + controls.height
                 val top = ((height - group) / 2).coerceAtLeast(0)
                 val left = half + gap + (half - column) / 2
+                // Shown, the title heads the controls. Hidden, it moves onto the foot of the cover.
+                val titleX = lerpPx(left, coverLeft, hidden)
+                val titleY = lerpPx(top + header.height, height - title.height, hidden)
                 layout(width, height) {
                     artwork.place(0, 0)
-                    header.place(left, top)
-                    controls.place(left, top + header.height)
+                    title.place(titleX, titleY) // after the cover, so it draws over it
+                    if (placeControls) {
+                        header.placeWithLayer(left, top - (header.height * hidden).toInt()) { alpha = controlsAlpha.value }
+                        controls.placeWithLayer(left, lerpPx(top + header.height + title.height, height, hidden)) {
+                            alpha = controlsAlpha.value
+                        }
+                    }
                 }
             } else {
                 val gap = 8.dp.roundToPx()
+                val margin = 20.dp.roundToPx()
                 // On a phone this is the full width, exactly as before. On a tablet held upright the
                 // cover and controls stop at a size that still reads as a player rather than a
                 // poster, and centre.
                 val column = minOf(width, 620.dp.roundToPx())
                 val left = (width - column) / 2
                 val header = headerMeasurables.first().measure(Constraints.fixedWidth(width))
+                val title = titleMeasurables.first().measure(Constraints(minWidth = column, maxWidth = column))
                 val controls = controlsMeasurables.first().measure(
                     Constraints(
                         minWidth = column,
                         maxWidth = column,
-                        maxHeight = (height - header.height).coerceAtLeast(0),
+                        maxHeight = (height - header.height - title.height).coerceAtLeast(0),
                     ),
                 )
-                // The cover takes whatever height is left between the header and the controls,
-                // which is what the weighted slot used to do.
-                val artworkHeight = (height - header.height - gap - controls.height).coerceAtLeast(0)
-                val artwork = artworkMeasurables.first().measure(Constraints.fixed(column, artworkHeight))
+                val artworkX: Int
+                val artworkY: Int
+                val artwork: Placeable
+                val titleY: Int
+                if (controlsShown) {
+                    // The player as it has always been: header, then the cover taking whatever
+                    // height is left, then the title, then the controls.
+                    titleY = height - controls.height - title.height
+                    val top = header.height + gap
+                    artwork = artworkMeasurables.first().measure(
+                        Constraints.fixed(column, (titleY - top).coerceAtLeast(0)),
+                    )
+                    artworkX = left
+                    artworkY = top
+                } else {
+                    // The poster. On a phone the cover runs to the edges of the screen: the margin
+                    // was there to line it up with the controls, and they are gone. The title is
+                    // set over its lower part rather than under it, and the two sit together in
+                    // the middle of the screen. Pinned to the bottom instead, a square cover on a
+                    // tall phone left the top half of the screen an empty field.
+                    val bleed = if (column == width) margin else 0
+                    val coverWidth = column + 2 * bleed
+                    val overlap = (title.height * TITLE_OVER_COVER).toInt()
+                    val side = minOf(coverWidth, (height - title.height + overlap).coerceAtLeast(0))
+                    val top = ((height - (side + title.height - overlap)) / 2).coerceAtLeast(0)
+                    artwork = artworkMeasurables.first().measure(Constraints.fixed(coverWidth, side))
+                    artworkX = left - bleed
+                    artworkY = top
+                    titleY = top + side - overlap
+                }
                 layout(width, height) {
-                    header.place(0, 0)
-                    artwork.place(left, header.height + gap)
-                    controls.place(left, height - controls.height)
+                    artwork.place(artworkX, artworkY)
+                    title.place(left, titleY) // after the cover, so it draws over it
+                    if (placeControls) {
+                        header.placeWithLayer(0, -(header.height * hidden).toInt()) { alpha = controlsAlpha.value }
+                        controls.placeWithLayer(left, lerpPx(height - controls.height, height, hidden)) {
+                            alpha = controlsAlpha.value
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+/** Remembers which face each track got, so the next one can be told to pick another. */
+private class FaceMemory {
+    var key: String? = null
+    var face: Int? = null
+    var before: Int? = null
+}
+
+private fun lerpPx(from: Int, to: Int, t: Float): Int = (from + (to - from) * t).toInt()
+
+/**
+ * The title, as large as it can be set in its width without splitting a word.
+ *
+ * Twelve faces is twelve different widths: the same title that sits on one line in a condensed
+ * face runs to four in an extended one. A fixed size either wastes the space or overflows it, so
+ * the size is found per title and face, starting large and stepping down until the title fits in
+ * three lines, no word has had to break across two, and the whole block is no taller than
+ * [TITLE_MAX_SCREEN_SHARE] of the screen. The height cap is what lets the ceiling be high: a short
+ * title in a condensed face grows to fill the width, as "As It Was" in Outward should, and a short
+ * title in a wide face stops before it buries the cover. Measured, not guessed, and only when the
+ * title, the face or the width changes.
+ */
+@Composable
+private fun FitTitle(text: String, style: TextStyle, color: Color, maxLines: Int = 3) {
+    val measurer = rememberTextMeasurer()
+    val maxHeightPx = with(LocalDensity.current) {
+        (LocalConfiguration.current.screenHeightDp * TITLE_MAX_SCREEN_SHARE).dp.roundToPx()
+    }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val widthPx = constraints.maxWidth
+        val size = remember(text, style, widthPx, maxHeightPx) {
+            var sp = TITLE_MAX_SP
+            while (sp > TITLE_MIN_SP) {
+                val result = measurer.measure(
+                    text = text,
+                    style = style.copy(fontSize = sp.sp, lineHeight = (sp * 0.95f).sp),
+                    constraints = Constraints(maxWidth = widthPx),
+                )
+                val wordSplit = (0 until result.lineCount - 1).any { line ->
+                    val end = result.getLineEnd(line)
+                    end in 1 until text.length && !text[end - 1].isWhitespace() && !text[end].isWhitespace()
+                }
+                val fits = result.lineCount <= maxLines && result.size.height <= maxHeightPx
+                if (fits && !wordSplit && !result.didOverflowWidth) break
+                sp -= 2f
+            }
+            sp
+        }
+        Text(
+            text = text,
+            style = style.copy(fontSize = size.sp, lineHeight = (size * 0.95f).sp),
+            color = color,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -850,3 +1066,19 @@ internal fun formatDuration(ms: Long): String {
  * share buttons the way the reference does and just kisses the title.
  */
 private const val COVER_BOOST = 1.22f
+
+/** How long the controls wait, untouched and playing, before they get out of the way. */
+private const val CONTROLS_HIDE_MS = 4000L
+
+/** How much of the title's height is set over the cover once the controls have gone. */
+private const val TITLE_OVER_COVER = 0.6f
+
+/** The title's size range. It starts at the top and steps down until it fits. */
+private const val TITLE_MAX_SP = 120f
+
+/**
+ * The most of the screen's height the title may take, however short it is. 30% made a better
+ * poster and a worse player: with the controls up it squeezed the cover to a thumbnail.
+ */
+private const val TITLE_MAX_SCREEN_SHARE = 0.22f
+private const val TITLE_MIN_SP = 30f
