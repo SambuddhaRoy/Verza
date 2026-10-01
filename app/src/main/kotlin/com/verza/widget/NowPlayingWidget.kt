@@ -1,5 +1,6 @@
 package com.verza.widget
 
+import com.verza.ui.theme.DesignScheme
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -105,4 +106,6 @@ data class WidgetState(
     // The app's own theme choices, so a widget matches the app rather than a default of its own.
     val flavour: ColorFlavour = ColorFlavour.SIGNATURE,
     val accentSource: AccentSource = AccentSource.COMPLEMENT,
+    // Square shapes everywhere in the Poster design, as in the app.
+    val design: DesignScheme = DesignScheme.MATERIAL,
 )

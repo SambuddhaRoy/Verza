@@ -1,6 +1,6 @@
 package com.verza.ui.screens
 
-import androidx.compose.ui.graphics.RectangleShape
+import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
@@ -279,7 +281,7 @@ private fun StepColour(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Row(modifier = Modifier.clip(RectangleShape)) {
+                    Row(modifier = Modifier.clip(squareOr(RoundedCornerShape(8.dp)))) {
                         Box(Modifier.size(24.dp).background(preview.container))
                         Box(Modifier.size(24.dp).background(preview.surface))
                         Box(Modifier.size(24.dp).background(preview.accent))

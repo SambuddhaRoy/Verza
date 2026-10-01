@@ -1,6 +1,8 @@
 package com.verza.ui.screens
 
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
@@ -23,6 +25,8 @@ import com.verza.ui.expressive.MetaLabel
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
@@ -175,7 +179,7 @@ fun LibraryScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RectangleShape)
+                                .clip(squareOr(RoundedCornerShape(12.dp)))
                                 .clickable(onClick = { showCreatePlaylist = true; newPlaylistName = "" })
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -252,7 +256,7 @@ fun LibraryScreen(
             onDismissRequest = { showCreatePlaylist = false },
             title = { Text("New playlist") },
             text = {
-                OutlinedTextField(shape = RectangleShape, 
+                OutlinedTextField(shape = squareOr(OutlinedTextFieldDefaults.shape), 
                     value = newPlaylistName,
                     onValueChange = { newPlaylistName = it },
                     placeholder = { Text("Playlist name") },
@@ -260,7 +264,7 @@ fun LibraryScreen(
                 )
             },
             confirmButton = {
-                TextButton(shape = RectangleShape, onClick = {
+                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = {
                     val name = newPlaylistName.trim()
                     if (name.isNotEmpty()) {
                         viewModel.createPlaylist(name)
@@ -268,7 +272,7 @@ fun LibraryScreen(
                     }
                 }) { Text("Create") }
             },
-            dismissButton = { TextButton(shape = RectangleShape, onClick = { showCreatePlaylist = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { showCreatePlaylist = false }) { Text("Cancel") } },
         )
     }
 }
@@ -344,7 +348,7 @@ private fun LocalMusicContent(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(20.dp))
-            Button(onClick = onRequestPermission, shape = RectangleShape) { Text("Grant access") }
+            Button(onClick = onRequestPermission, shape = squareOr(CircleShape)) { Text("Grant access") }
         }
         return
     }

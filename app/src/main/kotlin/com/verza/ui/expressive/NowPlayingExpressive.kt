@@ -128,6 +128,7 @@ import coil3.compose.AsyncImage
 import com.verza.audio.VisualizerSignal
 import com.verza.player.QueueItem
 import com.verza.ui.theme.LocalAudioSignal
+import com.verza.ui.theme.isPoster
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
@@ -379,6 +380,14 @@ private fun PlayerPane(
     )
     val controlsScroll = rememberScrollState()
 
+    // Everything from here to the layout that is new (the controls hiding, the face per song, the
+    // poster arrangement) belongs to the Poster design. In Material the controls never hide, so
+    // the layout only ever takes its first arrangement, which is the player as it always was.
+    val poster = isPoster()
+    // Picked here rather than in the cover's graphics layer below: shapes follow the design
+    // setting, and that has to be read in composition.
+    val coverShape = ShapeExtraLarge
+
     // ── the controls get out of the way ──────────────────────────────────────────────────────
     // While a song plays, the controls fade after a few seconds without a touch and leave a poster:
     // the cover, as large as the screen allows, with the title set over its lower edge. Any touch
@@ -399,8 +408,8 @@ private fun PlayerPane(
     }
     var controlsShown by remember { mutableStateOf(true) }
     var touches by remember { mutableIntStateOf(0) }
-    LaunchedEffect(isPlaying, touches, controlsShown, touchExploring) {
-        if (!isPlaying || touchExploring) {
+    LaunchedEffect(poster, isPlaying, touches, controlsShown, touchExploring) {
+        if (!poster || !isPlaying || touchExploring) {
             controlsShown = true
             return@LaunchedEffect
         }
@@ -424,7 +433,8 @@ private fun PlayerPane(
     // face the previous track had, so two songs in a row never share one; when the title arrives
     // late for the same track it keeps the face it already has.
     val faceMemory = remember { FaceMemory() }
-    val face = remember(trackKey, title) {
+    val face = remember(trackKey, title, poster) {
+        if (!poster) return@remember null
         if (trackKey != faceMemory.key) {
             faceMemory.before = faceMemory.face
             faceMemory.key = trackKey
@@ -477,7 +487,7 @@ private fun PlayerPane(
             BoxWithConstraints(
                 modifier = paneModifier,
                 // To the bottom of its slot, so the square meets the title however tall the slot is.
-                contentAlignment = Alignment.BottomCenter,
+                contentAlignment = if (poster) Alignment.BottomCenter else Alignment.Center,
             ) {
             // One measurement of the slot, turned into an explicit side length. Everything below is
             // sized from this rather than from a fill modifier, so nothing the image does can change it.
@@ -528,7 +538,7 @@ private fun PlayerPane(
                             val boost = (1f + (coverBoost - 1f) * controlsAlpha.value).coerceAtMost(boostRoom)
                             scaleX = boost
                             scaleY = boost
-                            shape = ShapeExtraLarge
+                            shape = coverShape
                             clip = true
                         }
                         // Drag sideways to change track — the gesture the slide animation implies.
@@ -582,7 +592,15 @@ private fun PlayerPane(
                 label = "titleSwap",
             ) { (t, a, family) ->
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    FitTitle(
+                    if (!poster) {
+                        Text(
+                            text = t,
+                            style = HeroDisplay,
+                            color = colors.accent,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    } else FitTitle(
                         text = t,
                         // The face is drawn as it was cut: most of these have one weight and no
                         // italic, and asking for either only gets a synthesised imitation.
@@ -601,7 +619,7 @@ private fun PlayerPane(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = a,
-                        style = BodyStrong.copy(shadow = titleShadow),
+                        style = if (poster) BodyStrong.copy(shadow = titleShadow) else BodyStrong,
                         color = colors.onContainerMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

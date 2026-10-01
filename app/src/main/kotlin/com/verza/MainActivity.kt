@@ -213,6 +213,7 @@ class MainActivity : ComponentActivity() {
             // was doing that work dozens of times a second for an unchanged colour.
             val flavour by settingsViewModel.colorFlavour.collectAsStateWithLifecycle()
             val accentSource by settingsViewModel.accentSource.collectAsStateWithLifecycle()
+            val design by settingsViewModel.designScheme.collectAsStateWithLifecycle()
             val expressive = remember(artworkColors, flavour, accentSource) {
                 expressiveColorsFrom(artworkColors, flavour, accentSource)
             }
@@ -231,7 +232,7 @@ class MainActivity : ComponentActivity() {
             // The Material scheme is the expressive palette. Anything still reading
             // MaterialTheme.colorScheme therefore agrees with the canvas it is drawn on, instead of
             // colouring text from a theme chosen independently of the background.
-            VerzaTheme(scheme = materialScheme) {
+            VerzaTheme(scheme = materialScheme, design = design) {
                 // Screens not yet rewritten read LocalCoverColors; mapping it onto the expressive
                 // palette converts them without each one having to be touched.
                 val chromeCover = remember(expressive) {

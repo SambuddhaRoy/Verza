@@ -9,6 +9,7 @@
     android:layout_height="match_parent">
 
     <ImageView
+        android:id="@+id/widget_burst_shadow"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:importantForAccessibility="no"
@@ -49,6 +50,7 @@
         <!-- The rim is also what makes the pill draw at all: a wrap_content FrameLayout only stretches
              match_parent children to its size when there are at least two of them. -->
         <ImageView
+            android:id="@+id/widget_tag_bg_shadow"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:importantForAccessibility="no"
@@ -91,6 +93,7 @@
         android:rotation="12">
 
         <ImageView
+            android:id="@+id/widget_toggle_bg_shadow"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:importantForAccessibility="no"

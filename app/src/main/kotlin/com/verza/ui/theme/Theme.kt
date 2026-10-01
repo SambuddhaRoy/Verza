@@ -26,6 +26,7 @@ val DynamicColorSupported: Boolean
 @Composable
 fun VerzaTheme(
     scheme: ColorScheme,
+    design: DesignScheme = DesignScheme.MATERIAL,
     content: @Composable () -> Unit,
 ) {
     // One scheme, always the cover's.
@@ -38,11 +39,11 @@ fun VerzaTheme(
     // there is nothing left to choose between here.
     val extended: VerzaExtendedColors = scheme.deriveExtendedColors()
 
-    CompositionLocalProvider(LocalVerzaExtendedColors provides extended) {
+    CompositionLocalProvider(LocalVerzaExtendedColors provides extended, LocalDesign provides design) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = VerzaTypography,
-            shapes = VerzaShapes,
+            typography = if (design == DesignScheme.POSTER) PosterTypography else VerzaTypography,
+            shapes = if (design == DesignScheme.POSTER) SquareShapes else VerzaShapes,
             content = content,
         )
     }

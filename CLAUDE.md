@@ -33,34 +33,50 @@ minSdk 26, target/compile 35. A separate Electron desktop port lives at
 - Last published GitHub *release* is v1.0.0; everything since (mixes, sound suite, OS media
   integration, halftone glow, cover-flow, EQ presets, share-to-Verza) is on `main` only.
 
-## Branch `feat/gass-design` — square, colourful, poster Now Playing
+## Design setting: Material or Poster (Settings > Design)
 
-Off `main`, not merged, not released. Keeps main's cover-derived colours; the references are GASS
-Records (flat slabs of colour) and Uncut's display type.
+Two looks over the same app, switchable live. **Material** is the app as it was (rounded, M3
+Expressive). **Poster** is square edges everywhere, one display face for headings, and a Now Playing
+that hides its controls into a poster of the cover. Both take their colours from the cover. Stored as
+`design_scheme`; **absent or unknown means Material**, so an update never restyles anyone (tested).
+The references were GASS Records (flat slabs of colour) and Uncut's display type.
 
-- **No rounded edges anywhere.** `VerzaShape`, the Expressive shape names, `PillShape`, `CloudShape`
-  and `CookieShape` are all `RectangleShape` (names kept as aliases). Material's theme slots are a
-  zero-radius `RoundedCornerShape` because they are typed `CornerBasedShape`. Material hardwires
-  `Button`/`TextButton`/`OutlinedButton` to a full circle whatever the theme says, so every call
-  site passes `shape = RectangleShape`; the equalizer's `Switch` and `Slider`s have no shape
-  parameter and are replaced by `SquareSwitch`/`SquareSlider` in `EqualizerScreen.kt`. The ten widget
-  mask drawables are all the same square. **A new Material button without an explicit shape comes
-  back round.**
-- **Now Playing hides its controls** after 4s untouched while playing (`CONTROLS_HIDE_MS`); paused
-  they stay. Any touch brings them back (an Initial-pass pointer watcher on the player, never
-  consuming). Never hides with touch exploration on; otherwise honours the system's "time to take
-  action". The layout has exactly two arrangements and `animateBoundsIn` springs between them;
-  **do not drive the layout with an animated value**, or animateBoundsIn chases a moving target
-  every frame. Hidden controls are un-placed, not parked off-screen, because parked below the
-  player they caught touches meant for the queue.
+- **One switch, read in composition.** `DesignScheme` and `LocalDesign` live in `ui/theme/Design.kt`,
+  provided by `VerzaTheme(design = ...)` from MainActivity. Every shape goes through
+  `squareOr(shape)`. The shape tokens (`VerzaShape`, the `Shape*` scale, `PillShape`, `CloudShape`,
+  `CookieShape`) are `@Composable` getters that already do it. **A rounded shape must be read in
+  composition and passed in**: one picked inside a draw or layout lambda cannot see the setting change.
+- **A new rounded literal or Material button needs `squareOr(...)`.** Material hardwires
+  `Button`/`TextButton`/`OutlinedButton`/`OutlinedTextField` rounded whatever the theme says, so each
+  passes `shape = squareOr(ButtonDefaults.shape)` (or its sibling). Theme slots switch to `SquareShapes`.
+  The equalizer's `Switch` and `Slider` have no shape parameter; `SquareSwitch`/`SquareSlider` in
+  `EqualizerScreen.kt` draw the square ones and hand back Material's own in Material.
+- **Widgets follow it** (`WidgetState.design`, `WidgetRenderer.square`): every mask becomes
+  `widget_shape_square`, including the shadow copies behind shaped buttons (they have ids ending
+  `_shadow` for this). The vinyl's disc and label stay round, as a picture of a record. `square` is
+  state on a singleton, safe only while renders are serialised (see its ponytail note).
+- **Headings:** `PosterTypography` puts display, headline and the large title in Frick
+  (`FontPosterHead`); body stays Inter, and lyric lines are pinned to Inter. `HeroDisplay`/`HeroTitle`
+  are getters for the same reason as the shapes.
+- **Now Playing in Poster hides its controls** after 4s untouched while playing (`CONTROLS_HIDE_MS`);
+  paused they stay. Any touch brings them back (an Initial-pass pointer watcher, never consuming).
+  Never hides with touch exploration on; otherwise honours the system's "time to take action". The
+  layout has exactly two arrangements and `animateBoundsIn` springs between them; **do not drive the
+  layout with an animated value**, or animateBoundsIn chases a moving target every frame. Hidden
+  controls are un-placed, not parked off-screen: parked below the player they caught touches meant for
+  the queue. In Material none of this runs and the layout stays in its first arrangement.
 - **A different display face for every song** (`TitleFonts.kt`, `pickTitleFace`): twelve OFL faces
   from uncut.wtf in `res/font/display_*`, licence texts in `assets/font-licenses/`. Stable per song
-  (hash of the track key), never the previous song's face, and a face missing any character of the
-  title is skipped (`Paint.hasGlyph`), falling back to the app's type if none fit (Devanagari).
-  `FitTitle` sizes it: 120sp down, max three lines, no word split, at most 22% of screen height.
-  PicNic is not included: Uncut still lists it as OFL but it has moved to a licence with conditions.
-  Five more OFL faces (Getai Grotesk Display, LC Mogi, Cakra, Queering, Slibinas) need a manual
-  download from their foundries.
+  (hash of the track key), never the previous song's face, and a face that cannot set every character
+  of the title is skipped. "Can set" means a glyph **and ink**: Solide Mirage and Sunday map `"` to an
+  empty glyph, which `hasGlyph` reports as present. If no face fits (Devanagari) the app's type is
+  used. `FitTitle` sizes it: 120sp down, max three lines, no word split, at most 22% of screen height.
+  PicNic is out: Uncut still lists it as OFL but it has moved to a licence with conditions. Five more
+  OFL faces (Getai Grotesk Display, LC Mogi, Cakra, Queering, Slibinas) need a manual download.
+
+Not verified on a device: the Poster widgets (the emulator died before they could be added to a home
+screen), and Material Now Playing after the Poster work (checked by compile, tests and reading the diff,
+not by eye).
 
 ## Architecture pointers
 - **Background glow** (app-wide, behind the NavHost in `MainActivity`): `ui/theme/Glow.kt`.

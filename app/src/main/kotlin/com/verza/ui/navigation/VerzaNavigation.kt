@@ -1,6 +1,7 @@
 package com.verza.ui.navigation
 
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.material3.ButtonDefaults
+import com.verza.ui.theme.squareOr
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
@@ -707,13 +708,13 @@ fun VerzaNavigation(
                 )
             },
             confirmButton = {
-                TextButton(shape = RectangleShape, onClick = {
+                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = {
                     playbackViewModel.acceptSharedSession()
                     navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
                 }) { Text("Listen") }
             },
             dismissButton = {
-                TextButton(shape = RectangleShape, onClick = { playbackViewModel.dismissSharedSession() }) { Text("Not now") }
+                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { playbackViewModel.dismissSharedSession() }) { Text("Not now") }
             },
         )
     }

@@ -1,6 +1,9 @@
 package com.verza.ui.screens
 
+import com.verza.ui.theme.DesignScheme
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.material3.ButtonDefaults
+import com.verza.ui.theme.squareOr
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -97,6 +101,7 @@ fun SettingsScreen(
 
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
     val flavour by viewModel.colorFlavour.collectAsStateWithLifecycle()
+    val design by viewModel.designScheme.collectAsStateWithLifecycle()
     val accentSource by viewModel.accentSource.collectAsStateWithLifecycle()
     val audioQuality by viewModel.audioQuality.collectAsStateWithLifecycle()
     val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
@@ -305,6 +310,16 @@ fun SettingsScreen(
         }
 
         // ── what you see ────────────────────────────────────────────────────
+        group("Design") {
+            items(DesignScheme.entries.toList()) { option ->
+                DesignRow(
+                    design = option,
+                    selected = option == design,
+                    onClick = { viewModel.setDesignScheme(option) },
+                )
+            }
+        }
+
         group("Colour") {
             item {
                 Text(
@@ -458,12 +473,12 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(shape = RectangleShape, onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
+                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
                     Text("Reset", color = colors.accent, style = BodyStrong)
                 }
             },
             dismissButton = {
-                TextButton(shape = RectangleShape, onClick = { confirmResetStats = false }) {
+                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { confirmResetStats = false }) {
                     Text("Cancel", color = colors.onSurfaceMuted, style = BodyText)
                 }
             },
@@ -706,6 +721,37 @@ private fun AccountCard(signedIn: Boolean, onSignIn: () -> Unit, onSignOut: () -
                 color = if (signedIn) colors.onSurface else colors.onAccent,
             )
         }
+    }
+}
+
+/**
+ * One design option. Its swatch is drawn in that design's own shapes (a rounded tile beside a pill,
+ * or two hard squares) so the difference is visible before it is picked, rather than only once the
+ * whole app has redrawn around you.
+ */
+@Composable
+private fun DesignRow(design: DesignScheme, selected: Boolean, onClick: () -> Unit) {
+    val colors = LocalExpressiveColors.current
+    val rounded = design == DesignScheme.MATERIAL
+    RowSurface(onClick = onClick) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(22.dp)
+                    .clip(if (rounded) RoundedCornerShape(6.dp) else RectangleShape)
+                    .background(colors.accent),
+            )
+            Box(
+                Modifier.size(width = 30.dp, height = 22.dp)
+                    .clip(if (rounded) RoundedCornerShape(percent = 50) else RectangleShape)
+                    .background(colors.onSurfaceMuted),
+            )
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(design.displayName, style = BodyStrong, color = colors.onSurface)
+            Text(design.blurb, style = BodyText, color = colors.onSurfaceMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        SelectedDot(selected)
     }
 }
 

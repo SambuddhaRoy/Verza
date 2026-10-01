@@ -1,5 +1,6 @@
 package com.verza.data
 
+import com.verza.ui.theme.DesignScheme
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -72,6 +73,7 @@ class PreferencesRepository @Inject constructor(
     // Which silhouette the album art is masked with. Defaults to SHUFFLE — the shape changing per
     // track is the point of having it at all.
     private val colorFlavourKey = stringPreferencesKey("color_flavour")
+    private val designSchemeKey = stringPreferencesKey("design_scheme")
     private val accentSourceKey = stringPreferencesKey("accent_source")
     private val crossfadeKey = intPreferencesKey("crossfade_seconds")
     // Whether the launcher icon follows the cover colour. Off by default — switching it has visible
@@ -141,6 +143,10 @@ class PreferencesRepository @Inject constructor(
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
+
+    /** Material or Poster. Absent means Material, which is what every install had before. */
+    val designSchemeFlow: Flow<DesignScheme> =
+        store.data.map { DesignScheme.fromName(it[designSchemeKey]) }
 
     /** How hard to push the cover's colours. Replaced the fixed palettes. */
     val colorFlavourFlow: Flow<ColorFlavour> =
@@ -245,6 +251,10 @@ class PreferencesRepository @Inject constructor(
     }
 
     suspend fun downloadTree(): String = store.data.first()[downloadTreeKey].orEmpty()
+
+    suspend fun setDesignScheme(design: DesignScheme) {
+        store.edit { it[designSchemeKey] = design.name }
+    }
 
     suspend fun setColorFlavour(flavour: ColorFlavour) {
         store.edit { it[colorFlavourKey] = flavour.name }
