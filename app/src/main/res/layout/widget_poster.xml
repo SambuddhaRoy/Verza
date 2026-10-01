@@ -45,6 +45,7 @@
                 <!-- A rim, like the stickers. It is also what makes the pill draw: a wrap_content
                      FrameLayout only stretches match_parent children when there are at least two. -->
                 <ImageView
+                    android:id="@+id/widget_tag_bg_shadow"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:importantForAccessibility="no"

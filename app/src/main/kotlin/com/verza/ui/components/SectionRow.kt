@@ -1,11 +1,13 @@
 package com.verza.ui.components
 
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.material3.ButtonDefaults
+import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +33,7 @@ import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
+import com.verza.ui.theme.VerzaCorner
 import com.verza.ui.theme.VerzaShape
 import com.verza.ui.theme.glassSurface
 
@@ -84,7 +87,7 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
             ) {
                 Eyebrow(text = title, color = cover.sub, modifier = Modifier.weight(1f))
                 if (onSeeAll != null) {
-                    TextButton(shape = RectangleShape, onClick = onSeeAll) {
+                    TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = onSeeAll) {
                         Text(
                             "see all",
                             style = TextStyle(fontFamily = FontMono, fontSize = 9.5.sp, letterSpacing = 0.08.em),
@@ -99,7 +102,7 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
                 Modifier
                     .width(28.dp)
                     .height(1.dp)
-                    .clip(RectangleShape)
+                    .clip(squareOr(RoundedCornerShape(0.5.dp)))
                     .background(colors.primary),
             )
             Row(
@@ -115,7 +118,7 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
                     modifier = Modifier.weight(1f),
                 )
                 if (onSeeAll != null) {
-                    TextButton(shape = RectangleShape, onClick = onSeeAll) {
+                    TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = onSeeAll) {
                         // Italic serif "see all" reads as an editor's note rather than a button.
                         Text("see all", style = CaptionItalic, color = colors.primary)
                     }
@@ -291,7 +294,7 @@ fun MediaCard(item: HomeItem, width: Dp, onClick: () -> Unit, onLongClick: (() -
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RectangleShape)
+                .clip(squareOr(RoundedCornerShape(topStart = VerzaCorner, topEnd = VerzaCorner, bottomStart = 0.dp, bottomEnd = 0.dp)))
                 .background(gradient),
         ) {
             if (art != null) {

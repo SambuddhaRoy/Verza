@@ -2,6 +2,7 @@ package com.verza.ui.expressive
 
 import android.content.Context
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
 import com.verza.R
@@ -34,10 +35,16 @@ object TitleFonts {
     )
 
     private val typefaces = HashMap<Int, Typeface?>()
-    private val paint = Paint()
+    private val paint = Paint().apply { textSize = 100f }
+    private val bounds = Rect()
+
+    private fun inks(c: Char): Boolean {
+        paint.getTextBounds(c.toString(), 0, 1, bounds)
+        return !bounds.isEmpty
+    }
 
     /**
-     * Whether [face] can draw every character of [text].
+     * Whether [face] can draw every character of [text], with ink.
      *
      * Most of these faces are Latin only and some have no punctuation at all. A title with a
      * character the face lacks does not fail, Android quietly draws that one glyph in the system
@@ -50,7 +57,10 @@ object TitleFonts {
         } ?: return false
         return synchronized(paint) {
             paint.typeface = tf
-            text.all { it.isWhitespace() || paint.hasGlyph(it.toString()) }
+            // hasGlyph alone is not enough: some of these faces map a character to an empty glyph,
+            // so "All The Stars (From "Black Panther")" drew with holes where the quotes were.
+            // A visible character has to leave ink as well as have a glyph.
+            text.all { c -> c.isWhitespace() || (paint.hasGlyph(c.toString()) && inks(c)) }
         }
     }
 }

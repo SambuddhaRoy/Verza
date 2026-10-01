@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.theme.DesignScheme
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verza.ui.expressive.AccentSource
@@ -65,12 +66,18 @@ class SettingsViewModel @Inject constructor(
     /** Where downloads are written. Blank = app-private storage. */
     val downloadTree: StateFlow<String> = prefs.downloadTreeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+    val designScheme: StateFlow<DesignScheme> = prefs.designSchemeFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, DesignScheme.MATERIAL)
     val colorFlavour: StateFlow<ColorFlavour> = prefs.colorFlavourFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, ColorFlavour.SIGNATURE)
     val accentSource: StateFlow<AccentSource> = prefs.accentSourceFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, AccentSource.COMPLEMENT)
     val crossfadeSeconds: StateFlow<Int> = prefs.crossfadeSecondsFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    fun setDesignScheme(design: DesignScheme) {
+        viewModelScope.launch { prefs.setDesignScheme(design) }
+    }
 
     fun setColorFlavour(flavour: ColorFlavour) {
         viewModelScope.launch { prefs.setColorFlavour(flavour) }

@@ -66,6 +66,13 @@ val FontMono = FontBody
 // progress bars and time chips don't jitter as the seconds tick over.
 private const val FEAT_TABULAR = "tnum"
 
+/**
+ * The face every heading is set in under the Poster design (see [DesignScheme]): Frick, from the
+ * Uncut set in res/font. One face for the chrome, so the app reads as one printed piece; the
+ * per-song faces are Now Playing's alone (TitleFonts).
+ */
+val FontPosterHead = FontFamily(Font(R.font.display_frick))
+
 val VerzaTypography = Typography(
     // Display + headline + titleLarge are Bold Inter — confident without the heavy serif stroke.
     displayLarge = TextStyle(
@@ -158,3 +165,28 @@ val EditorialEyebrow = TextStyle(
     fontFamily = FontBody, fontWeight = FontWeight.Medium,
     fontSize = 10.sp, lineHeight = 12.sp, letterSpacing = 1.6.sp,
 )
+
+/**
+ * [VerzaTypography] with every heading slot (display, headline, the large title) in
+ * [FontPosterHead], for the Poster design. Body, labels and the small titles stay Inter: they are
+ * read rather than looked at.
+ */
+val PosterTypography: Typography = VerzaTypography.run {
+    fun TextStyle.head(scale: Float = 1.1f) = copy(
+        fontFamily = FontPosterHead,
+        fontWeight = FontWeight.Normal,
+        fontStyle = FontStyle.Normal,
+        fontSize = fontSize * scale,
+        lineHeight = fontSize * scale,
+        letterSpacing = 0.sp,
+    )
+    copy(
+        displayLarge = displayLarge.head(),
+        displayMedium = displayMedium.head(),
+        displaySmall = displaySmall.head(),
+        headlineLarge = headlineLarge.head(),
+        headlineMedium = headlineMedium.head(),
+        headlineSmall = headlineSmall.head(),
+        titleLarge = titleLarge.head(),
+    )
+}

@@ -1,6 +1,6 @@
 package com.verza.ui.screens
 
-import androidx.compose.ui.graphics.RectangleShape
+import com.verza.ui.theme.squareOr
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -304,7 +306,7 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
                 // On a dark pill, so it reads over whatever lettering the cover has at the top.
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .background(Color.Black.copy(alpha = 0.45f), RectangleShape)
+                    .background(Color.Black.copy(alpha = 0.45f), squareOr(CircleShape))
                     .padding(horizontal = 8.dp, vertical = 3.dp),
             )
             Text(
@@ -327,7 +329,7 @@ private fun BoxScope.RetryHint(message: String, onRetry: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
-        OutlinedButton(onClick = onRetry, shape = RectangleShape) { Text("Retry") }
+        OutlinedButton(onClick = onRetry, shape = squareOr(RoundedCornerShape(100))) { Text("Retry") }
     }
 }
 

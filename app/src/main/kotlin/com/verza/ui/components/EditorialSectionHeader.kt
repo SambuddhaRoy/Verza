@@ -1,6 +1,6 @@
 package com.verza.ui.components
 
-import androidx.compose.ui.graphics.RectangleShape
+import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +46,7 @@ fun EditorialSectionHeader(
             Modifier
                 .width(accentWidth.dp)
                 .height(1.dp)
-                .clip(RectangleShape)
+                .clip(squareOr(RoundedCornerShape(0.5.dp)))
                 .background(if (sleeve) cover.accent else colors.primary),
         )
         Spacer(Modifier.height(8.dp))

@@ -1,10 +1,11 @@
 package com.verza.ui.screens
 
-import androidx.compose.ui.graphics.RectangleShape
+import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -61,7 +62,7 @@ fun StatsScreen(
                         .padding(start = 8.dp)
                         .width(40.dp)
                         .height(3.dp)
-                        .clip(RectangleShape)
+                        .clip(squareOr(RoundedCornerShape(2.dp)))
                         .background(colors.primary),
                 )
                 Spacer(Modifier.height(12.dp))
@@ -234,7 +235,7 @@ private fun SongStatRow(rank: Int, song: SongStat, showPlays: Boolean = false) {
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RectangleShape)
+                    .clip(squareOr(RoundedCornerShape(8.dp)))
                     .background(colors.surfaceVariant),
             ) {
                 if (art != null) {
@@ -296,7 +297,7 @@ private fun ListeningChart(fingerprint: ListeningFingerprint) {
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(value.coerceAtLeast(0.03f))
-                        .clip(RectangleShape)
+                        .clip(squareOr(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)))
                         .background(
                             if (hour == fingerprint.peakHour) colors.primary
                             else colors.primary.copy(alpha = 0.28f),

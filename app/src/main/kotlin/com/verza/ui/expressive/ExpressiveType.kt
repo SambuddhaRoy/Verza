@@ -1,5 +1,9 @@
 package com.verza.ui.expressive
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import com.verza.ui.theme.isPoster
+import com.verza.ui.theme.FontPosterHead
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -35,7 +39,7 @@ val FontHero = FontFamily(
  * Line height is deliberately tighter than the font size: a two-line title should set as a block,
  * the way a poster would, rather than as two loosely stacked lines.
  */
-val HeroDisplay = TextStyle(
+private val MaterialHeroDisplay = TextStyle(
     fontFamily = FontHero,
     fontStyle = FontStyle.Italic,
     fontWeight = FontWeight.Normal,
@@ -44,8 +48,7 @@ val HeroDisplay = TextStyle(
     letterSpacing = (-0.02).em,
 )
 
-/** The same voice one step down, for section heroes on Home and Library. */
-val HeroTitle = TextStyle(
+private val MaterialHeroTitle = TextStyle(
     fontFamily = FontHero,
     fontStyle = FontStyle.Italic,
     fontWeight = FontWeight.Normal,
@@ -53,6 +56,31 @@ val HeroTitle = TextStyle(
     lineHeight = 34.sp,
     letterSpacing = (-0.015).em,
 )
+
+// The Poster design's heads: Frick, one of the Uncut display faces, condensed and heavy. Upright and
+// at its own single weight; asking it for italic or bold only gets a synthesised imitation. A touch
+// larger than the serif, because a condensed face at the same size reads smaller.
+private val PosterHeroDisplay = TextStyle(
+    fontFamily = FontPosterHead,
+    fontWeight = FontWeight.Normal,
+    fontSize = 52.sp,
+    lineHeight = 48.sp,
+)
+
+private val PosterHeroTitle = TextStyle(
+    fontFamily = FontPosterHead,
+    fontWeight = FontWeight.Normal,
+    fontSize = 38.sp,
+    lineHeight = 36.sp,
+)
+
+/** The track title, in the design's display voice. See [MaterialHeroDisplay]'s doc above. */
+val HeroDisplay: TextStyle
+    @Composable @ReadOnlyComposable get() = if (isPoster()) PosterHeroDisplay else MaterialHeroDisplay
+
+/** The same voice one step down, for section heroes on Home and Library. */
+val HeroTitle: TextStyle
+    @Composable @ReadOnlyComposable get() = if (isPoster()) PosterHeroTitle else MaterialHeroTitle
 
 /** Label/value metadata, the "Where / Echo Bridge" columns. */
 val MetaLabel = TextStyle(

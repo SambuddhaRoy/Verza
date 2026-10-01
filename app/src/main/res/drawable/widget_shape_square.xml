@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Poster design's one widget shape: a square, standing in for every rounded silhouette
+     (pill, arch, cookie, burst, clover, flower) when the app is set to Poster. White, tinted at
+     runtime like the rest. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFFFFFFF" />
+</shape>

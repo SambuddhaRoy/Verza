@@ -1,7 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A square. Every widget shape used to be a different rounded silhouette (pill, arch, cookie,
-     scallop, flower); the app has no rounded edges now, so they are all this. The names stay because
-     the layouts reference them. White, tinted at runtime. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
     <solid android:color="#FFFFFFFF" />
 </shape>

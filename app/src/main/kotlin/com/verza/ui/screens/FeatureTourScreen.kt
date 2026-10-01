@@ -1,6 +1,6 @@
 package com.verza.ui.screens
 
-import androidx.compose.ui.graphics.RectangleShape
+import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.GraphicEq
@@ -182,7 +184,7 @@ fun FeatureTourScreen(
                 color = colors.primary,
             )
             Spacer(Modifier.weight(1f))
-            TextButton(shape = RectangleShape, onClick = onFinish) {
+            TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = onFinish) {
                 Text("Skip", style = CaptionItalic, color = ext.muted)
             }
         }
@@ -205,7 +207,7 @@ fun FeatureTourScreen(
                         Modifier
                             .height(2.dp)
                             .width(if (active) 20.dp else 10.dp)
-                            .clip(RectangleShape)
+                            .clip(squareOr(RoundedCornerShape(1.dp)))
                             .background(if (active) colors.primary else ext.muted.copy(alpha = 0.35f)),
                     )
                 }
@@ -216,7 +218,7 @@ fun FeatureTourScreen(
                     if (onLast) onFinish()
                     else scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                 },
-                shape = RectangleShape,
+                shape = squareOr(RoundedCornerShape(24.dp)),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.primary,
                     contentColor = colors.onPrimary,
@@ -245,7 +247,7 @@ private fun TourCard(page: TourPage) {
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .clip(RectangleShape)
+                .clip(squareOr(CircleShape))
                 .background(colors.primary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center,
         ) {

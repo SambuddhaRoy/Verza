@@ -1,6 +1,6 @@
 package com.verza.ui.screens
 
-import androidx.compose.ui.graphics.RectangleShape
+import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.verza.ui.expressive.HeroTitle
 import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.MetaLabel
@@ -274,7 +276,7 @@ private fun SuggestionsView(suggestions: List<String>, onPick: (String) -> Unit)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RectangleShape)
+                    .clip(squareOr(RoundedCornerShape(12.dp)))
                     .clickable(onClick = { onPick(s) })
                     .padding(vertical = 10.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -312,7 +314,7 @@ private fun HistoryView(history: List<String>, onPick: (String) -> Unit, onClear
                 style = MaterialTheme.typography.labelLarge,
                 color = colors.primary,
                 modifier = Modifier
-                    .clip(RectangleShape)
+                    .clip(squareOr(RoundedCornerShape(8.dp)))
                     .clickable(onClick = onClear)
                     .padding(6.dp),
             )
@@ -321,7 +323,7 @@ private fun HistoryView(history: List<String>, onPick: (String) -> Unit, onClear
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RectangleShape)
+                    .clip(squareOr(RoundedCornerShape(12.dp)))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

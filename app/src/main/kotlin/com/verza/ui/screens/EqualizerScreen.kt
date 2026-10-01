@@ -1,5 +1,8 @@
 package com.verza.ui.screens
 
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import com.verza.ui.theme.isPoster
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.selection.toggleable
@@ -278,8 +281,11 @@ private fun BassSlider(strength: Int, onCommit: (Int) -> Unit) {
 }
 
 /**
+ * The equalizer's slider: Material's own in the Material design, square in the Poster one.
+ *
  * Material's slider is a pill track under a round thumb, and neither takes a shape. The track and
- * thumb slots do, so this is the same slider (same gestures, same accessibility) drawn square.
+ * thumb slots do, so the Poster version is the same slider (same gestures, same accessibility)
+ * drawn square.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -294,6 +300,17 @@ private fun SquareSlider(
     val colors = MaterialTheme.colorScheme
     val on = if (enabled) colors.primary else colors.onSurface.copy(alpha = 0.38f)
     val off = colors.onSurface.copy(alpha = 0.16f)
+    if (!isPoster()) {
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
+            valueRange = valueRange,
+            enabled = enabled,
+            modifier = modifier,
+        )
+        return
+    }
     val span = (valueRange.endInclusive - valueRange.start).takeIf { it > 0f } ?: 1f
     val fraction = ((value - valueRange.start) / span).coerceIn(0f, 1f)
     Slider(
@@ -313,13 +330,25 @@ private fun SquareSlider(
 }
 
 /**
- * A switch with square ends. Material's has no shape parameter at all, so this is a toggleable
- * box: a block that slides from one end of a bordered well to the other. `toggleable` with
+ * The equalizer's switch: Material's own in the Material design, square-ended in the Poster one.
+ *
+ * Material's has no shape parameter at all, so the Poster version is a toggleable box: a block that slides from one end of a bordered well to the other. `toggleable` with
  * [Role.Switch] gives it the same semantics TalkBack reads for the real one.
  */
 @Composable
 private fun SquareSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     val colors = MaterialTheme.colorScheme
+    if (!isPoster()) {
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = colors.onPrimary,
+                checkedTrackColor = colors.primary,
+            ),
+        )
+        return
+    }
     val offset by animateDpAsState(if (checked) 22.dp else 0.dp, label = "switch")
     Box(
         modifier = Modifier

@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.theme.FontBody
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -173,6 +175,9 @@ private fun SyncedLyrics(
             Text(
                 text = line.text.ifBlank { "♪" },
                 style = MaterialTheme.typography.titleLarge.copy(
+                    // Lyrics are read, not looked at, so they stay Inter even where titleLarge is a
+                    // display face (the Poster design).
+                    fontFamily = FontBody,
                     fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
                 ),
                 color = if (isCurrent) colors.onBackground else ext.muted.copy(alpha = 0.7f),
