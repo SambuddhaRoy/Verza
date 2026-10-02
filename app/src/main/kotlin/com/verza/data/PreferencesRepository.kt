@@ -145,8 +145,8 @@ class PreferencesRepository @Inject constructor(
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
 
-    /** Poster's collage Home. On unless turned off: choosing Poster already opted in to the look. */
-    val homeCollageFlow: Flow<Boolean> = store.data.map { it[homeCollageKey] ?: true }
+    /** Poster's collage Home. Experimental, so off until someone turns it on. */
+    val homeCollageFlow: Flow<Boolean> = store.data.map { it[homeCollageKey] ?: false }
 
     suspend fun setHomeCollage(enabled: Boolean) {
         store.edit { it[homeCollageKey] = enabled }

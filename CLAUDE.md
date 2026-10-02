@@ -74,7 +74,7 @@ The references were GASS Records (flat slabs of colour) and Uncut's display type
   PicNic is out: Uncut still lists it as OFL but it has moved to a licence with conditions. Five more
   OFL faces (Getai Grotesk Display, LC Mogi, Cakra, Queering, Slibinas) need a manual download.
 
-- **Collage Home** (Poster only, Settings > Design > Collage home, `home_collage`, on by default):
+- **Collage Home** (Poster only, Settings > Design > Collage home, `home_collage`, **off by default, marked experimental** along with Poster itself):
   `HomeCollage.kt`. Every mix and shelf item packed edge to edge by `packCollage` (`Collage.kt`): a
   dense grid where each square tile shrinks to fit the first free cell, holes too small for a cover
   become flat colour slabs, and the bottom is squared off. **`CollageTest` sweeps 400 random size runs

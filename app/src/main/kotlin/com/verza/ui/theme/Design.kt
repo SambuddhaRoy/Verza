@@ -17,9 +17,9 @@ import androidx.compose.ui.graphics.Shape
  *
  * Presentation only. No feature, screen or behaviour outside Now Playing depends on it.
  */
-enum class DesignScheme(val displayName: String, val blurb: String) {
+enum class DesignScheme(val displayName: String, val blurb: String, val experimental: Boolean = false) {
     MATERIAL("Material", "Rounded and soft, the way Android draws things"),
-    POSTER("Poster", "Square edges, and Now Playing becomes a poster of the cover"),
+    POSTER("Poster", "Square edges, and Now Playing becomes a poster of the cover", experimental = true),
     ;
 
     companion object {
@@ -35,9 +35,10 @@ val LocalDesign = staticCompositionLocalOf { DesignScheme.MATERIAL }
 
 /**
  * Whether Home is the collage (Poster only): every cover packed edge to edge at a different size,
- * names set on the art. Off, Poster's Home is the usual rows of shelves, squared.
+ * names set on the art. Off, Poster's Home is the usual rows of shelves, squared. Experimental, so
+ * off unless asked for.
  */
-val LocalHomeCollage = staticCompositionLocalOf { true }
+val LocalHomeCollage = staticCompositionLocalOf { false }
 
 @Composable
 @ReadOnlyComposable
