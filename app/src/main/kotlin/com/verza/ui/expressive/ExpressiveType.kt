@@ -126,13 +126,12 @@ val BodyStrong = TextStyle(
 )
 
 /**
- * This style set in a face of its own, in the Poster design: one of the legible display faces,
- * chosen by [key] so a given row or heading always looks the same, and different from its
- * neighbours. Untouched in Material, or if no legible face can set all of [text].
+ * This style set in a face of its own: one of the legible display faces, chosen by [key] so a given
+ * row or heading always looks the same, and different from its neighbours. In both designs; left as
+ * it is only if no legible face can set all of [text].
  */
 @Composable
-fun TextStyle.posterFace(key: String, text: String = key): TextStyle {
-    if (!isPoster()) return this
+fun TextStyle.variedFace(key: String, text: String = key): TextStyle {
     val context = LocalContext.current
     val family = remember(key, text) { TitleFonts.legibleFor(context, key, text) } ?: return this
     return copy(fontFamily = family, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal)

@@ -2,7 +2,7 @@ package com.verza.ui.screens
 
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
-import com.verza.ui.expressive.posterFace
+import com.verza.ui.expressive.variedFace
 import com.verza.ui.theme.isPoster
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
@@ -81,7 +81,7 @@ fun SearchScreen(
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Text("EXPLORE", style = MetaLabel, color = xc.onContainerMuted)
             Spacer(Modifier.height(6.dp))
-            Text(if (isPoster()) "SEARCH" else "Search", style = HeroTitle.posterFace("Search"), color = xc.onContainer)
+            Text(if (isPoster()) "SEARCH" else "Search", style = HeroTitle.variedFace("Search"), color = xc.onContainer)
         }
 
         // ── Pill search bar ────────────────────────────────────────────────

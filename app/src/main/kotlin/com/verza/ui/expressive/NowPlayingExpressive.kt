@@ -385,9 +385,9 @@ private fun PlayerPane(
     )
     val controlsScroll = rememberScrollState()
 
-    // Everything from here to the layout that is new (the controls hiding, the face per song, the
-    // poster arrangement) belongs to the Poster design. In Material the controls never hide, so
-    // the layout only ever takes its first arrangement, which is the player as it always was.
+    // The controls hiding, the face per song and the poster arrangement run in both designs. What
+    // stays Poster's own is the cover running to the screen's edges and the controls being slabs;
+    // Material keeps its margins, its rounded cover and its own controls.
     val poster = isPoster()
     // Picked here rather than in the cover's graphics layer below: shapes follow the design
     // setting, and that has to be read in composition.
@@ -413,8 +413,8 @@ private fun PlayerPane(
     }
     var controlsShown by remember { mutableStateOf(true) }
     var touches by remember { mutableIntStateOf(0) }
-    LaunchedEffect(poster, isPlaying, touches, controlsShown, touchExploring) {
-        if (!poster || !isPlaying || touchExploring) {
+    LaunchedEffect(isPlaying, touches, controlsShown, touchExploring) {
+        if (!isPlaying || touchExploring) {
             controlsShown = true
             return@LaunchedEffect
         }
@@ -438,8 +438,7 @@ private fun PlayerPane(
     // face the previous track had, so two songs in a row never share one; when the title arrives
     // late for the same track it keeps the face it already has.
     val faceMemory = remember { FaceMemory() }
-    val face = remember(trackKey, title, poster) {
-        if (!poster) return@remember null
+    val face = remember(trackKey, title) {
         if (trackKey != faceMemory.key) {
             faceMemory.before = faceMemory.face
             faceMemory.key = trackKey
@@ -597,15 +596,7 @@ private fun PlayerPane(
                 label = "titleSwap",
             ) { (t, a, family) ->
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    if (!poster) {
-                        Text(
-                            text = t,
-                            style = HeroDisplay,
-                            color = colors.accent,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    } else FitTitle(
+                    FitTitle(
                         text = t,
                         // The face is drawn as it was cut: most of these have one weight and no
                         // italic, and asking for either only gets a synthesised imitation.
@@ -624,7 +615,7 @@ private fun PlayerPane(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = a,
-                        style = if (poster) BodyStrong.copy(shadow = titleShadow) else BodyStrong,
+                        style = BodyStrong.copy(shadow = titleShadow),
                         color = colors.onContainerMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -921,7 +912,8 @@ private fun PlayerPane(
                     // set over its lower part rather than under it, and the two sit together in
                     // the middle of the screen. Pinned to the bottom instead, a square cover on a
                     // tall phone left the top half of the screen an empty field.
-                    val bleed = if (column == width) margin else 0
+                    // Poster only: Material keeps its margin and its rounded cover.
+                    val bleed = if (poster && column == width) margin else 0
                     val coverWidth = column + 2 * bleed
                     val overlap = (title.height * TITLE_OVER_COVER).toInt()
                     val side = minOf(coverWidth, (height - title.height + overlap).coerceAtLeast(0))
