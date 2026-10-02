@@ -18,8 +18,9 @@ minSdk 26, target/compile 35. A separate Electron desktop port lives at
 ## Release convention (every shipped change)
 1. Bump `versionCode` (+1) and `versionName` in `app/build.gradle.kts`.
 2. `assembleRelease`, confirm the APK.
-3. Commit + push to `main`. Commit messages END with:
-   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
+3. Commit + push to `main`.
+   No `Co-Authored-By: Claude` trailer or any other AI attribution, anywhere: the owner had
+   every one stripped from history in October 2026. Commit as SambuddhaRoy only.
 
 ## Security (do NOT relax)
 - Author commits as **SambuddhaRoy <rsambuddha476@gmail.com>**.
