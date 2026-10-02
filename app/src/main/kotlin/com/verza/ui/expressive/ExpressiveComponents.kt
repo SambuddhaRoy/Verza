@@ -246,15 +246,17 @@ fun ExpressiveListItem(
 }
 
 /**
- * A list row's title. In the Poster design every row is set in a face of its own, chosen by the
- * title so it is the same each time, and bigger: a list that reads as a run of posters' names
- * rather than as rows of a table. In Material, the row title as it always was.
+ * A list row's title, set in a face of its own, chosen by the title so it is the same each time: a
+ * list that reads as a run of names rather than as rows of a table. Bigger in Poster, where the row
+ * is a slab; a step up from body size in Material, because a condensed display face at body size
+ * reads smaller than the Inter it replaces.
  */
 @Composable
 fun RowTitle(text: String, color: Color, style: TextStyle = BodyStrong) {
+    val size = if (isPoster()) 21.sp else 19.sp
     Text(
         text = text,
-        style = if (isPoster()) style.copy(fontSize = 21.sp, lineHeight = 22.sp).posterFace(text) else style,
+        style = style.copy(fontSize = size, lineHeight = size * 1.05f).variedFace(text),
         color = color,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

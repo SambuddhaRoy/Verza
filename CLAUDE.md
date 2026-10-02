@@ -59,14 +59,14 @@ The references were GASS Records (flat slabs of colour) and Uncut's display type
 - **Headings:** `PosterTypography` puts display, headline and the large title in Frick
   (`FontPosterHead`); body stays Inter, and lyric lines are pinned to Inter. `HeroDisplay`/`HeroTitle`
   are getters for the same reason as the shapes.
-- **Now Playing in Poster hides its controls** after 4s untouched while playing (`CONTROLS_HIDE_MS`);
+- **Now Playing hides its controls, in both designs,** after 4s untouched while playing (`CONTROLS_HIDE_MS`);
   paused they stay. Any touch brings them back (an Initial-pass pointer watcher, never consuming).
   Never hides with touch exploration on; otherwise honours the system's "time to take action". The
   layout has exactly two arrangements and `animateBoundsIn` springs between them; **do not drive the
   layout with an animated value**, or animateBoundsIn chases a moving target every frame. Hidden
   controls are un-placed, not parked off-screen: parked below the player they caught touches meant for
-  the queue. In Material none of this runs and the layout stays in its first arrangement.
-- **A different display face for every song** (`TitleFonts.kt`, `pickTitleFace`): twelve OFL faces
+  the queue. The cover runs to the screen's edges only in Poster; Material keeps its margin and rounded cover.
+- **A different display face for every song, in both designs** (`TitleFonts.kt`, `pickTitleFace`): twelve OFL faces
   from uncut.wtf in `res/font/display_*`, licence texts in `assets/font-licenses/`. Stable per song
   (hash of the track key), never the previous song's face, and a face that cannot set every character
   of the title is skipped. "Can set" means a glyph **and ink**: Solide Mirage and Sunday map `"` to an
@@ -87,8 +87,8 @@ The references were GASS Records (flat slabs of colour) and Uncut's display type
   OFL-type licences can go in it.** Fontshare's own ITF Free Font License allows embedding in an app
   but forbids putting the files on a public server, which a public repo is; Suva Type Foundry
   publishes no licence at all. `TitleFonts.legible` is the subset that reads at list size.
-- **Search and Library rows** in Poster set each title in its own legible face (`RowTitle`,
-  `RowSubtitle`, `posterFace`); every list row should use those two rather than its own `Text`.
+- **Search and Library rows**, in both designs, set each title in its own legible face (`RowTitle`,
+  `RowSubtitle`, `variedFace`; tracked capitals for the subtitle are Poster's); every list row should use those two rather than its own `Text`.
 - **Poster Now Playing controls** (`PosterControls`): one flat strip (previous, PLAY/PAUSE in Anton,
   next), then the toggles and tools as words on slabs, each ruled in the ink colour so neighbouring
   surfaces a shade apart still read as separate blocks.
