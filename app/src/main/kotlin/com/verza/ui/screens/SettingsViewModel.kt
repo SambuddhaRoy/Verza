@@ -67,7 +67,7 @@ class SettingsViewModel @Inject constructor(
     val downloadTree: StateFlow<String> = prefs.downloadTreeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
     val homeCollage: StateFlow<Boolean> = prefs.homeCollageFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val designScheme: StateFlow<DesignScheme> = prefs.designSchemeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, DesignScheme.MATERIAL)
     val colorFlavour: StateFlow<ColorFlavour> = prefs.colorFlavourFlow

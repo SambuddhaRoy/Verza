@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.unit.sp
 import com.verza.ui.theme.DesignScheme
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material3.ButtonDefaults
@@ -321,7 +322,7 @@ fun SettingsScreen(
             }
             if (design == DesignScheme.POSTER) {
                 SwitchRow(
-                    title = "Collage home",
+                    title = "Collage home (experimental)",
                     subtitle = "Every cover packed edge to edge, at a different size, with its name on it",
                     checked = homeCollage,
                     onToggle = viewModel::setHomeCollage,
@@ -757,7 +758,19 @@ private fun DesignRow(design: DesignScheme, selected: Boolean, onClick: () -> Un
         }
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(design.displayName, style = BodyStrong, color = colors.onSurface)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(design.displayName, style = BodyStrong, color = colors.onSurface)
+                if (design.experimental) {
+                    Spacer(Modifier.width(8.dp))
+                    // Still changing between releases, and said so where it is chosen.
+                    Text(
+                        "EXPERIMENTAL",
+                        style = MetaLabel.copy(fontSize = 10.sp),
+                        color = colors.onAccent,
+                        modifier = Modifier.background(colors.accent).padding(horizontal = 5.dp, vertical = 1.dp),
+                    )
+                }
+            }
             Text(design.blurb, style = BodyText, color = colors.onSurfaceMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         SelectedDot(selected)
