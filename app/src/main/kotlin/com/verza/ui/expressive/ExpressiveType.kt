@@ -1,5 +1,7 @@
 package com.verza.ui.expressive
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import com.verza.ui.theme.isPoster
@@ -122,3 +124,16 @@ val BodyStrong = TextStyle(
     fontSize = 16.sp,
     lineHeight = 21.sp,
 )
+
+/**
+ * This style set in a face of its own, in the Poster design: one of the legible display faces,
+ * chosen by [key] so a given row or heading always looks the same, and different from its
+ * neighbours. Untouched in Material, or if no legible face can set all of [text].
+ */
+@Composable
+fun TextStyle.posterFace(key: String, text: String = key): TextStyle {
+    if (!isPoster()) return this
+    val context = LocalContext.current
+    val family = remember(key, text) { TitleFonts.legibleFor(context, key, text) } ?: return this
+    return copy(fontFamily = family, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal)
+}

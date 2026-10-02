@@ -1,5 +1,6 @@
 package com.verza
 
+import com.verza.ui.theme.LocalHomeCollage
 import android.Manifest
 import android.content.Intent
 import android.graphics.Color as AndroidColor
@@ -214,6 +215,7 @@ class MainActivity : ComponentActivity() {
             val flavour by settingsViewModel.colorFlavour.collectAsStateWithLifecycle()
             val accentSource by settingsViewModel.accentSource.collectAsStateWithLifecycle()
             val design by settingsViewModel.designScheme.collectAsStateWithLifecycle()
+            val homeCollage by settingsViewModel.homeCollage.collectAsStateWithLifecycle()
             val expressive = remember(artworkColors, flavour, accentSource) {
                 expressiveColorsFrom(artworkColors, flavour, accentSource)
             }
@@ -272,6 +274,7 @@ class MainActivity : ComponentActivity() {
                     LocalCoverColors provides chromeCover,
                     LocalArtworkColors provides artworkColors,
                     LocalExpressiveColors provides expressive,
+                    LocalHomeCollage provides homeCollage,
                     // Any composable can ride the music: the same gated signal the player reads.
                     LocalAudioSignal provides (if (shouldVisualize) visualizerSignalFlow else null),
                 ) {

@@ -33,6 +33,12 @@ enum class DesignScheme(val displayName: String, val blurb: String) {
  */
 val LocalDesign = staticCompositionLocalOf { DesignScheme.MATERIAL }
 
+/**
+ * Whether Home is the collage (Poster only): every cover packed edge to edge at a different size,
+ * names set on the art. Off, Poster's Home is the usual rows of shelves, squared.
+ */
+val LocalHomeCollage = staticCompositionLocalOf { true }
+
 @Composable
 @ReadOnlyComposable
 fun isPoster(): Boolean = LocalDesign.current == DesignScheme.POSTER

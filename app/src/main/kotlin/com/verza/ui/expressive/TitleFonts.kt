@@ -10,8 +10,8 @@ import com.verza.R
 /**
  * The display faces the Now Playing title is set in, a different one for every song.
  *
- * All twelve come from Uncut (uncut.wtf), the free-type index, and every one is under the SIL Open
- * Font License, which is what allows them inside an APK. Their licence texts ship alongside them
+ * Twelve come from Uncut (uncut.wtf), the free-type index, thirteen from Velvetyne and Anton from
+ * Fontshare, and every one is under the SIL Open Font License, which is what allows them inside an APK. Their licence texts ship alongside them
  * in `assets/font-licenses/`, as the OFL requires. Uncut listed 47 display faces; the ones not here
  * either carry no licence, a no-derivatives or GPL one, or are too thin or too ornamental to hold a
  * song title at poster size. PicNic was on the list and is not here because it has since moved from
@@ -32,7 +32,57 @@ object TitleFonts {
         R.font.display_solide_mirage,
         R.font.display_sunday,
         R.font.display_trickster,
+        // From Velvetyne, and Anton from Fontshare, all OFL as well.
+        R.font.display_anton,
+        R.font.display_backout,
+        R.font.display_combat,
+        R.font.display_facade,
+        R.font.display_flor_de_ruina,
+        R.font.display_grotesk,
+        R.font.display_hyper_scrypt,
+        R.font.display_karrik,
+        R.font.display_lineal,
+        R.font.display_lithops,
+        R.font.display_pilowlava,
+        R.font.display_sligoil,
+        R.font.display_typefesse,
+        R.font.display_vg5000,
     )
+
+    /**
+     * The faces that stay readable at list size, for the Poster design's Search and Library rows.
+     * The rest (Lithops' texture, Flor de Ruina, Hyper Scrypt's reversed slabs) are posters, made to
+     * be looked at large and once, not read down a column of forty.
+     */
+    val legible: List<Int> = listOf(
+        R.font.display_frick,
+        R.font.display_anton,
+        R.font.display_backout,
+        R.font.display_combat,
+        R.font.display_karrik,
+        R.font.display_lineal,
+        R.font.display_sligoil,
+        R.font.display_grotesk,
+        R.font.display_vg5000,
+        R.font.display_gloock,
+        R.font.display_basteleur,
+        R.font.display_le_murmure,
+    )
+
+    private val families = HashMap<Int, androidx.compose.ui.text.font.FontFamily>()
+
+    /** One [androidx.compose.ui.text.font.FontFamily] per face, built once rather than per row. */
+    fun family(face: Int) = synchronized(families) {
+        families.getOrPut(face) { androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(face)) }
+    }
+
+    /**
+     * A legible face for [key], stable for that key, that can set all of [text]; null if none can.
+     * Each row and heading gets its own, which is the point: no two neighbours set alike.
+     */
+    fun legibleFor(context: Context, key: String, text: String) =
+        pickTitleFace(key, legible.size, avoid = null) { covers(context, legible[it], text) }
+            ?.let { family(legible[it]) }
 
     private val typefaces = HashMap<Int, Typeface?>()
     private val paint = Paint().apply { textSize = 100f }

@@ -74,6 +74,7 @@ class PreferencesRepository @Inject constructor(
     // track is the point of having it at all.
     private val colorFlavourKey = stringPreferencesKey("color_flavour")
     private val designSchemeKey = stringPreferencesKey("design_scheme")
+    private val homeCollageKey = booleanPreferencesKey("home_collage")
     private val accentSourceKey = stringPreferencesKey("accent_source")
     private val crossfadeKey = intPreferencesKey("crossfade_seconds")
     // Whether the launcher icon follows the cover colour. Off by default — switching it has visible
@@ -143,6 +144,13 @@ class PreferencesRepository @Inject constructor(
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
+
+    /** Poster's collage Home. On unless turned off: choosing Poster already opted in to the look. */
+    val homeCollageFlow: Flow<Boolean> = store.data.map { it[homeCollageKey] ?: true }
+
+    suspend fun setHomeCollage(enabled: Boolean) {
+        store.edit { it[homeCollageKey] = enabled }
+    }
 
     /** Material or Poster. Absent means Material, which is what every install had before. */
     val designSchemeFlow: Flow<DesignScheme> =

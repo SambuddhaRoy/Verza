@@ -102,6 +102,7 @@ fun SettingsScreen(
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
     val flavour by viewModel.colorFlavour.collectAsStateWithLifecycle()
     val design by viewModel.designScheme.collectAsStateWithLifecycle()
+    val homeCollage by viewModel.homeCollage.collectAsStateWithLifecycle()
     val accentSource by viewModel.accentSource.collectAsStateWithLifecycle()
     val audioQuality by viewModel.audioQuality.collectAsStateWithLifecycle()
     val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
@@ -316,6 +317,14 @@ fun SettingsScreen(
                     design = option,
                     selected = option == design,
                     onClick = { viewModel.setDesignScheme(option) },
+                )
+            }
+            if (design == DesignScheme.POSTER) {
+                SwitchRow(
+                    title = "Collage home",
+                    subtitle = "Every cover packed edge to edge, at a different size, with its name on it",
+                    checked = homeCollage,
+                    onToggle = viewModel::setHomeCollage,
                 )
             }
         }

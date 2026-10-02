@@ -1,5 +1,14 @@
 package com.verza.widget
 
+import android.util.SizeF
+import android.os.Build
+import com.verza.ui.expressive.pickTitleFace
+import com.verza.ui.expressive.TitleFonts
+import androidx.core.content.res.ResourcesCompat
+import android.text.TextUtils
+import android.text.TextPaint
+import android.text.StaticLayout
+import android.graphics.Typeface
 import com.verza.ui.theme.DesignScheme
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -64,6 +73,15 @@ internal object WidgetRenderer {
         square = state.design == DesignScheme.POSTER
         val manager = AppWidgetManager.getInstance(context)
         val ink = Ink(colors)
+        if (square) {
+            // The Poster design draws every widget the same way, the way it draws Now Playing:
+            // the one-row strip side by side, the rest stacked. See [gass].
+            update(context, manager, NowPlayingWidget::class.java) { stripOrStack(context, state, cover, ink) }
+            for (provider in listOf(StickerWidget::class.java, PosterWidget::class.java, RecordWidget::class.java, TotemWidget::class.java)) {
+                update(context, manager, provider) { gass(context, state, cover, ink, strip = false) }
+            }
+            return
+        }
         update(context, manager, NowPlayingWidget::class.java) { strip(context, state, cover, ink) }
         update(context, manager, StickerWidget::class.java) { sticker(context, state, cover, ink) }
         update(context, manager, PosterWidget::class.java) { poster(context, state, cover, ink) }
@@ -174,6 +192,132 @@ internal object WidgetRenderer {
             button(R.id.widget_next_bg, R.id.widget_next, ink.container, ink.onContainer, context, NowPlayingWidget.ACTION_NEXT)
             root(context, state)
         }
+
+    // ── The Poster design ────────────────────────────────────────────────────────────────────────
+
+    /**
+     * A widget in the Poster design: the cover, its title set in a display face on a block of the
+     * palette, and a strip of flat slabs, previous, PLAY or PAUSE in a word twice the width, next.
+     * The same pieces as Now Playing's Poster controls, so the widget looks like the app.
+     *
+     * The five Material widgets each have a shape of their own (a cookie, an arch, a record, a
+     * totem). Poster has no shapes to vary, so they all take this one arrangement; the strip lays it
+     * out in a row because a single cell of height has no room to stack it.
+     *
+     * Type is drawn into bitmaps here because a launcher will not load the app's fonts into a
+     * RemoteViews TextView.
+     */
+    /**
+     * The strip widget can be dragged to any size, and side by side only suits it while it is one
+     * row tall; at its default two rows it left a column of empty colour beside a thin title. From
+     * Android 12 the launcher is given both and picks by the size it is showing; below that, a
+     * launcher cannot be asked, so it keeps the strip.
+     */
+    private fun stripOrStack(context: Context, state: WidgetState, cover: Bitmap?, ink: Ink): RemoteViews =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            RemoteViews(
+                mapOf(
+                    SizeF(180f, 40f) to gass(context, state, cover, ink, strip = true),
+                    SizeF(180f, 140f) to gass(context, state, cover, ink, strip = false),
+                ),
+            )
+        } else {
+            gass(context, state, cover, ink, strip = true)
+        }
+
+    private fun gass(context: Context, state: WidgetState, cover: Bitmap?, ink: Ink, strip: Boolean) =
+        views(context, if (strip) R.layout.widget_gass_strip else R.layout.widget_gass).apply {
+            setImageViewBitmap(R.id.widget_cover, shaped(context, cover, R.drawable.widget_shape_square, ink))
+            setImageViewBitmap(R.id.widget_title_art, titleArt(context, state, ink, strip))
+            if (strip) tint(R.id.widget_title_bg, ink.container)
+
+            tint(R.id.widget_slab_previous_bg, ink.surface)
+            setImageViewResource(R.id.widget_previous, R.drawable.ic_widget_previous)
+            tint(R.id.widget_previous, ink.onSurface)
+            setContentDescription(R.id.widget_slab_previous, context.getString(R.string.widget_previous))
+            setOnClickPendingIntent(R.id.widget_slab_previous, NowPlayingWidget.broadcast(context, NowPlayingWidget.ACTION_PREVIOUS))
+
+            tint(R.id.widget_slab_toggle_bg, ink.accent)
+            setImageViewBitmap(
+                R.id.widget_toggle,
+                wordArt(context, context.getString(if (state.isPlaying) R.string.widget_pause_label else R.string.widget_play_label), ink.onAccent),
+            )
+            setContentDescription(R.id.widget_slab_toggle, toggleLabel(context, state))
+            setOnClickPendingIntent(R.id.widget_slab_toggle, NowPlayingWidget.broadcast(context, NowPlayingWidget.ACTION_TOGGLE))
+
+            tint(R.id.widget_slab_next_bg, ink.surface)
+            setImageViewResource(R.id.widget_next, R.drawable.ic_widget_next)
+            tint(R.id.widget_next, ink.onSurface)
+            setContentDescription(R.id.widget_slab_next, context.getString(R.string.widget_next))
+            setOnClickPendingIntent(R.id.widget_slab_next, NowPlayingWidget.broadcast(context, NowPlayingWidget.ACTION_NEXT))
+
+            root(context, state)
+        }
+
+    /**
+     * The title, in the same display face the app's Now Playing would give this song where it can,
+     * on a block of the palette, with the artist under it in small capitals. A fixed-width bitmap;
+     * the ImageView scales it to the widget.
+     */
+    private fun titleArt(context: Context, state: WidgetState, ink: Ink, strip: Boolean): Bitmap {
+        // The strip's title sits in a narrow column, so its bitmap is narrower too; scaled down from
+        // the full width its type came out at a few pixels high.
+        val width = if (strip) 420 else 720
+        val pad = 24
+        val title = title(context, state)
+        val face = pickTitleFace(title, TitleFonts.faces.size, avoid = null) { TitleFonts.covers(context, TitleFonts.faces[it], title) }
+        val typeface = face?.let { runCatching { ResourcesCompat.getFont(context, TitleFonts.faces[it]) }.getOrNull() }
+        val (block, ink1) = if (strip) ink.container to ink.onContainer else ink.tertiary to ink.onTertiary
+        val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = ink1
+            textSize = if (strip) 64f else 84f
+            this.typeface = typeface ?: Typeface.DEFAULT_BOLD
+        }
+        val titleLayout = StaticLayout.Builder.obtain(title, 0, title.length, titlePaint, width - 2 * pad)
+            .setMaxLines(2)
+            .setEllipsize(TextUtils.TruncateAt.END)
+            .setLineSpacing(0f, 0.92f)
+            .setIncludePad(false)
+            .build()
+        val artist = if (state.title.isBlank()) "" else state.artist.uppercase()
+        val artistPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = ink1
+            alpha = 210
+            textSize = 26f
+            letterSpacing = 0.1f
+        }
+        val artistHeight = if (artist.isBlank()) 0 else (artistPaint.fontSpacing + 6).toInt()
+        val height = pad + titleLayout.height + artistHeight + pad
+        val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        // The block hugs the text rather than spanning the width: a label stuck on the cover.
+        val used = (0 until titleLayout.lineCount).maxOf { titleLayout.getLineWidth(it) }
+            .coerceAtLeast(artistPaint.measureText(artist)) + 2 * pad
+        canvas.drawRect(0f, 0f, if (strip) width.toFloat() else used.coerceAtMost(width.toFloat()), height.toFloat(), Paint().apply { color = block })
+        canvas.save()
+        canvas.translate(pad.toFloat(), pad.toFloat())
+        titleLayout.draw(canvas)
+        canvas.restore()
+        if (artist.isNotBlank()) {
+            val ellipsized = TextUtils.ellipsize(artist, artistPaint, (width - 2 * pad).toFloat(), TextUtils.TruncateAt.END)
+            canvas.drawText(ellipsized, 0, ellipsized.length, pad.toFloat(), pad + titleLayout.height + artistPaint.fontSpacing, artistPaint)
+        }
+        return out
+    }
+
+    /** A word, set in Anton, centred in a bitmap with room around it so it sits in its slab. */
+    private fun wordArt(context: Context, word: String, color: Int): Bitmap {
+        val out = Bitmap.createBitmap(320, 120, Bitmap.Config.ARGB_8888)
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            textSize = 62f
+            textAlign = Paint.Align.CENTER
+            typeface = runCatching { ResourcesCompat.getFont(context, R.font.display_anton) }.getOrNull() ?: Typeface.DEFAULT_BOLD
+        }
+        val y = out.height / 2f - (paint.descent() + paint.ascent()) / 2f
+        Canvas(out).drawText(word, out.width / 2f, y, paint)
+        return out
+    }
 
     // ── Shared pieces ────────────────────────────────────────────────────────────────────────────
 

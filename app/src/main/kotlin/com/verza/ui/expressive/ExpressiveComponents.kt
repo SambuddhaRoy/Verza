@@ -1,5 +1,9 @@
 package com.verza.ui.expressive
 
+import androidx.compose.ui.text.TextStyle
+import com.verza.ui.theme.isPoster
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.em
 import com.verza.ui.theme.squareOr
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -234,25 +238,40 @@ fun ExpressiveListItem(
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = BodyStrong,
-                color = fg,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    style = BodyText,
-                    color = fgMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            RowTitle(title, fg)
+            if (!subtitle.isNullOrBlank()) RowSubtitle(subtitle, fgMuted)
         }
         trailing?.invoke()
     }
+}
+
+/**
+ * A list row's title. In the Poster design every row is set in a face of its own, chosen by the
+ * title so it is the same each time, and bigger: a list that reads as a run of posters' names
+ * rather than as rows of a table. In Material, the row title as it always was.
+ */
+@Composable
+fun RowTitle(text: String, color: Color, style: TextStyle = BodyStrong) {
+    Text(
+        text = text,
+        style = if (isPoster()) style.copy(fontSize = 21.sp, lineHeight = 22.sp).posterFace(text) else style,
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+/** A list row's second line: small tracked capitals in the Poster design, as it was in Material. */
+@Composable
+fun RowSubtitle(text: String, color: Color, style: TextStyle = BodyText) {
+    val poster = isPoster()
+    Text(
+        text = if (poster) text.uppercase() else text,
+        style = if (poster) style.copy(fontSize = 11.sp, letterSpacing = 0.1.em) else style,
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 /** Work out each row's place in its group, so callers do not have to. */
