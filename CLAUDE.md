@@ -74,9 +74,33 @@ The references were GASS Records (flat slabs of colour) and Uncut's display type
   PicNic is out: Uncut still lists it as OFL but it has moved to a licence with conditions. Five more
   OFL faces (Getai Grotesk Display, LC Mogi, Cakra, Queering, Slibinas) need a manual download.
 
-Not verified on a device: the Poster widgets (the emulator died before they could be added to a home
-screen), and Material Now Playing after the Poster work (checked by compile, tests and reading the diff,
-not by eye).
+- **Collage Home** (Poster only, Settings > Design > Collage home, `home_collage`, on by default):
+  `HomeCollage.kt`. Every mix and shelf item packed edge to edge by `packCollage` (`Collage.kt`): a
+  dense grid where each square tile shrinks to fit the first free cell, holes too small for a cover
+  become flat colour slabs, and the bottom is squared off. **`CollageTest` sweeps 400 random size runs
+  for gaps and overlaps**; touch the packing and run it. Sizes are a hash of item and date
+  (`collageSpan`), so the wall holds still all day and changes the next. Capped at 60 covers.
+  `sizedArt` asks YouTube's art hosts for the drawn size (`=wN-hN` / `=sN`).
+- **Fonts:** 26 display faces in `res/font/display_*`, all OFL with texts in `assets/font-licenses/`:
+  12 from Uncut, 13 from Velvetyne, Anton from Fontshare. **The mobile repo is public, so only
+  OFL-type licences can go in it.** Fontshare's own ITF Free Font License allows embedding in an app
+  but forbids putting the files on a public server, which a public repo is; Suva Type Foundry
+  publishes no licence at all. `TitleFonts.legible` is the subset that reads at list size.
+- **Search and Library rows** in Poster set each title in its own legible face (`RowTitle`,
+  `RowSubtitle`, `posterFace`); every list row should use those two rather than its own `Text`.
+- **Poster Now Playing controls** (`PosterControls`): one flat strip (previous, PLAY/PAUSE in Anton,
+  next), then the toggles and tools as words on slabs, each ruled in the ink colour so neighbouring
+  surfaces a shade apart still read as separate blocks.
+- **Poster widgets** use `widget_gass.xml` / `widget_gass_strip.xml`: cover, title drawn to a bitmap
+  in a display face (RemoteViews cannot load app fonts), slab strip. The strip widget hands the
+  launcher both arrangements by size on Android 12+ (`stripOrStack`). Launchers round every widget's
+  outer corners themselves on 12+; nothing in the app can square them.
+- **Release notes render as text** (`releaseNotesText`): the What's new and Update sheets had shown
+  the Markdown as typed. Handles `##`, `- `, `**bold**` and `[links](url)`, which is all the notes use.
+
+Verified on a Pixel 7 emulator: Material and Poster, the collage, Library and Search type, Poster Now
+Playing, and three Poster widgets placed on a real home screen. **The emulator gets killed with the
+turn when started as a background task**; start it with PowerShell `Start-Process` instead.
 
 ## Architecture pointers
 - **Background glow** (app-wide, behind the NavHost in `MainActivity`): `ui/theme/Glow.kt`.

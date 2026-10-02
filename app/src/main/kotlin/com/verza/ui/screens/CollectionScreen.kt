@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.RowTitle
+import com.verza.ui.expressive.RowSubtitle
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -370,21 +372,9 @@ private fun TrackRow(index: Int, track: MusicItem, onClick: () -> Unit) {
                 modifier = Modifier.width(24.dp),
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = track.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                RowTitle(track.title, colors.onBackground, MaterialTheme.typography.titleMedium)
                 if (track.artist.isNotBlank()) {
-                    Text(
-                        text = track.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ext.muted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    RowSubtitle(track.artist, ext.muted, MaterialTheme.typography.bodySmall)
                 }
             }
             TrackActionsMenu(item = track)

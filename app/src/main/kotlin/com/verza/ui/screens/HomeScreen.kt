@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import com.verza.ui.theme.LocalHomeCollage
+import com.verza.ui.theme.isPoster
 import com.verza.ui.theme.squareOr
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
@@ -82,7 +84,12 @@ fun HomeScreen(
                 color = ext.muted,
                 modifier = Modifier.align(Alignment.Center),
             )
-            is HomeUiState.Content -> HomeContent(s.sections, mixes, onItemClick, onItemLongPress, onOpenSettings, onOpenMix)
+            is HomeUiState.Content ->
+                if (isPoster() && LocalHomeCollage.current) {
+                    HomeCollage(s.sections, mixes, onItemClick, onItemLongPress, onOpenSettings, onOpenMix)
+                } else {
+                    HomeContent(s.sections, mixes, onItemClick, onItemLongPress, onOpenSettings, onOpenMix)
+                }
         }
     }
 }

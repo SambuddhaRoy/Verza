@@ -85,7 +85,7 @@ fun ChangelogSheet(
                     .padding(16.dp),
             ) {
                 Text(
-                    text = notes.ifBlank { "No notes were published for this version." },
+                    text = releaseNotesText(notes.ifBlank { "No notes were published for this version." }),
                     style = BodyText,
                     color = colors.onSurface,
                     modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -192,7 +192,7 @@ fun UpdateAvailableSheet(
                         .padding(16.dp),
                 ) {
                     Text(
-                        text = notes,
+                        text = releaseNotesText(notes),
                         style = BodyText,
                         color = colors.onSurface,
                         modifier = Modifier.verticalScroll(rememberScrollState()),

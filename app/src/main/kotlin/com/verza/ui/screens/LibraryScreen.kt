@@ -1,5 +1,9 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.RowTitle
+import com.verza.ui.expressive.RowSubtitle
+import com.verza.ui.expressive.posterFace
+import com.verza.ui.theme.isPoster
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import com.verza.ui.theme.squareOr
@@ -132,7 +136,7 @@ fun LibraryScreen(
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Text("YOUR COLLECTION", style = MetaLabel, color = xc.onContainerMuted)
             Spacer(Modifier.height(6.dp))
-            Text("Library", style = HeroTitle, color = xc.onContainer)
+            Text(if (isPoster()) "LIBRARY" else "Library", style = HeroTitle.posterFace("Library"), color = xc.onContainer)
         }
 
         // ── Tabs ───────────────────────────────────────────────────────────
@@ -420,22 +424,8 @@ private fun LibraryRow(
             }
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = BodyStrong,
-                color = colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (subtitle.isNotBlank()) {
-                Text(
-                    text = subtitle,
-                    style = BodyText,
-                    color = colors.onSurfaceMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            RowTitle(title, colors.onSurface)
+            if (subtitle.isNotBlank()) RowSubtitle(subtitle, colors.onSurfaceMuted)
         }
         trailing()
     }

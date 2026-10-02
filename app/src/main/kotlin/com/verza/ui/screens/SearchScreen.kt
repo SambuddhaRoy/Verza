@@ -1,5 +1,9 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.RowTitle
+import com.verza.ui.expressive.RowSubtitle
+import com.verza.ui.expressive.posterFace
+import com.verza.ui.theme.isPoster
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -77,7 +81,7 @@ fun SearchScreen(
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Text("EXPLORE", style = MetaLabel, color = xc.onContainerMuted)
             Spacer(Modifier.height(6.dp))
-            Text("Search", style = HeroTitle, color = xc.onContainer)
+            Text(if (isPoster()) "SEARCH" else "Search", style = HeroTitle.posterFace("Search"), color = xc.onContainer)
         }
 
         // ── Pill search bar ────────────────────────────────────────────────
@@ -233,21 +237,9 @@ private fun ResultRow(item: HomeItem, onClick: () -> Unit) {
             }
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.title,
-                style = BodyStrong,
-                color = colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            RowTitle(item.title, colors.onSurface)
             if (item.subtitle.isNotBlank()) {
-                Text(
-                    text = item.subtitle,
-                    style = BodyText,
-                    color = colors.onSurfaceMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                RowSubtitle(item.subtitle, colors.onSurfaceMuted)
             }
         }
         // Overflow menu only on actual playable songs (skip on artist/playlist cards).
