@@ -75,6 +75,7 @@ class PreferencesRepository @Inject constructor(
     private val colorFlavourKey = stringPreferencesKey("color_flavour")
     private val designSchemeKey = stringPreferencesKey("design_scheme")
     private val homeCollageKey = booleanPreferencesKey("home_collage")
+    private val listenBrainzUserKey = stringPreferencesKey("listenbrainz_user")
     private val accentSourceKey = stringPreferencesKey("accent_source")
     private val crossfadeKey = intPreferencesKey("crossfade_seconds")
     // Whether the launcher icon follows the cover colour. Off by default — switching it has visible
@@ -150,6 +151,13 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setHomeCollage(enabled: Boolean) {
         store.edit { it[homeCollageKey] = enabled }
+    }
+
+    /** The ListenBrainz username whose listening becomes mixes on Home. Blank = not connected. */
+    val listenBrainzUserFlow: Flow<String> = store.data.map { it[listenBrainzUserKey].orEmpty() }
+
+    suspend fun setListenBrainzUser(user: String) {
+        store.edit { it[listenBrainzUserKey] = user }
     }
 
     /** Material or Poster. Absent means Material, which is what every install had before. */

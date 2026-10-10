@@ -215,6 +215,7 @@ internal fun mixGradient(mix: com.verza.data.CuratedMix): Pair<Color, Color> = w
     MixKind.DAYLIST -> Color(0xFFE0894A) to Color(0xFF6E2F1A)
     MixKind.DISCOVER -> Color(0xFF6C5CE7) to Color(0xFF241F4D)
     MixKind.RELEASE_RADAR -> Color(0xFF2FA37C) to Color(0xFF123A30)
+    MixKind.LISTENBRAINZ -> Color(0xFFEB743B) to Color(0xFF353070)
     MixKind.GENRE, MixKind.VIBE -> TASTE_GRADIENTS[Math.floorMod(mix.id.hashCode(), TASTE_GRADIENTS.size)]
 }
 

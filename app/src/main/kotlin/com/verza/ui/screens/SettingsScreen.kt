@@ -120,6 +120,8 @@ fun SettingsScreen(
 
     var crashReport by remember { mutableStateOf(CrashLog.read(context)) }
     var confirmResetStats by remember { mutableStateOf(false) }
+    var showListenBrainz by remember { mutableStateOf(false) }
+    val lbUser by viewModel.listenBrainzUser.collectAsStateWithLifecycle()
 
     val hasAudioPermission = androidx.core.content.ContextCompat.checkSelfPermission(
         context,
@@ -421,6 +423,15 @@ fun SettingsScreen(
             )
         }
 
+        group("Listening elsewhere") {
+            LinkRow(
+                title = "ListenBrainz",
+                subtitle = if (lbUser.isBlank()) "Your Spotify listening on Home: Weekly Exploration, Weekly Jams and more"
+                else "Connected as $lbUser",
+                onClick = { showListenBrainz = true },
+            )
+        }
+
         group("Search") {
             SwitchRow(
                 title = "Save search history",
@@ -467,6 +478,14 @@ fun SettingsScreen(
     }
     }
 
+    if (showListenBrainz) {
+        ListenBrainzDialog(
+            viewModel = viewModel,
+            connectedAs = lbUser,
+            onDismiss = { showListenBrainz = false; viewModel.clearListenBrainzMessage() },
+        )
+    }
+
     if (confirmResetStats) {
         AlertDialog(
             onDismissRequest = { confirmResetStats = false },
@@ -494,6 +513,72 @@ fun SettingsScreen(
             },
         )
     }
+}
+
+/**
+ * Connect a ListenBrainz account. Spotify feeds your listening into ListenBrainz, which is the open
+ * way to get it: Spotify's own API no longer gives new apps recommendations or its playlists.
+ */
+@Composable
+private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String, onDismiss: () -> Unit) {
+    val colors = LocalExpressiveColors.current
+    val state by viewModel.lbState.collectAsStateWithLifecycle()
+    var input by remember { mutableStateOf(connectedAs) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        titleContentColor = colors.onSurface,
+        textContentColor = colors.onSurfaceMuted,
+        shape = ShapeExtraLarge,
+        title = { Text("ListenBrainz", style = BodyStrong) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Connect Spotify (or import Last.fm) at listenbrainz.org, then enter your username here. " +
+                        "Your weekly playlists and last month's most played appear on Home and play through Verza.",
+                    style = BodyText,
+                )
+                androidx.compose.material3.OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    enabled = connectedAs.isBlank() && !state.busy,
+                    singleLine = true,
+                    label = { Text("Username") },
+                    shape = squareOr(RoundedCornerShape(12.dp)),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        autoCorrectEnabled = false,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onDone = { viewModel.connectListenBrainz(input) },
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                state.message?.let { Text(it, style = BodyText, color = colors.onSurface) }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                shape = squareOr(ButtonDefaults.textShape),
+                enabled = !state.busy,
+                onClick = {
+                    if (connectedAs.isBlank()) viewModel.connectListenBrainz(input)
+                    else { viewModel.disconnectListenBrainz(); input = "" }
+                },
+            ) {
+                Text(
+                    if (state.busy) "Connecting" else if (connectedAs.isBlank()) "Connect" else "Disconnect",
+                    color = colors.accent,
+                    style = BodyStrong,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = onDismiss) {
+                Text("Close", color = colors.onSurfaceMuted, style = BodyText)
+            }
+        },
+    )
 }
 
 private fun toast(context: android.content.Context, message: String) {

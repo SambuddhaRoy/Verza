@@ -154,6 +154,7 @@ private fun collageTiles(sections: List<HomeSection>, mixes: List<CuratedMix>): 
             MixKind.RELEASE_RADAR -> "New releases"
             MixKind.GENRE -> "Genre"
             MixKind.VIBE -> "Vibe"
+            MixKind.LISTENBRAINZ -> "ListenBrainz"
         }
         if (seen.add("mix:" + m.id)) out += CollageTile("mix:" + m.id, m.title, note, mixCoverArt(m), 1, null, m.id)
     }

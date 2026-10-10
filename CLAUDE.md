@@ -117,6 +117,13 @@ turn when started as a background task**; start it with PowerShell `Start-Proces
 - **Media session / notification / lock-screen / AOD**: `:player/MusicService.kt`. Release builds need
   `-keep class androidx.media3.** { *; }` (in `app/proguard-rules.pro`) — R8 stripped it otherwise.
 - **Curated mixes** (Daylist/Discover/Release Radar, on-device): `data/MixesRepository.kt`.
+- **ListenBrainz mixes** (Weekly Exploration, Weekly Jams, Last month on repeat): `data/ListenBrainz.kt`,
+  a port of the desktop's `src/main/listenbrainz.js`. It is how Spotify listening reaches Verza: Spotify's
+  own API gives new apps no recommendations and forbids pairing its data with other audio. Kept in their
+  own flow and DataStore key inside `MixesRepository` (`_lb`), so connect/disconnect never waits on or is
+  undone by the on-device mixes regenerating. Songs are matched by a YouTube Music search, cached for
+  good in `filesDir/listenbrainz-cache.json` (misses too; a failed search is not cached). Settings >
+  Listening elsewhere. `ListenBrainzTest` covers which weekly playlist is picked.
 - **Equalizer + presets**: `audio/AudioEffectsController.kt`, `audio/EqPreset.kt`.
 - **Prefs** flow through `data/PreferencesRepository.kt` → `SettingsViewModel` → screens; UI prefs that
   Now-Playing needs are threaded via `VerzaNavigation` (e.g. `albumArtMotion`, `sleeveMode`).
