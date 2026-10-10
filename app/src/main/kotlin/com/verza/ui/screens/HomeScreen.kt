@@ -277,6 +277,7 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
         com.verza.data.MixKind.RELEASE_RADAR -> "NEW RELEASES"
         com.verza.data.MixKind.GENRE -> "GENRE"
         com.verza.data.MixKind.VIBE -> "VIBE"
+        com.verza.data.MixKind.LISTENBRAINZ -> "LISTENBRAINZ"
     }
     // The first item with art fronts the mix — stable for the life of the generated mix.
     val coverArt = remember(mix.id, mix.items) { mixCoverArt(mix) }

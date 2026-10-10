@@ -8,6 +8,9 @@ import com.verza.ui.expressive.ColorFlavour
 import com.verza.data.UpdateRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.verza.data.DownloadStore
+import com.verza.data.ListenBrainzRepository
+import com.verza.data.MixKind
+import com.verza.data.MixesRepository
 import com.verza.data.ImportSummary
 import com.verza.data.LibraryBackupRepository
 import com.verza.data.PreferencesRepository
@@ -32,6 +35,8 @@ class SettingsViewModel @Inject constructor(
     private val backup: LibraryBackupRepository,
     private val updates: UpdateRepository,
     private val downloads: DownloadStore,
+    private val listenBrainz: ListenBrainzRepository,
+    private val mixes: MixesRepository,
 ) : ViewModel() {
 
     val isSignedIn: StateFlow<Boolean> = prefs.cookieFlow
@@ -76,6 +81,54 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, AccentSource.COMPLEMENT)
     val crossfadeSeconds: StateFlow<Int> = prefs.crossfadeSecondsFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    // ── ListenBrainz ───────────────────────────────────────────────────────────
+    val listenBrainzUser: StateFlow<String> = prefs.listenBrainzUserFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+
+    /** What the connect dialog says, and whether it is busy. */
+    data class LbState(val busy: Boolean = false, val message: String? = null)
+    private val _lbState = MutableStateFlow(LbState())
+    val lbState: StateFlow<LbState> = _lbState
+
+    fun connectListenBrainz(input: String) {
+        val user = input.trim()
+        if (!ListenBrainzRepository.USERNAME.matches(user)) {
+            _lbState.value = LbState(message = "That is not a ListenBrainz username.")
+            return
+        }
+        _lbState.value = LbState(busy = true, message = "Finding your ListenBrainz playlists on YouTube Music. Up to a minute the first time.")
+        viewModelScope.launch {
+            _lbState.value = when (val check = listenBrainz.check(user)) {
+                ListenBrainzRepository.Check.NoSuchUser -> LbState(message = "ListenBrainz has no user by that name.")
+                ListenBrainzRepository.Check.Unreachable ->
+                    LbState(message = "Could not reach ListenBrainz. Check your connection and try again.")
+                is ListenBrainzRepository.Check.Found -> if (check.listens == 0L) {
+                    LbState(message = "That account has no listens yet. Connect Spotify to it at listenbrainz.org, then try again.")
+                } else {
+                    prefs.setListenBrainzUser(user)
+                    mixes.rebuildListenBrainz().join()
+                    val titles = mixes.mixes.value.filter { it.kind == MixKind.LISTENBRAINZ }.map { it.title }
+                    LbState(
+                        message = if (titles.isNotEmpty()) "Connected as $user. On Home now: ${titles.joinToString(", ")}."
+                        else "Connected as $user. ListenBrainz makes its weekly playlists on Mondays once it has a week of your listens; they will appear on Home then.",
+                    )
+                }
+            }
+        }
+    }
+
+    fun disconnectListenBrainz() {
+        _lbState.value = LbState()
+        viewModelScope.launch {
+            prefs.setListenBrainzUser("")
+            mixes.refreshListenBrainz()
+        }
+    }
+
+    fun clearListenBrainzMessage() {
+        if (!_lbState.value.busy) _lbState.value = LbState()
+    }
 
     fun setHomeCollage(enabled: Boolean) {
         viewModelScope.launch { prefs.setHomeCollage(enabled) }

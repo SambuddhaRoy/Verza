@@ -1,6 +1,7 @@
 package com.verza.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -16,7 +17,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -28,7 +33,7 @@ import javax.inject.Singleton
 
 // ── Curated mix model ────────────────────────────────────────────────────────
 
-enum class MixKind { DAYLIST, DISCOVER, RELEASE_RADAR, GENRE, VIBE }
+enum class MixKind { DAYLIST, DISCOVER, RELEASE_RADAR, GENRE, VIBE, LISTENBRAINZ }
 
 /**
  * A Verza-curated playlist generated *on device* from the user's own play history plus YouTube's
@@ -64,6 +69,8 @@ class MixesRepository @Inject constructor(
     private val dao: PlayEventDao,
     private val music: MusicRepository,
     private val genres: GenreRepository,
+    private val prefs: PreferencesRepository,
+    private val listenBrainz: ListenBrainzRepository,
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     // v2: Daylist and Discover are seeded by Taste now. A new key regenerates them straight away
@@ -71,17 +78,47 @@ class MixesRepository @Inject constructor(
     private val mixesKey = stringPreferencesKey("curated_mixes_v2")
     private val attemptKey = androidx.datastore.preferences.core.longPreferencesKey("curated_mixes_attempt_v2")
 
+    // ListenBrainz mixes are kept apart: they come from another service on their own schedule, and
+    // connecting or disconnecting must not wait on, or be undone by, a regeneration of the others.
+    private val lbKey = stringPreferencesKey("listenbrainz_mixes")
+    private val lbLock = Mutex()
+
     private val _mixes = MutableStateFlow<List<CuratedMix>>(emptyList())
-    val mixes: StateFlow<List<CuratedMix>> = _mixes.asStateFlow()
+    private val _lb = MutableStateFlow<List<CuratedMix>>(emptyList())
+    val mixes: StateFlow<List<CuratedMix>> =
+        combine(_mixes, _lb) { own, lb -> own + lb }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     init {
         scope.launch {
             _mixes.value = loadCached()
             refresh()
         }
+        scope.launch {
+            _lb.value = loadCached(lbKey)
+            refreshListenBrainz()
+        }
     }
 
-    fun getMix(id: String): CuratedMix? = _mixes.value.firstOrNull { it.id == id }
+    fun getMix(id: String): CuratedMix? = (_mixes.value + _lb.value).firstOrNull { it.id == id }
+
+    /** A forced rebuild on the app's own scope, so leaving Settings mid-build does not cancel it. */
+    fun rebuildListenBrainz() = scope.launch { refreshListenBrainz(force = true) }
+
+    /**
+     * Rebuilds the ListenBrainz mixes when they are stale, or always with [force] (a new username).
+     * A failed rebuild keeps the old ones rather than emptying the shelf.
+     */
+    suspend fun refreshListenBrainz(force: Boolean = false) = lbLock.withLock {
+        val user = prefs.listenBrainzUserFlow.first()
+        val cached = _lb.value
+        val next = when {
+            user.isBlank() -> emptyList()
+            !force && cached.isNotEmpty() && cached.none(::isStale) -> return@withLock
+            else -> listenBrainz.mixes(user).ifEmpty { if (force) emptyList() else cached }
+        }
+        _lb.value = next
+        persist(next, lbKey)
+    }
 
     /**
      * Regenerates any stale mix (keeping the fresh ones) and persists the result.
@@ -337,6 +374,8 @@ class MixesRepository @Inject constructor(
         return when (mix.kind) {
             // Daylist turns over with the day; also refresh if it's a few hours old.
             MixKind.DAYLIST -> mix.title != currentDaypart().second || age > 3 * 60 * 60_000L
+            // Weekly playlists land on Mondays; twice a day picks a new week up soon enough.
+            MixKind.LISTENBRAINZ -> age > 12 * 60 * 60_000L
             else -> age > 7 * 24 * 60 * 60_000L
         }
     }
@@ -356,12 +395,12 @@ class MixesRepository @Inject constructor(
     private fun Taste.ScoredSong.toHomeSong() = HomeItem(title = title, subtitle = artist, thumbnailUrl = thumbnailUrl, videoId = id)
     private fun MusicItem.toHomeSong() = HomeItem(title = title, subtitle = artist, thumbnailUrl = thumbnailUrl, videoId = id)
 
-    private suspend fun persist(list: List<CuratedMix>) {
-        runCatching { context.mixesStore.edit { it[mixesKey] = json.encodeToString(list) } }
+    private suspend fun persist(list: List<CuratedMix>, key: Preferences.Key<String> = mixesKey) {
+        runCatching { context.mixesStore.edit { it[key] = json.encodeToString(list) } }
     }
 
-    private suspend fun loadCached(): List<CuratedMix> = runCatching {
-        context.mixesStore.data.first()[mixesKey]?.let { json.decodeFromString<List<CuratedMix>>(it) }
+    private suspend fun loadCached(key: Preferences.Key<String> = mixesKey): List<CuratedMix> = runCatching {
+        context.mixesStore.data.first()[key]?.let { json.decodeFromString<List<CuratedMix>>(it) }
     }.getOrNull() ?: emptyList()
 
     private suspend fun lastAttemptAt(): Long = runCatching {
