@@ -57,11 +57,17 @@ class ListenBrainzRepository @Inject constructor(
     private val cacheFile = File(context.filesDir, "listenbrainz-cache.json")
     private val cacheLock = Mutex()
 
-    /** Whether [user] exists, and how much they have listened. */
+    /**
+     * Whether [user] exists, and how many recent listens they have (up to 100).
+     *
+     * Not /listen-count: that is a cached figure which stays at 0 for a freshly connected Spotify, so
+     * a real account was refused as "no listens" while /listens already returned its plays. It also
+     * answers 500 for a name whose case differs, where /listens is case-insensitive.
+     */
     suspend fun check(user: String): Check = try {
-        val r = get("/user/${enc(user)}/listen-count")
-        val count = (r?.obj("payload")?.get("count"))?.jsonPrimitive?.longOrNull
-        if (r == null || count == null) Check.NoSuchUser else Check.Found(count)
+        val r = get("/user/${enc(user)}/listens?count=100")
+        if (r == null) Check.NoSuchUser
+        else Check.Found((r.obj("payload")?.arr("listens")?.size ?: 0).toLong())
     } catch (_: IOException) {
         Check.Unreachable
     }
@@ -76,13 +82,16 @@ class ListenBrainzRepository @Inject constructor(
                 runCatching { sets += Triple(kind, mbid, playlistPairs(mbid)) }
             }
         }
-        runCatching { sets += Triple(MONTH, "", lastMonthPairs(user)) }
+        runCatching {
+            val (kind, pairs) = topPairs(user)
+            sets += Triple(kind, "", pairs)
+        }
 
         val resolved = resolve(sets.flatMap { it.third })
         val now = System.currentTimeMillis()
         return sets.mapNotNull { (kind, _, pairs) ->
             val items = pairs.mapNotNull { resolved[key(it)] }.distinctBy { it.videoId }
-            if (items.size < 5) null
+            if (items.size < MIN_TRACKS) null
             else CuratedMix(kind.id, MixKind.LISTENBRAINZ, kind.title, kind.subtitle, items, now)
         }
     }
@@ -93,12 +102,23 @@ class ListenBrainzRepository @Inject constructor(
             pairOf(o.str("title"), o.str("creator"))
         }
 
-    private suspend fun lastMonthPairs(user: String): List<Pair<String, String>> =
-        get("/stats/user/${enc(user)}/recordings?range=month&count=30")?.obj("payload")?.arr("recordings").orEmpty()
-            .mapNotNull { r ->
-                val o = r as? JsonObject ?: return@mapNotNull null
-                pairOf(o.str("track_name"), o.str("artist_name"))
-            }
+    /**
+     * Most played. `month` is the previous calendar month, which is empty for anyone who connected in
+     * the last few weeks (a new account got no mixes at all), so those fall back to `this_month` and
+     * are titled for what they are.
+     */
+    private suspend fun topPairs(user: String): Pair<Weekly, List<Pair<String, String>>> {
+        for ((range, kind) in listOf("month" to MONTH, "this_month" to THIS_MONTH)) {
+            val pairs = get("/stats/user/${enc(user)}/recordings?range=$range&count=30")
+                ?.obj("payload")?.arr("recordings").orEmpty()
+                .mapNotNull { r ->
+                    val o = r as? JsonObject ?: return@mapNotNull null
+                    pairOf(o.str("track_name"), o.str("artist_name"))
+                }
+            if (pairs.size >= MIN_TRACKS) return kind to pairs
+        }
+        return MONTH to emptyList()
+    }
 
     /** (title, artist) → the first YouTube Music song for it, misses cached too, four searches at a time. */
     private suspend fun resolve(pairs: List<Pair<String, String>>): Map<String, HomeItem> = cacheLock.withLock {
@@ -163,6 +183,10 @@ class ListenBrainzRepository @Inject constructor(
             Weekly("lb_jams", "weekly-jams", "Weekly Jams", "Your favourites from everywhere you listen"),
         )
         private val MONTH = Weekly("lb_month", "", "Last month on repeat", "Your most played, Spotify and everywhere else")
+        private val THIS_MONTH = MONTH.copy(title = "This month on repeat")
+
+        /** A mix needs this many songs that resolved on YouTube Music to be worth a card. */
+        private const val MIN_TRACKS = 5
 
         /** A username ListenBrainz could have, so nothing else reaches the URL. */
         val USERNAME = Regex("^[\\w.-]{1,64}$")
