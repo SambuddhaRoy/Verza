@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.tracksLabel
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
 import com.verza.ui.expressive.variedFace
@@ -210,7 +211,7 @@ fun LibraryScreen(
                         items(localPlaylists) { p ->
                             LibraryRow(
                                 title = p.playlist.name,
-                                subtitle = "${p.trackCount} tracks",
+                                subtitle = tracksLabel(p.trackCount),
                                 thumbnailUrl = p.coverUrl,
                                 onClick = { onOpenLocalPlaylist(p.playlist.id) },
                             )

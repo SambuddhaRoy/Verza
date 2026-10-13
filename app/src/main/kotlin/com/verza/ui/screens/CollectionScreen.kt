@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.tracksLabel
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
 import com.verza.ui.theme.squareOr
@@ -222,7 +223,7 @@ private fun CollectionContent(
                                 )
                             }
                             Text(
-                                text = "${tracks.size} tracks",
+                                text = tracksLabel(tracks.size),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = ext.muted,
                             )
@@ -273,7 +274,7 @@ private fun CollectionContent(
 /** "N TRACKS · 19 MIN" summary line for the editorial header/action row. */
 private fun trackSummary(count: Int, tracks: List<MusicItem>): String {
     val total = tracks.sumOf { it.durationMs }
-    val base = "$count tracks"
+    val base = tracksLabel(count)
     if (total <= 0L) return base
     val min = (total / 60000L).toInt()
     val runtime = if (min >= 60) "${min / 60}h ${min % 60}m" else "$min min"
@@ -330,7 +331,7 @@ private fun SleeveCollectionHeader(detail: CollectionDetail, trackCount: Int) {
         ) {
             val eyebrow = buildString {
                 if (detail.subtitle.isNotBlank()) append(detail.subtitle).append("  ·  ")
-                append("$trackCount tracks")
+                append(tracksLabel(trackCount))
             }
             Eyebrow(text = eyebrow, color = cover.sub)
             ChromaticText(

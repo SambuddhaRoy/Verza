@@ -1,5 +1,6 @@
 package com.verza.ui.navigation
 
+import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
 import com.verza.ui.theme.squareOr
 import androidx.compose.ui.unit.dp
@@ -486,7 +487,7 @@ fun VerzaNavigation(
                     onAddToQueue = { tracks -> playbackViewModel.enqueueAll(tracks) },
                     onDownloadAll = { tracks, title ->
                         playbackViewModel.downloadAll(tracks, title)
-                        Toast.makeText(context, "Downloading ${tracks.size} tracks", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Downloading ${tracksLabel(tracks.size)}", Toast.LENGTH_SHORT).show()
                     },
                 )
             }

@@ -1,5 +1,6 @@
 package com.verza.playback
 
+import com.verza.tracksLabel
 import com.verza.data.LibraryRepository
 import com.verza.data.db.SongEntity
 import com.verza.di.ApplicationScope
@@ -46,7 +47,7 @@ class BrowseTreePublisher @Inject constructor(
     private fun folder(id: String, title: String, songs: List<SongEntity>) = MediaBrowseTree.Node(
         id = id,
         title = title,
-        subtitle = "${songs.size} tracks",
+        subtitle = tracksLabel(songs.size),
         // The first cover stands in for the folder, so the list is not three grey squares.
         artworkUri = songs.firstOrNull()?.thumbnailUrl,
         browsable = true,

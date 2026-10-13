@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import com.verza.ui.theme.squareOr
@@ -145,7 +146,7 @@ fun AddToPlaylistSheet(
                             }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(p.playlist.name, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${p.trackCount} tracks", style = MaterialTheme.typography.bodySmall, color = ext.muted)
+                                Text(tracksLabel(p.trackCount), style = MaterialTheme.typography.bodySmall, color = ext.muted)
                             }
                         }
                     }
