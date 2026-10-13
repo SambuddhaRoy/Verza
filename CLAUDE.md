@@ -124,11 +124,24 @@ turn when started as a background task**; start it with PowerShell `Start-Proces
   undone by the on-device mixes regenerating. Songs are matched by a YouTube Music search, cached for
   good in `filesDir/listenbrainz-cache.json` (misses too; a failed search is not cached). Settings >
   Listening elsewhere. `ListenBrainzTest` covers which weekly playlist is picked.
+  **Never gate on `/listen-count`**: it stays at 0 for a freshly linked Spotify, so a real account was
+  refused; `check()` reads `/listens`. `range=month` is the previous calendar month and answers an
+  empty 204 for a new account; `topPairs` falls back to `this_month` ("This month on repeat").
 - **Equalizer + presets**: `audio/AudioEffectsController.kt`, `audio/EqPreset.kt`.
 - **Prefs** flow through `data/PreferencesRepository.kt` → `SettingsViewModel` → screens; UI prefs that
   Now-Playing needs are threaded via `VerzaNavigation` (e.g. `albumArtMotion`, `sleeveMode`).
 
 ## Gotchas
+- **Long titles use `TitleFonts.legible` only** (`poolFor`, over 22 characters). Outward fuses its
+  letters, and "Get Lucky (feat. Pharrell Williams and Nile Rodgers)" came out as a block of ink on
+  Now Playing. Every caller of `pickTitleFace` (Now Playing, the collage, widgets) picks from the pool.
+- **A hand-drawn control needs its semantics spelled out.** The Settings switches were plain
+  clickables, so TalkBack (and `uiautomator`) saw no on/off state. `RowSurface(switchState = …)`
+  sets `Role.Switch` and `toggleableState`.
+- **Testing on the emulator**: `verza-shots/mob/m.py` drives it through `uiautomator dump` (decode
+  its output as UTF-8). Now Playing's controls fade ~4s after the last touch, so tap the screen and
+  act inside that window. The Library chip row scrolls: Downloaded, Playlists and Artists start
+  off-screen. In landscape the nav is a side rail, not a bottom bar.
 - PowerShell here-strings mangle commit messages with quotes/em-dashes (Windows only) — write the
   message to a temp file and `git commit -F`. Not an issue on Linux.
 - AGSL shaders only compile at runtime; bad shader → `runCatching` returns null and the glow falls
