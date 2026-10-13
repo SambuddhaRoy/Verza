@@ -443,9 +443,13 @@ private fun PlayerPane(
             faceMemory.before = faceMemory.face
             faceMemory.key = trackKey
         }
-        pickTitleFace(trackKey ?: title, TitleFonts.faces.size, faceMemory.before) { i ->
-            TitleFonts.covers(context, TitleFonts.faces[i], title)
-        }.also { faceMemory.face = it }
+        // [face] and [faceMemory] index TitleFonts.faces; the choice is made inside the pool for
+        // this title, which is the legible subset when it is long.
+        val pool = TitleFonts.poolFor(title)
+        val before = faceMemory.before?.let { pool.indexOf(TitleFonts.faces[it]) }?.takeIf { it >= 0 }
+        pickTitleFace(trackKey ?: title, pool.size, before) { i ->
+            TitleFonts.covers(context, pool[i], title)
+        }?.let { TitleFonts.faces.indexOf(pool[it]) }.also { faceMemory.face = it }
     }
     val titleFamily = remember(face) { face?.let { FontFamily(Font(TitleFonts.faces[it])) } }
     // A hard shadow in the canvas colour, straight down and unblurred. The title now sits on the

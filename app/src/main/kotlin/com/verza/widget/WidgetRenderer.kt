@@ -265,8 +265,9 @@ internal object WidgetRenderer {
         val width = if (strip) 420 else 720
         val pad = 24
         val title = title(context, state)
-        val face = pickTitleFace(title, TitleFonts.faces.size, avoid = null) { TitleFonts.covers(context, TitleFonts.faces[it], title) }
-        val typeface = face?.let { runCatching { ResourcesCompat.getFont(context, TitleFonts.faces[it]) }.getOrNull() }
+        val pool = TitleFonts.poolFor(title)
+        val face = pickTitleFace(title, pool.size, avoid = null) { TitleFonts.covers(context, pool[it], title) }
+        val typeface = face?.let { runCatching { ResourcesCompat.getFont(context, pool[it]) }.getOrNull() }
         val (block, ink1) = if (strip) ink.container to ink.onContainer else ink.tertiary to ink.onTertiary
         val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = ink1

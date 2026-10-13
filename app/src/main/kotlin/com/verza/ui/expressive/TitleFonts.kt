@@ -69,6 +69,16 @@ object TitleFonts {
         R.font.display_le_murmure,
     )
 
+    /** A title longer than this many characters is set from [legible] rather than all of [faces]. */
+    const val LONG_TITLE = 22
+
+    /**
+     * The faces to choose from for [text]. A poster face is fine for a few words and not for a
+     * sentence: Outward's letters fuse into one another, and "Get Lucky (feat. Pharrell Williams and
+     * Nile Rodgers)" came out as a block of ink on Now Playing. Long titles draw from [legible].
+     */
+    fun poolFor(text: String): List<Int> = if (text.length > LONG_TITLE) legible else faces
+
     private val families = HashMap<Int, androidx.compose.ui.text.font.FontFamily>()
 
     /** One [androidx.compose.ui.text.font.FontFamily] per face, built once rather than per row. */
@@ -85,8 +95,9 @@ object TitleFonts {
             ?.let { family(legible[it]) }
 
     private val typefaces = HashMap<Int, Typeface?>()
-    private val paint = Paint().apply { textSize = 100f }
-    private val bounds = Rect()
+    // Lazy: building a Paint at object init made the face lists unusable from a JVM unit test.
+    private val paint by lazy { Paint().apply { textSize = 100f } }
+    private val bounds by lazy { Rect() }
 
     private fun inks(c: Char): Boolean {
         paint.getTextBounds(c.toString(), 0, 1, bounds)

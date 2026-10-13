@@ -192,8 +192,9 @@ private fun CollageTileView(
 
     // The name's face: one of the display faces, chosen per item, skipping any that cannot set it.
     val family = remember(tile.key, tile.name) {
-        pickTitleFace(tile.key, TitleFonts.faces.size, avoid = null) { TitleFonts.covers(context, TitleFonts.faces[it], tile.name) }
-            ?.let { FontFamily(Font(TitleFonts.faces[it])) }
+        val pool = TitleFonts.poolFor(tile.name)
+        pickTitleFace(tile.key, pool.size, avoid = null) { TitleFonts.covers(context, pool[it], tile.name) }
+            ?.let { FontFamily(Font(pool[it])) }
     }
     val (block, ink) = labelColours(xc, h)
     // Bigger covers get bigger names, so the type scales with the art and a full-width cover

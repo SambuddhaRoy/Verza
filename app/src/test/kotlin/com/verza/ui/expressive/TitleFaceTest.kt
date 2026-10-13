@@ -39,4 +39,13 @@ class TitleFaceTest {
         // If the only face that fits is the last song's, a repeat beats a half-drawn title.
         assertEquals(3, pickTitleFace("anything", 12, avoid = 3) { it == 3 })
     }
+
+    @Test
+    fun `a long title is set from the legible faces only`() {
+        val long = "Get Lucky (feat. Pharrell Williams and Nile Rodgers)"
+        assertEquals(TitleFonts.legible, TitleFonts.poolFor(long))
+        assertEquals(TitleFonts.faces, TitleFonts.poolFor("Get Lucky"))
+        // Every legible face is one of the faces, so the choice can be indexed back into the full list.
+        assertEquals(emptyList<Int>(), TitleFonts.legible - TitleFonts.faces.toSet())
+    }
 }
