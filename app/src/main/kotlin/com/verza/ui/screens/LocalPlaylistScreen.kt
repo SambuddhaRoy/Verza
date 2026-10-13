@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
@@ -173,7 +174,7 @@ fun LocalPlaylistScreen(
                                     maxLines = 3,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Text("${tracks.size} tracks", style = MaterialTheme.typography.labelSmall, color = ext.muted)
+                                Text(tracksLabel(tracks.size), style = MaterialTheme.typography.labelSmall, color = ext.muted)
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -338,7 +339,7 @@ private fun EmptyHint(color: Color) {
 /** "PLAYLIST · N TRACKS · 1H 42M" summary line. */
 private fun playlistSummary(tracks: List<SongEntity>): String {
     val total = tracks.sumOf { it.durationMs }
-    val base = "Playlist · ${tracks.size} tracks"
+    val base = "Playlist · ${tracksLabel(tracks.size)}"
     if (total <= 0L) return base
     val min = (total / 60000L).toInt()
     val runtime = if (min >= 60) "${min / 60}h ${min % 60}m" else "$min min"

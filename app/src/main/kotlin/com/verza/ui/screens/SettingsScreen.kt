@@ -47,6 +47,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -643,6 +648,8 @@ private fun GroupHeader(title: String) {
 @Composable
 private fun RowSurface(
     onClick: () -> Unit,
+    /** Non-null makes the row a switch to accessibility services, announcing on or off. */
+    switchState: Boolean? = null,
     content: RowScopeContent,
 ) {
     val colors = LocalExpressiveColors.current
@@ -661,6 +668,15 @@ private fun RowSurface(
             .clip(ShapeLargeIncreased)
             .background(colors.surface)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            // The pill is drawn by hand, so nothing told TalkBack this row was a switch or whether it
+            // was on: it read as a plain button, with no way to know the setting's state.
+            .then(
+                if (switchState == null) Modifier
+                else Modifier.semantics(mergeDescendants = true) {
+                    role = Role.Switch
+                    toggleableState = ToggleableState(switchState)
+                },
+            )
             .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) { content() }
@@ -671,7 +687,7 @@ private typealias RowScopeContent = @Composable androidx.compose.foundation.layo
 @Composable
 private fun SettingSwitch(title: String, subtitle: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
     val colors = LocalExpressiveColors.current
-    RowSurface(onClick = { onToggle(!checked) }) {
+    RowSurface(onClick = { onToggle(!checked) }, switchState = checked) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = BodyStrong, color = colors.onSurface)
             Text(subtitle, style = BodyText, color = colors.onSurfaceMuted)
