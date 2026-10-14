@@ -156,9 +156,10 @@ fun LibraryScreen(
                 LibraryTab.RECENT ->
                     SongList(recent.map { it.toMusicItem() }, onPlaySongs, "Play something to see it here")
                 LibraryTab.LIKED -> {
-                    val likedItems =
-                        if (isSignedIn && accountLiked.isNotEmpty()) accountLiked
-                        else liked.map { it.toMusicItem() }
+                    // Signed in, this was the account's list alone, so a song liked here did not
+                    // show until the account list was fetched again. Your own likes go first.
+                    val likedItems = (liked.map { it.toMusicItem() } + if (isSignedIn) accountLiked else emptyList())
+                        .distinctBy { it.id }
                     SongList(likedItems, onPlaySongs, "Like songs to see them here")
                 }
                 LibraryTab.LOCAL -> LocalMusicContent(
