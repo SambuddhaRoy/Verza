@@ -132,6 +132,12 @@ turn when started as a background task**; start it with PowerShell `Start-Proces
   Now-Playing needs are threaded via `VerzaNavigation` (e.g. `albumArtMotion`, `sleeveMode`).
 
 ## Gotchas
+- **Discovery radio never wipes its memory** (`discoveryServed`, oldest first, cap 5000). Clearing it
+  whenever a seed ran dry brought the same forty songs straight back. `MusicRepository.discoveryRadio`
+  digs into the seed artists' catalogue (search) before recycling the oldest-offered songs, and
+  `DiscoveryRadio.rank` puts songs found in 4+ radios (famous ones) last in each tier.
+- **The Liked tab is local likes plus the account's**, deduped. It used to show the account's list
+  alone when signed in, so a like made here only appeared after a refetch.
 - **Long titles use `TitleFonts.legible` only** (`poolFor`, over 22 characters). Outward fuses its
   letters, and "Get Lucky (feat. Pharrell Williams and Nile Rodgers)" came out as a block of ink on
   Now Playing. Every caller of `pickTitleFace` (Now Playing, the collage, widgets) picks from the pool.
