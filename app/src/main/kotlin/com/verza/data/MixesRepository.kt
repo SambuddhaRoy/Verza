@@ -80,7 +80,7 @@ class MixesRepository @Inject constructor(
 
     // ListenBrainz mixes are kept apart: they come from another service on their own schedule, and
     // connecting or disconnecting must not wait on, or be undone by, a regeneration of the others.
-    private val lbKey = stringPreferencesKey("listenbrainz_mixes")
+    private val lbKey = stringPreferencesKey("listenbrainz_mixes_v2")
     private val lbLock = Mutex()
 
     private val _mixes = MutableStateFlow<List<CuratedMix>>(emptyList())

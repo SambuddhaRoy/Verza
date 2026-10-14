@@ -17,6 +17,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import okhttp3.OkHttpClient
@@ -74,26 +75,51 @@ class ListenBrainzRepository @Inject constructor(
 
     /** Everything for [user] as mixes, matched to YouTube Music. Empty when unreachable. */
     suspend fun mixes(user: String): List<CuratedMix> {
-        val sets = mutableListOf<Triple<Weekly, String, List<Pair<String, String>>>>()
+        data class Set(val kind: Weekly, val pairs: List<Pair<String, String>>)
+        val sets = mutableListOf<Set>()
+        fun add(kind: Weekly, pairs: List<Pair<String, String>>) { if (pairs.isNotEmpty()) sets += Set(kind, pairs) }
+
+        // What ListenBrainz makes for the user: weekly, daily and yearly lists.
         runCatching {
-            val lists = get("/user/${enc(user)}/playlists/createdfor?count=50")
+            val lists = get("/user/${enc(user)}/playlists/createdfor?count=100")
                 ?.arr("playlists").orEmpty().mapNotNull { (it as? JsonObject)?.obj("playlist") }
             for ((kind, mbid) in pickWeekly(lists.map(::summary), System.currentTimeMillis())) {
-                runCatching { sets += Triple(kind, mbid, playlistPairs(mbid)) }
+                runCatching { add(kind, playlistPairs(mbid)) }
             }
         }
+        runCatching { add(RECOMMENDED, recommendedPairs(user)) }
         runCatching {
-            val (kind, pairs) = topPairs(user)
-            sets += Triple(kind, "", pairs)
+            for ((mbid, title) in ownPlaylists(user, 2)) {
+                runCatching {
+                    add(Weekly("lb_pl_${mbid.take(8)}", "", title, "Your playlist on ListenBrainz"), playlistPairs(mbid))
+                }
+            }
+        }
+        for (ranges in STATS) {
+            runCatching { topPairs(user, ranges).let { (kind, pairs) -> add(kind, pairs) } }
         }
 
-        val resolved = resolve(sets.flatMap { it.third })
+        // Bounded, in priority order, so a very busy account cannot make the first build run for minutes.
+        var budget = MAX_PAIRS
+        val bounded = sets.map { s -> Set(s.kind, s.pairs.take(budget.coerceAtLeast(0)).also { budget -= it.size }) }
+
+        val resolved = resolve(bounded.flatMap { it.pairs })
         val now = System.currentTimeMillis()
-        return sets.mapNotNull { (kind, _, pairs) ->
-            val items = pairs.mapNotNull { resolved[key(it)] }.distinctBy { it.videoId }
-            if (items.size < MIN_TRACKS) null
-            else CuratedMix(kind.id, MixKind.LISTENBRAINZ, kind.title, kind.subtitle, items, now)
+        val kept = mutableListOf<Pair<CuratedMix, kotlin.collections.Set<String>>>()
+        for (s in bounded) {
+            val items = s.pairs.mapNotNull { resolved[key(it)] }.distinctBy { it.videoId }
+            if (items.size < MIN_TRACKS) continue
+            val ids = items.mapNotNull { it.videoId }.toSet()
+            // Mostly songs an earlier mix already has makes it a repeat of that one: a new account's
+            // last month, last week and all time are the same few songs, and that is one mix.
+            val repeat = kept.any { (_, other) ->
+                ids.count { it in other }.toDouble() / minOf(ids.size, other.size).coerceAtLeast(1) >= OVERLAP
+            }
+            if (!repeat) {
+                kept += CuratedMix(s.kind.id, MixKind.LISTENBRAINZ, s.kind.title, s.kind.subtitle, items, now) to ids
+            }
         }
+        return kept.map { it.first }
     }
 
     private suspend fun playlistPairs(mbid: String): List<Pair<String, String>> =
@@ -103,12 +129,12 @@ class ListenBrainzRepository @Inject constructor(
         }
 
     /**
-     * Most played. `month` is the previous calendar month, which is empty for anyone who connected in
-     * the last few weeks (a new account got no mixes at all), so those fall back to `this_month` and
-     * are titled for what they are.
+     * Most played over the first of [ranges] that has enough songs. `month` and `week` are the
+     * previous calendar month and week, which a new account does not have yet (it got no mixes at
+     * all), so they fall back to `this_month` and `this_week`, titled for what they are.
      */
-    private suspend fun topPairs(user: String): Pair<Weekly, List<Pair<String, String>>> {
-        for ((range, kind) in listOf("month" to MONTH, "this_month" to THIS_MONTH)) {
+    private suspend fun topPairs(user: String, ranges: List<Pair<String, Weekly>>): Pair<Weekly, List<Pair<String, String>>> {
+        for ((range, kind) in ranges) {
             val pairs = get("/stats/user/${enc(user)}/recordings?range=$range&count=30")
                 ?.obj("payload")?.arr("recordings").orEmpty()
                 .mapNotNull { r ->
@@ -117,7 +143,35 @@ class ListenBrainzRepository @Inject constructor(
                 }
             if (pairs.size >= MIN_TRACKS) return kind to pairs
         }
-        return MONTH to emptyList()
+        return ranges.first().second to emptyList()
+    }
+
+    /** The playlists [user] made on ListenBrainz themselves, newest first: (mbid, title). */
+    private suspend fun ownPlaylists(user: String, n: Int): List<Pair<String, String>> =
+        get("/user/${enc(user)}/playlists?count=25")?.arr("playlists").orEmpty()
+            .mapNotNull { (it as? JsonObject)?.obj("playlist") }
+            .mapNotNull { p ->
+                val id = p.str("identifier")?.substringAfterLast('/') ?: return@mapNotNull null
+                Triple(id, p.str("title") ?: "Playlist", parseTime(p.str("date")) ?: 0L)
+            }
+            .sortedByDescending { it.third }.take(n).map { it.first to it.second }
+
+    /**
+     * ListenBrainz's collaborative-filtering picks: songs people with a similar history play. The
+     * answer is recording ids with scores, so the names come from the metadata endpoint.
+     */
+    private suspend fun recommendedPairs(user: String): List<Pair<String, String>> {
+        val ids = get("/cf/recommendation/user/${enc(user)}/recording?count=50")
+            ?.obj("payload")?.arr("mbids").orEmpty()
+            .mapNotNull { it as? JsonObject }
+            .sortedByDescending { it["score"]?.jsonPrimitive?.doubleOrNull ?: 0.0 }
+            .mapNotNull { it.str("recording_mbid") }.take(50)
+        if (ids.isEmpty()) return emptyList()
+        val meta = get("/metadata/recording/?recording_mbids=${ids.joinToString(",")}&inc=artist") ?: return emptyList()
+        return ids.mapNotNull { id ->
+            val v = meta.obj(id) ?: return@mapNotNull null
+            pairOf(v.obj("recording")?.str("name"), v.obj("artist")?.str("name"))
+        }
     }
 
     /** (title, artist) → the first YouTube Music song for it, misses cached too, four searches at a time. */
@@ -181,9 +235,37 @@ class ListenBrainzRepository @Inject constructor(
         val WEEKLY = listOf(
             Weekly("lb_exploration", "weekly-exploration", "Weekly Exploration", "New to you, from what you play everywhere"),
             Weekly("lb_jams", "weekly-jams", "Weekly Jams", "Your favourites from everywhere you listen"),
+            Weekly("lb_daily", "daily-jams", "Daily Jams", "Fresh every day, from what you have been playing"),
         )
-        private val MONTH = Weekly("lb_month", "", "Last month on repeat", "Your most played, Spotify and everywhere else")
-        private val THIS_MONTH = MONTH.copy(title = "This month on repeat")
+
+        /** Yearly lists never expire and one arrives each year, so the newest year of each is shown. */
+        private class Yearly(val id: String, val re: Regex, val title: (Int) -> String, val subtitle: String)
+        private val YEARLY = listOf(
+            Yearly("lb_discoveries", Regex("^top-discoveries-of-(\\d{4})$"), { "Top Discoveries of $it" },
+                "The new music you found that year"),
+            Yearly("lb_missed", Regex("^top-missed-recordings-of-(\\d{4})$"), { "Top Missed Songs of $it" },
+                "Songs you would have loved and never played"),
+        )
+
+        private val RECOMMENDED = Weekly("lb_recommended", "", "Recommended for you", "What listeners with your taste are playing")
+        private fun stat(id: String, title: String, subtitle: String) = Weekly(id, "", title, subtitle)
+        private val STATS = listOf(
+            listOf(
+                "month" to stat("lb_month", "Last month on repeat", "Your most played, Spotify and everywhere else"),
+                "this_month" to stat("lb_month", "This month on repeat", "Your most played, Spotify and everywhere else"),
+            ),
+            listOf(
+                "week" to stat("lb_week", "Last week on repeat", "What you could not stop playing"),
+                "this_week" to stat("lb_week", "This week on repeat", "What you could not stop playing"),
+            ),
+            listOf("all_time" to stat("lb_alltime", "All-time favourites", "The songs you keep coming back to")),
+        )
+
+        /** More than this share of a mix already on the shelf makes it a repeat of that one. */
+        private const val OVERLAP = 0.8
+
+        /** Searches made on the first build, most important mixes first. */
+        private const val MAX_PAIRS = 320
 
         /** A mix needs this many songs that resolved on YouTube Music to be worth a card. */
         private const val MIN_TRACKS = 5
@@ -192,12 +274,20 @@ class ListenBrainzRepository @Inject constructor(
         val USERNAME = Regex("^[\\w.-]{1,64}$")
 
         /**
-         * The newest live playlist of each weekly kind. ListenBrainz keeps old weeks in the list and
-         * stops making new ones for someone who stops listening, so an expired one is left out rather
-         * than shown as this week's. Daily Jams is not one of ours.
+         * The newest live playlist of each weekly or daily kind, and the newest year of each yearly
+         * kind. ListenBrainz keeps old weeks in the list and stops making new ones for someone who
+         * stops listening, so an expired one is left out rather than shown as this week's.
          */
-        fun pickWeekly(lists: List<Summary>, now: Long): List<Pair<Weekly, String>> = WEEKLY.mapNotNull { kind ->
-            lists.filter { it.patch == kind.patch && it.expires > now }.maxByOrNull { it.date }?.let { kind to it.mbid }
+        fun pickWeekly(lists: List<Summary>, now: Long): List<Pair<Weekly, String>> {
+            val live = WEEKLY.mapNotNull { kind ->
+                lists.filter { it.patch == kind.patch && it.expires > now }.maxByOrNull { it.date }?.let { kind to it.mbid }
+            }
+            val yearly = YEARLY.mapNotNull { kind ->
+                lists.mapNotNull { p -> kind.re.matchEntire(p.patch)?.let { p to it.groupValues[1].toInt() } }
+                    .maxByOrNull { it.second }
+                    ?.let { (p, year) -> Weekly(kind.id, "", kind.title(year), kind.subtitle) to p.mbid }
+            }
+            return live + yearly
         }
 
         private fun key(p: Pair<String, String>) = p.first.trim().lowercase() + "\u0000" + p.second.trim().lowercase()
