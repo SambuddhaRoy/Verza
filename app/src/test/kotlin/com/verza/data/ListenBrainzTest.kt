@@ -26,7 +26,30 @@ class ListenBrainzTest {
             ),
             now,
         )
-        assertEquals(listOf("lb_exploration" to "explore-new", "lb_jams" to "jams-new"), got.map { it.first.id to it.second })
+        assertEquals(
+            listOf("lb_exploration" to "explore-new", "lb_jams" to "jams-new", "lb_daily" to "daily"),
+            got.map { it.first.id to it.second },
+        )
+    }
+
+    @Test fun newestYearOfEachYearlyListWins() {
+        val got = pickWeekly(
+            listOf(
+                pl("top-discoveries-of-2023", "2024-01-02T05:00:00Z", "2099-01-01T00:00:00Z", "disc-2023"),
+                pl("top-discoveries-of-2025", "2026-01-02T05:00:00Z", "2099-01-01T00:00:00Z", "disc-2025"),
+                pl("top-discoveries-of-2024", "2025-01-02T05:00:00Z", "2099-01-01T00:00:00Z", "disc-2024"),
+                pl("top-missed-recordings-of-2025", "2026-01-02T05:00:00Z", "2099-01-01T00:00:00Z", "miss-2025"),
+                pl("some-future-kind", "2026-10-01T05:00:00Z", "2099-01-01T00:00:00Z", "future"),
+            ),
+            now,
+        )
+        assertEquals(
+            listOf(
+                Triple("lb_discoveries", "Top Discoveries of 2025", "disc-2025"),
+                Triple("lb_missed", "Top Missed Songs of 2025", "miss-2025"),
+            ),
+            got.map { Triple(it.first.id, it.first.title, it.second) },
+        )
     }
 
     @Test fun expiredWeeksAreLeftOut() {
