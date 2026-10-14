@@ -40,8 +40,11 @@ class MusicRepository @Inject constructor() {
     suspend fun discoveryRadio(
         videoId: String,
         known: DiscoveryRadio.Known,
-        served: Set<String> = emptySet(),
+        // Oldest first, so a neighbourhood that has truly run dry brings back the songs offered
+        // longest ago instead of the same top forty.
+        servedOrder: List<String> = emptyList(),
     ): Result<DiscoveryResult> = runCatching {
+        val served = servedOrder.toSet()
         withContext(Dispatchers.IO) {
             // The seed's OWN radio defines the genre: the artist neighbourhood YouTube treats as
             // adjacent to it. Walking outward hop-by-hop (the earlier approach) bought fresh tracks
@@ -71,6 +74,19 @@ class MusicRepository @Inject constructor() {
                 pool += runCatching { InnerTube.radio(seed) }.getOrDefault(emptyList())
             }
 
+            // Radios only surface an artist's best-known songs, and after a few runs on one seed those
+            // are spent. The same artists' deeper catalogue is still this genre and is exactly what a
+            // listener has not come across, so dig there before falling back to anything offered.
+            if (usable() < 40) {
+                val names = groups.associate { g ->
+                    DiscoveryRadio.primaryArtist(g.first().artist) to g.first().artist.substringBefore(',').trim()
+                }
+                for ((key, name) in names.entries.shuffled().take(6)) {
+                    pool += runCatching { InnerTube.searchSongs(name) }.getOrDefault(emptyList())
+                        .filter { DiscoveryRadio.primaryArtist(it.artist) == key }
+                }
+            }
+
             // Keep only what belongs to this genre — an artist from the seed's radio, or a track that
             // recurred across several of those radios (strong evidence of the same corner of music).
             val counts = pool.groupingBy { it.id }.eachCount()
@@ -78,19 +94,22 @@ class MusicRepository @Inject constructor() {
                 DiscoveryRadio.primaryArtist(it.artist) in genre || (counts[it.id] ?: 0) >= 2
             }
 
-            val ranked = DiscoveryRadio.rank(inGenre, videoId, known, served)
-            when {
-                ranked.isNotEmpty() -> DiscoveryResult(ranked, exhausted = false)
-                // Everything nearby is heard or already offered — recycle rather than play nothing,
-                // and tell the caller to forget the served memory.
-                served.isNotEmpty() -> DiscoveryResult(DiscoveryRadio.rank(inGenre, videoId, known), exhausted = true)
-                else -> DiscoveryResult(inGenre.filter { it.id != videoId }.take(40), exhausted = false)
-            }
+            val ranked = DiscoveryRadio.rank(inGenre, videoId, known, served, counts = counts)
+            if (ranked.size >= 10) return@withContext DiscoveryResult(ranked)
+            // Nearly everything here has been offered before: top up with what was offered longest ago.
+            // This used to forget the whole memory instead, which brought the same songs straight back.
+            val position = servedOrder.withIndex().associate { it.value to it.index }
+            val recycled = inGenre
+                .filter { it.id != videoId && it.id !in known.videoIds && it.id in served }
+                .distinctBy { it.id }
+                .sortedBy { position[it.id] ?: Int.MAX_VALUE }
+            val topped = (ranked + recycled).distinctBy { it.id }.take(40)
+            DiscoveryResult(topped.ifEmpty { inGenre.filter { it.id != videoId }.distinctBy { it.id }.take(40) })
         }
     }
 
-    /** [tracks] to play; [exhausted] means the served memory should be cleared. */
-    data class DiscoveryResult(val tracks: List<MusicItem>, val exhausted: Boolean)
+    /** [tracks] to play. */
+    data class DiscoveryResult(val tracks: List<MusicItem>)
 
     /** The signed-in user's "Liked Music" playlist (VLLM). Empty when signed out. */
     suspend fun accountLikedSongs(): Result<List<MusicItem>> =
