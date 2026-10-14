@@ -467,13 +467,12 @@ class PlaybackViewModel @Inject constructor(
         viewModelScope.launch {
             val known = runCatching { libraryRepository.known() }
                 .getOrDefault(DiscoveryRadio.Known(emptySet(), emptySet()))
-            val served = runCatching { prefs.discoveryServed() }.getOrDefault(emptySet())
+            val served = runCatching { prefs.discoveryServed() }.getOrDefault(emptyList())
             repository.discoveryRadio(videoId, known, served).onSuccess { result ->
                 val tracks = result.tracks
                 if (tracks.isEmpty()) return@onSuccess
-                // Remember what we handed over (and reset the memory if the well ran dry), so the
-                // next Discovery run on this song returns different music.
-                if (result.exhausted) runCatching { prefs.clearDiscoveryServed() }
+                // Remember what we handed over, so the next Discovery run on this song returns
+                // different music. Never wiped: a dry neighbourhood recycles the oldest-offered first.
                 runCatching { prefs.addDiscoveryServed(tracks.map { it.id }) }
                 // Seeded from what's already playing? Keep it playing and swap in the continuation.
                 val current = playbackState.value.currentItem?.mediaId

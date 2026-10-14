@@ -343,11 +343,13 @@ class PreferencesRepository @Inject constructor(
     // offered, a second Discovery run returns the same tracks. Keep the ids (FIFO-capped) and skip
     // them next time; that memory is what makes each run genuinely new.
 
-    private val discoveryServedCap = 800
+    // 800 filled up for a regular listener and then songs came back; 5000 ids is ~70KB.
+    private val discoveryServedCap = 5000
 
-    suspend fun discoveryServed(): Set<String> {
-        val raw = store.data.first()[discoveryServedKey] ?: return emptySet()
-        return runCatching { json.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList()).toSet()
+    /** What Discovery has offered, oldest first. */
+    suspend fun discoveryServed(): List<String> {
+        val raw = store.data.first()[discoveryServedKey] ?: return emptyList()
+        return runCatching { json.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList())
     }
 
     suspend fun addDiscoveryServed(ids: List<String>) {
@@ -355,7 +357,9 @@ class PreferencesRepository @Inject constructor(
         store.edit { prefs ->
             val current = prefs[discoveryServedKey]
                 ?.let { runCatching { json.decodeFromString<List<String>>(it) }.getOrNull() } ?: emptyList()
-            val updated = (current + ids.filterNot { it in current }).takeLast(discoveryServedCap)
+            // Offered again means offered recently: move it to the back, so "oldest first" stays true.
+            val again = ids.toSet()
+            val updated = (current.filterNot { it in again } + again).takeLast(discoveryServedCap)
             prefs[discoveryServedKey] = json.encodeToString(updated)
         }
     }

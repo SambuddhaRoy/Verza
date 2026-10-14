@@ -48,12 +48,20 @@ object DiscoveryRadio {
         known: Known,
         served: Set<String> = emptySet(),
         cap: Int = 40,
+        /** How many of the radios walked each id turned up in. */
+        counts: Map<String, Int> = emptyMap(),
     ): List<MusicItem> {
         val seen = mutableSetOf(seedId)
         val fresh = pool.filter { t ->
             t.id.isNotEmpty() && seen.add(t.id) && t.id !in known.videoIds && t.id !in served
         }
         val (unfamiliar, familiar) = fresh.partition { primaryArtist(it.artist) !in known.artists }
-        return (unfamiliar.shuffled() + familiar.shuffled()).take(cap)
+        // A song in four or more of the radios is the one everybody knows, the opposite of a
+        // discovery: within each tier it goes last. The sort is stable, so the shuffle survives.
+        val famousLast = { list: List<MusicItem> -> list.shuffled().sortedBy { (counts[it.id] ?: 1) >= FAMOUS } }
+        return (famousLast(unfamiliar) + famousLast(familiar)).take(cap)
     }
+
+    /** Turning up in this many radios marks a song as famous rather than a find. */
+    const val FAMOUS = 4
 }
