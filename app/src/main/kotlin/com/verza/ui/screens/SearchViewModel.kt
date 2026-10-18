@@ -112,7 +112,13 @@ class SearchViewModel @Inject constructor(
                     _uiState.value =
                         if (items.isEmpty()) SearchUiState.Empty else SearchUiState.Results(items)
                 }
-                .onFailure { _uiState.value = SearchUiState.Error(it.message ?: "Search failed") }
+                // The raw message was an exception string ("Unable to resolve host …").
+                .onFailure {
+                    _uiState.value = SearchUiState.Error(
+                        if (it is java.io.IOException) "You're offline. Downloaded songs still play."
+                        else "Search didn't work. Try again."
+                    )
+                }
         }
     }
 }

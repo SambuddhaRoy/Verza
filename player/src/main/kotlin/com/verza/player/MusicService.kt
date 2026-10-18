@@ -413,6 +413,7 @@ class MusicService : MediaLibraryService() {
 
     /** Shows the full diagnostic in debug builds; a short, non-revealing message in release. */
     private fun showPlaybackToast(handler: Handler, debugDetail: String) {
+        if (!isOnline(this)) return // PlayerConnection says "You're offline" instead
         val text = if (BuildConfig.DEBUG) debugDetail else "Couldn't play this track"
         handler.post { Toast.makeText(this, text, Toast.LENGTH_LONG).show() }
     }

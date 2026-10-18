@@ -2,6 +2,7 @@ package com.verza.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.widget.Toast
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -37,6 +38,8 @@ data class QueueItem(
 
 class PlayerConnection(context: Context) {
 
+    private val appContext = context.applicationContext
+
     private val sessionToken = SessionToken(
         context,
         ComponentName(context, MusicService::class.java),
@@ -68,6 +71,16 @@ class PlayerConnection(context: Context) {
          */
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             val ctrl = controller ?: return
+            // Offline, every song that is not downloaded fails. Skipping walked the queue away from
+            // where the listener was, and whichever song loaded once the network came back started
+            // playing by itself. Stay on this song, paused, and say why.
+            if (!isOnline(appContext)) {
+                consecutiveErrors = 0
+                ctrl.pause()
+                syncState()
+                Toast.makeText(appContext, "You're offline. Downloaded songs still play.", Toast.LENGTH_LONG).show()
+                return
+            }
             consecutiveErrors++
             if (consecutiveErrors > MAX_CONSECUTIVE_ERRORS || !ctrl.hasNextMediaItem()) {
                 consecutiveErrors = 0
