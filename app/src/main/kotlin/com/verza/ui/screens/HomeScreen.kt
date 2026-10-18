@@ -30,6 +30,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import coil3.compose.AsyncImage
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -306,9 +308,16 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
                 ),
             )
         }
+        // The card is a fixed square, so text at the largest system font split words in half
+        // ("Evenin/g") and wrapped the badge into the title. Text here follows the system size up
+        // to 1.2x; the card's own size is what has to stay put.
+        val d = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale.coerceAtMost(1.2f))) {
         Box(Modifier.fillMaxSize().padding(14.dp)) {
             Text(
                 text = eyebrow,
+                maxLines = 1,
+                softWrap = false,
                 style = TextStyle(fontFamily = FontMono, fontSize = 10.sp, letterSpacing = 0.12.em),
                 color = Color.White,
                 // On a dark pill, so it reads over whatever lettering the cover has at the top.
@@ -322,8 +331,10 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
                 style = MaterialTheme.typography.headlineSmall,
                 color = Color.White,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.align(Alignment.BottomStart),
             )
+        }
         }
     }
 }

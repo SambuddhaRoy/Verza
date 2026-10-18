@@ -132,6 +132,13 @@ turn when started as a background task**; start it with PowerShell `Start-Proces
   Now-Playing needs are threaded via `VerzaNavigation` (e.g. `albumArtMotion`, `sleeveMode`).
 
 ## Gotchas
+- **Offline, a failed song pauses instead of skipping** (`PlayerConnection.onPlayerError`, `isOnline`
+  in Network.kt). Skipping walked the whole queue away while offline, and whichever song loaded when
+  the network came back started by itself. Online, failures still skip (three in a row stop).
+- **Text on fixed-size cards is capped at 1.2x the system font** (`MixCard`). At 2x, words longer than
+  the card split mid-word ("Evenin/g"). Scale the text, not the card, only up to that point.
+- `dumpsys media_session` lists other apps' sessions too: a `description=null` there was the Google
+  Assistant's session, not Verza's. Read the block under `package=com.verza`.
 - **Discovery radio never wipes its memory** (`discoveryServed`, oldest first, cap 5000). Clearing it
   whenever a seed ran dry brought the same forty songs straight back. `MusicRepository.discoveryRadio`
   digs into the seed artists' catalogue (search) before recycling the oldest-offered songs, and

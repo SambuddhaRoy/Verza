@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- To tell "offline" apart from "this song is broken" when playback fails. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Verza is sideloaded rather than on Play, so it updates itself: this lets it hand a
          downloaded APK to the system installer, which still shows its own confirmation. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
