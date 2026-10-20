@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.LocalBottomChrome
+import com.verza.ui.expressive.ShapeLargeIncreased
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -90,7 +91,7 @@ fun MixScreen(
 
         val m = mix
         if (m == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(bottom = LocalBottomChrome.current), contentAlignment = Alignment.Center) {
                 Text("Putting this mix together…", style = MaterialTheme.typography.bodyMedium, color = ext.muted)
             }
             return
@@ -99,8 +100,8 @@ fun MixScreen(
         val playable = m.playableSongs
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp + LocalBottomChrome.current),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             item {
                 // Banner fronted by real art from inside the mix, washed with the kind tint
@@ -111,7 +112,7 @@ fun MixScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-                        .clip(squareOr(RoundedCornerShape(18.dp)))
+                        .clip(ShapeLargeIncreased)
                         .background(Brush.linearGradient(listOf(top, bottom))),
                 ) {
                     if (bannerArt != null) {
@@ -164,37 +165,17 @@ fun MixScreen(
     }
 }
 
+/** A song in a mix: the same card row as Library and Search. It was bare text on the page, with
+ *  its own type, so a mix read as a different app. */
 @Composable
-private fun MixRow(item: HomeItem, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(squareOr(RoundedCornerShape(12.dp)))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(squareOr(RoundedCornerShape(8.dp)))
-                .background(colors.surfaceVariant),
-        ) {
-            if (item.thumbnailUrl != null) {
-                AsyncImage(model = item.thumbnailUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
-            }
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(item.title, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (item.subtitle.isNotBlank()) {
-                Text(item.subtitle, style = MaterialTheme.typography.bodySmall, color = ext.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
+private fun MixRow(item: HomeItem, onClick: () -> Unit) =
+    com.verza.ui.expressive.ExpressiveListItem(
+        title = item.title,
+        subtitle = item.subtitle,
+        onClick = onClick,
+        // Never null: a song with no art still gets the placeholder square, so the titles line up.
+        artworkUrl = item.thumbnailUrl ?: "",
+    )
 
 /**
  * A mix's signature gradient, shared by its Home card and its page. The three fixed mixes each have

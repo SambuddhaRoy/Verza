@@ -9,30 +9,36 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Verza uses a **single corner radius** for every rounded rectangle in the app — cards,
- * thumbnails, sheets, dialogs, buttons, chips and surfaces all share [VerzaCorner] so the UI
- * reads as one consistent system. Genuinely circular elements (icon buttons, avatars, the play
- * control) stay circular; everything else curves by exactly this much.
+ * Corners come from three radii and a pill (the tokens are in ExpressiveShapes.kt):
+ * - **28dp** ([com.verza.ui.expressive.ShapeExtraLarge]): sheets, dialogs, the Now Playing cover,
+ *   the mini player.
+ * - **20dp** ([VerzaShape], `ShapeLargeIncreased`): cards and card rows, and any picture the size
+ *   of a card.
+ * - **12dp** (`ShapeMedium`): thumbnails inside rows, text fields, press highlights.
+ * - **Pill**: buttons, chips, the nav bar. Circles for artists and icon buttons.
  *
- * In the Poster design (see [DesignScheme]) none of it curves at all: [VerzaShape] is a rectangle.
+ * Something inside a rounded container is concentric with it: its radius is the container's
+ * minus the inset (a 20dp row with an 8dp inset holds a 12dp thumbnail). Different radii side by
+ * side, or a thumbnail curving more tightly than its row, is what made the app look unmatched.
+ *
+ * In the Poster design (see [DesignScheme]) none of it curves at all.
  */
-val VerzaCorner: Dp = 14.dp
+val VerzaCorner: Dp = 20.dp
 
 private val RoundedVerza = RoundedCornerShape(VerzaCorner)
 
-/** The one rounded-rectangle shape, derived from [VerzaCorner]. Use this anywhere you'd reach for
- *  `RoundedCornerShape(...)` on a surface/card/button. Square in the Poster design. */
+/** A card: the 20dp of the scale above. Square in the Poster design. */
 val VerzaShape: Shape
     @Composable @ReadOnlyComposable get() = squareOr(RoundedVerza)
 
-/** Every Material shape slot maps to the single [VerzaShape], so themed components (cards, sheets,
- *  dialogs, menus) are uniform with our hand-styled surfaces. */
+/** Material's own components on the same scale: menus, snackbars and text fields at 12, cards at
+ *  20, sheets and dialogs at 28. */
 val VerzaShapes = Shapes(
-    extraSmall = RoundedVerza,
-    small = RoundedVerza,
+    extraSmall = RoundedCornerShape(12.dp),
+    small = RoundedCornerShape(12.dp),
     medium = RoundedVerza,
     large = RoundedVerza,
-    extraLarge = RoundedVerza,
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 /**

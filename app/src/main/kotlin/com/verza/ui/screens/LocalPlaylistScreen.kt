@@ -1,5 +1,8 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.LocalBottomChrome
+import com.verza.ui.expressive.ShapeLargeIncreased
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
 import com.verza.ui.theme.squareOr
@@ -8,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddToQueue
@@ -69,7 +71,7 @@ fun LocalPlaylistScreen(
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = if (sleeve) 0.dp else 64.dp, bottom = 28.dp),
+            contentPadding = PaddingValues(top = if (sleeve) 0.dp else 64.dp, bottom = 28.dp + LocalBottomChrome.current),
         ) {
             if (sleeve) {
                 // ── Editorial (UMBRA) layout ─────────────────────────────────────
@@ -142,8 +144,8 @@ fun LocalPlaylistScreen(
                             Box(
                                 modifier = Modifier
                                     .size(140.dp)
-                                    .shadow(elevation = 12.dp, shape = squareOr(RoundedCornerShape(16.dp)), clip = false)
-                                    .clip(squareOr(RoundedCornerShape(16.dp)))
+                                    .shadow(elevation = 12.dp, shape = ShapeLargeIncreased, clip = false)
+                                    .clip(ShapeLargeIncreased)
                                     .background(
                                         Brush.linearGradient(listOf(colors.primary, colors.tertiary))
                                     ),
@@ -380,7 +382,7 @@ private fun LocalPlaylistTrackRow(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(squareOr(RoundedCornerShape(8.dp)))
+                    .clip(ShapeMedium)
                     .background(colors.surfaceVariant),
             ) {
                 if (art != null) {

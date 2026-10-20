@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Below Android 12 there is no launcher corner to match; 28dp is what Pixel uses. -->
+    <dimen name="widget_corner">28dp</dimen>
+</resources>

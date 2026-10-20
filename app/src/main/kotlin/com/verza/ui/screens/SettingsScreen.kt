@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.LocalBottomChrome
 import androidx.compose.ui.unit.sp
 import com.verza.ui.theme.DesignScheme
 import androidx.compose.ui.graphics.RectangleShape
@@ -198,7 +199,7 @@ fun SettingsScreen(
             .widthIn(max = animatedReadableWidth())
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.systemBars),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp + LocalBottomChrome.current),
     ) {
         item {
             Row(
@@ -549,7 +550,7 @@ private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String
                     enabled = connectedAs.isBlank() && !state.busy,
                     singleLine = true,
                     label = { Text("Username") },
-                    shape = squareOr(RoundedCornerShape(12.dp)),
+                    shape = ShapeMedium,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         autoCorrectEnabled = false,
                         imeAction = androidx.compose.ui.text.input.ImeAction.Done,
@@ -797,7 +798,7 @@ private fun AccountCard(signedIn: Boolean, onSignIn: () -> Unit, onSignOut: () -
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(ShapeExtraLarge)
+            .clip(ShapeLargeIncreased)
             .background(colors.surface)
             .padding(20.dp),
     ) {
@@ -979,7 +980,7 @@ private fun VersionCard() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 3.dp)
-            .clip(ShapeExtraLarge)
+            .clip(ShapeLargeIncreased)
             .background(colors.surface)
             .padding(20.dp),
     ) {

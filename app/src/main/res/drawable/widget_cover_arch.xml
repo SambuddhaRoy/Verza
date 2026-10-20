@@ -7,5 +7,5 @@
     android:viewportHeight="100">
     <path
         android:fillColor="@color/widget_tertiary"
-        android:pathData="M0,92V50A50,50 0 0,1 100,50V92Q100,100 92,100H8Q0,100 0,92Z" />
+        android:pathData="M0,90V50A50,50 0 0,1 100,50V90A10,10 0 0,1 90,100H10A10,10 0 0,1 0,90Z" />
 </vector>

@@ -1,6 +1,7 @@
 package com.verza.ui.screens
 
-import com.verza.ui.theme.squareOr
+import com.verza.ui.expressive.ShapeSmall
+import com.verza.ui.expressive.ShapeLargeIncreased
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
@@ -32,8 +33,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
@@ -67,7 +66,6 @@ import com.verza.ui.expressive.HeroTitle
 import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.MetaLabel
 import com.verza.ui.expressive.PillShape
-import com.verza.ui.expressive.ShapeExtraLarge
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.ui.theme.LocalArtworkColors
 
@@ -267,11 +265,11 @@ private fun StepColour(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(ShapeExtraLarge)
+                        .clip(ShapeLargeIncreased)
                         .border(
                             width = if (flavour == selected) 2.dp else 1.dp,
                             color = if (flavour == selected) colors.accent else colors.line,
-                            shape = ShapeExtraLarge,
+                            shape = ShapeLargeIncreased,
                         )
                         .selectable(
                             selected = flavour == selected,
@@ -281,7 +279,7 @@ private fun StepColour(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Row(modifier = Modifier.clip(squareOr(RoundedCornerShape(8.dp)))) {
+                    Row(modifier = Modifier.clip(ShapeSmall)) {
                         Box(Modifier.size(24.dp).background(preview.container))
                         Box(Modifier.size(24.dp).background(preview.surface))
                         Box(Modifier.size(24.dp).background(preview.accent))

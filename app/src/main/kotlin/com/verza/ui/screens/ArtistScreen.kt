@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.padding
+import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -39,10 +41,10 @@ fun ArtistScreen(
         when (val s = state) {
             is ArtistUiState.Loading -> CircularProgressIndicator(
                 color = colors.primary,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
             )
             is ArtistUiState.Error -> Column(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -72,7 +74,7 @@ private fun ArtistContent(detail: ArtistDetail, onItemClick: (HomeItem) -> Unit)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp),
+        contentPadding = PaddingValues(bottom = 16.dp + LocalBottomChrome.current),
         verticalArrangement = Arrangement.spacedBy(28.dp),
     ) {
         item {

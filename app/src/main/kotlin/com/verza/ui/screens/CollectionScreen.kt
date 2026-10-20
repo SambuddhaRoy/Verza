@@ -1,5 +1,8 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.padding
+import com.verza.ui.expressive.LocalBottomChrome
+import com.verza.ui.expressive.ShapeLargeIncreased
 import com.verza.tracksLabel
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
@@ -11,7 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddToQueue
@@ -71,10 +73,10 @@ fun CollectionScreen(
         when (val s = state) {
             is CollectionUiState.Loading -> CircularProgressIndicator(
                 color = colors.primary,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
             )
             is CollectionUiState.Error -> Column(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -118,7 +120,7 @@ private fun CollectionContent(
         modifier = Modifier.fillMaxSize(),
         // Sleeve's full-bleed header runs to the top edge; the standard header clears the
         // floating back button.
-        contentPadding = PaddingValues(top = if (sleeve) 0.dp else 64.dp, bottom = 28.dp),
+        contentPadding = PaddingValues(top = if (sleeve) 0.dp else 64.dp, bottom = 28.dp + LocalBottomChrome.current),
     ) {
         if (sleeve) {
             // ── Editorial (UMBRA) layout ─────────────────────────────────────────
@@ -190,8 +192,8 @@ private fun CollectionContent(
                         Box(
                             modifier = Modifier
                                 .size(140.dp)
-                                .shadow(elevation = 12.dp, shape = squareOr(RoundedCornerShape(16.dp)), clip = false)
-                                .clip(squareOr(RoundedCornerShape(16.dp)))
+                                .shadow(elevation = 12.dp, shape = ShapeLargeIncreased, clip = false)
+                                .clip(ShapeLargeIncreased)
                                 .background(colors.surfaceVariant),
                         ) {
                             if (detail.thumbnailUrl != null) {

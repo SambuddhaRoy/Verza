@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.LocalBottomChrome
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import com.verza.ui.theme.isPoster
@@ -69,7 +70,7 @@ fun EqualizerScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 28.dp),
+            .padding(bottom = 28.dp + LocalBottomChrome.current),
     ) {
         // ── Header ──────────────────────────────────────────────────────────────
         Row(

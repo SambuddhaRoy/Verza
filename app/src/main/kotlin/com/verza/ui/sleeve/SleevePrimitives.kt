@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.verza.ui.theme.CoverColors
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
-import com.verza.ui.theme.VerzaShape
+import com.verza.ui.expressive.PillShape
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Sleeve's atmospheric primitives — a Compose port of the UMBRA reference's
@@ -199,9 +199,9 @@ fun SleevePill(
     filled: Boolean = false,
 ) {
     val base = if (filled) {
-        Modifier.clip(VerzaShape).background(cover.ink.copy(alpha = 0.92f))
+        Modifier.clip(PillShape).background(cover.ink.copy(alpha = 0.92f))
     } else {
-        Modifier.sleeveButton(VerzaShape)
+        Modifier.sleeveButton(PillShape)
     }
     Box(modifier = base.clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(

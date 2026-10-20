@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.padding
+import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.tracksLabel
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
@@ -29,9 +31,7 @@ import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.MetaLabel
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
@@ -64,7 +64,6 @@ import com.verza.ui.expressive.PillShape
 import com.verza.ui.expressive.ShapeLargeIncreased
 import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.theme.LocalVerzaExtendedColors
-import com.verza.ui.theme.VerzaShape
 
 private enum class LibraryTab(val label: String, val icon: ImageVector) {
     RECENT("Recent", Icons.Filled.History),
@@ -177,15 +176,15 @@ fun LibraryScreen(
                     )
                 LibraryTab.PLAYLISTS -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalBottomChrome.current),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     // "+ Create playlist" is always available, regardless of sign-in state.
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(squareOr(RoundedCornerShape(12.dp)))
+                                .clip(ShapeMedium)
                                 .clickable(onClick = { showCreatePlaylist = true; newPlaylistName = "" })
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -296,8 +295,8 @@ private fun SongList(
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalBottomChrome.current),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         items(items = songs, key = { it.id }) { song ->
             val art = rememberSongArtwork(song.title, song.artist, song.thumbnailUrl)
@@ -329,7 +328,7 @@ private fun LocalMusicContent(
 
     if (!hasPermission) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
+            modifier = Modifier.fillMaxSize().padding(bottom = LocalBottomChrome.current).padding(32.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -362,7 +361,7 @@ private fun LocalMusicContent(
     // Permission held — scan once on entry, then render.
     LaunchedEffect(Unit) { onScan() }
     when {
-        songs == null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        songs == null -> Box(modifier = Modifier.fillMaxSize().padding(bottom = LocalBottomChrome.current), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = colors.primary)
         }
         songs.isEmpty() -> CenterHint("No music found on this device", ext.muted)
@@ -378,8 +377,8 @@ private fun CollectionList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalBottomChrome.current),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         items(items) { item ->
             LibraryRow(
@@ -435,7 +434,7 @@ private fun LibraryRow(
 
 @Composable
 private fun CenterHint(text: String, color: androidx.compose.ui.graphics.Color) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize().padding(bottom = LocalBottomChrome.current), contentAlignment = Alignment.Center) {
         Text(text, style = BodyText, color = color)
     }
 }

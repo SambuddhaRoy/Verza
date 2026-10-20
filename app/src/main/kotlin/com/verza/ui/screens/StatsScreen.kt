@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.LocalBottomChrome
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -48,7 +50,7 @@ fun StatsScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 32.dp),
+        contentPadding = PaddingValues(bottom = 32.dp + LocalBottomChrome.current),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         // ── Header ───────────────────────────────────────────────────────────
@@ -235,7 +237,7 @@ private fun SongStatRow(rank: Int, song: SongStat, showPlays: Boolean = false) {
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(squareOr(RoundedCornerShape(8.dp)))
+                    .clip(ShapeMedium)
                     .background(colors.surfaceVariant),
             ) {
                 if (art != null) {

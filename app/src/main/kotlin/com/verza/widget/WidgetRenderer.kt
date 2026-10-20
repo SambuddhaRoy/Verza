@@ -76,15 +76,39 @@ internal object WidgetRenderer {
         if (square) {
             // The Poster design draws every widget the same way, the way it draws Now Playing:
             // the one-row strip side by side, the rest stacked. See [gass].
-            update(context, manager, NowPlayingWidget::class.java) { stripOrStack(context, state, cover, ink) }
+            // The square cover is the same for every one of them: cut it once.
+            val art by lazy { shaped(context, cover, R.drawable.widget_shape_square, ink) }
+            val stack by lazy { gass(context, state, art, ink, strip = false) }
+            update(context, manager, NowPlayingWidget::class.java) {
+                bySize(true, SizeF(180f, 40f) to true, SizeF(180f, 140f) to false) { gass(context, state, art, ink, strip = it) }
+            }
             for (provider in listOf(StickerWidget::class.java, PosterWidget::class.java, RecordWidget::class.java, TotemWidget::class.java)) {
-                update(context, manager, provider) { gass(context, state, cover, ink, strip = false) }
+                update(context, manager, provider) { stack }
             }
             return
         }
-        update(context, manager, NowPlayingWidget::class.java) { strip(context, state, cover, ink) }
+        // One row tall, the strip is a pill. From two rows (where launchers tend to put it) a pill
+        // is an oval and the row inside it left the title one letter, so it also has a card with the
+        // controls below.
+        update(context, manager, NowPlayingWidget::class.java) {
+            val art = shaped(context, cover, R.drawable.widget_shape_cookie9, ink)
+            bySize(
+                R.layout.widget_now_playing,
+                SizeF(180f, 40f) to R.layout.widget_now_playing,
+                SizeF(180f, 140f) to R.layout.widget_now_playing_stack,
+            ) { strip(context, state, art, ink, it) }
+        }
         update(context, manager, StickerWidget::class.java) { sticker(context, state, cover, ink) }
-        update(context, manager, PosterWidget::class.java) { poster(context, state, cover, ink) }
+        // Beside the cover the controls need about 330dp; on a 3-cell-wide widget they left the PLAY
+        // pill a sliver, so narrower than that the controls run along the foot instead.
+        update(context, manager, PosterWidget::class.java) {
+            val art = shaped(context, cover, R.drawable.widget_shape_arch, ink)
+            bySize(
+                R.layout.widget_poster,
+                SizeF(330f, 110f) to R.layout.widget_poster,
+                SizeF(250f, 110f) to R.layout.widget_poster_tall,
+            ) { poster(context, state, art, ink, it) }
+        }
         update(context, manager, RecordWidget::class.java) { record(context, state, cover, ink) }
         update(context, manager, TotemWidget::class.java) { totem(context, state, cover, ink) }
     }
@@ -100,13 +124,22 @@ internal object WidgetRenderer {
         if (ids.isNotEmpty()) manager.updateAppWidget(ids, build())
     }
 
+    /**
+     * A widget with more than one arrangement. From Android 12 the launcher is handed every one and
+     * picks by the size it is showing (the closest that fits); below that it cannot be asked, and
+     * gets [fallback]. The arrangements share their bitmaps, which the caller cuts once.
+     */
+    private inline fun <T> bySize(fallback: T, vararg sizes: Pair<SizeF, T>, build: (T) -> RemoteViews): RemoteViews =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) RemoteViews(sizes.associate { (size, key) -> size to build(key) })
+        else build(fallback)
+
     // ── The widgets ──────────────────────────────────────────────────────────────────────────────
 
-    private fun strip(context: Context, state: WidgetState, cover: Bitmap?, ink: Ink) =
-        views(context, R.layout.widget_now_playing).apply {
+    private fun strip(context: Context, state: WidgetState, art: Bitmap, ink: Ink, layout: Int) =
+        views(context, layout).apply {
             squareUp(R.id.widget_bg, R.id.widget_previous_bg, R.id.widget_toggle_bg, R.id.widget_next_bg)
             tint(R.id.widget_bg, ink.container)
-            setImageViewBitmap(R.id.widget_cover, shaped(context, cover, R.drawable.widget_shape_cookie9, ink))
+            setImageViewBitmap(R.id.widget_cover, art)
             labels(context, state, ink.onContainer, ink.onContainerMuted)
             button(R.id.widget_previous_bg, R.id.widget_previous, ink.surface, ink.onSurface, context, NowPlayingWidget.ACTION_PREVIOUS)
             button(R.id.widget_next_bg, R.id.widget_next, ink.surface, ink.onSurface, context, NowPlayingWidget.ACTION_NEXT)
@@ -129,14 +162,14 @@ internal object WidgetRenderer {
             root(context, state)
         }
 
-    private fun poster(context: Context, state: WidgetState, cover: Bitmap?, ink: Ink) =
-        views(context, R.layout.widget_poster).apply {
+    private fun poster(context: Context, state: WidgetState, art: Bitmap, ink: Ink, layout: Int) =
+        views(context, layout).apply {
             squareUp(
                 R.id.widget_bg, R.id.widget_tag_bg_shadow, R.id.widget_tag_bg,
                 R.id.widget_previous_bg, R.id.widget_toggle_bg, R.id.widget_next_bg,
             )
             tint(R.id.widget_bg, ink.container)
-            setImageViewBitmap(R.id.widget_cover, shaped(context, cover, R.drawable.widget_shape_arch, ink))
+            setImageViewBitmap(R.id.widget_cover, art)
             tint(R.id.widget_tag_bg, ink.tertiary)
             setTextViewText(
                 R.id.widget_status,
@@ -209,25 +242,12 @@ internal object WidgetRenderer {
      */
     /**
      * The strip widget can be dragged to any size, and side by side only suits it while it is one
-     * row tall; at its default two rows it left a column of empty colour beside a thin title. From
-     * Android 12 the launcher is given both and picks by the size it is showing; below that, a
-     * launcher cannot be asked, so it keeps the strip.
+     * row tall; at its default two rows it left a column of empty colour beside a thin title, so
+     * from two rows it is stacked like the others (see [render]).
      */
-    private fun stripOrStack(context: Context, state: WidgetState, cover: Bitmap?, ink: Ink): RemoteViews =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            RemoteViews(
-                mapOf(
-                    SizeF(180f, 40f) to gass(context, state, cover, ink, strip = true),
-                    SizeF(180f, 140f) to gass(context, state, cover, ink, strip = false),
-                ),
-            )
-        } else {
-            gass(context, state, cover, ink, strip = true)
-        }
-
-    private fun gass(context: Context, state: WidgetState, cover: Bitmap?, ink: Ink, strip: Boolean) =
+    private fun gass(context: Context, state: WidgetState, art: Bitmap, ink: Ink, strip: Boolean) =
         views(context, if (strip) R.layout.widget_gass_strip else R.layout.widget_gass).apply {
-            setImageViewBitmap(R.id.widget_cover, shaped(context, cover, R.drawable.widget_shape_square, ink))
+            setImageViewBitmap(R.id.widget_cover, art)
             setImageViewBitmap(R.id.widget_title_art, titleArt(context, state, ink, strip))
             if (strip) tint(R.id.widget_title_bg, ink.container)
 

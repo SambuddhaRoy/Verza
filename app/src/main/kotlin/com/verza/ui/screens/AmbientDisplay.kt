@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.ShapeExtraLarge
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -10,7 +11,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -43,7 +43,6 @@ import com.verza.ui.sleeve.moodyBackdrop
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
 import com.verza.ui.theme.LocalArtworkColors
-import com.verza.ui.theme.VerzaShape
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -137,8 +136,8 @@ fun AmbientDisplay(
                     .fillMaxWidth(0.62f)
                     .aspectRatio(1f)
                     .graphicsLayer { scaleX = coverScale; scaleY = coverScale }
-                    .shadow(elevation = 28.dp, shape = VerzaShape, clip = false)
-                    .clip(VerzaShape)
+                    .shadow(elevation = 28.dp, shape = ShapeExtraLarge, clip = false)
+                    .clip(ShapeExtraLarge)
                     .background(cover.line),
             ) {
                 if (artworkUrl != null) {

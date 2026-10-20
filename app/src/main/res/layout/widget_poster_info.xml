@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Poster widget's words: status tag, title, artist and the squiggle. Included by both
+     arrangements (widget_poster, widget_poster_tall). -->
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <!-- A rim, like the stickers. It is also what makes the pill draw: a wrap_content
+             FrameLayout only stretches match_parent children when there are at least two. -->
+        <ImageView
+            android:id="@+id/widget_tag_bg_shadow"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_shape_pill"
+            android:tint="@color/widget_paper" />
+
+        <ImageView
+            android:id="@+id/widget_tag_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="2dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_shape_pill"
+            android:tint="@color/widget_tertiary" />
+
+        <TextView
+            android:id="@+id/widget_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.12"
+            android:paddingStart="12dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="6dp"
+            android:text="@string/widget_status_idle"
+            android:textColor="@color/widget_on_tertiary"
+            android:textSize="10sp" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="2dp"
+        android:layout_weight="1"
+        android:autoSizeMaxTextSize="44sp"
+        android:autoSizeMinTextSize="16sp"
+        android:autoSizeStepGranularity="2sp"
+        android:autoSizeTextType="uniform"
+        android:ellipsize="end"
+        android:fontFamily="serif"
+        android:gravity="bottom"
+        android:lineSpacingMultiplier="0.88"
+        android:maxLines="2"
+        android:text="@string/widget_nothing_playing"
+        android:textColor="@color/widget_on_container"
+        android:textStyle="italic" />
+
+    <TextView
+        android:id="@+id/widget_artist"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:textColor="@color/widget_on_container_muted"
+        android:textSize="13sp" />
+
+    <ImageView
+        android:id="@+id/widget_wave"
+        android:layout_width="match_parent"
+        android:layout_height="12dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="8dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_wave_flat"
+        android:tint="@color/widget_accent" />
+</merge>

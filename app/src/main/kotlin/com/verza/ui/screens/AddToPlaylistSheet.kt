@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -10,7 +11,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlaylistPlay
@@ -26,7 +26,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.verza.innertube.models.MusicItem
 import com.verza.ui.theme.LocalVerzaExtendedColors
-import com.verza.ui.theme.VerzaShape
 
 /**
  * Modal bottom sheet listing the user's local playlists; tapping one adds [item] to it. Also has
@@ -73,7 +72,7 @@ fun AddToPlaylistSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(squareOr(RoundedCornerShape(12.dp)))
+                    .clip(ShapeMedium)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -86,7 +85,7 @@ fun AddToPlaylistSheet(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(VerzaShape)
+                        .clip(ShapeMedium)
                         .background(colors.primaryContainer.copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -118,7 +117,7 @@ fun AddToPlaylistSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(squareOr(RoundedCornerShape(12.dp)))
+                                .clip(ShapeMedium)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
@@ -134,7 +133,7 @@ fun AddToPlaylistSheet(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .clip(VerzaShape)
+                                    .clip(ShapeMedium)
                                     .background(colors.surfaceVariant),
                                 contentAlignment = Alignment.Center,
                             ) {
