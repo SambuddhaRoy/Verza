@@ -1,5 +1,8 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.padding
+import com.verza.ui.expressive.LocalBottomChrome
+import com.verza.ui.expressive.PillShape
 import com.verza.ui.theme.LocalHomeCollage
 import com.verza.ui.theme.isPoster
 import com.verza.ui.theme.squareOr
@@ -15,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -77,14 +79,14 @@ fun HomeScreen(
         when (val s = state) {
             is HomeUiState.Loading -> CircularProgressIndicator(
                 color = colors.primary,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
             )
             is HomeUiState.Error -> RetryHint(s.message, onRetry = viewModel::load)
             is HomeUiState.Empty -> Text(
                 "Nothing here yet",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ext.muted,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
             )
             is HomeUiState.Content ->
                 if (isPoster() && LocalHomeCollage.current) {
@@ -127,7 +129,7 @@ private fun HomeContent(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(xc.container),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp + LocalBottomChrome.current),
         verticalArrangement = Arrangement.spacedBy(28.dp),
     ) {
         item {
@@ -343,12 +345,12 @@ private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
 private fun BoxScope.RetryHint(message: String, onRetry: () -> Unit) {
     val ext = LocalVerzaExtendedColors.current
     Column(
-        modifier = Modifier.align(Alignment.Center),
+        modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
-        OutlinedButton(onClick = onRetry, shape = squareOr(RoundedCornerShape(100))) { Text("Retry") }
+        OutlinedButton(onClick = onRetry, shape = PillShape) { Text("Retry") }
     }
 }
 

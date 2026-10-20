@@ -1,5 +1,6 @@
 package com.verza.ui.share
 
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,7 +23,6 @@ import com.verza.ui.sleeve.moodyBackdrop
 import com.verza.ui.theme.FontMono
 import com.verza.ui.theme.FontSleeve
 import com.verza.ui.theme.LocalArtworkColors
-import com.verza.ui.theme.VerzaShape
 
 /** Preview + share for a single lyric line, via the shared [ShareCardOverlay]. */
 @Composable
@@ -84,7 +84,7 @@ fun LyricCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (artworkUrl != null) {
-                    Box(modifier = Modifier.size(46.dp).clip(VerzaShape)) {
+                    Box(modifier = Modifier.size(46.dp).clip(ShapeMedium)) {
                         AsyncImage(
                             model = artworkUrl,
                             contentDescription = null,

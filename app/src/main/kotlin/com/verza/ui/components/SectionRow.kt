@@ -1,5 +1,6 @@
 package com.verza.ui.components
 
+import com.verza.ui.expressive.ShapeMedium
 import androidx.compose.material3.ButtonDefaults
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
@@ -215,14 +216,14 @@ private fun CompactTrackCell(
         modifier = modifier
             .then(cellSurface)
             .pressableScale(onLongClick = onLongClick, onClick = onClick)
-            .padding(end = 8.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(VerzaShape)
+                .clip(ShapeMedium)
                 .background(colors.surfaceVariant),
         ) {
             if (art != null) {

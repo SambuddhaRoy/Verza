@@ -1,10 +1,13 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
+import com.verza.ui.expressive.LocalBottomChrome
+import com.verza.ui.expressive.ShapeSmall
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
 import com.verza.ui.expressive.variedFace
 import com.verza.ui.theme.isPoster
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -13,8 +16,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import com.verza.ui.expressive.HeroTitle
 import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.MetaLabel
@@ -128,7 +129,7 @@ fun SearchScreen(
             is SearchUiState.Error -> CenterHint(state.message)
             is SearchUiState.Results -> LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 120.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 16.dp + LocalBottomChrome.current),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 items(state.items) { item -> ResultRow(item = item, onClick = { onItemClick(item) }) }
@@ -261,14 +262,14 @@ private fun SuggestionsView(suggestions: List<String>, onPick: (String) -> Unit)
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     LazyColumn(
-        contentPadding = PaddingValues(horizontal = 20.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = LocalBottomChrome.current),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         items(suggestions) { s ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(squareOr(RoundedCornerShape(12.dp)))
+                    .clip(ShapeMedium)
                     .clickable(onClick = { onPick(s) })
                     .padding(vertical = 10.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -291,8 +292,12 @@ private fun SuggestionsView(suggestions: List<String>, onPick: (String) -> Unit)
 private fun HistoryView(history: List<String>, onPick: (String) -> Unit, onClear: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
+    // Scrolls: a long history ran on under the mini player with no way to reach its end.
     Column(
-        modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, bottom = LocalBottomChrome.current),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(
@@ -306,7 +311,7 @@ private fun HistoryView(history: List<String>, onPick: (String) -> Unit, onClear
                 style = MaterialTheme.typography.labelLarge,
                 color = colors.primary,
                 modifier = Modifier
-                    .clip(squareOr(RoundedCornerShape(8.dp)))
+                    .clip(ShapeSmall)
                     .clickable(onClick = onClear)
                     .padding(6.dp),
             )
@@ -315,7 +320,7 @@ private fun HistoryView(history: List<String>, onPick: (String) -> Unit, onClear
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(squareOr(RoundedCornerShape(12.dp)))
+                    .clip(ShapeMedium)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -334,7 +339,7 @@ private fun HistoryView(history: List<String>, onPick: (String) -> Unit, onClear
 
 @Composable
 private fun CenterBox(content: @Composable BoxScope.() -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = content)
+    Box(modifier = Modifier.fillMaxSize().padding(bottom = LocalBottomChrome.current), contentAlignment = Alignment.Center, content = content)
 }
 
 @Composable

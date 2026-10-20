@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.theme.squareOr
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
@@ -10,7 +11,6 @@ import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
@@ -197,7 +197,7 @@ private fun ManualCookieEntry(
                 )
             },
             modifier = Modifier.fillMaxWidth(),
-            shape = squareOr(RoundedCornerShape(16.dp)),
+            shape = ShapeMedium,
             minLines = 4,
             textStyle = MaterialTheme.typography.bodySmall,
         )

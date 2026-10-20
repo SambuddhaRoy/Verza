@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.padding
+import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.ui.theme.FontBody
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -84,7 +85,7 @@ fun LyricsScreen(
                     is LyricsUiState.Loading,
                     LyricsUiState.Idle -> CircularProgressIndicator(
                         color = colors.primary,
-                        modifier = Modifier.align(Alignment.Center),
+                        modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
                     )
                     is LyricsUiState.None -> CenterHint("No lyrics available", ext.muted)
                     is LyricsUiState.Error -> CenterHint(s.message, colors.error)
@@ -120,7 +121,7 @@ private fun PlainLyrics(text: String) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 12.dp),
+            .padding(start = 28.dp, end = 28.dp, top = 12.dp, bottom = 12.dp + LocalBottomChrome.current),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
@@ -204,7 +205,7 @@ private fun BoxScope.CenterHint(text: String, color: androidx.compose.ui.graphic
         text,
         style = MaterialTheme.typography.bodyMedium,
         color = color,
-        modifier = Modifier.align(Alignment.Center),
+        modifier = Modifier.align(Alignment.Center).padding(bottom = LocalBottomChrome.current),
     )
 }
 

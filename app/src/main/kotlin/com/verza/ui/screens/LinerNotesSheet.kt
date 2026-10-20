@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.ShapeMedium
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,7 +27,6 @@ import com.verza.data.LinerNotes
 import com.verza.data.LinerNotesRepository
 import com.verza.ui.theme.CaptionItalic
 import com.verza.ui.theme.LocalVerzaExtendedColors
-import com.verza.ui.theme.VerzaShape
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -84,7 +84,7 @@ fun LinerNotesSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Box(modifier = Modifier.size(56.dp).clip(VerzaShape).background(colors.surfaceVariant)) {
+                Box(modifier = Modifier.size(56.dp).clip(ShapeMedium).background(colors.surfaceVariant)) {
                     if (artworkUrl != null) {
                         AsyncImage(model = artworkUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
                     }

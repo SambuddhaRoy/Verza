@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.ShapeMedium
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,7 +34,6 @@ import coil3.compose.AsyncImage
 import com.verza.innertube.models.HomeItem
 import com.verza.innertube.models.MusicItem
 import com.verza.ui.theme.LocalVerzaExtendedColors
-import com.verza.ui.theme.VerzaShape
 
 /** Builds the playable [MusicItem] for a song home card (videoId-backed). */
 internal fun HomeItem.toMusicItem(): MusicItem = MusicItem(
@@ -87,7 +87,7 @@ fun HomeItemSheet(
                 Box(
                     modifier = Modifier
                         .size(52.dp)
-                        .clip(VerzaShape)
+                        .clip(ShapeMedium)
                         .background(colors.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {

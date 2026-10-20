@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.PillShape
 import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -218,7 +219,7 @@ fun FeatureTourScreen(
                     if (onLast) onFinish()
                     else scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                 },
-                shape = squareOr(RoundedCornerShape(24.dp)),
+                shape = PillShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.primary,
                     contentColor = colors.onPrimary,

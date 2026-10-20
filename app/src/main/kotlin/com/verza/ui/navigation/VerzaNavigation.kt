@@ -1,5 +1,7 @@
 package com.verza.ui.navigation
 
+import androidx.compose.ui.platform.LocalLayoutDirection
+import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
 import com.verza.ui.theme.squareOr
@@ -350,11 +352,24 @@ fun VerzaNavigation(
               },
           )
       }
-      CompositionLocalProvider(LocalTrackActions provides trackActions) {
+      // Everything but the bottom: the pages draw on under the bottom chrome and pad their own
+      // lists by its height (LocalBottomChrome). The insets it covers are still consumed, so a page
+      // that pads for the system bars itself does not count the navigation bar twice.
+      val layoutDirection = LocalLayoutDirection.current
+      CompositionLocalProvider(
+          LocalTrackActions provides trackActions,
+          LocalBottomChrome provides innerPadding.calculateBottomPadding(),
+      ) {
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
+            modifier = Modifier
+                .padding(
+                    start = innerPadding.calculateStartPadding(layoutDirection),
+                    top = innerPadding.calculateTopPadding(),
+                    end = innerPadding.calculateEndPadding(layoutDirection),
+                )
+                .consumeWindowInsets(innerPadding),
             // Two motion idioms, chosen per-navigation (see helpers at the bottom of the file):
             //  • Switching between the bottom-bar tabs uses Material **fade-through** — the
             //    outgoing screen dissolves to reveal the live glow, then the new one fades and

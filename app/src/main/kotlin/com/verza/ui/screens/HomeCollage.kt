@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.LocalBottomChrome
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -78,7 +79,7 @@ internal fun HomeCollage(
     val xc = LocalExpressiveColors.current
     val tiles = remember(sections, mixes) { collageTiles(sections, mixes) }
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomChrome.current)) {
         // The masthead is a slab like everything below it: the page title set big on the accent.
         Row(
             modifier = Modifier.fillMaxWidth().background(xc.accent).padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 8.dp),

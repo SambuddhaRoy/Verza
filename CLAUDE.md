@@ -132,6 +132,23 @@ turn when started as a background task**; start it with PowerShell `Start-Proces
   Now-Playing needs are threaded via `VerzaNavigation` (e.g. `albumArtMotion`, `sleeveMode`).
 
 ## Gotchas
+- **Pages run on under the mini player and nav bar** (`LocalBottomChrome`, provided by
+  `VerzaNavigation`). The NavHost is no longer padded at the bottom, so covers show through the
+  gaps around the two bars. The price: **every scrolling list adds `LocalBottomChrome.current` to
+  its bottom padding**, and anything centred on a page (spinners, empty and error states) pads its
+  bottom by it too, or it sits half behind the bars. A new screen that forgets this hides its last row.
+- **Corners: three radii and a pill, and nested ones concentric** (the rule is in `theme/Shapes.kt`).
+  28dp sheets, dialogs, the Now Playing cover and the mini player; 20dp cards and card rows
+  (`VerzaShape`, `ShapeLargeIncreased`); 12dp thumbnails in rows, text fields and press highlights
+  (`ShapeMedium`); pills for buttons, chips and the nav bar. A thumbnail inside a row curves by the
+  row's radius minus the inset. Before, older screens and sheets used 8/10/14/16/18/24dp, and
+  side by side that was the "corners don't match" look. Use the tokens, not `RoundedCornerShape(n.dp)`.
+- **Widgets: the card takes the launcher's corner** (`@dimen/widget_corner`, which is
+  `system_app_widget_background_radius` on 12+: 28dp on Pixel). It was 36dp, a second curve inside
+  every other widget's. Poster and Strip have a second layout chosen by size on 12+
+  (`posterBySize`, `stripBySize`): at the sizes a launcher actually picks (3x3 for Poster, 3x2 for
+  Strip on a Pixel 7) the cover pushed the controls out, and the strip's pill became an oval.
+  Place them on the emulator with `input draganddrop` from the widget picker.
 - **Offline, a failed song pauses instead of skipping** (`PlayerConnection.onPlayerError`, `isOnline`
   in Network.kt). Skipping walked the whole queue away while offline, and whichever song loaded when
   the network came back started by itself. Online, failures still skip (three in a row stop).

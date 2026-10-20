@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.theme.squareOr
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -31,10 +32,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -71,7 +69,6 @@ import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.expressive.ExpressiveMoreSheet
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.ui.expressive.NowPlayingExpressive
-import com.verza.ui.theme.VerzaShape
 import com.verza.ui.theme.glassSurface
 
 @Composable
@@ -309,7 +306,7 @@ private fun SleepOption(label: String, tint: Color? = null, onClick: () -> Unit)
         color = tint ?: colors.onSurface,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(squareOr(RoundedCornerShape(10.dp)))
+            .clip(ShapeMedium)
             .clickable(onClick = onClick)
             .padding(vertical = 14.dp, horizontal = 4.dp),
     )

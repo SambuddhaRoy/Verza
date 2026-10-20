@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Poster, narrow (under 4 cells): the controls run the full width along the foot, since
+     beside the cover they left the PLAY pill a sliver. Otherwise as widget_poster. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_card"
+        android:tint="@color/widget_container" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginBottom="10dp"
+        android:orientation="horizontal">
+
+        <!-- A share of the width, not sized by the picture, which took all of it on a tall widget. -->
+        <ImageView
+            android:id="@+id/widget_cover"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.8"
+            android:importantForAccessibility="no"
+            android:scaleType="fitEnd"
+            android:src="@drawable/widget_cover_arch" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <include layout="@layout/widget_poster_info" />
+        </LinearLayout>
+    </LinearLayout>
+
+        <include layout="@layout/widget_poster_controls" />
+    </LinearLayout>
+</FrameLayout>

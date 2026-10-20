@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -66,6 +67,14 @@ data class NavDestination(
     val icon: ImageVector,
     val label: String,
 )
+
+/**
+ * How much of the foot of the screen the floating mini player and nav bar cover, system navigation
+ * included. Pages run on underneath them, so the covers and colour show through the gaps around
+ * the two bars instead of a band of plain background; every scrolling list adds this to its bottom
+ * padding so its last item can still be scrolled clear. 0 where there is no bottom chrome.
+ */
+val LocalBottomChrome = compositionLocalOf { 0.dp }
 
 /**
  * A floating navigation bar. The selected destination expands into a filled pill carrying its label;
@@ -301,7 +310,7 @@ fun ExpressiveMiniPlayer(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val radius by animateDpAsState(
-        targetValue = if (pressed) 32.dp else 22.dp,
+        targetValue = if (pressed) 36.dp else 28.dp,
         animationSpec = ExpressiveMotion.spatialFast(),
         label = "miniCorner",
     )
@@ -321,7 +330,7 @@ fun ExpressiveMiniPlayer(
             .clickable(interactionSource = interaction, indication = null, onClick = onExpand),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -329,7 +338,7 @@ fun ExpressiveMiniPlayer(
                 model = artworkUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.size(46.dp).clip(ShapeMedium).background(colors.surfaceLow),
+                modifier = Modifier.size(44.dp).clip(ShapeLarge).background(colors.surfaceLow),
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
