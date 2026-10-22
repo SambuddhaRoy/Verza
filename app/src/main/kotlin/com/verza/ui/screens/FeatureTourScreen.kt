@@ -1,7 +1,6 @@
 package com.verza.ui.screens
 
 import com.verza.ui.expressive.PillShape
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -185,7 +184,7 @@ fun FeatureTourScreen(
                 color = colors.primary,
             )
             Spacer(Modifier.weight(1f))
-            TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = onFinish) {
+            TextButton(shape = ButtonDefaults.textShape, onClick = onFinish) {
                 Text("Skip", style = CaptionItalic, color = ext.muted)
             }
         }
@@ -208,7 +207,7 @@ fun FeatureTourScreen(
                         Modifier
                             .height(2.dp)
                             .width(if (active) 20.dp else 10.dp)
-                            .clip(squareOr(RoundedCornerShape(1.dp)))
+                            .clip(RoundedCornerShape(1.dp))
                             .background(if (active) colors.primary else ext.muted.copy(alpha = 0.35f)),
                     )
                 }
@@ -248,7 +247,7 @@ private fun TourCard(page: TourPage) {
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .clip(squareOr(CircleShape))
+                .clip(CircleShape)
                 .background(colors.primary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center,
         ) {

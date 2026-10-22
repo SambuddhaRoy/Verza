@@ -4,8 +4,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
-import com.verza.ui.theme.isPoster
-import com.verza.ui.theme.FontPosterHead
+import com.verza.ui.theme.isGlass
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -59,30 +58,46 @@ private val MaterialHeroTitle = TextStyle(
     letterSpacing = (-0.015).em,
 )
 
-// The Poster design's heads: Frick, one of the Uncut display faces, condensed and heavy. Upright and
-// at its own single weight; asking it for italic or bold only gets a synthesised imitation. A touch
-// larger than the serif, because a condensed face at the same size reads smaller.
-private val PosterHeroDisplay = TextStyle(
-    fontFamily = FontPosterHead,
-    fontWeight = FontWeight.Normal,
-    fontSize = 52.sp,
-    lineHeight = 48.sp,
+// The Glass design's heads: Inter's display cut at its heaviest declared weight, tracked in, the
+// way a large title is set on a phone that is not trying to be a magazine.
+private val GlassHeroDisplay = TextStyle(
+    fontFamily = com.verza.ui.theme.FontDisplayCut,
+    fontWeight = FontWeight.Bold,
+    fontSize = 22.sp,
+    lineHeight = 27.sp,
+    letterSpacing = (-0.015).em,
 )
 
-private val PosterHeroTitle = TextStyle(
-    fontFamily = FontPosterHead,
-    fontWeight = FontWeight.Normal,
-    fontSize = 38.sp,
-    lineHeight = 36.sp,
+private val GlassHeroTitle = TextStyle(
+    fontFamily = com.verza.ui.theme.FontDisplayCut,
+    fontWeight = FontWeight.Bold,
+    fontSize = 32.sp,
+    lineHeight = 38.sp,
+    letterSpacing = (-0.025).em,
 )
 
 /** The track title, in the design's display voice. See [MaterialHeroDisplay]'s doc above. */
 val HeroDisplay: TextStyle
-    @Composable @ReadOnlyComposable get() = if (isPoster()) PosterHeroDisplay else MaterialHeroDisplay
+    @Composable @ReadOnlyComposable get() = when {
+        isGlass() -> GlassHeroDisplay
+        else -> MaterialHeroDisplay
+    }
 
 /** The same voice one step down, for section heroes on Home and Library. */
 val HeroTitle: TextStyle
-    @Composable @ReadOnlyComposable get() = if (isPoster()) PosterHeroTitle else MaterialHeroTitle
+    @Composable @ReadOnlyComposable get() = when {
+        isGlass() -> GlassHeroTitle
+        else -> MaterialHeroTitle
+    }
+
+/** A section heading in the Glass design: "Recently played ›". */
+val GlassSectionTitle = TextStyle(
+    fontFamily = com.verza.ui.theme.FontDisplayCut,
+    fontWeight = FontWeight.Bold,
+    fontSize = 21.sp,
+    lineHeight = 26.sp,
+    letterSpacing = (-0.012).em,
+)
 
 /** Label/value metadata, the "Where / Echo Bridge" columns. */
 val MetaLabel = TextStyle(
@@ -127,11 +142,12 @@ val BodyStrong = TextStyle(
 
 /**
  * This style set in a face of its own: one of the legible display faces, chosen by [key] so a given
- * row or heading always looks the same, and different from its neighbours. In both designs; left as
- * it is only if no legible face can set all of [text].
+ * row or heading always looks the same, and different from its neighbours. In Material;
+ * left as it is if no legible face can set all of [text], and always in Glass, which is one face.
  */
 @Composable
 fun TextStyle.variedFace(key: String, text: String = key): TextStyle {
+    if (isGlass()) return this
     val context = LocalContext.current
     val family = remember(key, text) { TitleFonts.legibleFor(context, key, text) } ?: return this
     return copy(fontFamily = family, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal)

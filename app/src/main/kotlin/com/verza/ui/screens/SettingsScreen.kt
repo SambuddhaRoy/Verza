@@ -5,7 +5,6 @@ import androidx.compose.ui.unit.sp
 import com.verza.ui.theme.DesignScheme
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material3.ButtonDefaults
-import com.verza.ui.theme.squareOr
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -55,6 +54,7 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.border
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.widthIn
@@ -109,7 +109,6 @@ fun SettingsScreen(
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
     val flavour by viewModel.colorFlavour.collectAsStateWithLifecycle()
     val design by viewModel.designScheme.collectAsStateWithLifecycle()
-    val homeCollage by viewModel.homeCollage.collectAsStateWithLifecycle()
     val accentSource by viewModel.accentSource.collectAsStateWithLifecycle()
     val audioQuality by viewModel.audioQuality.collectAsStateWithLifecycle()
     val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
@@ -328,17 +327,10 @@ fun SettingsScreen(
                     onClick = { viewModel.setDesignScheme(option) },
                 )
             }
-            if (design == DesignScheme.POSTER) {
-                SwitchRow(
-                    title = "Collage home (experimental)",
-                    subtitle = "Every cover packed edge to edge, at a different size, with its name on it",
-                    checked = homeCollage,
-                    onToggle = viewModel::setHomeCollage,
-                )
-            }
         }
 
-        group("Colour") {
+        // Glass is black and white with one red; the cover's colours have nothing to decide there.
+        if (design != DesignScheme.GLASS) group("Colour") {
             item {
                 Text(
                     "Verza takes its colours from the cover. This decides how far to push them.",
@@ -508,12 +500,12 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
+                TextButton(shape = ButtonDefaults.textShape, onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
                     Text("Reset", color = colors.accent, style = BodyStrong)
                 }
             },
             dismissButton = {
-                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { confirmResetStats = false }) {
+                TextButton(shape = ButtonDefaults.textShape, onClick = { confirmResetStats = false }) {
                     Text("Cancel", color = colors.onSurfaceMuted, style = BodyText)
                 }
             },
@@ -565,7 +557,7 @@ private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String
         },
         confirmButton = {
             TextButton(
-                shape = squareOr(ButtonDefaults.textShape),
+                shape = ButtonDefaults.textShape,
                 enabled = !state.busy,
                 onClick = {
                     if (connectedAs.isBlank()) viewModel.connectListenBrainz(input)
@@ -580,7 +572,7 @@ private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String
             }
         },
         dismissButton = {
-            TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = onDismiss) {
+            TextButton(shape = ButtonDefaults.textShape, onClick = onDismiss) {
                 Text("Close", color = colors.onSurfaceMuted, style = BodyText)
             }
         },
@@ -844,19 +836,21 @@ private fun AccountCard(signedIn: Boolean, onSignIn: () -> Unit, onSignOut: () -
 @Composable
 private fun DesignRow(design: DesignScheme, selected: Boolean, onClick: () -> Unit) {
     val colors = LocalExpressiveColors.current
-    val rounded = design == DesignScheme.MATERIAL
     RowSurface(onClick = onClick) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(22.dp)
-                    .clip(if (rounded) RoundedCornerShape(6.dp) else RectangleShape)
-                    .background(colors.accent),
-            )
-            Box(
-                Modifier.size(width = 30.dp, height = 22.dp)
-                    .clip(if (rounded) RoundedCornerShape(percent = 50) else RectangleShape)
-                    .background(colors.onSurfaceMuted),
-            )
+            if (design == DesignScheme.GLASS) {
+                // Glass: the accent, and a clear pill with a lit edge.
+                Box(Modifier.size(22.dp).clip(RoundedCornerShape(percent = 50)).background(colors.accent))
+                Box(
+                    Modifier.size(width = 30.dp, height = 22.dp)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(colors.onSurface.copy(alpha = 0.12f))
+                        .border(1.dp, colors.onSurface.copy(alpha = 0.35f), RoundedCornerShape(percent = 50)),
+                )
+            } else {
+            Box(Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(colors.accent))
+            Box(Modifier.size(width = 30.dp, height = 22.dp).clip(RoundedCornerShape(percent = 50)).background(colors.onSurfaceMuted))
+            }
         }
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {

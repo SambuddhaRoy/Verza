@@ -1,6 +1,5 @@
 package com.verza
 
-import com.verza.ui.theme.LocalHomeCollage
 import android.Manifest
 import android.content.Intent
 import android.graphics.Color as AndroidColor
@@ -39,6 +38,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import javax.inject.Inject
 import com.verza.ui.expressive.expressiveColorScheme
 import com.verza.ui.expressive.expressiveColorsFrom
+import com.verza.ui.expressive.glassColors
+import com.verza.ui.theme.DesignScheme
 import com.verza.audio.HapticPlayer
 import com.verza.audio.VisualizerSignal
 import com.verza.data.SessionInbox
@@ -215,9 +216,12 @@ class MainActivity : ComponentActivity() {
             val flavour by settingsViewModel.colorFlavour.collectAsStateWithLifecycle()
             val accentSource by settingsViewModel.accentSource.collectAsStateWithLifecycle()
             val design by settingsViewModel.designScheme.collectAsStateWithLifecycle()
-            val homeCollage by settingsViewModel.homeCollage.collectAsStateWithLifecycle()
-            val expressive = remember(artworkColors, flavour, accentSource) {
-                expressiveColorsFrom(artworkColors, flavour, accentSource)
+            // Glass takes only its accent (and a breath of hue) from the cover, and follows the
+            // system's light or dark.
+            val systemDark = isSystemInDarkTheme()
+            val expressive = remember(artworkColors, flavour, accentSource, design, systemDark) {
+                if (design == DesignScheme.GLASS) glassColors(artworkColors, systemDark)
+                else expressiveColorsFrom(artworkColors, flavour, accentSource)
             }
             val materialScheme = remember(expressive) { expressiveColorScheme(expressive) }
 
@@ -274,7 +278,6 @@ class MainActivity : ComponentActivity() {
                     LocalCoverColors provides chromeCover,
                     LocalArtworkColors provides artworkColors,
                     LocalExpressiveColors provides expressive,
-                    LocalHomeCollage provides homeCollage,
                     // Any composable can ride the music: the same gated signal the player reads.
                     LocalAudioSignal provides (if (shouldVisualize) visualizerSignalFlow else null),
                 ) {

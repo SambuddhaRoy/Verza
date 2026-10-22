@@ -368,3 +368,84 @@ fun expressiveColorsFrom(
         line = onContainer.copy(alpha = 0.22f),
     )
 }
+
+/**
+ * The Glass design's palette, from the cover, with restraint: one accent taken from the cover's most
+ * vivid colour, and the canvas and its surfaces black or white (with the system) carrying only a
+ * breath of the cover's hue. The colour is in what you can press, not in what you read on.
+ *
+ * Contrast is searched, not assumed, the same way as [expressiveColorsFrom]: the accent is walked
+ * through value and then saturation until it reads on the canvas, and its ink is whichever of
+ * white or a dark tint reads on it. ExpressiveColorsTest sweeps the hue wheel through both modes.
+ * A colourless cover gets Verza's red, since a grey accent reads as a disabled one.
+ */
+fun glassColors(cover: CoverColors?, dark: Boolean): ExpressiveColors {
+    val mono = cover == null || cover.monochrome
+    val vivid = if (mono) GlassRed else (cover!!.swatches + cover.accent).maxBy { val c = hsv(it); c[1] * (0.4f + c[2]) }
+    val seed = hsv(vivid)
+    val hue = seed[0]
+    // How much of the hue the neutrals carry: enough to feel of a piece with the cover, not enough
+    // to read as coloured.
+    val tint = if (mono) 0f else 1f
+    fun neutral(sat: Float, value: Float) = fromHsv(hue, sat * tint, value)
+
+    val container = if (dark) neutral(0.32f, 0.035f) else neutral(0.025f, 1f)
+    val surface = if (dark) neutral(0.16f, 0.12f) else neutral(0.035f, 0.955f)
+    val onContainer = if (dark) Color.White else Color.Black
+    val accent = glassAccent(hue, if (mono) 0.85f else seed[1], container, dark)
+    val tertiary = glassAccent((hue + 120f) % 360f, 0.6f, container, dark)
+    return ExpressiveColors(
+        container = container,
+        onContainer = onContainer,
+        onContainerMuted = secondaryOn(container, onContainer),
+        accent = accent,
+        onAccent = readableOn(accent),
+        accentMuted = androidx.compose.ui.graphics.lerp(accent, container, 0.55f),
+        surface = surface,
+        onSurface = onContainer,
+        onSurfaceMuted = secondaryOn(surface, onContainer),
+        surfaceLow = if (dark) neutral(0.2f, 0.075f) else neutral(0.02f, 0.975f),
+        surfaceHigh = if (dark) neutral(0.14f, 0.17f) else neutral(0.04f, 0.915f),
+        surfaceHighest = if (dark) neutral(0.12f, 0.23f) else neutral(0.05f, 0.84f),
+        tertiary = tertiary,
+        onTertiary = readableOn(tertiary),
+        line = onContainer.copy(alpha = if (dark) 0.18f else 0.13f),
+    )
+}
+
+/** Verza's red, for covers with no colour to give. */
+internal val GlassRed = Color(0xFFE5233F)
+
+/**
+ * An accent of [hue] that reads on [canvas]: as bright as it can be on a dark canvas, as rich as it
+ * can be on a light one. Value first, then saturation, which keeps blues blue on black (they go
+ * paler before they go darker) and yellows warm on white.
+ */
+private fun glassAccent(hue: Float, sat: Float, canvas: Color, dark: Boolean): Color {
+    val floor = ExpressiveColors.MIN_CONTRAST
+    var s = sat.coerceIn(0.55f, 0.9f)
+    while (s >= 0.2f) {
+        var v = if (dark) 0.98f else 0.86f
+        while (if (dark) v >= 0.6f else v >= 0.25f) {
+            val c = fromHsv(hue, s, v)
+            if (contrastRatio(c, canvas) >= floor) return c
+            v -= 0.02f
+        }
+        s -= 0.05f
+    }
+    return if (dark) Color.White else Color.Black
+}
+
+/**
+ * Secondary text: the ink taken about 40% of the way to the ground, the grey Apple uses for a
+ * subtitle, and never past the contrast floor.
+ */
+private fun secondaryOn(bg: Color, ink: Color): Color {
+    var t = 0.42f
+    while (t > 0f) {
+        val c = androidx.compose.ui.graphics.lerp(ink, bg, t)
+        if (contrastRatio(bg, c) >= ExpressiveColors.MIN_CONTRAST) return c
+        t -= 0.02f
+    }
+    return ink
+}

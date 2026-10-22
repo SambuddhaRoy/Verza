@@ -5,7 +5,6 @@ import com.verza.ui.expressive.ShapeLargeIncreased
 import com.verza.ui.expressive.ShapeMedium
 import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -183,7 +182,7 @@ fun LocalPlaylistScreen(
                             Button(
                                 onClick = { onPlayTracks(tracks.map { it.toMusicItem() }, 0) },
                                 enabled = tracks.isNotEmpty(),
-                                shape = squareOr(CircleShape),
+                                shape = CircleShape,
                                 contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
                             ) {
                                 Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -193,7 +192,7 @@ fun LocalPlaylistScreen(
                             OutlinedButton(
                                 onClick = { onShuffle(tracks.map { it.toMusicItem() }) },
                                 enabled = tracks.isNotEmpty(),
-                                shape = squareOr(CircleShape),
+                                shape = CircleShape,
                                 contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
                             ) {
                                 Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -203,14 +202,14 @@ fun LocalPlaylistScreen(
                             OutlinedButton(
                                 onClick = { onAddToQueue(tracks.map { it.toMusicItem() }) },
                                 enabled = tracks.isNotEmpty(),
-                                shape = squareOr(CircleShape),
+                                shape = CircleShape,
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                             ) {
                                 Icon(Icons.Filled.AddToQueue, contentDescription = "Add to queue", modifier = Modifier.size(18.dp))
                             }
                             OutlinedButton(
                                 onClick = { showDeleteConfirm = true },
-                                shape = squareOr(CircleShape),
+                                shape = CircleShape,
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                             ) {
                                 Icon(Icons.Filled.Delete, contentDescription = "Delete playlist", modifier = Modifier.size(18.dp))
@@ -241,7 +240,7 @@ fun LocalPlaylistScreen(
                 .align(Alignment.TopStart)
                 .padding(12.dp)
                 .size(40.dp)
-                .clip(squareOr(CircleShape))
+                .clip(CircleShape)
                 .background(if (sleeve) Color.Black.copy(alpha = 0.34f) else colors.surface),
         ) {
             Icon(
@@ -258,13 +257,13 @@ fun LocalPlaylistScreen(
             title = { Text("Delete this playlist?") },
             text = { Text("This removes the playlist. The songs themselves stay in your library.") },
             confirmButton = {
-                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = {
+                TextButton(shape = ButtonDefaults.textShape, onClick = {
                     showDeleteConfirm = false
                     viewModel.deletePlaylist()
                     onBack()
                 }) { Text("Delete") }
             },
-            dismissButton = { TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(shape = ButtonDefaults.textShape, onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
         )
     }
 }

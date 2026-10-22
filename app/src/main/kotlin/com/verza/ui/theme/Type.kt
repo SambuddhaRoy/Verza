@@ -19,14 +19,20 @@ import com.verza.R
 // every weight; FontVariation.Settings drives the 'wght' axis per declared weight.
 // (minSdk 26 ⇒ font variation axes are honoured on every supported device.)
 
-/** A variable-font [Font] that pins the weight axis so one file serves many weights. */
+/**
+ * A variable-font [Font] that pins the weight axis so one file serves many weights, and the optical
+ * size axis ([opsz], 14 to 32 in Inter) to the size it will be read at.
+ */
 @OptIn(ExperimentalTextApi::class)
-private fun varFont(resId: Int, weight: FontWeight, style: FontStyle = FontStyle.Normal) =
+private fun varFont(resId: Int, weight: FontWeight, style: FontStyle = FontStyle.Normal, opsz: Float = 14f) =
     Font(
         resId,
         weight = weight,
         style = style,
-        variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
+        variationSettings = FontVariation.Settings(
+            FontVariation.weight(weight.weight),
+            FontVariation.Setting("opsz", opsz),
+        ),
     )
 
 // Inter — the app's single text typeface. A clean, highly readable modern sans used for
@@ -65,13 +71,6 @@ val FontMono = FontBody
 // (durations, kbps, version codes). Keeps "1:24" and "3:09" the same width so
 // progress bars and time chips don't jitter as the seconds tick over.
 private const val FEAT_TABULAR = "tnum"
-
-/**
- * The face every heading is set in under the Poster design (see [DesignScheme]): Frick, from the
- * Uncut set in res/font. One face for the chrome, so the app reads as one printed piece; the
- * per-song faces are Now Playing's alone (TitleFonts).
- */
-val FontPosterHead = FontFamily(Font(R.font.display_frick))
 
 val VerzaTypography = Typography(
     // Display + headline + titleLarge are Bold Inter — confident without the heavy serif stroke.
@@ -167,26 +166,28 @@ val EditorialEyebrow = TextStyle(
 )
 
 /**
- * [VerzaTypography] with every heading slot (display, headline, the large title) in
- * [FontPosterHead], for the Poster design. Body, labels and the small titles stay Inter: they are
- * read rather than looked at.
+ * Inter's display cut: the same file at the far end of its optical-size axis, with tighter spacing
+ * and finer detail, for type read at 20sp and up. Text sizes stay on [FontBody], whose cut is
+ * opened up and sturdier. Optical sizes are what keep a large title from looking like body text
+ * zoomed in, which is most of the difference between Inter and a system face that has them.
  */
-val PosterTypography: Typography = VerzaTypography.run {
-    fun TextStyle.head(scale: Float = 1.1f) = copy(
-        fontFamily = FontPosterHead,
-        fontWeight = FontWeight.Normal,
-        fontStyle = FontStyle.Normal,
-        fontSize = fontSize * scale,
-        lineHeight = fontSize * scale,
-        letterSpacing = 0.sp,
-    )
+val FontDisplayCut = FontFamily(
+    varFont(R.font.inter_variable, FontWeight.Normal, opsz = 32f),
+    varFont(R.font.inter_variable, FontWeight.Medium, opsz = 32f),
+    varFont(R.font.inter_variable, FontWeight.SemiBold, opsz = 32f),
+    varFont(R.font.inter_variable, FontWeight.Bold, opsz = 32f),
+)
+
+/** The Glass design's type: display, headline and the large title in the display cut. */
+val GlassTypography: Typography = VerzaTypography.run {
+    fun TextStyle.display() = copy(fontFamily = FontDisplayCut)
     copy(
-        displayLarge = displayLarge.head(),
-        displayMedium = displayMedium.head(),
-        displaySmall = displaySmall.head(),
-        headlineLarge = headlineLarge.head(),
-        headlineMedium = headlineMedium.head(),
-        headlineSmall = headlineSmall.head(),
-        titleLarge = titleLarge.head(),
+        displayLarge = displayLarge.display(),
+        displayMedium = displayMedium.display(),
+        displaySmall = displaySmall.display(),
+        headlineLarge = headlineLarge.display(),
+        headlineMedium = headlineMedium.display(),
+        headlineSmall = headlineSmall.display(),
+        titleLarge = titleLarge.display(),
     )
 }

@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.verza.ui.theme.isGlass
 import com.verza.innertube.models.HomeItem
 
 /**
@@ -116,12 +117,14 @@ private fun StandardRow(
     onItemClick: (HomeItem) -> Unit,
     onItemLongPress: ((HomeItem) -> Unit)?,
 ) {
+    // Glass keeps an even row of squares: the quiet look is the point there.
+    val glass = isGlass()
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         itemsIndexed(items) { index, item ->
-            val wide = index % 3 == 2
+            val wide = !glass && index % 3 == 2
             ExpressiveCard(
                 title = item.title,
                 subtitle = item.subtitle,
@@ -171,7 +174,7 @@ private fun ListRow(
                 modifier = Modifier.width(
                     animatedDp(if (deviceSize() == DeviceSize.PHONE) 300.dp else 380.dp, "listColumn"),
                 ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(if (isGlass()) 0.dp else 8.dp),
             ) {
                 for (item in column) {
                     CompactItem(item, onItemClick, onItemLongPress)
@@ -189,6 +192,16 @@ private fun CompactItem(
     onItemLongPress: ((HomeItem) -> Unit)?,
 ) {
     val colors = LocalExpressiveColors.current
+    if (isGlass()) {
+        GlassListRow(
+            title = item.title,
+            subtitle = item.subtitle,
+            artworkUrl = item.thumbnailUrl ?: "",
+            onClick = { onItemClick(item) },
+            onLongClick = onItemLongPress?.let { { it(item) } },
+        )
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()

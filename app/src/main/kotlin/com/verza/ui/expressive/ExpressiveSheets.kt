@@ -1,10 +1,12 @@
 package com.verza.ui.expressive
 
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -89,6 +91,8 @@ fun ExpressiveMoreSheet(
     onFocus: () -> Unit,
     onShareSession: () -> Unit,
     onDismiss: () -> Unit,
+    /** Rows put before the rest, for a design that moves more of the player in here. */
+    extra: (@Composable ColumnScope.(ExpressiveColors) -> Unit)? = null,
 ) {
     val colors = LocalExpressiveColors.current
     ModalBottomSheet(
@@ -97,12 +101,14 @@ fun ExpressiveMoreSheet(
         containerColor = colors.surface,
         dragHandle = null,
     ) {
-        Column(modifier = Modifier.navigationBarsPadding().padding(horizontal = 8.dp)) {
+        // Scrolls: with Glass's extra rows the sheet can be taller than a phone held sideways.
+        Column(modifier = Modifier.navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 8.dp)) {
             SheetHeader(
                 title = "More",
                 subtitle = if (isDownloading) "Downloading this track…" else null,
                 onDismiss = onDismiss,
             )
+            extra?.invoke(this, colors)
             SpeedRow(speed = speed, onSelect = onSetSpeed, colors = colors)
             ExpressiveSheetRow(
                 icon = Icons.Filled.Explore,
@@ -164,7 +170,7 @@ private fun SheetHeader(title: String, subtitle: String?, onDismiss: () -> Unit)
             contentDescription = "Close",
             container = colors.container,
             content = colors.onSurface,
-            shape = squareOr(CircleShape),
+            shape = CircleShape,
             iconSize = 18.dp,
             modifier = Modifier.size(40.dp),
         )

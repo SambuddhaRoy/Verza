@@ -1,8 +1,8 @@
 package com.verza.ui.screens
 
+import com.verza.ui.theme.isGlass
 import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.ui.expressive.ShapeLargeIncreased
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -144,17 +144,20 @@ fun MixScreen(
                 Text(m.subtitle, style = CaptionItalic, color = ext.muted)
                 Spacer(Modifier.height(14.dp))
                 if (playable.isNotEmpty()) {
+                    // Glass: grey with red ink, like an album's Play.
+                    val glass = isGlass()
                     Row(
                         modifier = Modifier
-                            .clip(squareOr(CircleShape))
-                            .background(colors.primary)
+                            .clip(if (glass) com.verza.ui.expressive.ShapeLargeIncreased else CircleShape)
+                            .background(if (glass) colors.surfaceVariant else colors.primary)
                             .clickable { onPlayAll(playable) }
-                            .padding(horizontal = 22.dp, vertical = 12.dp),
+                            .padding(horizontal = if (glass) 28.dp else 22.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(20.dp))
-                        Text("Play", style = MaterialTheme.typography.titleSmall, color = colors.onPrimary)
+                        val ink = if (glass) colors.primary else colors.onPrimary
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = ink, modifier = Modifier.size(20.dp))
+                        Text("Play", style = MaterialTheme.typography.titleSmall, color = ink)
                     }
                 }
                 Spacer(Modifier.height(10.dp))

@@ -1,12 +1,21 @@
 package com.verza.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.runtime.CompositionLocalProvider
+import com.verza.ui.theme.LocalGlassBackdrop
+import com.verza.ui.theme.rememberGlassBackdrop
+import com.verza.ui.theme.glassSource
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.text.style.TextAlign
+import com.verza.ui.expressive.ShapeLarge
+import com.verza.ui.theme.isGlass
 import androidx.compose.foundation.layout.padding
 import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.ui.expressive.ShapeLargeIncreased
 import com.verza.tracksLabel
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -69,7 +78,11 @@ fun CollectionScreen(
     val ext = LocalVerzaExtendedColors.current
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    // Glass: the buttons floating over the page are glass over a recording of it.
+    val glass = isGlass()
+    val backdrop = rememberGlassBackdrop()
     Box(modifier = modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().then(if (glass) Modifier.glassSource(backdrop) else Modifier)) {
         when (val s = state) {
             is CollectionUiState.Loading -> CircularProgressIndicator(
                 color = colors.primary,
@@ -81,20 +94,38 @@ fun CollectionScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(s.message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
-                OutlinedButton(onClick = viewModel::load, shape = squareOr(CircleShape)) { Text("Retry") }
+                OutlinedButton(onClick = viewModel::load, shape = CircleShape) { Text("Retry") }
             }
             is CollectionUiState.Content ->
                 CollectionContent(s.detail, onPlayTracks, onShuffle, onAddToQueue, onDownloadAll)
         }
+        }
 
+        // In Glass the album's other actions sit opposite the back button, so the header can keep
+        // to the cover, the names and two buttons.
+        if (glass) (state as? CollectionUiState.Content)?.detail?.let { detail ->
+            CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
+                Row(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    GlassHeaderButton(Icons.Filled.AddToQueue, "Add to queue") { if (detail.tracks.isNotEmpty()) onAddToQueue(detail.tracks) }
+                    GlassHeaderButton(Icons.Filled.Download, "Download") { if (detail.tracks.isNotEmpty()) onDownloadAll(detail.tracks, detail.title) }
+                }
+            }
+        }
         // Floating circular back affordance.
-        IconButton(
+        if (glass) CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
+            Box(Modifier.align(Alignment.TopStart).padding(12.dp)) {
+                GlassHeaderButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Back", onBack)
+            }
+        } else IconButton(
             onClick = onBack,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp)
                 .size(40.dp)
-                .clip(squareOr(CircleShape))
+                .clip(CircleShape)
                 .background(colors.surface),
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onSurface)
@@ -115,6 +146,7 @@ private fun CollectionContent(
     val sleeve = LocalSleeveMode.current
     val cover = LocalCoverColors.current
     val tracks = detail.tracks
+    val glass = isGlass()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -178,6 +210,11 @@ private fun CollectionContent(
                     trailing = { TrackActionsMenu(item = track) },
                 )
             }
+        } else if (glass) {
+            item { GlassCollectionHeader(detail, onPlayTracks, onShuffle) }
+            itemsIndexed(tracks) { index, track ->
+                TrackRow(index = index + 1, track = track) { onPlayTracks(tracks, index) }
+            }
         } else {
             // ── Standard layout ──────────────────────────────────────────────────
             item {
@@ -237,7 +274,7 @@ private fun CollectionContent(
                         Button(
                             onClick = { onPlayTracks(tracks, 0) },
                             enabled = tracks.isNotEmpty(),
-                            shape = squareOr(CircleShape),
+                            shape = CircleShape,
                             contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
                         ) {
                             Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -247,7 +284,7 @@ private fun CollectionContent(
                         OutlinedButton(
                             onClick = { onShuffle(tracks) },
                             enabled = tracks.isNotEmpty(),
-                            shape = squareOr(CircleShape),
+                            shape = CircleShape,
                             contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
                         ) {
                             Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -257,7 +294,7 @@ private fun CollectionContent(
                         OutlinedButton(
                             onClick = { onAddToQueue(tracks) },
                             enabled = tracks.isNotEmpty(),
-                            shape = squareOr(CircleShape),
+                            shape = CircleShape,
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                         ) {
                             Icon(Icons.Filled.AddToQueue, contentDescription = "Add to queue", modifier = Modifier.size(18.dp))
@@ -354,10 +391,94 @@ private fun SleeveCollectionHeader(detail: CollectionDetail, trackCount: Int) {
     }
 }
 
+/**
+ * The Glass album header: the cover centred and large, the name under it, the artist in the
+ * accent, and Play and Shuffle as two equal grey buttons, as an album opens on Apple Music.
+ */
+@Composable
+private fun GlassCollectionHeader(
+    detail: CollectionDetail,
+    onPlayTracks: (List<MusicItem>, Int) -> Unit,
+    onShuffle: (List<MusicItem>) -> Unit,
+) {
+    val xc = com.verza.ui.expressive.LocalExpressiveColors.current
+    val tracks = detail.tracks
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.68f)
+                .widthIn(max = 300.dp)
+                .aspectRatio(1f)
+                .shadow(elevation = 18.dp, shape = ShapeLarge, clip = false)
+                .clip(ShapeLarge)
+                .background(xc.surfaceHigh),
+        ) {
+            if (detail.thumbnailUrl != null) AsyncImage(
+                model = detail.thumbnailUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Spacer(Modifier.height(18.dp))
+        Text(
+            detail.title,
+            style = com.verza.ui.expressive.HeroDisplay,
+            color = xc.onContainer,
+            textAlign = TextAlign.Center,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (detail.subtitle.isNotBlank()) Text(
+            detail.subtitle,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal, fontSize = 18.sp),
+            color = xc.accent,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(trackSummary(tracks.size, tracks), style = MaterialTheme.typography.bodySmall, color = xc.onContainerMuted)
+        Spacer(Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.widthIn(max = 420.dp)) {
+            GlassWideButton(Icons.Filled.PlayArrow, "Play", Modifier.weight(1f), enabled = tracks.isNotEmpty()) { onPlayTracks(tracks, 0) }
+            GlassWideButton(Icons.Filled.Shuffle, "Shuffle", Modifier.weight(1f), enabled = tracks.isNotEmpty()) { onShuffle(tracks) }
+        }
+    }
+}
+
+@Composable
+private fun GlassWideButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    modifier: Modifier,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val xc = com.verza.ui.expressive.LocalExpressiveColors.current
+    Row(
+        modifier = modifier
+            .height(48.dp)
+            .pressableScale(enabled = enabled, onClick = onClick)
+            .clip(ShapeLargeIncreased)
+            .background(xc.surface),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = xc.accent, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp), color = xc.accent)
+    }
+}
+
 @Composable
 private fun TrackRow(index: Int, track: MusicItem, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
+    val glass = isGlass()
 
     Column {
         Row(
@@ -369,9 +490,10 @@ private fun TrackRow(index: Int, track: MusicItem, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                text = index.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.labelMedium,
+                text = if (glass) index.toString() else index.toString().padStart(2, '0'),
+                style = if (glass) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.labelMedium,
                 color = ext.muted,
+                textAlign = if (glass) TextAlign.Center else null,
                 modifier = Modifier.width(24.dp),
             )
             Column(modifier = Modifier.weight(1f)) {
@@ -386,7 +508,8 @@ private fun TrackRow(index: Int, track: MusicItem, onClick: () -> Unit) {
         HorizontalDivider(
             thickness = 0.5.dp,
             color = ext.borderGlass,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp),
+            // In Glass the rule starts under the title, the number hanging in the margin.
+            modifier = Modifier.padding(start = if (glass) 58.dp else 20.dp, end = 20.dp),
         )
     }
 }

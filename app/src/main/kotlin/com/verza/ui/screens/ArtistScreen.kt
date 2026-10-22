@@ -1,8 +1,13 @@
 package com.verza.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.runtime.CompositionLocalProvider
+import com.verza.ui.theme.LocalGlassBackdrop
+import com.verza.ui.theme.rememberGlassBackdrop
+import com.verza.ui.theme.glassSource
+import com.verza.ui.theme.isGlass
 import androidx.compose.foundation.layout.padding
 import com.verza.ui.expressive.LocalBottomChrome
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,7 +42,10 @@ fun ArtistScreen(
     val ext = LocalVerzaExtendedColors.current
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    val glass = isGlass()
+    val backdrop = rememberGlassBackdrop()
     Box(modifier = modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().then(if (glass) Modifier.glassSource(backdrop) else Modifier)) {
         when (val s = state) {
             is ArtistUiState.Loading -> CircularProgressIndicator(
                 color = colors.primary,
@@ -49,18 +57,23 @@ fun ArtistScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(s.message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
-                OutlinedButton(onClick = viewModel::load, shape = squareOr(CircleShape)) { Text("Retry") }
+                OutlinedButton(onClick = viewModel::load, shape = CircleShape) { Text("Retry") }
             }
             is ArtistUiState.Content -> ArtistContent(s.detail, onItemClick)
         }
+        }
 
-        IconButton(
+        if (glass) CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
+            Box(Modifier.align(Alignment.TopStart).padding(12.dp)) {
+                GlassHeaderButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Back", onBack)
+            }
+        } else IconButton(
             onClick = onBack,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp)
                 .size(40.dp)
-                .clip(squareOr(CircleShape))
+                .clip(CircleShape)
                 .background(colors.surface),
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onSurface)

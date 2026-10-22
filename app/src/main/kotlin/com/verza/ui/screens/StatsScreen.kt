@@ -2,7 +2,6 @@ package com.verza.ui.screens
 
 import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.ui.expressive.ShapeMedium
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -64,7 +63,7 @@ fun StatsScreen(
                         .padding(start = 8.dp)
                         .width(40.dp)
                         .height(3.dp)
-                        .clip(squareOr(RoundedCornerShape(2.dp)))
+                        .clip(RoundedCornerShape(2.dp))
                         .background(colors.primary),
                 )
                 Spacer(Modifier.height(12.dp))
@@ -299,7 +298,7 @@ private fun ListeningChart(fingerprint: ListeningFingerprint) {
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(value.coerceAtLeast(0.03f))
-                        .clip(squareOr(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)))
+                        .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                         .background(
                             if (hour == fingerprint.peakHour) colors.primary
                             else colors.primary.copy(alpha = 0.28f),

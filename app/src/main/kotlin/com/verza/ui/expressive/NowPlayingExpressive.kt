@@ -1,7 +1,6 @@
 package com.verza.ui.expressive
 
 import androidx.compose.foundation.border
-import com.verza.ui.theme.FontPosterHead
 import com.verza.R
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -133,7 +132,6 @@ import coil3.compose.AsyncImage
 import com.verza.audio.VisualizerSignal
 import com.verza.player.QueueItem
 import com.verza.ui.theme.LocalAudioSignal
-import com.verza.ui.theme.isPoster
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
@@ -385,10 +383,6 @@ private fun PlayerPane(
     )
     val controlsScroll = rememberScrollState()
 
-    // The controls hiding, the face per song and the poster arrangement run in both designs. What
-    // stays Poster's own is the cover running to the screen's edges and the controls being slabs;
-    // Material keeps its margins, its rounded cover and its own controls.
-    val poster = isPoster()
     // Picked here rather than in the cover's graphics layer below: shapes follow the design
     // setting, and that has to be read in composition.
     val coverShape = ShapeExtraLarge
@@ -495,7 +489,7 @@ private fun PlayerPane(
             BoxWithConstraints(
                 modifier = paneModifier,
                 // To the bottom of its slot, so the square meets the title however tall the slot is.
-                contentAlignment = if (poster) Alignment.BottomCenter else Alignment.Center,
+                contentAlignment = Alignment.Center,
             ) {
             // One measurement of the slot, turned into an explicit side length. Everything below is
             // sized from this rather than from a fill modifier, so nothing the image does can change it.
@@ -629,35 +623,6 @@ private fun PlayerPane(
     }
 
     val controls: @Composable ColumnScope.() -> Unit = controls@{
-            if (poster) {
-                PosterControls(
-                    positionMs = positionMs,
-                    durationMs = durationMs,
-                    isPlaying = isPlaying,
-                    shuffleEnabled = shuffleEnabled,
-                    repeatMode = repeatMode,
-                    isLiked = isLiked,
-                    isDownloaded = isDownloaded,
-                    sleepTimerActive = sleepTimerActive,
-                    queueCount = queueCount,
-                    onSeek = onSeek,
-                    onTogglePlay = onTogglePlay,
-                    onPrevious = onPrevious,
-                    onNext = onNext,
-                    onToggleShuffle = onToggleShuffle,
-                    onCycleRepeat = onCycleRepeat,
-                    onToggleLike = onToggleLike,
-                    onOpenLyrics = onOpenLyrics,
-                    onStartRadio = onStartRadio,
-                    onAddToPlaylist = onAddToPlaylist,
-                    onDownload = onDownload,
-                    onRemoveDownload = onRemoveDownload,
-                    onOpenSleepTimer = onOpenSleepTimer,
-                    onOpenMore = onOpenMore,
-                    onShowQueue = onShowQueue,
-                )
-                return@controls
-            }
             Spacer(Modifier.height(10.dp))
 
             VisualizerSeekBar(
@@ -881,7 +846,6 @@ private fun PlayerPane(
                 }
             } else {
                 val gap = 8.dp.roundToPx()
-                val margin = 20.dp.roundToPx()
                 // On a phone this is the full width, exactly as before. On a tablet held upright the
                 // cover and controls stop at a size that still reads as a player rather than a
                 // poster, and centre.
@@ -911,19 +875,15 @@ private fun PlayerPane(
                     artworkX = left
                     artworkY = top
                 } else {
-                    // The poster. On a phone the cover runs to the edges of the screen: the margin
-                    // was there to line it up with the controls, and they are gone. The title is
-                    // set over its lower part rather than under it, and the two sit together in
-                    // the middle of the screen. Pinned to the bottom instead, a square cover on a
-                    // tall phone left the top half of the screen an empty field.
-                    // Poster only: Material keeps its margin and its rounded cover.
-                    val bleed = if (poster && column == width) margin else 0
-                    val coverWidth = column + 2 * bleed
+                    // Controls hidden: the title is set over the cover's lower part rather than
+                    // under it, and the two sit together in the middle of the screen. Pinned to the
+                    // bottom instead, a square cover on a tall phone left the top half empty.
+                    val coverWidth = column
                     val overlap = (title.height * TITLE_OVER_COVER).toInt()
                     val side = minOf(coverWidth, (height - title.height + overlap).coerceAtLeast(0))
                     val top = ((height - (side + title.height - overlap)) / 2).coerceAtLeast(0)
                     artwork = artworkMeasurables.first().measure(Constraints.fixed(coverWidth, side))
-                    artworkX = left - bleed
+                    artworkX = left
                     artworkY = top
                     titleY = top + side - overlap
                 }
@@ -1130,206 +1090,3 @@ private const val TITLE_MAX_SP = 120f
  */
 private const val TITLE_MAX_SCREEN_SHARE = 0.22f
 private const val TITLE_MIN_SP = 30f
-
-// ── Poster controls ──────────────────────────────────────────────────────────────────────────────
-
-/**
- * The Now Playing controls in the Poster design: flat slabs of the cover's colours, packed together
- * with no gaps, labelled in words in a display face rather than with icons on round buttons.
- *
- * The same controls as Material, in the same order, so nothing moves for anyone who switches:
- * the seek bar, then the transport, then the toggles, then the tools. A slab that is "on" fills
- * with the accent; one that is off sits in the canvas or a surface colour. Neighbouring slabs
- * alternate colour so the rows read as a printed grid, not as a toolbar.
- */
-@Composable
-private fun ColumnScope.PosterControls(
-    positionMs: Long,
-    durationMs: Long,
-    isPlaying: Boolean,
-    shuffleEnabled: Boolean,
-    repeatMode: Int,
-    isLiked: Boolean,
-    isDownloaded: Boolean,
-    sleepTimerActive: Boolean,
-    queueCount: Int,
-    onSeek: (Long) -> Unit,
-    onTogglePlay: () -> Unit,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onToggleShuffle: () -> Unit,
-    onCycleRepeat: () -> Unit,
-    onToggleLike: () -> Unit,
-    onOpenLyrics: () -> Unit,
-    onStartRadio: () -> Unit,
-    onAddToPlaylist: () -> Unit,
-    onDownload: () -> Unit,
-    onRemoveDownload: () -> Unit,
-    onOpenSleepTimer: () -> Unit,
-    onOpenMore: () -> Unit,
-    onShowQueue: () -> Unit,
-) {
-    val colors = LocalExpressiveColors.current
-    val numerals = TextStyle(fontFamily = FontPosterHead, fontSize = 30.sp, lineHeight = 30.sp)
-
-    Spacer(Modifier.height(10.dp))
-    PosterSeekBar(positionMs, durationMs, onSeek)
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-        Text(formatDuration(positionMs), style = numerals, color = colors.onContainer)
-        Spacer(Modifier.weight(1f))
-        Text(formatDuration(durationMs), style = numerals, color = colors.onContainerMuted)
-    }
-    Spacer(Modifier.height(10.dp))
-
-    // ── transport: one strip, play twice the width of its neighbours ──
-    Row(Modifier.fillMaxWidth().height(76.dp)) {
-        Slab(
-            onClick = onPrevious,
-            background = colors.surfaceHighest,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            description = "Previous track",
-        ) { Icon(Icons.Filled.SkipPrevious, null, tint = colors.onSurface, modifier = Modifier.size(36.dp)) }
-        Slab(
-            onClick = onTogglePlay,
-            background = colors.accent,
-            modifier = Modifier.weight(2f).fillMaxHeight(),
-            description = if (isPlaying) "Pause" else "Play",
-        ) {
-            Text(
-                if (isPlaying) "PAUSE" else "PLAY",
-                style = TextStyle(fontFamily = TitleFonts.family(R.font.display_anton), fontSize = 40.sp, lineHeight = 40.sp),
-                color = colors.onAccent,
-            )
-        }
-        // Previous and next share a colour so play is the only filled block in the strip. Next
-        // used to take the tertiary, which on some covers is as pale as the accent, and play and
-        // next merged into one white bar.
-        Slab(
-            onClick = onNext,
-            background = colors.surfaceHighest,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            description = "Next track",
-        ) { Icon(Icons.Filled.SkipNext, null, tint = colors.onSurface, modifier = Modifier.size(36.dp)) }
-    }
-
-    // ── toggles ──
-    Row(Modifier.fillMaxWidth().height(52.dp)) {
-        WordSlab("SHUFFLE", shuffleEnabled, onToggleShuffle, colors.container, Modifier.weight(1f))
-        WordSlab(
-            when (repeatMode) { 1 -> "REPEAT 1"; 2 -> "REPEAT ALL"; else -> "REPEAT" },
-            repeatMode != 0,
-            onCycleRepeat,
-            colors.surface,
-            Modifier.weight(1.2f),
-        )
-        WordSlab(if (isLiked) "LIKED" else "LIKE", isLiked, onToggleLike, colors.container, Modifier.weight(1f))
-    }
-
-    // ── tools, two rows of three ──
-    Row(Modifier.fillMaxWidth().height(52.dp)) {
-        WordSlab("LYRICS", false, onOpenLyrics, colors.surface, Modifier.weight(1f))
-        WordSlab("RADIO", false, onStartRadio, colors.container, Modifier.weight(1f))
-        WordSlab("+ PLAYLIST", false, onAddToPlaylist, colors.surface, Modifier.weight(1.3f), description = "Add to playlist")
-    }
-    Row(Modifier.fillMaxWidth().height(52.dp)) {
-        WordSlab(
-            if (isDownloaded) "SAVED" else "DOWNLOAD",
-            isDownloaded,
-            if (isDownloaded) onRemoveDownload else onDownload,
-            colors.container,
-            Modifier.weight(1.3f),
-            description = if (isDownloaded) "Remove download" else "Download",
-        )
-        WordSlab("SLEEP", sleepTimerActive, onOpenSleepTimer, colors.surface, Modifier.weight(1f), description = "Sleep timer")
-        WordSlab("MORE", false, onOpenMore, colors.container, Modifier.weight(1f))
-    }
-    Spacer(Modifier.height(8.dp))
-    OutputChip(colors = colors)
-    Spacer(Modifier.height(4.dp))
-    QueueHint(count = queueCount, onClick = onShowQueue)
-}
-
-/**
- * A flat, clickable block. The press darkens it; there is no ripple to round its corners.
- *
- * Each carries a fine rule in the ink colour. A cover's palette can put two neighbouring surfaces
- * within a shade of each other (a teal canvas next to a teal surface), and without the rule the
- * grid melts into one slab; with it the controls read as a printed grid whatever the cover.
- */
-@Composable
-private fun Slab(
-    onClick: () -> Unit,
-    background: Color,
-    modifier: Modifier,
-    description: String,
-    content: @Composable () -> Unit,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Box(
-        modifier = modifier
-            .background(background)
-            .border(1.dp, LocalExpressiveColors.current.onContainer.copy(alpha = 0.28f))
-            .drawWithContent {
-                drawContent()
-                if (pressed) drawRect(Color.Black.copy(alpha = 0.18f))
-            }
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center,
-    ) { content() }
-}
-
-/** A block with a word on it: filled with the accent when it is on, [off] when it is not. */
-@Composable
-private fun WordSlab(
-    word: String,
-    on: Boolean,
-    onClick: () -> Unit,
-    off: Color,
-    modifier: Modifier,
-    description: String = word.lowercase().replaceFirstChar { it.uppercase() },
-) {
-    val colors = LocalExpressiveColors.current
-    // The state is in the description as well as the colour, so TalkBack says it.
-    val said = if (on) "$description, on" else description
-    Slab(onClick, if (on) colors.accent else off, modifier.fillMaxHeight(), said) {
-        Text(
-            word,
-            style = TextStyle(fontFamily = FontPosterHead, fontSize = 20.sp, lineHeight = 20.sp),
-            color = if (on) colors.onAccent else colors.onContainer,
-            maxLines = 1,
-        )
-    }
-}
-
-/**
- * The seek bar as a thick flat bar: played in the accent, the rest a surface, no thumb. Tap or drag
- * anywhere along it. While dragging it shows where the finger is and seeks on release, so a drag is
- * one seek rather than dozens.
- */
-@Composable
-private fun PosterSeekBar(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit) {
-    val colors = LocalExpressiveColors.current
-    var drag by remember { mutableStateOf<Float?>(null) }
-    val played = drag ?: if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(16.dp)
-            .background(colors.surface)
-            .pointerInput(durationMs) {
-                detectTapGestures { o -> onSeek(((o.x / size.width).coerceIn(0f, 1f) * durationMs).toLong()) }
-            }
-            .pointerInput(durationMs) {
-                detectHorizontalDragGestures(
-                    onDragStart = { o -> drag = (o.x / size.width).coerceIn(0f, 1f) },
-                    onDragEnd = { drag?.let { onSeek((it * durationMs).toLong()) }; drag = null },
-                    onDragCancel = { drag = null },
-                ) { change, _ -> drag = (change.position.x / size.width).coerceIn(0f, 1f) }
-            }
-            .semantics { contentDescription = "Seek, ${formatDuration(positionMs)} of ${formatDuration(durationMs)}" },
-    ) {
-        Box(Modifier.fillMaxHeight().fillMaxWidth(played).background(colors.accent))
-    }
-}

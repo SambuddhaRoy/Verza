@@ -1,5 +1,9 @@
 package com.verza.ui.screens
 
+import androidx.compose.material.icons.rounded.Search
+import com.verza.ui.expressive.GlassEmpty
+import com.verza.ui.expressive.GlassListRow
+import com.verza.ui.theme.isGlass
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
 import com.verza.ui.expressive.LocalBottomChrome
@@ -7,7 +11,6 @@ import com.verza.ui.expressive.ShapeSmall
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
 import com.verza.ui.expressive.variedFace
-import com.verza.ui.theme.isPoster
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -75,14 +78,16 @@ fun SearchScreen(
             .widthIn(max = animatedReadableWidth())
             .fillMaxWidth()
             .padding(top = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isGlass()) 12.dp else 16.dp),
     ) {
         // ── Header ─────────────────────────────────────────────────────────
         // Same masthead as Home and Library: mono dateline over an italic display serif.
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Text("EXPLORE", style = MetaLabel, color = xc.onContainerMuted)
-            Spacer(Modifier.height(6.dp))
-            Text(if (isPoster()) "SEARCH" else "Search", style = HeroTitle.variedFace("Search"), color = xc.onContainer)
+            if (!isGlass()) {
+                Text("EXPLORE", style = MetaLabel, color = xc.onContainerMuted)
+                Spacer(Modifier.height(6.dp))
+            }
+            Text("Search", style = HeroTitle.variedFace("Search"), color = xc.onContainer)
         }
 
         // ── Pill search bar ────────────────────────────────────────────────
@@ -130,7 +135,7 @@ fun SearchScreen(
             is SearchUiState.Results -> LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 16.dp + LocalBottomChrome.current),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(if (isGlass()) 0.dp else 6.dp),
             ) {
                 items(state.items) { item -> ResultRow(item = item, onClick = { onItemClick(item) }) }
             }
@@ -146,12 +151,13 @@ private fun SearchPill(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalExpressiveColors.current
+    val glass = isGlass()
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(PillShape)
+            .clip(if (glass) ShapeLargeIncreased else PillShape)
             .background(colors.surface)
-            .padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = if (glass) 12.dp else 20.dp, end = if (glass) 6.dp else 8.dp, top = if (glass) 0.dp else 6.dp, bottom = if (glass) 0.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -163,7 +169,7 @@ private fun SearchPill(
         )
         Box(modifier = Modifier.weight(1f).padding(vertical = 12.dp)) {
             if (value.isEmpty()) {
-                Text("Artists, songs, or albums", style = BodyText, color = colors.onSurfaceMuted)
+                Text(if (glass) "Artists, songs, albums and more" else "Artists, songs, or albums", style = BodyText, color = colors.onSurfaceMuted)
             }
             BasicTextField(
                 value = value,
@@ -181,9 +187,9 @@ private fun SearchPill(
             // constantly and it was the smallest tap target on the screen.
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(if (glass) 34.dp else 40.dp)
                     .clip(PillShape)
-                    .background(colors.surfaceHigh)
+                    .background(if (glass) colors.surfaceHighest else colors.surfaceHigh)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -214,6 +220,30 @@ private fun ResultRow(item: HomeItem, onClick: () -> Unit) {
     // Songs benefit from iTunes album art; other result types keep their YT thumbnail.
     val art = if (item.isSong) rememberSongArtwork(item.title, item.subtitle, item.thumbnailUrl)
               else item.thumbnailUrl
+    val menu: @Composable () -> Unit = {
+        // Overflow menu only on actual playable songs (skip on artist/playlist cards).
+        if (item.isSong && item.videoId != null) {
+            TrackActionsMenu(
+                item = MusicItem(
+                    id = item.videoId!!,
+                    title = item.title,
+                    artist = item.subtitle,
+                    thumbnailUrl = item.thumbnailUrl,
+                )
+            )
+        }
+    }
+    if (isGlass()) {
+        GlassListRow(
+            title = item.title,
+            subtitle = item.subtitle,
+            onClick = onClick,
+            artworkUrl = art ?: "",
+            circularArt = item.browseId?.startsWith("UC") == true,
+            trailing = menu,
+        )
+        return
+    }
 
     Row(
         modifier = Modifier
@@ -243,17 +273,7 @@ private fun ResultRow(item: HomeItem, onClick: () -> Unit) {
                 RowSubtitle(item.subtitle, colors.onSurfaceMuted)
             }
         }
-        // Overflow menu only on actual playable songs (skip on artist/playlist cards).
-        if (item.isSong && item.videoId != null) {
-            TrackActionsMenu(
-                item = MusicItem(
-                    id = item.videoId!!,
-                    title = item.title,
-                    artist = item.subtitle,
-                    thumbnailUrl = item.thumbnailUrl,
-                )
-            )
-        }
+        menu()
     }
 }
 
@@ -345,5 +365,8 @@ private fun CenterBox(content: @Composable BoxScope.() -> Unit) {
 @Composable
 private fun CenterHint(text: String) {
     val ext = LocalVerzaExtendedColors.current
-    CenterBox { Text(text, style = MaterialTheme.typography.bodyMedium, color = ext.muted) }
+    CenterBox {
+        if (isGlass()) GlassEmpty(text, Icons.Rounded.Search)
+        else Text(text, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
+    }
 }
