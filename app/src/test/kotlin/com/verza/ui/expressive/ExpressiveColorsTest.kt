@@ -84,6 +84,28 @@ class ExpressiveColorsTest {
     }
 
     @Test
+    fun `the Glass palettes clear the same floor for every possible cover`() {
+        val floor = ExpressiveColors.MIN_CONTRAST
+        val covers = seeds().map { coverOf(it) } + listOf<CoverColors?>(null) +
+            seeds().map { coverOf(it).copy(monochrome = true) }.take(3)
+        for (dark in listOf(true, false)) for (cover in covers) {
+            val c = glassColors(cover, dark)
+            val pairs = mapOf(
+                "onContainer" to contrastRatio(c.container, c.onContainer),
+                "onContainerMuted" to contrastRatio(c.container, c.onContainerMuted),
+                "onAccent" to contrastRatio(c.accent, c.onAccent),
+                "accent on canvas" to contrastRatio(c.accent, c.container),
+                "onSurface" to contrastRatio(c.surface, c.onSurface),
+                "onSurfaceMuted" to contrastRatio(c.surface, c.onSurfaceMuted),
+                "onTertiary" to contrastRatio(c.tertiary, c.onTertiary),
+            )
+            pairs.forEach { (name, ratio) ->
+                assertTrue("dark=$dark ${cover?.accent?.value?.toString(16)} $name only $ratio", ratio >= floor)
+            }
+        }
+    }
+
+    @Test
     fun `accent is visibly separate from the container it sits on`() {
         // Two tones of the same lightness read as one flat colour — the controls have to pop off the
         // background, not merely be legible against it.

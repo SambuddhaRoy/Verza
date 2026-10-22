@@ -1,10 +1,24 @@
 package com.verza.ui.navigation
 
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.animation.core.spring
+import com.verza.ui.expressive.GlassBottomChrome
+import com.verza.ui.expressive.GlassMiniPlayer
+import com.verza.ui.expressive.MiniPlayerState
+import com.verza.ui.theme.LocalGlassBackdrop
+import com.verza.ui.theme.glassSource
+import com.verza.ui.theme.isGlass
+import com.verza.ui.theme.rememberGlassBackdrop
 import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
-import com.verza.ui.theme.squareOr
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
@@ -238,6 +252,39 @@ fun VerzaNavigation(
     val showChrome = !isChromeHidden && !immersiveNowPlaying
     val rail = showChrome && useNavigationRail()
 
+    // Glass: the NavHost is recorded so the bottom chrome can blur and bend it, and scrolling a
+    // page down folds the chrome into one row (see GlassBottomChrome).
+    val glass = isGlass()
+    val backdrop = rememberGlassBackdrop()
+    val chromeFolded = remember { mutableStateOf(false) }
+    LaunchedEffect(currentRoute) { chromeFolded.value = false }
+    val foldAfter = with(LocalDensity.current) { 32.dp.toPx() }
+    val foldOnScroll = remember(foldAfter) {
+        object : NestedScrollConnection {
+            // Distance scrolled in the current direction. Only scrolling that actually moved
+            // something counts, so pulling against the top of a list does not fold anything.
+            var travel = 0f
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                val dy = consumed.y
+                if (dy == 0f) return Offset.Zero
+                if ((dy < 0f) != (travel < 0f)) travel = 0f
+                travel += dy
+                if (travel < -foldAfter) chromeFolded.value = true
+                else if (travel > foldAfter) chromeFolded.value = false
+                return Offset.Zero
+            }
+        }
+    }
+    val miniState = if (showMiniPlayer) MiniPlayerState(
+        title = currentTitle,
+        artist = currentArtist,
+        artworkUrl = currentArtworkUrl,
+        isPlaying = playback.isPlaying,
+        onExpand = { navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true } },
+        onTogglePlay = { playbackViewModel.togglePlay() },
+        onNext = { playbackViewModel.seekToNext() },
+    ) else null
+
     // Every inset is owned by exactly one thing. The status bar and the outer side edge go to the
     // content, the bottom edge goes to the bottom chrome, and the start edge goes to the rail when
     // there is one. Before this only the compact nav bar ever took the bottom inset, so on a tablet,
@@ -280,7 +327,36 @@ fun VerzaNavigation(
         },
         bottomBar = {
             // Hidden entirely on Onboarding and Login so the pre-app screens get the full canvas.
-            if (showChrome) Column(
+            if (showChrome && glass) CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(chromeInsets.only(bottomSides)),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (rail) {
+                        // The rail has the tabs; only the player floats along the foot.
+                        if (miniState != null) GlassMiniPlayer(
+                            miniState,
+                            modifier = Modifier
+                                .widthIn(max = 720.dp)
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                .height(58.dp),
+                        )
+                    } else {
+                        GlassBottomChrome(
+                            tabs = GLASS_NAV,
+                            currentRoute = currentRoute,
+                            onNavigate = onSelectTab,
+                            searchRoute = Screen.Search.route,
+                            minimized = chromeFolded.value,
+                            onExpand = { chromeFolded.value = false },
+                            mini = miniState,
+                            modifier = Modifier.widthIn(max = 720.dp),
+                        )
+                    }
+                }
+            } else if (showChrome) Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(chromeInsets.only(bottomSides)),
@@ -356,6 +432,9 @@ fun VerzaNavigation(
       // lists by its height (LocalBottomChrome). The insets it covers are still consumed, so a page
       // that pads for the system bars itself does not count the navigation bar twice.
       val layoutDirection = LocalLayoutDirection.current
+      // Glass's Lyrics sits on the cover like Now Playing, so its wash runs up under the status bar
+      // and the page pads its own top (OnCoverWash).
+      val underStatusBar = glass && currentRoute == Screen.Lyrics.route
       CompositionLocalProvider(
           LocalTrackActions provides trackActions,
           LocalBottomChrome provides innerPadding.calculateBottomPadding(),
@@ -366,21 +445,27 @@ fun VerzaNavigation(
             modifier = Modifier
                 .padding(
                     start = innerPadding.calculateStartPadding(layoutDirection),
-                    top = innerPadding.calculateTopPadding(),
+                    top = if (underStatusBar) 0.dp else innerPadding.calculateTopPadding(),
                     end = innerPadding.calculateEndPadding(layoutDirection),
                 )
-                .consumeWindowInsets(innerPadding),
+                .consumeWindowInsets(innerPadding)
+                .then(if (glass) Modifier.glassSource(backdrop).nestedScroll(foldOnScroll) else Modifier),
             // Two motion idioms, chosen per-navigation (see helpers at the bottom of the file):
             //  • Switching between the bottom-bar tabs uses Material **fade-through** — the
             //    outgoing screen dissolves to reveal the live glow, then the new one fades and
             //    eases up. No directional slide, so lateral moves feel calm and seamless.
             //  • Pushing into / out of a detail screen uses a **shared-axis** slide + fade with
             //    emphasized easing, giving hierarchy a gentle sense of direction.
+            // In Glass, Now Playing is a card that rises over the page and drops back down, with the
+            // page left where it was underneath.
             enterTransition = {
                 val from = initialState.destination.route
                 val to = targetState.destination.route
                 when {
+                    glass && to == Screen.NowPlaying.route -> slideInVertically(NowPlayingRise) { it }
                     from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeIn(tween(320))
+                    glass && from in TAB_ROUTES && to in TAB_ROUTES -> fadeIn(GlassFade)
+                    glass -> slideInHorizontally(PushSpring) { it }
                     from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughIn()
                     else -> sharedAxisIn(forward = true)
                 }
@@ -389,7 +474,10 @@ fun VerzaNavigation(
                 val from = initialState.destination.route
                 val to = targetState.destination.route
                 when {
+                    glass && to == Screen.NowPlaying.route -> ExitTransition.KeepUntilTransitionsFinished
                     from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeOut(tween(220))
+                    glass && from in TAB_ROUTES && to in TAB_ROUTES -> fadeOut(GlassFade)
+                    glass -> slideOutHorizontally(PushSpring) { -it / 3 } + fadeOut(GlassFade, targetAlpha = 0.6f)
                     from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughOut()
                     else -> sharedAxisOut(forward = true)
                 }
@@ -398,7 +486,10 @@ fun VerzaNavigation(
                 val from = initialState.destination.route
                 val to = targetState.destination.route
                 when {
+                    glass && from == Screen.NowPlaying.route -> EnterTransition.None
                     from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeIn(tween(320))
+                    glass && from in TAB_ROUTES && to in TAB_ROUTES -> fadeIn(GlassFade)
+                    glass -> slideInHorizontally(PushSpring) { -it / 3 } + fadeIn(GlassFade, initialAlpha = 0.6f)
                     from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughIn()
                     else -> sharedAxisIn(forward = false)
                 }
@@ -407,7 +498,10 @@ fun VerzaNavigation(
                 val from = initialState.destination.route
                 val to = targetState.destination.route
                 when {
+                    glass && from == Screen.NowPlaying.route -> slideOutVertically(tween(300, easing = Emphasized)) { it }
                     from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeOut(tween(220))
+                    glass && from in TAB_ROUTES && to in TAB_ROUTES -> fadeOut(GlassFade)
+                    glass -> slideOutHorizontally(PushSpring) { it }
                     from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughOut()
                     else -> sharedAxisOut(forward = false)
                 }
@@ -724,13 +818,13 @@ fun VerzaNavigation(
                 )
             },
             confirmButton = {
-                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = {
+                TextButton(shape = ButtonDefaults.textShape, onClick = {
                     playbackViewModel.acceptSharedSession()
                     navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
                 }) { Text("Listen") }
             },
             dismissButton = {
-                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { playbackViewModel.dismissSharedSession() }) { Text("Not now") }
+                TextButton(shape = ButtonDefaults.textShape, onClick = { playbackViewModel.dismissSharedSession() }) { Text("Not now") }
             },
         )
     }
@@ -791,6 +885,18 @@ private val EXPRESSIVE_NAV = listOf(
     NavDestination(Screen.Library.route, Icons.Outlined.LibraryMusic, "Library"),
     NavDestination(Screen.NowPlaying.route, Icons.Outlined.MusicNote, "Playing"),
 )
+
+/** Glass keeps Search out of the capsule, as its own button beside it, and Now Playing in the player. */
+private val GLASS_NAV = listOf(
+    NavDestination(Screen.Home.route, Icons.Rounded.Home, "Home"),
+    NavDestination(Screen.Library.route, Icons.Rounded.LibraryMusic, "Library"),
+)
+
+/** iOS's push: critically damped, about a third of a second, interruptible like any spring. */
+private val PushSpring = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 1f, stiffness = 420f)
+private val GlassFade = spring<Float>(dampingRatio = 1f, stiffness = 1100f)
+
+private val NowPlayingRise = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.9f, stiffness = 380f)
 
 private val SCREEN_FOR_ROUTE = mapOf(
     Screen.Home.route to Screen.Home,

@@ -60,8 +60,7 @@ class VerzaApp : Application(), SingletonImageLoader.Factory {
                 NowPlayingBridge.nowPlaying,
                 preferences.colorFlavourFlow,
                 preferences.accentSourceFlow,
-                preferences.designSchemeFlow,
-            ) { np, flavour, accentSource, design ->
+            ) { np, flavour, accentSource ->
                 WidgetState(
                     title = np?.title.orEmpty(),
                     artist = np?.artist.orEmpty(),
@@ -69,7 +68,6 @@ class VerzaApp : Application(), SingletonImageLoader.Factory {
                     isPlaying = np?.isPlaying == true,
                     flavour = flavour,
                     accentSource = accentSource,
-                    design = design,
                 )
             }.collect { state ->
                 NowPlayingWidgetUpdater.publish(context = this@VerzaApp, scope = scope, state = state)

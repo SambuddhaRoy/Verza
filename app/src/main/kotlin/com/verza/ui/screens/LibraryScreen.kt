@@ -1,15 +1,34 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.GlassEmpty
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedContent
+import androidx.activity.compose.BackHandler
+import com.verza.ui.components.pressableScale
+import com.verza.ui.expressive.ShapeLarge
+import com.verza.ui.expressive.ExpressiveMotion
+import com.verza.ui.expressive.GlassSectionTitle
+import com.verza.ui.expressive.GlassListRow
+import com.verza.ui.theme.isGlass
 import androidx.compose.foundation.layout.padding
 import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.tracksLabel
 import com.verza.ui.expressive.RowTitle
 import com.verza.ui.expressive.RowSubtitle
 import com.verza.ui.expressive.variedFace
-import com.verza.ui.theme.isPoster
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
@@ -119,39 +138,10 @@ fun LibraryScreen(
     }
 
     val xc = LocalExpressiveColors.current
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(xc.container)
-            // Capped and centred as a whole, so a row on a tablet is not a thumbnail followed by an
-            // acre, and the header, chips and lists keep one left edge.
-            .wrapContentWidth()
-            .widthIn(max = animatedReadableWidth())
-            .fillMaxWidth()
-            .padding(top = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // ── Header ─────────────────────────────────────────────────────────
-        // Mono dateline over an italic display serif, matching Home's masthead.
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Text("YOUR COLLECTION", style = MetaLabel, color = xc.onContainerMuted)
-            Spacer(Modifier.height(6.dp))
-            Text(if (isPoster()) "LIBRARY" else "Library", style = HeroTitle.variedFace("Library"), color = xc.onContainer)
-        }
-
-        // ── Tabs ───────────────────────────────────────────────────────────
-        // Filter chips rather than a tab bar: the selected one fills and squares off slightly, so
-        // the active tab is identifiable by shape as well as by colour.
-        ExpressiveChipRow(
-            options = LibraryTab.entries.toList(),
-            selected = tab,
-            label = { it.label },
-            icon = { it.icon },
-            onSelect = { tab = it },
-        )
-
-        Box(modifier = Modifier.weight(1f)) {
-            when (tab) {
+    // What each tab shows, shared by the two layouts: chips over a list, or Glass's index of
+    // categories that each open as a page.
+    val tabContent: @Composable (LibraryTab) -> Unit = { shown ->
+            when (shown) {
                 LibraryTab.RECENT ->
                     SongList(recent.map { it.toMusicItem() }, onPlaySongs, "Play something to see it here")
                 LibraryTab.LIKED -> {
@@ -177,7 +167,7 @@ fun LibraryScreen(
                 LibraryTab.PLAYLISTS -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalBottomChrome.current),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (isGlass()) 0.dp else 6.dp),
                 ) {
                     // "+ Create playlist" is always available, regardless of sign-in state.
                     item {
@@ -253,7 +243,47 @@ fun LibraryScreen(
                     else -> CollectionList(artists, onOpenItem, circularArt = true)
                 }
             }
+    }
+    if (isGlass()) {
+        GlassLibrary(
+            recent = recent.map { it.toMusicItem() },
+            onPlaySongs = onPlaySongs,
+            onCreatePlaylist = { showCreatePlaylist = true; newPlaylistName = "" },
+            content = tabContent,
+            modifier = modifier,
+        )
+    } else Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(xc.container)
+            // Capped and centred as a whole, so a row on a tablet is not a thumbnail followed by an
+            // acre, and the header, chips and lists keep one left edge.
+            .wrapContentWidth()
+            .widthIn(max = animatedReadableWidth())
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // ── Header ─────────────────────────────────────────────────────────
+        // Mono dateline over an italic display serif, matching Home's masthead.
+        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+            Text("YOUR COLLECTION", style = MetaLabel, color = xc.onContainerMuted)
+            Spacer(Modifier.height(6.dp))
+            Text("Library", style = HeroTitle.variedFace("Library"), color = xc.onContainer)
         }
+
+        // ── Tabs ───────────────────────────────────────────────────────────
+        // Filter chips rather than a tab bar: the selected one fills and squares off slightly, so
+        // the active tab is identifiable by shape as well as by colour.
+        ExpressiveChipRow(
+            options = LibraryTab.entries.toList(),
+            selected = tab,
+            label = { it.label },
+            icon = { it.icon },
+            onSelect = { tab = it },
+        )
+
+        Box(modifier = Modifier.weight(1f)) { tabContent(tab) }
     }
 
     if (showCreatePlaylist) {
@@ -261,7 +291,7 @@ fun LibraryScreen(
             onDismissRequest = { showCreatePlaylist = false },
             title = { Text("New playlist") },
             text = {
-                OutlinedTextField(shape = squareOr(OutlinedTextFieldDefaults.shape), 
+                OutlinedTextField(shape = OutlinedTextFieldDefaults.shape, 
                     value = newPlaylistName,
                     onValueChange = { newPlaylistName = it },
                     placeholder = { Text("Playlist name") },
@@ -269,7 +299,7 @@ fun LibraryScreen(
                 )
             },
             confirmButton = {
-                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = {
+                TextButton(shape = ButtonDefaults.textShape, onClick = {
                     val name = newPlaylistName.trim()
                     if (name.isNotEmpty()) {
                         viewModel.createPlaylist(name)
@@ -277,7 +307,7 @@ fun LibraryScreen(
                     }
                 }) { Text("Create") }
             },
-            dismissButton = { TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { showCreatePlaylist = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(shape = ButtonDefaults.textShape, onClick = { showCreatePlaylist = false }) { Text("Cancel") } },
         )
     }
 }
@@ -296,7 +326,7 @@ private fun SongList(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalBottomChrome.current),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isGlass()) 0.dp else 6.dp),
     ) {
         items(items = songs, key = { it.id }) { song ->
             val art = rememberSongArtwork(song.title, song.artist, song.thumbnailUrl)
@@ -353,7 +383,7 @@ private fun LocalMusicContent(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(20.dp))
-            Button(onClick = onRequestPermission, shape = squareOr(CircleShape)) { Text("Grant access") }
+            Button(onClick = onRequestPermission, shape = CircleShape) { Text("Grant access") }
         }
         return
     }
@@ -378,7 +408,7 @@ private fun CollectionList(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalBottomChrome.current),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isGlass()) 0.dp else 6.dp),
     ) {
         items(items) { item ->
             LibraryRow(
@@ -402,6 +432,17 @@ private fun LibraryRow(
     trailing: @Composable () -> Unit = {},
 ) {
     val colors = LocalExpressiveColors.current
+    if (isGlass()) {
+        GlassListRow(
+            title = title,
+            subtitle = subtitle,
+            onClick = onClick,
+            artworkUrl = thumbnailUrl ?: "",
+            circularArt = circularThumb,
+            trailing = trailing,
+        )
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -435,6 +476,136 @@ private fun LibraryRow(
 @Composable
 private fun CenterHint(text: String, color: androidx.compose.ui.graphics.Color) {
     Box(modifier = Modifier.fillMaxSize().padding(bottom = LocalBottomChrome.current), contentAlignment = Alignment.Center) {
-        Text(text, style = BodyText, color = color)
+        if (isGlass()) GlassEmpty(text) else Text(text, style = BodyText, color = color)
+    }
+}
+
+/**
+ * Library in the Glass design: an index rather than a row of chips. Each kind of thing in the
+ * library is a line with an icon and a chevron, opening as a page of its own with a way back, and
+ * under the index the songs played most recently, as covers.
+ */
+@Composable
+private fun GlassLibrary(
+    recent: List<MusicItem>,
+    onPlaySongs: (List<MusicItem>, Int) -> Unit,
+    onCreatePlaylist: () -> Unit,
+    content: @Composable (LibraryTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val xc = LocalExpressiveColors.current
+    var open by rememberSaveable { mutableStateOf<LibraryTab?>(null) }
+    BackHandler(enabled = open != null) { open = null }
+    AnimatedContent(
+        targetState = open,
+        transitionSpec = {
+            val forward = targetState != null
+            (slideInHorizontally(ExpressiveMotion.spatialDefault()) { if (forward) it / 4 else -it / 4 } + fadeIn())
+                .togetherWith(slideOutHorizontally { if (forward) -it / 6 else it / 6 } + fadeOut())
+        },
+        modifier = modifier.fillMaxSize().background(xc.container),
+        label = "libraryPage",
+    ) { page ->
+        if (page == null) LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentWidth()
+                .widthIn(max = animatedReadableWidth())
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 16.dp + LocalBottomChrome.current),
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
+                    Text("Library", style = HeroTitle, color = xc.onContainer, modifier = Modifier.weight(1f))
+                    GlassHeaderButton(Icons.Filled.Add, "New playlist", onCreatePlaylist)
+                }
+            }
+            items(LibraryTab.entries.toList()) { tab ->
+                GlassIndexRow(tab.label, tab.icon) { open = tab }
+            }
+            if (recent.isNotEmpty()) {
+                item {
+                    Text(
+                        "Recently played",
+                        style = GlassSectionTitle,
+                        color = xc.onContainer,
+                        modifier = Modifier.padding(top = 30.dp, bottom = 12.dp),
+                    )
+                }
+                val shown = recent.take(12)
+                items(shown.chunked(2)) { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 18.dp)) {
+                        for (song in pair) {
+                            val art = rememberSongArtwork(song.title, song.artist, song.thumbnailUrl)
+                            Column(Modifier.weight(1f).pressableScale { onPlaySongs(shown, shown.indexOf(song)) }) {
+                                AsyncImage(
+                                    model = art,
+                                    contentDescription = null,
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(ShapeLarge).background(xc.surfaceHigh),
+                                )
+                                Spacer(Modifier.height(7.dp))
+                                Text(song.title, style = BodyText.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = xc.onContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(song.artist, style = BodyText.copy(fontSize = 13.sp), color = xc.onContainerMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        } else Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentWidth()
+                .widthIn(max = animatedReadableWidth())
+                .fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(start = 8.dp, top = 2.dp)
+                    .clip(ShapeMedium)
+                    .clickable { open = null }
+                    .padding(horizontal = 6.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = xc.accent, modifier = Modifier.size(28.dp))
+                Text("Library", style = BodyText.copy(fontSize = 17.sp), color = xc.accent)
+            }
+            Text(
+                page.label,
+                style = HeroTitle,
+                color = xc.onContainer,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
+            )
+            Box(Modifier.weight(1f)) { content(page) }
+        }
+    }
+}
+
+/** One line of the index: accent icon, the name at reading size, a chevron, a hairline. */
+@Composable
+private fun GlassIndexRow(label: String, icon: ImageVector, onClick: () -> Unit) {
+    val xc = LocalExpressiveColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(ShapeMedium)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = xc.accent, modifier = Modifier.padding(start = 2.dp).size(25.dp))
+        Spacer(Modifier.width(16.dp))
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .height(54.dp)
+                .drawBehind {
+                    drawLine(xc.line, Offset(0f, size.height - 0.5f), Offset(size.width, size.height - 0.5f), strokeWidth = 1f)
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = BodyText.copy(fontSize = 19.sp, lineHeight = 24.sp), color = xc.onContainer, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = xc.onContainerMuted.copy(alpha = 0.7f), modifier = Modifier.size(22.dp))
+        }
     }
 }

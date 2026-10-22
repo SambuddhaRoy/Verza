@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.OnCoverWash
+import com.verza.ui.theme.isGlass
 import androidx.compose.foundation.layout.padding
 import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.ui.theme.FontBody
@@ -42,8 +44,6 @@ fun LyricsScreen(
     artworkUrl: String? = null,
     viewModel: LyricsViewModel = hiltViewModel(),
 ) {
-    val colors = MaterialTheme.colorScheme
-    val ext = LocalVerzaExtendedColors.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     var shareLine by remember { mutableStateOf<ShareLine?>(null) }
 
@@ -51,6 +51,11 @@ fun LyricsScreen(
         viewModel.load(title, artist, durationMs)
     }
 
+    // Glass sets lyrics on the cover, as Now Playing is. The page reads its colours inside, so it
+    // takes whichever theme it is drawn in.
+    val page: @Composable () -> Unit = {
+    val colors = MaterialTheme.colorScheme
+    val ext = LocalVerzaExtendedColors.current
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().background(colors.background)) {
             // ── Header ─────────────────────────────────────────────────────
@@ -112,6 +117,8 @@ fun LyricsScreen(
             )
         }
     }
+    }
+    if (isGlass()) OnCoverWash(artworkUrl, page) else page()
 }
 
 @Composable

@@ -1,7 +1,6 @@
 package com.verza.ui.share
 
 import androidx.compose.material3.ButtonDefaults
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -80,8 +79,8 @@ fun ShareCardOverlay(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = onDismiss, enabled = working == null) { Text("Close") }
-                Button(shape = squareOr(ButtonDefaults.shape), 
+                TextButton(shape = ButtonDefaults.textShape, onClick = onDismiss, enabled = working == null) { Text("Close") }
+                Button(shape = ButtonDefaults.shape, 
                     enabled = working == null,
                     onClick = {
                         if (working == null) {
@@ -98,7 +97,7 @@ fun ShareCardOverlay(
                     Text(if (working == "image") "Preparing…" else "Image")
                 }
                 if (allowVideo) {
-                    Button(shape = squareOr(ButtonDefaults.shape), 
+                    Button(shape = ButtonDefaults.shape, 
                         enabled = working == null,
                         onClick = {
                             if (working == null) {

@@ -1,6 +1,5 @@
 package com.verza.ui.share
 
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -121,7 +120,7 @@ fun NowPlayingCard(
                     style = TextStyle(fontFamily = FontMono, fontSize = 11.sp, letterSpacing = 0.30.em),
                     color = cover.sub,
                 )
-                Box(Modifier.size(8.dp).clip(squareOr(CircleShape)).background(cover.accent))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(cover.accent))
             }
         }
     }

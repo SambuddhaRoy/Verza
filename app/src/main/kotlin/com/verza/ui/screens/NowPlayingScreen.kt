@@ -1,7 +1,6 @@
 package com.verza.ui.screens
 
 import com.verza.ui.expressive.ShapeMedium
-import com.verza.ui.theme.squareOr
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -69,6 +68,8 @@ import com.verza.ui.theme.LocalVerzaExtendedColors
 import com.verza.ui.expressive.ExpressiveMoreSheet
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verza.ui.expressive.NowPlayingExpressive
+import com.verza.ui.expressive.NowPlayingGlass
+import com.verza.ui.expressive.ExpressiveSheetRow
 import com.verza.ui.theme.glassSurface
 
 @Composable
@@ -149,8 +150,35 @@ fun NowPlayingScreen(
     // The cover-shape preference lives in Settings; read it here so the player can morph the mask.
     val settingsVm: com.verza.ui.screens.SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
+    val glass = com.verza.ui.theme.isGlass()
     Box(modifier = modifier.fillMaxSize()) {
-        NowPlayingExpressive(
+        if (glass) NowPlayingGlass(
+            onBack = onBack,
+            title = title,
+            artist = artist,
+            artworkUrl = artworkUrl,
+            albumArtMotion = albumArtMotion,
+            isPlaying = isPlaying,
+            isLiked = isLiked,
+            positionMs = positionMs,
+            durationMs = durationMs,
+            shuffleEnabled = shuffleEnabled,
+            repeatMode = repeatMode,
+            queue = queue,
+            currentIndex = currentIndex,
+            onTogglePlay = onTogglePlay,
+            onNext = onNext,
+            onPrevious = onPrevious,
+            onSeek = onSeek,
+            onToggleLike = onToggleLike,
+            onToggleShuffle = onToggleShuffle,
+            onCycleRepeat = onCycleRepeat,
+            onPlayQueueItem = onPlayQueueItem,
+            onRemoveQueueItem = onRemoveQueueItem,
+            onOpenLyrics = onOpenLyrics,
+            onOpenMore = { showMore = true },
+            modifier = Modifier.fillMaxSize(),
+        ) else NowPlayingExpressive(
             onBack = onBack,
             title = title,
             artist = artist,
@@ -199,6 +227,53 @@ fun NowPlayingScreen(
                 onFocus = { showMore = false; showFocusSheet = true },
                 onShareSession = { showMore = false; shareSession() },
                 onDismiss = { showMore = false },
+                // Glass's Now Playing keeps only the essentials on screen; the rest of what the
+                // other designs show as buttons lives here.
+                extra = if (!glass) null else { c ->
+                    val sheetColors = com.verza.ui.expressive.LocalExpressiveColors.current
+                    ExpressiveSheetRow(
+                        icon = Icons.Filled.PlaylistAdd,
+                        label = "Add to playlist",
+                        onClick = { showMore = false; onAddToPlaylist() },
+                        colors = sheetColors,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ExpressiveSheetRow(
+                        icon = if (isDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
+                        label = when {
+                            isDownloaded -> "Remove download"
+                            isDownloading -> "Downloading…"
+                            else -> "Download"
+                        },
+                        onClick = { showMore = false; if (isDownloaded) onRemoveDownload() else if (!isDownloading) onDownload() },
+                        colors = sheetColors,
+                        active = isDownloaded,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ExpressiveSheetRow(
+                        icon = Icons.Filled.Radio,
+                        label = "Start radio",
+                        onClick = { showMore = false; onStartRadio() },
+                        colors = sheetColors,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ExpressiveSheetRow(
+                        icon = Icons.Filled.Bedtime,
+                        label = "Sleep timer",
+                        value = sleepRemaining,
+                        onClick = { showMore = false; showSleepSheet = true },
+                        colors = sheetColors,
+                        active = sleepTimerEndAt != null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ExpressiveSheetRow(
+                        icon = Icons.Filled.Share,
+                        label = "Share as a picture",
+                        onClick = { showMore = false; showShareCard = true },
+                        colors = sheetColors,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
             )
         }
         if (showShareCard) {
@@ -392,7 +467,7 @@ private fun FocusCompleteBanner(
             modifier = Modifier
                 .statusBarsPadding()
                 .padding(top = 12.dp)
-                .clip(squareOr(RoundedCornerShape(50)))
+                .clip(RoundedCornerShape(50))
                 .background(colors.primaryContainer)
                 .clickable(onClick = onConsume)
                 .padding(horizontal = 18.dp, vertical = 10.dp),

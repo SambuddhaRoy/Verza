@@ -34,74 +34,93 @@ minSdk 26, target/compile 35. A separate Electron desktop port lives at
 - Last published GitHub *release* is v1.0.0; everything since (mixes, sound suite, OS media
   integration, halftone glow, cover-flow, EQ presets, share-to-Verza) is on `main` only.
 
-## Design setting: Material or Poster (Settings > Design)
+## Design setting: Material or Glass (Settings > Design)
 
 Two looks over the same app, switchable live. **Material** is the app as it was (rounded, M3
-Expressive). **Poster** is square edges everywhere, one display face for headings, and a Now Playing
-that hides its controls into a poster of the cover. Both take their colours from the cover. Stored as
-`design_scheme`; **absent or unknown means Material**, so an update never restyles anyone (tested).
-The references were GASS Records (flat slabs of colour) and Uncut's display type.
+Expressive, the whole palette from the cover). **Glass** is the Apple Music-like one (below). Stored
+as `design_scheme`; **absent or unknown means Material**, so an update never restyles anyone
+(tested). There was a third, **Poster** (square slabs, GASS Records), removed in 1.19.0; anyone on it
+lands on Material, since "POSTER" is now an unknown name.
 
 - **One switch, read in composition.** `DesignScheme` and `LocalDesign` live in `ui/theme/Design.kt`,
-  provided by `VerzaTheme(design = ...)` from MainActivity. Every shape goes through
-  `squareOr(shape)`. The shape tokens (`VerzaShape`, the `Shape*` scale, `PillShape`, `CloudShape`,
-  `CookieShape`) are `@Composable` getters that already do it. **A rounded shape must be read in
-  composition and passed in**: one picked inside a draw or layout lambda cannot see the setting change.
-- **A new rounded literal or Material button needs `squareOr(...)`.** Material hardwires
-  `Button`/`TextButton`/`OutlinedButton`/`OutlinedTextField` rounded whatever the theme says, so each
-  passes `shape = squareOr(ButtonDefaults.shape)` (or its sibling). Theme slots switch to `SquareShapes`.
-  The equalizer's `Switch` and `Slider` have no shape parameter; `SquareSwitch`/`SquareSlider` in
-  `EqualizerScreen.kt` draw the square ones and hand back Material's own in Material.
-- **Widgets follow it** (`WidgetState.design`, `WidgetRenderer.square`): every mask becomes
-  `widget_shape_square`, including the shadow copies behind shaped buttons (they have ids ending
-  `_shadow` for this). The vinyl's disc and label stay round, as a picture of a record. `square` is
-  state on a singleton, safe only while renders are serialised (see its ponytail note).
-- **Headings:** `PosterTypography` puts display, headline and the large title in Frick
-  (`FontPosterHead`); body stays Inter, and lyric lines are pinned to Inter. `HeroDisplay`/`HeroTitle`
-  are getters for the same reason as the shapes.
-- **Now Playing hides its controls, in both designs,** after 4s untouched while playing (`CONTROLS_HIDE_MS`);
+  provided by `VerzaTheme(design = ...)` from MainActivity. Shape tokens (`VerzaShape`, the `Shape*`
+  scale, `CloudShape`, `CookieShape`) are `@Composable` getters through `designShape(material,
+  glass)`. **A shape must be read in composition and passed in**: one picked inside a draw or layout
+  lambda cannot see the setting change. `HeroDisplay`/`HeroTitle` are getters for the same reason.
+- **Material's Now Playing hides its controls** after 4s untouched while playing (`CONTROLS_HIDE_MS`);
   paused they stay. Any touch brings them back (an Initial-pass pointer watcher, never consuming).
   Never hides with touch exploration on; otherwise honours the system's "time to take action". The
   layout has exactly two arrangements and `animateBoundsIn` springs between them; **do not drive the
   layout with an animated value**, or animateBoundsIn chases a moving target every frame. Hidden
   controls are un-placed, not parked off-screen: parked below the player they caught touches meant for
-  the queue. The cover runs to the screen's edges only in Poster; Material keeps its margin and rounded cover.
-- **A different display face for every song, in both designs** (`TitleFonts.kt`, `pickTitleFace`): twelve OFL faces
-  from uncut.wtf in `res/font/display_*`, licence texts in `assets/font-licenses/`. Stable per song
-  (hash of the track key), never the previous song's face, and a face that cannot set every character
-  of the title is skipped. "Can set" means a glyph **and ink**: Solide Mirage and Sunday map `"` to an
-  empty glyph, which `hasGlyph` reports as present. If no face fits (Devanagari) the app's type is
-  used. `FitTitle` sizes it: 120sp down, max three lines, no word split, at most 22% of screen height.
-  PicNic is out: Uncut still lists it as OFL but it has moved to a licence with conditions. Five more
-  OFL faces (Getai Grotesk Display, LC Mogi, Cakra, Queering, Slibinas) need a manual download.
+  the queue.
+- **A different display face for every song in Material** (`TitleFonts.kt`, `pickTitleFace`): OFL faces
+  in `res/font/display_*`, licence texts in `assets/font-licenses/`. Stable per song (hash of the
+  track key), never the previous song's face, and a face that cannot set every character of the title
+  is skipped. "Can set" means a glyph **and ink**: Solide Mirage and Sunday map `"` to an empty glyph,
+  which `hasGlyph` reports as present. If no face fits (Devanagari) the app's type is used. `FitTitle`
+  sizes it: 120sp down, max three lines, no word split, at most 22% of screen height. PicNic is out:
+  it has moved to a licence with conditions. **The mobile repo is public, so only OFL-type licences
+  can go in it.** `TitleFonts.legible` is the subset that reads at list size.
+- **List rows** use `RowTitle`/`RowSubtitle` rather than their own `Text`: a face of its own per title
+  in Material (`variedFace`), one face at reading size in Glass.
+- **Release notes render as text** (`releaseNotesText`): handles `##`, `- `, `**bold**` and
+  `[links](url)`, which is all the notes use.
 
-- **Collage Home** (Poster only, Settings > Design > Collage home, `home_collage`, **off by default, marked experimental** along with Poster itself):
-  `HomeCollage.kt`. Every mix and shelf item packed edge to edge by `packCollage` (`Collage.kt`): a
-  dense grid where each square tile shrinks to fit the first free cell, holes too small for a cover
-  become flat colour slabs, and the bottom is squared off. **`CollageTest` sweeps 400 random size runs
-  for gaps and overlaps**; touch the packing and run it. Sizes are a hash of item and date
-  (`collageSpan`), so the wall holds still all day and changes the next. Capped at 60 covers.
-  `sizedArt` asks YouTube's art hosts for the drawn size (`=wN-hN` / `=sN`).
-- **Fonts:** 26 display faces in `res/font/display_*`, all OFL with texts in `assets/font-licenses/`:
-  12 from Uncut, 13 from Velvetyne, Anton from Fontshare. **The mobile repo is public, so only
-  OFL-type licences can go in it.** Fontshare's own ITF Free Font License allows embedding in an app
-  but forbids putting the files on a public server, which a public repo is; Suva Type Foundry
-  publishes no licence at all. `TitleFonts.legible` is the subset that reads at list size.
-- **Search and Library rows**, in both designs, set each title in its own legible face (`RowTitle`,
-  `RowSubtitle`, `variedFace`; tracked capitals for the subtitle are Poster's); every list row should use those two rather than its own `Text`.
-- **Poster Now Playing controls** (`PosterControls`): one flat strip (previous, PLAY/PAUSE in Anton,
-  next), then the toggles and tools as words on slabs, each ruled in the ink colour so neighbouring
-  surfaces a shade apart still read as separate blocks.
-- **Poster widgets** use `widget_gass.xml` / `widget_gass_strip.xml`: cover, title drawn to a bitmap
-  in a display face (RemoteViews cannot load app fonts), slab strip. The strip widget hands the
-  launcher both arrangements by size on Android 12+ (`stripOrStack`). Launchers round every widget's
-  outer corners themselves on 12+; nothing in the app can square them.
-- **Release notes render as text** (`releaseNotesText`): the What's new and Update sheets had shown
-  the Markdown as typed. Handles `##`, `- `, `**bold**` and `[links](url)`, which is all the notes use.
+**The emulator gets killed with the turn when started as a background task**; start it with
+PowerShell `Start-Process` instead.
 
-Verified on a Pixel 7 emulator: Material and Poster, the collage, Library and Search type, Poster Now
-Playing, and three Poster widgets placed on a real home screen. **The emulator gets killed with the
-turn when started as a background task**; start it with PowerShell `Start-Process` instead.
+## Design setting: Glass (Apple Music-like)
+
+Black or white with the system's dark mode, one accent from the cover, Inter's display cut for
+headings, continuous corners, glass chrome, and plain rows with hairlines instead of tiles
+(`GlassListRow`). The Colour settings are hidden in it: the flavours have nothing to push there.
+
+- **Colour, with restraint** (`glassColors(cover, dark)`): the accent is the cover's most vivid
+  swatch, searched through value and then saturation until it clears 4.5:1 on the canvas; its ink is
+  `readableOn`. The canvas and surfaces carry only a breath of the cover's hue. A colourless (or
+  missing) cover gets Verza's red, because a grey accent reads as a disabled one. Many covers in a
+  library are black and white, so red is common, not a bug. `ExpressiveColorsTest` sweeps the hue
+  wheel through both modes.
+- **Type:** Inter has an optical-size axis (`opsz` 14 to 32). `FontDisplayCut` is the 32 end, used by
+  `GlassTypography`'s display, headline and large-title slots and by `HeroTitle`/`HeroDisplay`/
+  `GlassSectionTitle` in Glass; text sizes stay on `FontBody` (14). That is what keeps a large title
+  from looking like body text zoomed in.
+- **Continuous corners** (`SquircleShape`, Figma's corner smoothing at iOS's 0.6) for artwork, cards,
+  buttons and the Now Playing cover; 6dp thumbnails stay plain (too small to tell). It is a path
+  outline, so it clips by path; fine for these, avoid it for hundreds of tiny thumbnails. The Material
+  theme's `Shapes` slots need `CornerBasedShape`, so `GlassShapes` stays plain rounded.
+- **Real glass, recorded rather than read back** (`ui/theme/LiquidGlass.kt`). Compose has no backdrop
+  filter. `glassSource(backdrop)` records a node into a `GraphicsLayer`; `liquidGlass(shape, ...)`
+  redraws its own patch of that recording through a RenderEffect: blur + saturation (API 31+), then
+  an AGSL lens that samples outward near the rim (API 33+), plus a lit rim. Below 31 it is a plain
+  fill. The recording references the live display list, so scrolling updates the glass for free.
+  The lens's colour fringe divides by each sample's own alpha: past the end of the recording (the
+  foot of the screen) a sample is transparent, and taking its red channel raw left a cyan edge.
+- **A glass pane must never be inside the source it shows** (it would draw a recording of itself).
+  The NavHost is the source for the bottom chrome only (`LocalGlassBackdrop` is provided to the
+  bottom bar, not the pages). Now Playing records its own cover wash for its buttons; Collection and
+  Artist record their page for the floating header buttons. Anywhere else glass falls back to a fill.
+- **Bottom chrome** (`GlassChrome.kt`): a capsule of tabs (Home, Library) with a highlight that slides
+  and swells, a separate search circle, the mini player above. Scrolling a page down folds all three
+  into one row (a NestedScrollConnection on the NavHost, `onPostScroll` so pulling at a list's top
+  does nothing). The chrome keeps its full height while folded so `LocalBottomChrome` never changes.
+  Its side margin is concentric with the display's corner (`Display.getRoundedCorner`, 12+), its
+  type is capped at 1.3x (fixed-height capsule), and it is placed with `placeRelative` for RTL.
+- **Motion:** pages push in from the edge with the old one sliding a third behind (`PushSpring`,
+  critically damped), tabs cross-fade, Now Playing rises over the page and drops back (NavHost
+  transitions with `KeepUntilTransitionsFinished`); drag down to close.
+- **Haptics** (`Haptics`, `rememberHaptics`), sparing on purpose: a tick for tab changes, like and
+  the queue toggles, and the volume slider's ends; a click for play/pause; a bump when a drag crosses
+  the point where letting go acts (closing Now Playing, swiping to the next song).
+- **Now Playing** (`NowPlayingGlass.kt`) is its own layout: the cover blurred into a slowly turning
+  wash (blurred once; only the layer holding it turns, so a frame of drift is not a re-blur), the
+  cover shrinking while paused, a scrubber and the system volume that thicken under a finger, and the
+  queue opening in place of the cover. The rest of the player's actions are in More. Lyrics sits on
+  the same wash (`OnCoverWash`), and the NavHost leaves its top unpadded on that route.
+- **Library** in Glass is an index of categories that each open as a page (BackHandler returns),
+  with recently played as covers underneath. Empty states are `GlassEmpty`: a large quiet symbol
+  over one line saying what to do.
 
 ## Architecture pointers
 - **Background glow** (app-wide, behind the NavHost in `MainActivity`): `ui/theme/Glow.kt`.
@@ -145,8 +164,8 @@ turn when started as a background task**; start it with PowerShell `Start-Proces
   side by side that was the "corners don't match" look. Use the tokens, not `RoundedCornerShape(n.dp)`.
 - **Widgets: the card takes the launcher's corner** (`@dimen/widget_corner`, which is
   `system_app_widget_background_radius` on 12+: 28dp on Pixel). It was 36dp, a second curve inside
-  every other widget's. Poster and Strip have a second layout chosen by size on 12+
-  (`posterBySize`, `stripBySize`): at the sizes a launcher actually picks (3x3 for Poster, 3x2 for
+  every other widget's. The Poster widget and Strip have a second layout chosen by size on 12+
+  (`bySize`): at the sizes a launcher actually picks (3x3 for the Poster widget, 3x2 for
   Strip on a Pixel 7) the cover pushed the controls out, and the strip's pill became an oval.
   Place them on the emulator with `input draganddrop` from the widget picker.
 - **Offline, a failed song pauses instead of skipping** (`PlayerConnection.onPlayerError`, `isOnline`
@@ -164,7 +183,7 @@ turn when started as a background task**; start it with PowerShell `Start-Proces
   alone when signed in, so a like made here only appeared after a refetch.
 - **Long titles use `TitleFonts.legible` only** (`poolFor`, over 22 characters). Outward fuses its
   letters, and "Get Lucky (feat. Pharrell Williams and Nile Rodgers)" came out as a block of ink on
-  Now Playing. Every caller of `pickTitleFace` (Now Playing, the collage, widgets) picks from the pool.
+  Now Playing. Every caller of `pickTitleFace` (Now Playing, widgets) picks from the pool.
 - **A hand-drawn control needs its semantics spelled out.** The Settings switches were plain
   clickables, so TalkBack (and `uiautomator`) saw no on/off state. `RowSurface(switchState = …)`
   sets `Role.Switch` and `toggleableState`.

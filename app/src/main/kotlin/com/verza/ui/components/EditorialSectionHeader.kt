@@ -1,6 +1,5 @@
 package com.verza.ui.components
 
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +45,7 @@ fun EditorialSectionHeader(
             Modifier
                 .width(accentWidth.dp)
                 .height(1.dp)
-                .clip(squareOr(RoundedCornerShape(0.5.dp)))
+                .clip(RoundedCornerShape(0.5.dp))
                 .background(if (sleeve) cover.accent else colors.primary),
         )
         Spacer(Modifier.height(8.dp))

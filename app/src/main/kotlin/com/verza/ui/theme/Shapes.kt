@@ -20,16 +20,14 @@ import androidx.compose.ui.unit.dp
  * Something inside a rounded container is concentric with it: its radius is the container's
  * minus the inset (a 20dp row with an 8dp inset holds a 12dp thumbnail). Different radii side by
  * side, or a thumbnail curving more tightly than its row, is what made the app look unmatched.
- *
- * In the Poster design (see [DesignScheme]) none of it curves at all.
  */
 val VerzaCorner: Dp = 20.dp
 
 private val RoundedVerza = RoundedCornerShape(VerzaCorner)
 
-/** A card: the 20dp of the scale above. Square in the Poster design. */
+/** A card: the 20dp of the scale above (14, continuous, in Glass). */
 val VerzaShape: Shape
-    @Composable @ReadOnlyComposable get() = squareOr(RoundedVerza)
+    @Composable @ReadOnlyComposable get() = designShape(RoundedVerza, com.verza.ui.expressive.SquircleShape(14.dp))
 
 /** Material's own components on the same scale: menus, snackbars and text fields at 12, cards at
  *  20, sheets and dialogs at 28. */
@@ -41,19 +39,11 @@ val VerzaShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp),
 )
 
-/**
- * The same slots, square, for the Poster design. This reaches sheets, dialogs, menus and cards.
- * It does not reach buttons, switches or slider thumbs, which Material hardwires to a full circle
- * whatever the theme says; those go through [squareOr] at the call site.
- *
- * A zero-radius RoundedCornerShape rather than RectangleShape because the slots are typed
- * CornerBasedShape; it draws the same.
- */
-private val Square = RoundedCornerShape(0.dp)
-val SquareShapes = Shapes(
-    extraSmall = Square,
-    small = Square,
-    medium = Square,
-    large = Square,
-    extraLarge = Square,
+/** Glass: menus and fields at 10, cards at 12, sheets and dialogs at 28. */
+val GlassShapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(12.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )

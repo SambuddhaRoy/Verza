@@ -1,10 +1,11 @@
 package com.verza.ui.expressive
 
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.ui.text.TextStyle
-import com.verza.ui.theme.isPoster
+import com.verza.ui.theme.isGlass
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.em
-import com.verza.ui.theme.squareOr
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -44,6 +45,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import coil3.compose.AsyncImage
 
 /**
@@ -68,6 +74,28 @@ fun ExpressiveSectionHeader(
     onSeeAll: (() -> Unit)? = null,
 ) {
     val colors = LocalExpressiveColors.current
+    if (isGlass()) {
+        // "Title ›": the whole line is the link, the way a shelf heading works on Apple Music.
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .then(if (onSeeAll != null) Modifier.clickable(onClick = onSeeAll) else Modifier)
+                .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                if (subtitle != null) Text(subtitle, style = BodyText.copy(fontSize = 13.sp), color = colors.onContainerMuted)
+                Text(title, style = GlassSectionTitle, color = colors.onContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (onSeeAll != null) Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = colors.onContainerMuted,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        return
+    }
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Bottom,
@@ -123,13 +151,14 @@ fun ExpressiveCard(
     val colors = LocalExpressiveColors.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val glass = isGlass()
     val radius by animateDpAsState(
-        targetValue = if (pressed) 32.dp else 20.dp,
+        targetValue = if (glass) 10.dp else if (pressed) 32.dp else 20.dp,
         animationSpec = ExpressiveMotion.spatialFast(),
         label = "cardCorner",
     )
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.96f else 1f,
+        targetValue = if (pressed) (if (glass) 0.97f else 0.96f) else 1f,
         animationSpec = ExpressiveMotion.spatialDefault(),
         label = "cardScale",
     )
@@ -144,7 +173,7 @@ fun ExpressiveCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspect)
-                .clip(squareOr(RoundedCornerShape(radius)))
+                .clip(RoundedCornerShape(radius))
                 .background(colors.surface),
         ) {
             AsyncImage(
@@ -154,18 +183,18 @@ fun ExpressiveCard(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(if (glass) 7.dp else 8.dp))
         Text(
             text = title,
-            style = BodyStrong,
+            style = if (glass) GlassCaption else BodyStrong,
             color = colors.onContainer,
-            maxLines = 2,
+            maxLines = if (glass) 1 else 2,
             overflow = TextOverflow.Ellipsis,
         )
         if (!subtitle.isNullOrBlank()) {
             Text(
                 text = subtitle,
-                style = BodyText,
+                style = if (glass) GlassCaption.copy(fontWeight = FontWeight.Normal) else BodyText,
                 color = colors.onContainerMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -196,13 +225,27 @@ fun ExpressiveListItem(
     position: SegmentPosition = SegmentPosition.SINGLE,
 ) {
     val colors = LocalExpressiveColors.current
+    if (isGlass()) {
+        GlassListRow(
+            title = title,
+            subtitle = subtitle,
+            onClick = onClick,
+            modifier = modifier,
+            artworkUrl = artworkUrl,
+            leadingIcon = leadingIcon,
+            trailing = trailing,
+            selected = selected,
+            divider = position != SegmentPosition.LAST,
+        )
+        return
+    }
     val big = 20.dp
     val small = 6.dp
     val shape = when (position) {
-        SegmentPosition.SINGLE -> squareOr(RoundedCornerShape(big))
-        SegmentPosition.FIRST -> squareOr(RoundedCornerShape(topStart = big, topEnd = big, bottomStart = small, bottomEnd = small))
-        SegmentPosition.MIDDLE -> squareOr(RoundedCornerShape(small))
-        SegmentPosition.LAST -> squareOr(RoundedCornerShape(topStart = small, topEnd = small, bottomStart = big, bottomEnd = big))
+        SegmentPosition.SINGLE -> RoundedCornerShape(big)
+        SegmentPosition.FIRST -> RoundedCornerShape(topStart = big, topEnd = big, bottomStart = small, bottomEnd = small)
+        SegmentPosition.MIDDLE -> RoundedCornerShape(small)
+        SegmentPosition.LAST -> RoundedCornerShape(topStart = small, topEnd = small, bottomStart = big, bottomEnd = big)
     }
     // Effects spring: this is a colour, so it must not overshoot.
     val bg by animateColorAsState(
@@ -253,7 +296,18 @@ fun ExpressiveListItem(
  */
 @Composable
 fun RowTitle(text: String, color: Color, style: TextStyle = BodyStrong) {
-    val size = if (isPoster()) 21.sp else 19.sp
+    if (isGlass()) {
+        // One face, at reading size: a list of names in Glass is a list, not a specimen sheet.
+        Text(
+            text = text,
+            style = style.copy(fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium),
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        return
+    }
+    val size = 19.sp
     Text(
         text = text,
         style = style.copy(fontSize = size, lineHeight = size * 1.05f).variedFace(text),
@@ -266,14 +320,88 @@ fun RowTitle(text: String, color: Color, style: TextStyle = BodyStrong) {
 /** A list row's second line: small tracked capitals in the Poster design, as it was in Material. */
 @Composable
 fun RowSubtitle(text: String, color: Color, style: TextStyle = BodyText) {
-    val poster = isPoster()
     Text(
-        text = if (poster) text.uppercase() else text,
-        style = if (poster) style.copy(fontSize = 11.sp, letterSpacing = 0.1.em) else style,
+        text = text,
+        style = if (isGlass()) style.copy(fontSize = 14.sp, lineHeight = 18.sp) else style,
         color = color,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )
+}
+
+/** Card captions in Glass: one line each, the title a weight up from the subtitle. */
+private val GlassCaption = TextStyle(
+    fontFamily = com.verza.ui.theme.FontBody,
+    fontWeight = FontWeight.Medium,
+    fontSize = 14.sp,
+    lineHeight = 18.sp,
+)
+
+/**
+ * A list row in the Glass design: no tile, just the picture, the two lines and a hairline under
+ * the text, the way a list is drawn on Apple Music. The playing row's title takes the accent.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun GlassListRow(
+    title: String,
+    subtitle: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    artworkUrl: String? = null,
+    leadingIcon: ImageVector? = null,
+    circularArt: Boolean = false,
+    trailing: @Composable (() -> Unit)? = null,
+    selected: Boolean = false,
+    divider: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+) {
+    val colors = LocalExpressiveColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(ShapeMedium)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(start = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        when {
+            artworkUrl != null -> AsyncImage(
+                model = artworkUrl.ifEmpty { null },
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .padding(vertical = 6.dp)
+                    .size(50.dp)
+                    .clip(if (circularArt) PillShape else ShapeMedium)
+                    .background(colors.surfaceHigh),
+            )
+            leadingIcon != null -> Box(Modifier.padding(vertical = 6.dp).size(50.dp), contentAlignment = Alignment.Center) {
+                Icon(leadingIcon, contentDescription = null, tint = colors.accent, modifier = Modifier.size(26.dp))
+            }
+        }
+        Spacer(Modifier.width(14.dp))
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 62.dp)
+                .drawBehind {
+                    if (divider) drawLine(
+                        colors.line,
+                        Offset(0f, size.height - 0.5f),
+                        Offset(size.width, size.height - 0.5f),
+                        strokeWidth = 1f,
+                    )
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
+                RowTitle(title, if (selected) colors.accent else colors.onContainer)
+                if (!subtitle.isNullOrBlank()) RowSubtitle(subtitle, colors.onContainerMuted)
+            }
+            trailing?.invoke()
+        }
+    }
 }
 
 /** Work out each row's place in its group, so callers do not have to. */
@@ -297,21 +425,30 @@ fun ExpressiveChip(
     icon: ImageVector? = null,
 ) {
     val colors = LocalExpressiveColors.current
+    val glass = isGlass()
     val radius by animateDpAsState(
-        targetValue = if (selected) 14.dp else 24.dp,
+        targetValue = if (glass) 50.dp else if (selected) 14.dp else 24.dp,
         animationSpec = ExpressiveMotion.spatialFast(),
         label = "chipCorner",
     )
     val bg by animateColorAsState(
-        targetValue = if (selected) colors.accent else colors.surface,
+        targetValue = when {
+            glass && selected -> colors.onContainer
+            selected -> colors.accent
+            else -> colors.surface
+        },
         animationSpec = ExpressiveMotion.effectsFast(),
         label = "chipFill",
     )
-    val fg = if (selected) colors.onAccent else colors.onSurface
+    val fg = when {
+        glass && selected -> colors.container
+        selected -> colors.onAccent
+        else -> colors.onSurface
+    }
 
     Row(
         modifier = modifier
-            .clip(squareOr(RoundedCornerShape(radius)))
+            .clip(RoundedCornerShape(radius))
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -346,5 +483,27 @@ fun <T> ExpressiveChipRow(
                 icon = icon(option),
             )
         }
+    }
+}
+
+/**
+ * An empty or failed state in the Glass design: a large, quiet symbol over one line of text, centred,
+ * the way iOS says there is nothing here. Says what to do where it can; never a bare "Empty".
+ */
+@Composable
+fun GlassEmpty(text: String, icon: ImageVector = androidx.compose.material.icons.Icons.Rounded.MusicNote) {
+    val colors = LocalExpressiveColors.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(horizontal = 40.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = colors.onContainerMuted.copy(alpha = 0.55f), modifier = Modifier.size(52.dp))
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text,
+            style = BodyText.copy(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium),
+            color = colors.onContainerMuted,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }

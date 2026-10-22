@@ -4,7 +4,6 @@ import com.verza.ui.expressive.ShapeMedium
 import com.verza.tracksLabel
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -161,7 +160,7 @@ fun AddToPlaylistSheet(
             onDismissRequest = { showCreate = false },
             title = { Text("New playlist") },
             text = {
-                OutlinedTextField(shape = squareOr(OutlinedTextFieldDefaults.shape), 
+                OutlinedTextField(shape = OutlinedTextFieldDefaults.shape, 
                     value = newName,
                     onValueChange = { newName = it },
                     placeholder = { Text("Playlist name") },
@@ -169,7 +168,7 @@ fun AddToPlaylistSheet(
                 )
             },
             confirmButton = {
-                TextButton(shape = squareOr(ButtonDefaults.textShape), 
+                TextButton(shape = ButtonDefaults.textShape, 
                     onClick = {
                         val name = newName.trim()
                         if (name.isNotEmpty()) {
@@ -180,7 +179,7 @@ fun AddToPlaylistSheet(
                     },
                 ) { Text("Create") }
             },
-            dismissButton = { TextButton(shape = squareOr(ButtonDefaults.textShape), onClick = { showCreate = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(shape = ButtonDefaults.textShape, onClick = { showCreate = false }) { Text("Cancel") } },
         )
     }
 }

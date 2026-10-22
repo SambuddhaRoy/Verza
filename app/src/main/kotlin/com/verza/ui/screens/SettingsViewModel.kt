@@ -71,8 +71,6 @@ class SettingsViewModel @Inject constructor(
     /** Where downloads are written. Blank = app-private storage. */
     val downloadTree: StateFlow<String> = prefs.downloadTreeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
-    val homeCollage: StateFlow<Boolean> = prefs.homeCollageFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val designScheme: StateFlow<DesignScheme> = prefs.designSchemeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, DesignScheme.MATERIAL)
     val colorFlavour: StateFlow<ColorFlavour> = prefs.colorFlavourFlow
@@ -128,10 +126,6 @@ class SettingsViewModel @Inject constructor(
 
     fun clearListenBrainzMessage() {
         if (!_lbState.value.busy) _lbState.value = LbState()
-    }
-
-    fun setHomeCollage(enabled: Boolean) {
-        viewModelScope.launch { prefs.setHomeCollage(enabled) }
     }
 
     fun setDesignScheme(design: DesignScheme) {

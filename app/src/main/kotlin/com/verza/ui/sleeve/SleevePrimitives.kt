@@ -1,6 +1,5 @@
 package com.verza.ui.sleeve
 
-import com.verza.ui.theme.squareOr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -224,7 +223,7 @@ fun SleeveAccentPlay(
     Box(
         modifier = Modifier
             .size(size.dp)
-            .clip(squareOr(RoundedCornerShape(50)))
+            .clip(RoundedCornerShape(50))
             .background(cover.accent)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -251,7 +250,7 @@ fun SleeveOutlineAction(
     Box(
         modifier = Modifier
             .size(size.dp)
-            .sleeveButton(squareOr(RoundedCornerShape(50)))
+            .sleeveButton(RoundedCornerShape(50))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

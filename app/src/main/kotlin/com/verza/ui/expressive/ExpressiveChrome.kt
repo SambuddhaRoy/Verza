@@ -1,6 +1,6 @@
 package com.verza.ui.expressive
 
-import com.verza.ui.theme.squareOr
+import com.verza.ui.theme.isGlass
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -180,13 +180,18 @@ private fun RailItem(
         animationSpec = ExpressiveMotion.spatialDefault(),
         label = "railIndicator",
     )
+    val glass = isGlass()
     val fill by animateColorAsState(
-        targetValue = if (selected) colors.accent else Color.Transparent,
+        targetValue = when {
+            !selected -> Color.Transparent
+            glass -> colors.onSurface.copy(alpha = 0.10f)
+            else -> colors.accent
+        },
         animationSpec = ExpressiveMotion.effectsDefault(),
         label = "railFill",
     )
     val iconTint by animateColorAsState(
-        targetValue = if (selected) colors.onAccent else colors.onSurfaceMuted,
+        targetValue = if (selected) (if (glass) colors.accent else colors.onAccent) else colors.onSurfaceMuted,
         animationSpec = ExpressiveMotion.effectsDefault(),
         label = "railIcon",
     )
@@ -325,7 +330,7 @@ fun ExpressiveMiniPlayer(
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
             .scale(scale)
-            .clip(squareOr(RoundedCornerShape(radius)))
+            .clip(RoundedCornerShape(radius))
             .background(colors.surface)
             .clickable(interactionSource = interaction, indication = null, onClick = onExpand),
     ) {

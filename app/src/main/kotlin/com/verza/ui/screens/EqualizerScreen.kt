@@ -3,7 +3,6 @@ package com.verza.ui.screens
 import com.verza.ui.expressive.LocalBottomChrome
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import com.verza.ui.theme.isPoster
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.selection.toggleable
@@ -206,7 +205,7 @@ private fun ToggleLine(
                 Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
                 Text(subtitle, style = CaptionItalic, color = ext.muted)
             }
-            SquareSwitch(checked = checked, onCheckedChange = onToggle)
+            Switch(checked = checked, onCheckedChange = onToggle)
         }
         HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass)
     }
@@ -236,7 +235,7 @@ private fun BandSlider(
             color = if (enabled) colors.onBackground else ext.muted,
             modifier = Modifier.width(56.dp),
         )
-        SquareSlider(
+        Slider(
             value = live,
             onValueChange = { live = it },
             onValueChangeFinished = { onCommit(live.roundToInt()) },
@@ -264,7 +263,7 @@ private fun BassSlider(strength: Int, onCommit: (Int) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SquareSlider(
+        Slider(
             value = live,
             onValueChange = { live = it },
             onValueChangeFinished = { onCommit(live.roundToInt()) },
@@ -277,93 +276,6 @@ private fun BassSlider(strength: Int, onCommit: (Int) -> Unit) {
             color = if (live > 0f) colors.primary else ext.muted,
             textAlign = TextAlign.End,
             modifier = Modifier.width(52.dp),
-        )
-    }
-}
-
-/**
- * The equalizer's slider: Material's own in the Material design, square in the Poster one.
- *
- * Material's slider is a pill track under a round thumb, and neither takes a shape. The track and
- * thumb slots do, so the Poster version is the same slider (same gestures, same accessibility)
- * drawn square.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SquareSlider(
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    onValueChangeFinished: () -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    val colors = MaterialTheme.colorScheme
-    val on = if (enabled) colors.primary else colors.onSurface.copy(alpha = 0.38f)
-    val off = colors.onSurface.copy(alpha = 0.16f)
-    if (!isPoster()) {
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            onValueChangeFinished = onValueChangeFinished,
-            valueRange = valueRange,
-            enabled = enabled,
-            modifier = modifier,
-        )
-        return
-    }
-    val span = (valueRange.endInclusive - valueRange.start).takeIf { it > 0f } ?: 1f
-    val fraction = ((value - valueRange.start) / span).coerceIn(0f, 1f)
-    Slider(
-        value = value,
-        onValueChange = onValueChange,
-        onValueChangeFinished = onValueChangeFinished,
-        valueRange = valueRange,
-        enabled = enabled,
-        modifier = modifier,
-        thumb = { Box(Modifier.size(width = 8.dp, height = 24.dp).background(on)) },
-        track = {
-            Box(Modifier.fillMaxWidth().height(4.dp).background(off)) {
-                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(on))
-            }
-        },
-    )
-}
-
-/**
- * The equalizer's switch: Material's own in the Material design, square-ended in the Poster one.
- *
- * Material's has no shape parameter at all, so the Poster version is a toggleable box: a block that slides from one end of a bordered well to the other. `toggleable` with
- * [Role.Switch] gives it the same semantics TalkBack reads for the real one.
- */
-@Composable
-private fun SquareSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    if (!isPoster()) {
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = colors.onPrimary,
-                checkedTrackColor = colors.primary,
-            ),
-        )
-        return
-    }
-    val offset by animateDpAsState(if (checked) 22.dp else 0.dp, label = "switch")
-    Box(
-        modifier = Modifier
-            .size(width = 48.dp, height = 26.dp)
-            .background(if (checked) colors.primary else colors.onSurface.copy(alpha = 0.12f))
-            .border(2.dp, if (checked) colors.primary else colors.onSurface.copy(alpha = 0.5f))
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
-            .padding(4.dp),
-    ) {
-        Box(
-            Modifier
-                .offset(x = offset)
-                .size(18.dp)
-                .background(if (checked) colors.onPrimary else colors.onSurface.copy(alpha = 0.6f)),
         )
     }
 }

@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import com.verza.ui.theme.isPoster
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -101,9 +100,7 @@ fun VisualizerSeekBar(
                 }
             },
     ) {
-        // Square-ended bars in the Poster design. Read here, in composition; the draw lambda below
-        // cannot see the setting change.
-        val cap = if (isPoster()) StrokeCap.Butt else StrokeCap.Round
+        val cap = StrokeCap.Round
         Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
             // Read inside the draw lambda. This is the line that keeps the audio off the
             // recomposition path.

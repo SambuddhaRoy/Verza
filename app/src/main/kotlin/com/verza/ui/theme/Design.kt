@@ -3,23 +3,21 @@ package com.verza.ui.theme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 
 /**
- * Which design the app is drawn in. Both take their colours from the cover; they differ in
- * everything else.
+ * Which design the app is drawn in.
  *
- * - **Material** is the app as it was built: rounded, soft, M3 Expressive shapes and springs.
- * - **Poster** is flat printed slabs (GASS Records was the reference): no rounded edge anywhere,
- *   and a Now Playing that hides its controls and becomes a poster of the cover, its title set in a
- *   different display face for every song.
+ * - **Material** is the app as it was built: rounded, soft, M3 Expressive shapes and springs, in
+ *   the cover's colours.
+ * - **Glass** is quiet, with the cover's colour in its accent and glass chrome (see [isGlass]).
  *
- * Presentation only. No feature, screen or behaviour outside Now Playing depends on it.
+ * Presentation only. Glass rearranges Library, the bottom bars and Now Playing; no feature or
+ * behaviour depends on the design.
  */
 enum class DesignScheme(val displayName: String, val blurb: String, val experimental: Boolean = false) {
     MATERIAL("Material", "Rounded and soft, the way Android draws things"),
-    POSTER("Poster", "Square edges, and Now Playing becomes a poster of the cover", experimental = true),
+    GLASS("Glass", "Quiet and clean, coloured by the cover, with floating glass controls"),
     ;
 
     companion object {
@@ -34,23 +32,16 @@ enum class DesignScheme(val displayName: String, val blurb: String, val experime
 val LocalDesign = staticCompositionLocalOf { DesignScheme.MATERIAL }
 
 /**
- * Whether Home is the collage (Poster only): every cover packed edge to edge at a different size,
- * names set on the art. Off, Poster's Home is the usual rows of shelves, squared. Experimental, so
- * off unless asked for.
- */
-val LocalHomeCollage = staticCompositionLocalOf { false }
-
-@Composable
-@ReadOnlyComposable
-fun isPoster(): Boolean = LocalDesign.current == DesignScheme.POSTER
-
-/**
- * [shape] in the Material design, a rectangle in the Poster one.
- *
- * Every rounded shape in the app goes through this, so the design switch is one decision rather
- * than one per screen. It has to be read in composition: a shape picked inside a draw or layout
- * lambda would not see the switch change. Read it in the composable and pass the result in.
+ * The Glass design: black or white with the system, one accent from the cover for anything you
+ * can press (glassColors), Inter at display size for headings, and the bottom bars, mini player and
+ * Now Playing's buttons drawn as glass that blurs and bends what is behind it (LiquidGlass.kt).
+ * The reference was Apple Music. On Now Playing the cover is the background.
  */
 @Composable
 @ReadOnlyComposable
-fun squareOr(shape: Shape): Shape = if (isPoster()) RectangleShape else shape
+fun isGlass(): Boolean = LocalDesign.current == DesignScheme.GLASS
+
+/** [material] in Material, [glass] in Glass. */
+@Composable
+@ReadOnlyComposable
+fun designShape(material: Shape, glass: Shape): Shape = if (isGlass()) glass else material

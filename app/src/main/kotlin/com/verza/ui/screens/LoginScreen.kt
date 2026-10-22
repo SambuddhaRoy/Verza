@@ -1,7 +1,6 @@
 package com.verza.ui.screens
 
 import com.verza.ui.expressive.ShapeMedium
-import com.verza.ui.theme.squareOr
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
@@ -114,7 +113,7 @@ fun LoginScreen(
             )
             TextButton(
                 onClick = { showManual = !showManual },
-                shape = squareOr(CircleShape),
+                shape = CircleShape,
             ) {
                 Text(if (showManual) "Browser" else "Paste cookie")
             }
@@ -203,7 +202,7 @@ private fun ManualCookieEntry(
         )
         Button(
             onClick = onSubmit,
-            shape = squareOr(CircleShape),
+            shape = CircleShape,
             enabled = value.contains("SAPISID"),
         ) { Text("Use this cookie") }
     }

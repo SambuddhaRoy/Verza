@@ -42,8 +42,11 @@ fun VerzaTheme(
     CompositionLocalProvider(LocalVerzaExtendedColors provides extended, LocalDesign provides design) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = if (design == DesignScheme.POSTER) PosterTypography else VerzaTypography,
-            shapes = if (design == DesignScheme.POSTER) SquareShapes else VerzaShapes,
+            typography = if (design == DesignScheme.GLASS) GlassTypography else VerzaTypography,
+            shapes = when (design) {
+                DesignScheme.GLASS -> GlassShapes
+                DesignScheme.MATERIAL -> VerzaShapes
+            },
             content = content,
         )
     }

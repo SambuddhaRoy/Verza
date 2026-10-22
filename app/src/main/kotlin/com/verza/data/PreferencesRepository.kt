@@ -74,7 +74,6 @@ class PreferencesRepository @Inject constructor(
     // track is the point of having it at all.
     private val colorFlavourKey = stringPreferencesKey("color_flavour")
     private val designSchemeKey = stringPreferencesKey("design_scheme")
-    private val homeCollageKey = booleanPreferencesKey("home_collage")
     private val listenBrainzUserKey = stringPreferencesKey("listenbrainz_user")
     private val accentSourceKey = stringPreferencesKey("accent_source")
     private val crossfadeKey = intPreferencesKey("crossfade_seconds")
@@ -145,13 +144,6 @@ class PreferencesRepository @Inject constructor(
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
-
-    /** Poster's collage Home. Experimental, so off until someone turns it on. */
-    val homeCollageFlow: Flow<Boolean> = store.data.map { it[homeCollageKey] ?: false }
-
-    suspend fun setHomeCollage(enabled: Boolean) {
-        store.edit { it[homeCollageKey] = enabled }
-    }
 
     /** The ListenBrainz username whose listening becomes mixes on Home. Blank = not connected. */
     val listenBrainzUserFlow: Flow<String> = store.data.map { it[listenBrainzUserKey].orEmpty() }
