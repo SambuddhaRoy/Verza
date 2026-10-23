@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What onboarding's welcome flows, before there is a cover: Verza's red with the colours around
+     it. FluidWash blurs it into a field, so the shapes only need to be in roughly the right places. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:fillColor="#FF16101C" android:pathData="M0,0h100v100h-100z" />
+    <path android:fillColor="#FF5B3FD6" android:pathData="M42,74 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0" />
+    <path android:fillColor="#FFE5233F" android:pathData="M-4,32 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0" />
+    <path android:fillColor="#FFC2185B" android:pathData="M52,22 a24,24 0 1,0 48,0 a24,24 0 1,0 -48,0" />
+    <path android:fillColor="#FFF29D38" android:pathData="M0,84 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0" />
+</vector>

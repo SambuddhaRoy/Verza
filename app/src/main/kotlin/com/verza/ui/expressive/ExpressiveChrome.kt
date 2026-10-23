@@ -77,6 +77,38 @@ data class NavDestination(
 val LocalBottomChrome = compositionLocalOf { 0.dp }
 
 /**
+ * The app's background colour, as the root paints it (it fades with the cover, so a State, read in
+ * draw). Every page paints it behind itself: a page that let the root show through was see-through
+ * while another slid over it, so the one underneath showed through it until it vanished at the end.
+ */
+val LocalCanvas = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.runtime.State<androidx.compose.ui.graphics.Color>> {
+    androidx.compose.runtime.mutableStateOf(androidx.compose.ui.graphics.Color.Transparent)
+}
+
+/** iOS's push: critically damped, about a third of a second, interruptible like any spring. */
+internal val PushSpring = androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 1f, stiffness = 420f)
+internal val GlassFade = androidx.compose.animation.core.spring<Float>(dampingRatio = 1f, stiffness = 1100f)
+
+/**
+ * The page push, shared by the NavHost, Library's categories and onboarding's steps. Forward, the
+ * new page slides in from the edge over the old one, which drifts a third of the way and dims;
+ * back, the reverse. Pages must be opaque for it ([LocalCanvas]).
+ */
+internal fun pushEnter(forward: Boolean): androidx.compose.animation.EnterTransition =
+    if (forward) androidx.compose.animation.slideInHorizontally(PushSpring) { it }
+    else androidx.compose.animation.slideInHorizontally(PushSpring) { -it / 3 } +
+        androidx.compose.animation.fadeIn(GlassFade, initialAlpha = 0.6f)
+
+internal fun pushExit(forward: Boolean): androidx.compose.animation.ExitTransition =
+    if (forward) androidx.compose.animation.slideOutHorizontally(PushSpring) { -it / 3 } +
+        androidx.compose.animation.fadeOut(GlassFade, targetAlpha = 0.6f)
+    else androidx.compose.animation.slideOutHorizontally(PushSpring) { it }
+
+/** The push for an AnimatedContent, which must also be told which page is on top. */
+internal fun pushTransform(forward: Boolean): androidx.compose.animation.ContentTransform =
+    androidx.compose.animation.ContentTransform(pushEnter(forward), pushExit(forward), targetContentZIndex = if (forward) 1f else -1f)
+
+/**
  * Goes up by one each time the tab already showing is tapped again. A tab page takes that as "back
  * to the top": Home scrolls up, Library leaves a category for its index, Search puts the cursor in
  * its field. Read it with [onTabReselected], which ignores the value it starts with.

@@ -99,7 +99,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
@@ -630,7 +630,7 @@ private fun PlayerPane(
                 onSeek = { f -> onSeek((f * durationMs).toLong()) },
                 accent = colors.accent,
                 trackColor = colors.accentMuted,
-                signalFlow = signalFlow,
+                signalFlow = if (com.verza.ui.theme.LocalSpectrumOn.current) signalFlow else stillSignal,
                 animating = isPlaying,
             )
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -732,7 +732,7 @@ private fun PlayerPane(
                     items = listOf(
                         ToolbarItem(Icons.Filled.Lyrics, "Lyrics", onOpenLyrics),
                         ToolbarItem(Icons.Filled.Radio, "Start radio", onStartRadio),
-                        ToolbarItem(Icons.Filled.PlaylistAdd, "Add to playlist", onAddToPlaylist),
+                        ToolbarItem(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist", onAddToPlaylist),
                         ToolbarItem(
                             icon = if (isDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
                             label = if (isDownloaded) "Remove download" else "Download",

@@ -38,8 +38,11 @@ minSdk 26, target/compile 35. A separate Electron desktop port lives at
 
 Two looks over the same app, switchable live. **Material** is the app as it was (rounded, M3
 Expressive, the whole palette from the cover). **Glass** is the quiet one with floating glass (below). Stored
-as `design_scheme`; **absent or unknown means Material**, so an update never restyles anyone
-(tested). There was a third, **Poster** (square slabs, GASS Records), removed in 1.19.0; anyone on it
+as `design_scheme`. **Absent means Material once onboarding is done, Glass before it**
+(`DesignScheme.fromName(name, onboarded)`): an update never restyles anyone, and a new install
+starts in Glass. `setOnboardingCompleted` writes the design down in the same edit, or finishing
+onboarding would flip a Glass newcomer to the onboarded default, Material. Unknown names mean
+Material (tested, `DesignSchemeTest`). There was a third, **Poster** (square slabs, GASS Records), removed in 1.19.0; anyone on it
 lands on Material, since "POSTER" is now an unknown name.
 
 - **One switch, read in composition.** `DesignScheme` and `LocalDesign` live in `ui/theme/Design.kt`,
@@ -152,6 +155,24 @@ headings, continuous corners, glass chrome, and plain rows with hairlines instea
 - Empty states are `GlassEmpty`: a large quiet symbol over one line saying what to do.
 
 ## Both designs
+
+- **Every page paints the app's background itself** (`page()` in `VerzaNavigation.kt`, reading
+  `LocalCanvas`, the root's animated canvas). Pages used to be see-through over one root fill, so
+  during a push the page underneath (dimmed to 60%, a third of the way out) showed through the new
+  one and vanished when the transition ended. Register destinations with `page(`, not
+  `composable(`. Library's category pages and onboarding's steps push the same way.
+- **Onboarding** (`OnboardingScreen.kt`): welcome on the flowing wash (`CoverWash` fed
+  `R.drawable.onboarding_wash`), then the look (Glass preselected and recommended; picking restyles
+  live), colour (Material only), sign in, done. Steps are `rememberSaveable`: signing in leaves the
+  page. Test it on the `VerzaFresh` AVD (a clean Pixel 7), not by wiping VerzaPhone's library.
+- **The tour** (`FeatureTourScreen.kt`) names real paths in Settings. It once sent people to a
+  "Background glow" group and a "Sleeve" switch long gone; move a path there when a setting moves.
+  The dock is hidden on it (it covered the tour's button).
+- **Each reader of the visualizer checks its own switch** (`LocalSpectrumOn`, `LocalWashBeatOn` in
+  `Glow.kt`). The visualizer runs when the spectrum, "Feel the beat" or Glass's "Move to the beat"
+  wants it, and the seek bar used to draw the spectrum whenever it ran.
+- **Glass with no cover is Verza's red** on a neutral ground: MainActivity passes `null`, not
+  `DefaultCoverColors`, whose amber made a fresh install's Glass beige and brown.
 
 - **Mix covers** (`MixCover` in `MixScreen.kt`): a duotone of the mix's own two colours (a 2x2
   mosaic of four of its covers when it has four, else one) with the name on a flat band of the

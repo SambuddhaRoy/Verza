@@ -60,7 +60,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -91,7 +91,7 @@ private enum class LibraryTab(val label: String, val icon: ImageVector) {
     LIKED("Liked", Icons.Filled.Favorite),
     LOCAL("On device", Icons.Filled.PhoneAndroid),
     DOWNLOADED("Downloaded", Icons.Filled.Download),
-    PLAYLISTS("Playlists", Icons.Filled.PlaylistPlay),
+    PLAYLISTS("Playlists", Icons.AutoMirrored.Filled.PlaylistPlay),
     ARTISTS("Artists", Icons.Filled.Person),
 }
 
@@ -501,89 +501,88 @@ private fun GlassLibrary(
     BackHandler(enabled = open != null) { open = null }
     AnimatedContent(
         targetState = open,
-        transitionSpec = {
-            val forward = targetState != null
-            (slideInHorizontally(ExpressiveMotion.spatialDefault()) { if (forward) it / 4 else -it / 4 } + fadeIn())
-                .togetherWith(slideOutHorizontally { if (forward) -it / 6 else it / 6 } + fadeOut())
-        },
+        // The app's own push, with each page opaque: two see-through pages cross-fading showed both.
+        transitionSpec = { com.verza.ui.expressive.pushTransform(forward = targetState != null) },
         modifier = modifier.fillMaxSize().background(xc.container),
         label = "libraryPage",
     ) { page ->
-        if (page == null) LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .wrapContentWidth()
-                .widthIn(max = animatedReadableWidth())
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 16.dp + LocalBottomChrome.current),
-        ) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
-                    GlassMasthead("Your collection", "Library", Modifier.weight(1f))
-                    GlassHeaderButton(Icons.Filled.Add, "New playlist", onCreatePlaylist)
-                }
-            }
-            items(LibraryTab.entries.toList().chunked(2)) { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                    for (tab in pair) GlassTile(tab.label, tab.icon, Modifier.weight(1f)) { open = tab }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
-            if (recent.isNotEmpty()) {
+        Box(Modifier.fillMaxSize().background(xc.container)) {
+            if (page == null) LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .wrapContentWidth()
+                    .widthIn(max = animatedReadableWidth())
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 16.dp + LocalBottomChrome.current),
+            ) {
                 item {
-                    Text(
-                        "Recently played",
-                        style = GlassSectionTitle,
-                        color = xc.onContainer,
-                        modifier = Modifier.padding(top = 30.dp, bottom = 12.dp),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
+                        GlassMasthead("Your collection", "Library", Modifier.weight(1f))
+                        GlassHeaderButton(Icons.Filled.Add, "New playlist", onCreatePlaylist)
+                    }
                 }
-                val shown = recent.take(12)
-                items(shown.chunked(2)) { pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 18.dp)) {
-                        for (song in pair) {
-                            val art = rememberSongArtwork(song.title, song.artist, song.thumbnailUrl)
-                            Column(Modifier.weight(1f).pressableScale { onPlaySongs(shown, shown.indexOf(song)) }) {
-                                AsyncImage(
-                                    model = art,
-                                    contentDescription = null,
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(ShapeLarge).background(xc.surfaceHigh),
-                                )
-                                Spacer(Modifier.height(7.dp))
-                                Text(song.title, style = BodyText.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = xc.onContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(song.artist, style = BodyText.copy(fontSize = 13.sp), color = xc.onContainerMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
+                items(LibraryTab.entries.toList().chunked(2)) { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                        for (tab in pair) GlassTile(tab.label, tab.icon, Modifier.weight(1f)) { open = tab }
                         if (pair.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
-            }
-        } else Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .wrapContentWidth()
-                .widthIn(max = animatedReadableWidth())
-                .fillMaxWidth(),
-        ) {
-            Row(
+                if (recent.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Recently played",
+                            style = GlassSectionTitle,
+                            color = xc.onContainer,
+                            modifier = Modifier.padding(top = 30.dp, bottom = 12.dp),
+                        )
+                    }
+                    val shown = recent.take(12)
+                    items(shown.chunked(2)) { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 18.dp)) {
+                            for (song in pair) {
+                                val art = rememberSongArtwork(song.title, song.artist, song.thumbnailUrl)
+                                Column(Modifier.weight(1f).pressableScale { onPlaySongs(shown, shown.indexOf(song)) }) {
+                                    AsyncImage(
+                                        model = art,
+                                        contentDescription = null,
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(ShapeLarge).background(xc.surfaceHigh),
+                                    )
+                                    Spacer(Modifier.height(7.dp))
+                                    Text(song.title, style = BodyText.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = xc.onContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(song.artist, style = BodyText.copy(fontSize = 13.sp), color = xc.onContainerMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            } else Column(
                 modifier = Modifier
-                    .padding(start = 8.dp, top = 2.dp)
-                    .clip(ShapeMedium)
-                    .clickable { open = null }
-                    .padding(horizontal = 6.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .fillMaxSize()
+                    .wrapContentWidth()
+                    .widthIn(max = animatedReadableWidth())
+                    .fillMaxWidth(),
             ) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = xc.accent, modifier = Modifier.size(28.dp))
-                Text("Library", style = BodyText.copy(fontSize = 17.sp), color = xc.accent)
+                Row(
+                    modifier = Modifier
+                        .padding(start = 8.dp, top = 2.dp)
+                        .clip(ShapeMedium)
+                        .clickable { open = null }
+                        .padding(horizontal = 6.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = xc.accent, modifier = Modifier.size(28.dp))
+                    Text("Library", style = BodyText.copy(fontSize = 17.sp), color = xc.accent)
+                }
+                Text(
+                    page.label,
+                    style = HeroTitle,
+                    color = xc.onContainer,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
+                )
+                Box(Modifier.weight(1f)) { content(page) }
             }
-            Text(
-                page.label,
-                style = HeroTitle,
-                color = xc.onContainer,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
-            )
-            Box(Modifier.weight(1f)) { content(page) }
         }
     }
 }

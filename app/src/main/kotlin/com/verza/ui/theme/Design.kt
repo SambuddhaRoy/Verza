@@ -21,7 +21,13 @@ enum class DesignScheme(val displayName: String, val blurb: String, val experime
     ;
 
     companion object {
-        fun fromName(name: String?): DesignScheme = entries.firstOrNull { it.name == name } ?: MATERIAL
+        /**
+         * The stored design, or the default when there is none. Someone who finished onboarding
+         * before the setting existed was using Material and keeps it; a new install starts in Glass.
+         * Onboarding writes the design down when it finishes, so the default never flips under anyone.
+         */
+        fun fromName(name: String?, onboarded: Boolean = true): DesignScheme =
+            entries.firstOrNull { it.name == name } ?: if (onboarded) MATERIAL else GLASS
     }
 }
 

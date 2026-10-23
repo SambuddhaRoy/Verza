@@ -17,9 +17,6 @@ import com.verza.data.PreferencesRepository
 import com.verza.data.StartScreen
 import com.verza.data.StatsRepository
 import com.verza.innertube.AudioQuality
-import com.verza.ui.theme.GlowColorPreset
-import com.verza.ui.theme.GlowIntensity
-import com.verza.ui.theme.GlowStyle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -63,6 +60,8 @@ class SettingsViewModel @Inject constructor(
     val saveSearchHistory: StateFlow<Boolean> = prefs.saveSearchHistoryFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val albumArtMotion: StateFlow<Boolean> = prefs.albumArtMotionFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val washBeat: StateFlow<Boolean> = prefs.washBeatFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val hapticsEnabled: StateFlow<Boolean> = prefs.hapticsEnabledFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -174,6 +173,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setAlbumArtMotion(enabled: Boolean) {
         viewModelScope.launch { prefs.setAlbumArtMotion(enabled) }
+    }
+
+    fun setWashBeat(enabled: Boolean) {
+        viewModelScope.launch { prefs.setWashBeat(enabled) }
     }
 
     // ── app updates ─────────────────────────────────────────────────────────

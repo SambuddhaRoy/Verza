@@ -346,7 +346,7 @@ private fun Modifier.washGlass(shape: Shape): Modifier = liquidGlass(
  * being rotated.
  */
 @Composable
-private fun CoverWash(artworkUrl: String?, motion: Boolean, modifier: Modifier) {
+internal fun CoverWash(artworkUrl: Any?, motion: Boolean, modifier: Modifier) {
     Box(modifier.clipToBounds().background(Color(0xFF101012))) {
         // The desktop's flowing cover where there is AGSL to run it (13+), the drifting one below that.
         val flowing = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -367,7 +367,7 @@ private fun CoverWash(artworkUrl: String?, motion: Boolean, modifier: Modifier) 
 
 /** Two copies of the blurred cover turning against each other: the wash before Android 13. */
 @Composable
-private fun DriftWash(artworkUrl: String?, motion: Boolean, modifier: Modifier) {
+private fun DriftWash(artworkUrl: Any?, motion: Boolean, modifier: Modifier) {
     val context = LocalContext.current
     // Small on purpose: a blur this wide needs no detail, and below Android 12, where there is no
     // blur, a tiny picture stretched is the blur.
@@ -572,7 +572,7 @@ private fun Scrubber(positionMs: Long, durationMs: Long, isPlaying: Boolean, onS
             onSeek = { f -> if (durationMs > 0) onSeek((f * durationMs).toLong()) },
             accent = Ink,
             trackColor = InkFaint,
-            signalFlow = LocalAudioSignal.current,
+            signalFlow = if (com.verza.ui.theme.LocalSpectrumOn.current) LocalAudioSignal.current else null,
             animating = isPlaying,
             height = 34.dp,
             modifier = Modifier.semantics { contentDescription = "Position" },
@@ -857,7 +857,7 @@ fun OnCoverWash(artworkUrl: String?, content: @Composable () -> Unit) {
  * and back to what they were after.
  */
 @Composable
-private fun LightStatusIcons() {
+internal fun LightStatusIcons() {
     val view = LocalView.current
     DisposableEffect(view) {
         val window = view.context.findActivity()?.window ?: return@DisposableEffect onDispose {}

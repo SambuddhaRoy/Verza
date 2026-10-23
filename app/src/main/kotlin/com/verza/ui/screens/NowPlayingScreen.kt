@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lyrics
 import androidx.compose.material.icons.outlined.MoreVert
@@ -233,7 +234,7 @@ fun NowPlayingScreen(
                 extra = if (!glass) null else { c ->
                     val sheetColors = com.verza.ui.expressive.LocalExpressiveColors.current
                     ExpressiveSheetRow(
-                        icon = Icons.Filled.PlaylistAdd,
+                        icon = Icons.AutoMirrored.Filled.PlaylistAdd,
                         label = "Add to playlist",
                         onClick = { showMore = false; onAddToPlaylist() },
                         colors = sheetColors,

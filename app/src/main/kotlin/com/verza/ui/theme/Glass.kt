@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The standard-appearance "liquid glass" panel — a translucent surface floating over the flowing
- * cover-art wash ([GlowStyle.COVER]), with a hairline border. This is the mobile translation of
+ * cover-art wash, with a hairline border. This is the mobile translation of
  * the desktop `backdrop-filter` glass: NOT a real-time blur of the animated background (too costly
  * on a moving Compose layer), just a translucent panel colour so the wash supplies the colour +
  * motion, plus a 1 dp border so the edge reads. Drop-in like [com.verza.ui.sleeve.sleeveSurface].

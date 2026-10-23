@@ -114,6 +114,11 @@ class MainActivity : ComponentActivity() {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val glowReactive by settingsViewModel.glowReactive.collectAsStateWithLifecycle()
             val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
+            val washBeat by settingsViewModel.washBeat.collectAsStateWithLifecycle()
+            val albumArtMotion by settingsViewModel.albumArtMotion.collectAsStateWithLifecycle()
+            val design by settingsViewModel.designScheme.collectAsStateWithLifecycle()
+            // Glass's flowing background pulses on the beat only while it is moving at all.
+            val washBeatOn = washBeat && albumArtMotion && design == DesignScheme.GLASS
             val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle()
             val startScreen by settingsViewModel.startScreen.collectAsStateWithLifecycle()
 
@@ -132,7 +137,7 @@ class MainActivity : ComponentActivity() {
                 ?: playbackState.currentItem?.mediaMetadata?.artworkUri?.toString()
 
             // The visualizer is only active when all four conditions hold:
-            //   1. User enabled glow reactivity in Settings
+            //   1. Something wants it: the spectrum seek bar, "Feel the beat", or Glass's beat
             //   2. RECORD_AUDIO permission is granted (re-checked each recomposition so a
             //      user-granted permission lights up the feature without an app restart)
             //   3. ExoPlayer has reported a non-zero audio session id
@@ -142,9 +147,9 @@ class MainActivity : ComponentActivity() {
                 context,
                 Manifest.permission.RECORD_AUDIO,
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            // The visualizer feeds the spectrum seek bar and the music haptics, so either being on
-            // (plus permission + an active session) is enough to run it.
-            val shouldVisualize = (glowReactive || hapticsEnabled) && hasAudioPermission &&
+            // The visualizer feeds the spectrum seek bar, the music haptics and the background's
+            // beat, so any one being on (plus permission + an active session) is enough to run it.
+            val shouldVisualize = (glowReactive || hapticsEnabled || washBeatOn) && hasAudioPermission &&
                 audioSessionId != 0 && isPlaying
 
             // The signal flow is owned at the Activity composition scope so the GlowBackground
@@ -215,12 +220,14 @@ class MainActivity : ComponentActivity() {
             // was doing that work dozens of times a second for an unchanged colour.
             val flavour by settingsViewModel.colorFlavour.collectAsStateWithLifecycle()
             val accentSource by settingsViewModel.accentSource.collectAsStateWithLifecycle()
-            val design by settingsViewModel.designScheme.collectAsStateWithLifecycle()
             // Glass takes only its accent (and a breath of hue) from the cover, and follows the
             // system's light or dark.
             val systemDark = isSystemInDarkTheme()
             val expressive = remember(artworkColors, flavour, accentSource, design, systemDark) {
-                if (design == DesignScheme.GLASS) glassColors(artworkColors, systemDark)
+                // With no cover (nothing playing, or one that would not decode) Glass is Verza's red
+                // on a neutral ground. Handed the stand-in palette, it took that amber for a cover
+                // and turned the whole app beige and brown, onboarding included.
+                if (design == DesignScheme.GLASS) glassColors(artworkColors.takeIf { it !== DefaultCoverColors }, systemDark)
                 else expressiveColorsFrom(artworkColors, flavour, accentSource)
             }
             val materialScheme = remember(expressive) { expressiveColorScheme(expressive) }
@@ -278,8 +285,11 @@ class MainActivity : ComponentActivity() {
                     LocalCoverColors provides chromeCover,
                     LocalArtworkColors provides artworkColors,
                     LocalExpressiveColors provides expressive,
+                    com.verza.ui.expressive.LocalCanvas provides canvas,
                     // Any composable can ride the music: the same gated signal the player reads.
                     LocalAudioSignal provides (if (shouldVisualize) visualizerSignalFlow else null),
+                    com.verza.ui.theme.LocalSpectrumOn provides glowReactive,
+                    com.verza.ui.theme.LocalWashBeatOn provides washBeatOn,
                 ) {
                     // One surface, edge to edge, behind everything including the system bars.
                     Box(modifier = Modifier.fillMaxSize().drawBehind { drawRect(canvas.value) }) {
