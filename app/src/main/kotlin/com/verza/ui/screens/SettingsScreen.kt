@@ -118,6 +118,7 @@ fun SettingsScreen(
     val crossfade by viewModel.crossfadeSeconds.collectAsStateWithLifecycle()
     val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
     val washBeat by viewModel.washBeat.collectAsStateWithLifecycle()
+    val expressiveType by viewModel.expressiveType.collectAsStateWithLifecycle()
     val saveSearchHistory by viewModel.saveSearchHistory.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val spectrumOn by viewModel.glowReactive.collectAsStateWithLifecycle()
@@ -390,6 +391,16 @@ fun SettingsScreen(
                         viewModel.setWashBeat(on)
                     }
                 },
+            )
+            SwitchRow(
+                title = "Expressive type",
+                subtitle = if (design == DesignScheme.GLASS) {
+                    "Set every song's title in a typeface of its own"
+                } else {
+                    "Serif headings, and a typeface of its own for every song and heading"
+                },
+                checked = expressiveType,
+                onToggle = viewModel::setExpressiveType,
             )
             ChoiceRow(
                 title = "Start screen",

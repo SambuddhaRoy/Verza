@@ -85,8 +85,13 @@ class UpdateRepository @Inject constructor(
     suspend fun download(release: Release, onProgress: (Float) -> Unit): File? = withContext(Dispatchers.IO) {
         runCatching {
             val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-            dir.listFiles()?.forEach { it.delete() }   // only ever keep the one we are installing
             val target = File(dir, "Verza-${release.version}.apk")
+            // Already fetched in the background at launch: hand it straight over.
+            if (target.exists() && (release.sizeBytes <= 0 || target.length() == release.sizeBytes)) {
+                onProgress(1f)
+                return@runCatching target
+            }
+            dir.listFiles()?.forEach { it.delete() }   // only ever keep the one we are installing
             val part = File(dir, target.name + ".part")
 
             val request = Request.Builder().url(release.apkUrl).build()
@@ -143,6 +148,15 @@ class UpdateRepository @Inject constructor(
     fun canInstall(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
             context.packageManager.canRequestPackageInstalls()
+
+    /**
+     * Whether a download nobody asked for yet is fine right now. Data Saver says no; an ordinary
+     * mobile connection is fine, the APK being ~7MB.
+     */
+    fun mayDownloadQuietly(): Boolean {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return false
+        return cm.restrictBackgroundStatus != android.net.ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+    }
 
     /** Send the user to the one settings page that can grant it. */
     fun requestInstallPermission(): Boolean = runCatching {

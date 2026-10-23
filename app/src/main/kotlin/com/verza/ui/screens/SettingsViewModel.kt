@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -63,6 +64,8 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val washBeat: StateFlow<Boolean> = prefs.washBeatFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val expressiveType: StateFlow<Boolean> = prefs.expressiveTypeFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val hapticsEnabled: StateFlow<Boolean> = prefs.hapticsEnabledFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val gentleStart: StateFlow<Boolean> = prefs.gentleStartFlow
@@ -179,6 +182,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { prefs.setWashBeat(enabled) }
     }
 
+    fun setExpressiveType(enabled: Boolean) {
+        viewModelScope.launch { prefs.setExpressiveType(enabled) }
+    }
+
     // ── app updates ─────────────────────────────────────────────────────────
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val updateState: StateFlow<UpdateState> = _updateState
@@ -215,6 +222,20 @@ class SettingsViewModel @Inject constructor(
                 UpdateState.Ready(file, release.version)
             }
         }
+    }
+
+    private var prefetch: Pair<String, kotlinx.coroutines.Deferred<java.io.File?>>? = null
+
+    /**
+     * Downloads [release] quietly, so the offer can appear with the file already here and Update
+     * goes straight to Android's installer. Once per version: the view model outlives a rotation,
+     * and a second launch of the check joins the download already running. True when it is ready.
+     */
+    suspend fun prefetchUpdate(release: UpdateRepository.Release): Boolean {
+        if (!updates.mayDownloadQuietly()) return false
+        val job = prefetch?.takeIf { it.first == release.version }?.second
+            ?: viewModelScope.async { updates.download(release) {} }.also { prefetch = release.version to it }
+        return job.await() != null
     }
 
     /** Whether Android will let us start an install without sending the user to settings first. */

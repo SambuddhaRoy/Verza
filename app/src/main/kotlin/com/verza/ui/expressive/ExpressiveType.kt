@@ -76,18 +76,44 @@ private val GlassHeroTitle = TextStyle(
     letterSpacing = (-0.025).em,
 )
 
+/**
+ * Whether the decorative faces are on (Settings > Appearance > Expressive type): Instrument Serif for
+ * Material's heads, a face of its own for every heading ([variedFace]) and every song title on Now
+ * Playing. Off by default, which is Inter throughout; provided by MainActivity.
+ */
+val LocalExpressiveType = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+// Material's heads in Inter: the serif's sizes, set upright and heavy in the display cut.
+private val PlainHeroDisplay = MaterialHeroDisplay.copy(
+    fontFamily = com.verza.ui.theme.FontDisplayCut,
+    fontStyle = FontStyle.Normal,
+    fontWeight = FontWeight.Bold,
+    lineHeight = 46.sp,
+    letterSpacing = (-0.03).em,
+)
+
+private val PlainHeroTitle = MaterialHeroTitle.copy(
+    fontFamily = com.verza.ui.theme.FontDisplayCut,
+    fontStyle = FontStyle.Normal,
+    fontWeight = FontWeight.Bold,
+    lineHeight = 38.sp,
+    letterSpacing = (-0.025).em,
+)
+
 /** The track title, in the design's display voice. See [MaterialHeroDisplay]'s doc above. */
 val HeroDisplay: TextStyle
     @Composable @ReadOnlyComposable get() = when {
         isGlass() -> GlassHeroDisplay
-        else -> MaterialHeroDisplay
+        LocalExpressiveType.current -> MaterialHeroDisplay
+        else -> PlainHeroDisplay
     }
 
 /** The same voice one step down, for section heroes on Home and Library. */
 val HeroTitle: TextStyle
     @Composable @ReadOnlyComposable get() = when {
         isGlass() -> GlassHeroTitle
-        else -> MaterialHeroTitle
+        LocalExpressiveType.current -> MaterialHeroTitle
+        else -> PlainHeroTitle
     }
 
 /** A section heading in the Glass design: "Recently played ›". */
@@ -147,7 +173,7 @@ val BodyStrong = TextStyle(
  */
 @Composable
 fun TextStyle.variedFace(key: String, text: String = key): TextStyle {
-    if (isGlass()) return this
+    if (isGlass() || !LocalExpressiveType.current) return this
     val context = LocalContext.current
     val family = remember(key, text) { TitleFonts.legibleFor(context, key, text) } ?: return this
     return copy(fontFamily = family, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal)

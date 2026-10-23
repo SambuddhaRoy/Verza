@@ -57,7 +57,11 @@ lands on Material, since "POSTER" is now an unknown name.
   layout with an animated value**, or animateBoundsIn chases a moving target every frame. Hidden
   controls are un-placed, not parked off-screen: parked below the player they caught touches meant for
   the queue.
-- **A different display face for every song in Material** (`TitleFonts.kt`, `pickTitleFace`): OFL faces
+- **Expressive type is opt-in** (Settings > Appearance, `expressive_type`, default off, provided as
+  `LocalExpressiveType`). Off is Inter throughout: Material's heads in the display cut instead of
+  Instrument Serif, `variedFace` a no-op, and Now Playing's title in Inter in both designs. On
+  brings back everything below.
+- **A different display face for every song** (`TitleFonts.kt`, `pickTitleFace`): OFL faces
   in `res/font/display_*`, licence texts in `assets/font-licenses/`. Stable per song (hash of the
   track key), never the previous song's face, and a face that cannot set every character of the title
   is skipped. "Can set" means a glyph **and ink**: Solide Mirage and Sunday map `"` to an empty glyph,
@@ -207,6 +211,15 @@ headings, continuous corners, glass chrome, and plain rows with hairlines instea
 - **Sleeve mode** = the alternate editorial appearance (`ui/sleeve/`), opt-in; standard mode is default.
 - **Media session / notification / lock-screen / AOD**: `:player/MusicService.kt`. Release builds need
   `-keep class androidx.media3.** { *; }` (in `app/proguard-rules.pro`) — R8 stripped it otherwise.
+  **The session shows the cover Now Playing shows.** The app looks the album's own art up by title
+  and artist (`ArtworkRepository`, iTunes) and publishes it through `NowPlayingBridge.publishCover`;
+  the service's `applyCover` swaps it onto the playing item (metadata only, like `embedArtwork`).
+  Before, the notification, lock screen and widget kept the YouTube thumbnail the song was queued
+  with, sometimes a 120px one.
+- **Updates download before they are offered** (`SettingsViewModel.prefetchUpdate`): at launch a
+  newer release is fetched quietly (not under Data Saver), and only then offered, so Update opens
+  Android's installer at once (0.6s, was ~11s of progress bar). `UpdateRepository.download` reuses a
+  complete APK already in the cache. Test it with a build labelled lower than the latest release.
 - **Curated mixes** (Daylist/Discover/Release Radar, on-device): `data/MixesRepository.kt`.
 - **ListenBrainz mixes** (Weekly Exploration, Weekly Jams, Last month on repeat): `data/ListenBrainz.kt`,
   a port of the desktop's `src/main/listenbrainz.js`. It is how Spotify listening reaches Verza: Spotify's

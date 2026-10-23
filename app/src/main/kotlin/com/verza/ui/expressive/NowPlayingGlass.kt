@@ -521,7 +521,9 @@ private fun TitleBlock(
     onOpenMore: () -> Unit,
 ) {
     val context = LocalContext.current
-    val family = remember(trackKey, title) {
+    val expressiveType = LocalExpressiveType.current
+    val family = remember(trackKey, title, expressiveType) {
+        if (!expressiveType) return@remember null
         val pool = TitleFonts.poolFor(title)
         pickTitleFace(trackKey ?: title, pool.size, avoid = null) { TitleFonts.covers(context, pool[it], title) }
             ?.let { TitleFonts.family(pool[it]) }
