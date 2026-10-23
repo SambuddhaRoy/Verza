@@ -73,6 +73,15 @@ fun SearchScreen(
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
 
     val xc = LocalExpressiveColors.current
+    // Picking a suggestion or a past search runs it, so the keyboard goes as it does for the
+    // keyboard's own search key; left up, it covered the results it had just asked for.
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val pick: (String) -> Unit = { q ->
+        viewModel.applyHistory(q)
+        keyboard?.hide()
+        focusManager.clearFocus()
+    }
     // The whole screen is capped and centred, not just the results, so the title, the search bar,
     // the chips and the rows all share one left edge on a tablet.
     Column(
@@ -126,7 +135,7 @@ fun SearchScreen(
 
         // ── Body ───────────────────────────────────────────────────────────
         if (viewModel.showSuggestions && suggestions.isNotEmpty()) {
-            SuggestionsView(suggestions = suggestions, onPick = { viewModel.applyHistory(it) })
+            SuggestionsView(suggestions = suggestions, onPick = pick)
             return@Column
         }
 
@@ -135,7 +144,7 @@ fun SearchScreen(
                 if (history.isEmpty()) CenterHint("Search YouTube Music")
                 else HistoryView(
                     history = history,
-                    onPick = { viewModel.applyHistory(it) },
+                    onPick = pick,
                     onClear = { viewModel.clearHistory() },
                 )
             is SearchUiState.Loading -> CenterBox { CircularProgressIndicator(color = xc.accent) }

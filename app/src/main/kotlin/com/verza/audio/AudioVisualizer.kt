@@ -33,6 +33,12 @@ data class VisualizerSignal(
      * recomposition on an unchanged signal, and an array would compare by identity and never match.
      */
     val bands: List<Float> = emptyList(),
+    /**
+     * Energy under ~150 Hz, the kick drum, unsmoothed and on a linear scale. The bands above are
+     * log-compressed and [bass] is smoothed besides, which suits drawing but flattens a kick into
+     * the noise around it; a beat detector needs the jump itself.
+     */
+    val kick: Float = 0f,
 ) {
     companion object {
         const val BAND_COUNT = 16
@@ -160,12 +166,16 @@ class AudioVisualizer(private val audioSessionId: Int) {
         var midCount = 0
         var trebleSum = 0f
         var trebleCount = 0
+        val kickMaxBin = (150f / binWidthHz).toInt().coerceIn(1, nBins - 1)
+        var kickSum = 0f
 
         // Bin 0 is DC and Nyquist — skip; start at bin 1.
         for (k in 1 until nBins) {
             val real = fft[2 * k].toInt()
             val imag = fft[2 * k + 1].toInt()
-            val mag = sqrt((real * real + imag * imag).toFloat())
+            val power = (real * real + imag * imag).toFloat()
+            if (k <= kickMaxBin) kickSum += power
+            val mag = sqrt(power)
             // Log compression — audio is perceived exponentially, so log(mag) maps better to
             // visual "intensity" than raw magnitude. Add 1 to keep ln() defined at zero.
             val logMag = ln(1f + mag)
@@ -219,6 +229,8 @@ class AudioVisualizer(private val audioSessionId: Int) {
             // Weight bass slightly higher — kicks/drums dominate perceived "intensity".
             energy = (0.5f * smoothBass + 0.3f * smoothMid + 0.2f * smoothTreble).coerceIn(0f, 1f),
             bands = bands,
+            // Mean power per bin, over the largest a bin can hold (128² + 128²).
+            kick = (kickSum / kickMaxBin / 32768f).coerceIn(0f, 1f),
         )
     }
 

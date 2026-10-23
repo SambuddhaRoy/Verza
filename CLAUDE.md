@@ -128,8 +128,22 @@ headings, continuous corners, glass chrome, and plain rows with hairlines instea
 - **Haptics** (`Haptics`, `rememberHaptics`), sparing on purpose: a tick for tab changes, like and
   the queue toggles; a click for play/pause; a bump when a drag crosses the point where letting go
   acts (closing Now Playing, swiping to the next song).
-- **Now Playing** (`NowPlayingGlass.kt`): the cover blurred into a slowly turning wash (blurred once;
-  only the layer holding it turns, so a frame of drift is not a re-blur). The title is set in the
+- **Now Playing** (`NowPlayingGlass.kt`) stands on the desktop's flowing cover (`FluidWash.kt`, a
+  port of `COVER_FRAG` in the desktop's renderer.js): the cover blurred once into a 256px texture
+  (sigma ~8% of it, matching the old 72dp wash), then domain-warped by simplex noise every frame,
+  at ~30fps, drawn at half the screen's size (an offscreen layer scaled 2x). It is the glass
+  panes' source too. It moves with the music: the bass swells the warp, and each kick brightens and
+  zooms it for a fifth of a second (`BeatPulse`). Below 13 (no AGSL) it is `DriftWash`, two copies
+  of the blurred cover turning against each other. With album-art motion off, one still frame.
+  - **A beat needs linear power, not the bands.** `VisualizerSignal.bass` is log-scaled and
+    smoothed until it sits between 0.74 and 0.81 through a whole song with a steady kick; the
+    bands are log-scaled too, and the lowest ones are one or two FFT bins, noisier than the kick.
+    `VisualizerSignal.kick` is the raw power under 150Hz (0.001 between kicks, 0.1 to 0.4 on one),
+    and a beat is that passing twice its one-second average, once per burst. `FluidWashTest`.
+  - The flowing wash measured smoother than the drift (61fps and no janky frames on the emulator,
+    against 35fps and two thirds janky): the drift re-blurred two full-screen layers every frame.
+
+  The title is set in the
   song's own display face (`TitleFonts`, sized by the shared `FitTitle`), the position is the
   spectrum (`VisualizerSeekBar`), the transport is one capsule of glass, and Lyrics, the output (by
   name) and "Up next" are labelled pills. Paused, the cover dims. No volume slider: the keys do it.
@@ -152,7 +166,12 @@ headings, continuous corners, glass chrome, and plain rows with hairlines instea
   A second clickable wrapped outside it never saw the long press: the inner one took the press and
   played the song on release.
 - **Flow test**: `verza-shots/mob/r11_flow.py` walks every main interaction in Glass and checks each
-  by its effect (media session state, settings, what is on screen). 33 checks.
+  by its effect (media session state, settings, what is on screen). 33 checks. Which keyboard the
+  emulator shows (the full one or the floating toolbar) changes between boots; `ime_search` looks
+  for the search key in both, and the first mix's name follows the time of day.
+- **Pages on the cover overlap**: Now Playing is kept until Lyrics has slid in over it, so both set
+  the status-bar icons white at once. `LightStatusIcons` counts them and the last to leave restores
+  the icons; restoring per page put dark icons over Lyrics.
 
 ## Architecture pointers
 - **Background glow** (app-wide, behind the NavHost in `MainActivity`): `ui/theme/Glow.kt`.
