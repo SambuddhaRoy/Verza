@@ -21,7 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Nightlight
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -133,7 +133,7 @@ fun ExpressiveMoreSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
             ExpressiveSheetRow(
-                icon = Icons.Filled.MenuBook,
+                icon = Icons.AutoMirrored.Filled.MenuBook,
                 label = "Liner notes",
                 onClick = onLinerNotes,
                 colors = colors,

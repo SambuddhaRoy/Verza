@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -139,7 +139,7 @@ fun AddToPlaylistSheet(
                                 if (p.coverUrl != null) {
                                     AsyncImage(model = p.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
                                 } else {
-                                    Icon(Icons.Filled.PlaylistPlay, contentDescription = null, tint = ext.muted)
+                                    Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, tint = ext.muted)
                                 }
                             }
                             Column(modifier = Modifier.weight(1f)) {

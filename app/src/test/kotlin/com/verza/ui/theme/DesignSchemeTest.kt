@@ -7,7 +7,8 @@ import org.junit.Test
  * Every install that existed before the design setting has no stored value. It must come up in the
  * design it was already using, Material; anything else would restyle the whole app under someone
  * the day they update. The same goes for a stored value this version does not know, such as one
- * written by a later build and read after a downgrade.
+ * written by a later build and read after a downgrade. A new install, not yet through onboarding,
+ * starts in Glass.
  */
 class DesignSchemeTest {
 
@@ -20,6 +21,13 @@ class DesignSchemeTest {
     fun `a stored design this version does not know means Material`() {
         assertEquals(DesignScheme.MATERIAL, DesignScheme.fromName("HOLOGRAM"))
         assertEquals(DesignScheme.MATERIAL, DesignScheme.fromName(""))
+    }
+
+    @Test
+    fun `a new install starts in Glass, and a choice made in onboarding stands`() {
+        assertEquals(DesignScheme.GLASS, DesignScheme.fromName(null, onboarded = false))
+        assertEquals(DesignScheme.MATERIAL, DesignScheme.fromName("MATERIAL", onboarded = false))
+        assertEquals(DesignScheme.MATERIAL, DesignScheme.fromName("MATERIAL", onboarded = true))
     }
 
     @Test

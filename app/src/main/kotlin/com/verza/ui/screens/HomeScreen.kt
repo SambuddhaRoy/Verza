@@ -376,7 +376,7 @@ private fun dateline(): String {
  * bare large title, and the accent is the cover's, so the heading changes colour with the music.
  */
 @Composable
-internal fun GlassMasthead(eyebrow: String, title: String, modifier: Modifier = Modifier) {
+internal fun GlassMasthead(eyebrow: String, title: String, modifier: Modifier = Modifier, titleLines: Int = 1) {
     val xc = LocalExpressiveColors.current
     Column(modifier) {
         Text(
@@ -392,6 +392,6 @@ internal fun GlassMasthead(eyebrow: String, title: String, modifier: Modifier = 
             maxLines = 1,
         )
         Spacer(Modifier.height(2.dp))
-        Text(title, style = HeroTitle, color = xc.onContainer, maxLines = 1)
+        Text(title, style = HeroTitle, color = xc.onContainer, maxLines = titleLines)
     }
 }

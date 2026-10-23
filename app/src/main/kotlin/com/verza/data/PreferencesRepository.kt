@@ -14,9 +14,6 @@ import com.verza.innertube.InnerTube
 import com.verza.player.PlayerSettings
 import com.verza.ui.expressive.AccentSource
 import com.verza.ui.expressive.ColorFlavour
-import com.verza.ui.theme.GlowColorPreset
-import com.verza.ui.theme.GlowIntensity
-import com.verza.ui.theme.GlowStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -62,6 +59,7 @@ class PreferencesRepository @Inject constructor(
     private val skipSilenceKey = booleanPreferencesKey("skip_silence")
     private val saveSearchHistoryKey = booleanPreferencesKey("save_search_history")
     private val albumArtMotionKey = booleanPreferencesKey("album_art_motion")
+    private val washBeatKey = booleanPreferencesKey("wash_beat")
     // Drives the spectrum seek bar and the music haptics. Named for the glow it used to
     // feed; the key is kept as-is so existing installs do not lose the setting.
     private val glowReactiveKey = booleanPreferencesKey("glow_reactive")
@@ -142,6 +140,8 @@ class PreferencesRepository @Inject constructor(
     val saveSearchHistoryFlow: Flow<Boolean> = store.data.map { it[saveSearchHistoryKey] ?: true }
     /** Whether the Now Playing album art gently "breathes" while playing. Default on. */
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
+    /** Whether Glass's flowing background pulses on the beat, as well as flowing. Default on. */
+    val washBeatFlow: Flow<Boolean> = store.data.map { it[washBeatKey] ?: true }
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
 
@@ -152,9 +152,9 @@ class PreferencesRepository @Inject constructor(
         store.edit { it[listenBrainzUserKey] = user }
     }
 
-    /** Material or Poster. Absent means Material, which is what every install had before. */
+    /** Material or Glass. Absent means Material after onboarding and Glass before it ([DesignScheme.fromName]). */
     val designSchemeFlow: Flow<DesignScheme> =
-        store.data.map { DesignScheme.fromName(it[designSchemeKey]) }
+        store.data.map { DesignScheme.fromName(it[designSchemeKey], onboarded = it[onboardingCompletedKey] ?: false) }
 
     /** How hard to push the cover's colours. Replaced the fixed palettes. */
     val colorFlavourFlow: Flow<ColorFlavour> =
@@ -226,7 +226,14 @@ class PreferencesRepository @Inject constructor(
     }
 
     suspend fun setOnboardingCompleted(completed: Boolean) {
-        store.edit { it[onboardingCompletedKey] = completed }
+        store.edit {
+            // Written down in the same edit: the design onboarding showed (Glass, unless another was
+            // picked) must not turn into the onboarded default, Material, the moment it finishes.
+            if (completed && it[designSchemeKey] == null) {
+                it[designSchemeKey] = DesignScheme.fromName(null, onboarded = false).name
+            }
+            it[onboardingCompletedKey] = completed
+        }
     }
 
     suspend fun setGlowReactive(reactive: Boolean) {
@@ -251,6 +258,10 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setAlbumArtMotion(enabled: Boolean) {
         store.edit { it[albumArtMotionKey] = enabled }
+    }
+
+    suspend fun setWashBeat(enabled: Boolean) {
+        store.edit { it[washBeatKey] = enabled }
     }
 
     /** [treeUri] comes from the system folder picker; blank resets to app-private storage. */

@@ -117,6 +117,7 @@ fun SettingsScreen(
     val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
     val crossfade by viewModel.crossfadeSeconds.collectAsStateWithLifecycle()
     val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
+    val washBeat by viewModel.washBeat.collectAsStateWithLifecycle()
     val saveSearchHistory by viewModel.saveSearchHistory.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val spectrumOn by viewModel.glowReactive.collectAsStateWithLifecycle()
@@ -136,6 +137,9 @@ fun SettingsScreen(
     val audioPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> if (granted) viewModel.setGlowReactive(true) }
+    val beatPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> if (granted) viewModel.setWashBeat(true) }
 
     val pickFolder = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
@@ -361,10 +365,31 @@ fun SettingsScreen(
 
         group("Appearance") {
             SwitchRow(
-                title = "Album art motion",
-                subtitle = "The cover breathes with the bass",
+                title = if (design == DesignScheme.GLASS) "Moving background" else "Album art motion",
+                subtitle = if (design == DesignScheme.GLASS) {
+                    "The cover flows behind Now Playing"
+                } else {
+                    "The cover breathes with the bass"
+                },
                 checked = albumArtMotion,
                 onToggle = viewModel::setAlbumArtMotion,
+            )
+            // The flow and the beat are separate: some want the movement without the pulse.
+            if (design == DesignScheme.GLASS && albumArtMotion) SwitchRow(
+                title = "Move to the beat",
+                subtitle = if (hasAudioPermission) {
+                    "The background swells with the bass and pulses on each kick"
+                } else {
+                    "Needs the same audio capture permission as the spectrum"
+                },
+                checked = washBeat && hasAudioPermission,
+                onToggle = { on ->
+                    if (on && !hasAudioPermission) {
+                        beatPermission.launch(android.Manifest.permission.RECORD_AUDIO)
+                    } else {
+                        viewModel.setWashBeat(on)
+                    }
+                },
             )
             ChoiceRow(
                 title = "Start screen",

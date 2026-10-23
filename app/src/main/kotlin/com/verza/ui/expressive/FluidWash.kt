@@ -32,7 +32,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import coil3.BitmapImage
+import coil3.toBitmap
 import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
@@ -157,7 +157,7 @@ class BeatPulse {
  */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-internal fun FluidWash(artworkUrl: String?, motion: Boolean, modifier: Modifier): Boolean {
+internal fun FluidWash(artworkUrl: Any?, motion: Boolean, modifier: Modifier): Boolean {
     val shader = remember { runCatching { RuntimeShader(FLUID_SRC) }.getOrNull() } ?: return false
     val context = LocalContext.current
     var texA by remember { mutableStateOf<BitmapShader?>(null) }
@@ -179,7 +179,7 @@ internal fun FluidWash(artworkUrl: String?, motion: Boolean, modifier: Modifier)
         mix.snapTo(0f)
     }
 
-    val signal = LocalAudioSignal.current
+    val signal = if (com.verza.ui.theme.LocalWashBeatOn.current) LocalAudioSignal.current else null
     var time by remember { mutableFloatStateOf(0f) }
     var intensity by remember { mutableFloatStateOf(0.9f) }
     var scale by remember { mutableFloatStateOf(1.3f) }
@@ -244,10 +244,12 @@ private fun Bitmap.toClampShader() =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) filterMode = BitmapShader.FILTER_MODE_LINEAR
     }
 
-private suspend fun blurredCover(context: Context, url: String): Bitmap? {
+/** [url] is anything Coil loads: a cover's address, or a bundled drawable (onboarding's wash). */
+private suspend fun blurredCover(context: Context, url: Any): Bitmap? {
     val request = ImageRequest.Builder(context).data(url).allowHardware(false).size(TEX_PX).build()
     val result = runCatching { SingletonImageLoader.get(context).execute(request) }.getOrNull()
-    val src = ((result as? SuccessResult)?.image as? BitmapImage)?.bitmap ?: return null
+    // toBitmap, not a cast: a vector drawable comes back as a drawable, not a bitmap.
+    val src = (result as? SuccessResult)?.image?.toBitmap() ?: return null
     val out = Bitmap.createBitmap(TEX_PX, TEX_PX, Bitmap.Config.ARGB_8888)
     Canvas(out).drawBitmap(
         src, null,

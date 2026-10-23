@@ -32,7 +32,7 @@ interface PlaylistDao {
      */
     @Query(
         """
-        SELECT p.id, p.name, p.createdAt,
+        SELECT p.*,
                (SELECT s.thumbnailUrl FROM playlist_tracks pt
                  JOIN songs s ON s.id = pt.songId
                  WHERE pt.playlistId = p.id

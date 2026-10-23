@@ -44,6 +44,10 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.drawBehind
+import com.verza.ui.expressive.GlassFade
+import com.verza.ui.expressive.pushEnter
+import com.verza.ui.expressive.pushExit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
@@ -97,9 +101,11 @@ fun VerzaNavigation(
     val currentRoute = backStack?.destination?.route
     // Boot animation, Onboarding, and the WebView Login screen are all pre-app surfaces.
     // The chrome (mini-player, bottom nav) should not appear on any of them.
+    // The tour has its own button at the foot, which the dock sat on top of.
     val isChromeHidden = currentRoute == Screen.Boot.route ||
         currentRoute == Screen.Onboarding.route ||
-        currentRoute == Screen.Login.route
+        currentRoute == Screen.Login.route ||
+        currentRoute == Screen.Tour.route
 
     val playbackViewModel: PlaybackViewModel = hiltViewModel()
     val playback by playbackViewModel.playbackState.collectAsStateWithLifecycle()
@@ -472,7 +478,7 @@ fun VerzaNavigation(
                     glass && to == Screen.NowPlaying.route -> slideInVertically(NowPlayingRise) { it }
                     from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeIn(tween(320))
                     glass && from in TAB_ROUTES && to in TAB_ROUTES -> fadeIn(GlassFade)
-                    glass -> slideInHorizontally(PushSpring) { it }
+                    glass -> pushEnter(forward = true)
                     from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughIn()
                     else -> sharedAxisIn(forward = true)
                 }
@@ -484,7 +490,7 @@ fun VerzaNavigation(
                     glass && to == Screen.NowPlaying.route -> ExitTransition.KeepUntilTransitionsFinished
                     from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeOut(tween(220))
                     glass && from in TAB_ROUTES && to in TAB_ROUTES -> fadeOut(GlassFade)
-                    glass -> slideOutHorizontally(PushSpring) { -it / 3 } + fadeOut(GlassFade, targetAlpha = 0.6f)
+                    glass -> pushExit(forward = true)
                     from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughOut()
                     else -> sharedAxisOut(forward = true)
                 }
@@ -496,7 +502,7 @@ fun VerzaNavigation(
                     glass && from == Screen.NowPlaying.route -> EnterTransition.None
                     from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeIn(tween(320))
                     glass && from in TAB_ROUTES && to in TAB_ROUTES -> fadeIn(GlassFade)
-                    glass -> slideInHorizontally(PushSpring) { -it / 3 } + fadeIn(GlassFade, initialAlpha = 0.6f)
+                    glass -> pushEnter(forward = false)
                     from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughIn()
                     else -> sharedAxisIn(forward = false)
                 }
@@ -508,13 +514,13 @@ fun VerzaNavigation(
                     glass && from == Screen.NowPlaying.route -> slideOutVertically(tween(300, easing = Emphasized)) { it }
                     from in PREAPP_ROUTES || to in PREAPP_ROUTES -> fadeOut(tween(220))
                     glass && from in TAB_ROUTES && to in TAB_ROUTES -> fadeOut(GlassFade)
-                    glass -> slideOutHorizontally(PushSpring) { it }
+                    glass -> pushExit(forward = false)
                     from in TAB_ROUTES && to in TAB_ROUTES -> fadeThroughOut()
                     else -> sharedAxisOut(forward = false)
                 }
             },
         ) {
-            composable(Screen.Boot.route) {
+            page(Screen.Boot.route) {
                 BootScreen(
                     onFinished = {
                         navController.navigate(postBootDestination) {
@@ -527,7 +533,7 @@ fun VerzaNavigation(
                     },
                 )
             }
-            composable(Screen.Onboarding.route) {
+            page(Screen.Onboarding.route) {
                 OnboardingScreen(
                     onSignIn = { navController.navigate(Screen.Login.route) },
                     onFinished = { takeTour ->
@@ -541,7 +547,7 @@ fun VerzaNavigation(
                     },
                 )
             }
-            composable(
+            page(
                 route = Screen.Tour.route,
                 arguments = listOf(navArgument(Screen.Tour.ARG) {
                     type = NavType.BoolType
@@ -562,7 +568,7 @@ fun VerzaNavigation(
                     },
                 )
             }
-            composable(Screen.Home.route) {
+            page(Screen.Home.route) {
                 HomeScreen(
                     onItemClick = openItem,
                     onItemLongPress = { homeMenuItem = it },
@@ -570,7 +576,7 @@ fun VerzaNavigation(
                     onOpenMix = { mixId -> navController.navigate(Screen.Mix.create(mixId)) },
                 )
             }
-            composable(
+            page(
                 route = Screen.Mix.route,
                 arguments = listOf(navArgument(Screen.Mix.ARG) { type = NavType.StringType }),
             ) {
@@ -583,10 +589,10 @@ fun VerzaNavigation(
                     },
                 )
             }
-            composable(Screen.Search.route) {
+            page(Screen.Search.route) {
                 SearchScreen(onItemClick = openItem)
             }
-            composable(
+            page(
                 route = Screen.Collection.route,
                 arguments = listOf(navArgument(Screen.Collection.ARG) { type = NavType.StringType }),
             ) {
@@ -607,7 +613,7 @@ fun VerzaNavigation(
                     },
                 )
             }
-            composable(
+            page(
                 route = Screen.Artist.route,
                 arguments = listOf(navArgument(Screen.Artist.ARG) { type = NavType.StringType }),
             ) {
@@ -616,7 +622,7 @@ fun VerzaNavigation(
                     onItemClick = openItem,
                 )
             }
-            composable(Screen.Settings.route) {
+            page(Screen.Settings.route) {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
                     onSignIn = { navController.navigate(Screen.Login.route) },
@@ -625,13 +631,13 @@ fun VerzaNavigation(
                     onOpenTour = { navController.navigate(Screen.Tour.create(fromOnboarding = false)) },
                 )
             }
-            composable(Screen.Stats.route) {
+            page(Screen.Stats.route) {
                 StatsScreen(onBack = { navController.popBackStack() })
             }
-            composable(Screen.Equalizer.route) {
+            page(Screen.Equalizer.route) {
                 EqualizerScreen(onBack = { navController.popBackStack() })
             }
-            composable(Screen.Login.route) {
+            page(Screen.Login.route) {
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
                 LoginScreen(
                     onSignedIn = { cookie ->
@@ -641,7 +647,7 @@ fun VerzaNavigation(
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable(Screen.Library.route) {
+            page(Screen.Library.route) {
                 LibraryScreen(
                     onPlaySongs = { songs, index ->
                         playbackViewModel.playSongs(songs, index)
@@ -653,7 +659,7 @@ fun VerzaNavigation(
                     },
                 )
             }
-            composable(
+            page(
                 route = Screen.LocalPlaylist.route,
                 arguments = listOf(navArgument(Screen.LocalPlaylist.ARG) { type = NavType.StringType }),
             ) {
@@ -670,7 +676,7 @@ fun VerzaNavigation(
                     onAddToQueue = { tracks -> playbackViewModel.enqueueAll(tracks) },
                 )
             }
-            composable(Screen.NowPlaying.route) {
+            page(Screen.NowPlaying.route) {
                 NowPlayingScreen(
                     onBack = { navController.popBackStack() },
                     videoId = current?.mediaId,
@@ -729,7 +735,7 @@ fun VerzaNavigation(
                     onSetSpeed = playbackViewModel::setSpeed,
                 )
             }
-            composable(Screen.Lyrics.route) {
+            page(Screen.Lyrics.route) {
                 LyricsScreen(
                     title = currentTitle,
                     artist = currentArtist,
@@ -900,9 +906,19 @@ private val GLASS_NAV = listOf(
     NavDestination(Screen.Library.route, Icons.Rounded.LibraryMusic, "Library"),
 )
 
-/** iOS's push: critically damped, about a third of a second, interruptible like any spring. */
-private val PushSpring = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 1f, stiffness = 420f)
-private val GlassFade = spring<Float>(dampingRatio = 1f, stiffness = 1100f)
+/**
+ * A destination that paints the app's background behind itself, so it is opaque while it slides.
+ * Every page goes through this; see [com.verza.ui.expressive.LocalCanvas].
+ */
+private fun androidx.navigation.NavGraphBuilder.page(
+    route: String,
+    arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
+    content: @Composable androidx.compose.animation.AnimatedContentScope.(androidx.navigation.NavBackStackEntry) -> Unit,
+) = composable(route, arguments) { entry ->
+    val canvas = com.verza.ui.expressive.LocalCanvas.current
+    Box(Modifier.fillMaxSize().drawBehind { drawRect(canvas.value) }) { this@composable.content(entry) }
+}
+
 
 private val NowPlayingRise = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.9f, stiffness = 380f)
 
