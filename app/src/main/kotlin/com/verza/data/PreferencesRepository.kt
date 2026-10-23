@@ -60,6 +60,7 @@ class PreferencesRepository @Inject constructor(
     private val saveSearchHistoryKey = booleanPreferencesKey("save_search_history")
     private val albumArtMotionKey = booleanPreferencesKey("album_art_motion")
     private val washBeatKey = booleanPreferencesKey("wash_beat")
+    private val expressiveTypeKey = booleanPreferencesKey("expressive_type")
     // Drives the spectrum seek bar and the music haptics. Named for the glow it used to
     // feed; the key is kept as-is so existing installs do not lose the setting.
     private val glowReactiveKey = booleanPreferencesKey("glow_reactive")
@@ -142,6 +143,8 @@ class PreferencesRepository @Inject constructor(
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
     /** Whether Glass's flowing background pulses on the beat, as well as flowing. Default on. */
     val washBeatFlow: Flow<Boolean> = store.data.map { it[washBeatKey] ?: true }
+    /** The decorative faces (serif heads, a face per song title). Default off: Inter throughout. */
+    val expressiveTypeFlow: Flow<Boolean> = store.data.map { it[expressiveTypeKey] ?: false }
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
 
@@ -262,6 +265,10 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setWashBeat(enabled: Boolean) {
         store.edit { it[washBeatKey] = enabled }
+    }
+
+    suspend fun setExpressiveType(enabled: Boolean) {
+        store.edit { it[expressiveTypeKey] = enabled }
     }
 
     /** [treeUri] comes from the system folder picker; blank resets to app-private storage. */

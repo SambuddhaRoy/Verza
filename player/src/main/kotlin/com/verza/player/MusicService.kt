@@ -270,6 +270,9 @@ class MusicService : MediaLibraryService() {
         serviceScope.launch {
             NowPlayingBridge.likedIds.collect { refreshLikeLayout() }
         }
+        serviceScope.launch {
+            NowPlayingBridge.covers.collect { cover -> cover?.let(::applyCover) }
+        }
     }
 
     /**
@@ -315,6 +318,32 @@ class MusicService : MediaLibraryService() {
                 player.replaceMediaItem(index, newItem)
             }
         }, java.util.concurrent.Executor { mainThreadHandler.post(it) })
+    }
+
+    /**
+     * Puts the cover :app chose on the playing item, so every system surface shows the picture Now
+     * Playing does. Same media id and URI, so like [embedArtwork] it only touches metadata; the
+     * embedded bytes are cleared and re-made from the new cover. A YouTube thumbnail still being
+     * embedded from the transition finds its URI gone and drops itself.
+     */
+    private fun applyCover(cover: NowPlayingBridge.Cover) {
+        val index = player.currentMediaItemIndex
+        if (index !in 0 until player.mediaItemCount) return
+        val current = player.getMediaItemAt(index)
+        if (current.mediaId != cover.mediaId) return
+        val uri = android.net.Uri.parse(cover.url)
+        if (current.mediaMetadata.artworkUri == uri) return
+        val newItem = current.buildUpon()
+            .setMediaMetadata(
+                current.mediaMetadata.buildUpon()
+                    .setArtworkUri(uri)
+                    .setArtworkData(null, null)
+                    .build(),
+            )
+            .build()
+        player.replaceMediaItem(index, newItem)
+        embedArtwork(newItem)
+        publishNowPlaying()
     }
 
     // ── "Like" control on the system media surfaces ─────────────────────────────

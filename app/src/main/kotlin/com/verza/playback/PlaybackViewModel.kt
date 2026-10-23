@@ -225,6 +225,8 @@ class PlaybackViewModel @Inject constructor(
                     // Only apply if the track hasn't already moved on while we waited.
                     if (better != null && playbackState.value.currentItem?.mediaId == id) {
                         _currentArtworkOverride.value = better
+                        // And the same cover for the notification, lock screen and widget.
+                        com.verza.player.NowPlayingBridge.publishCover(id, better)
                     }
                 }
         }

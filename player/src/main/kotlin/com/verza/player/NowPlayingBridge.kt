@@ -60,4 +60,18 @@ object NowPlayingBridge {
     fun requestLikeToggle(request: LikeRequest) {
         _likeToggleRequests.tryEmit(request)
     }
+
+    /**
+     * The cover :app chose for a track (the album's own art, looked up by title and artist), so the
+     * session shows what Now Playing shows. Without it the notification, lock screen and widget kept
+     * the YouTube thumbnail the song was queued with while the app showed the album cover.
+     */
+    data class Cover(val mediaId: String, val url: String)
+
+    private val _covers = MutableStateFlow<Cover?>(null)
+    val covers: StateFlow<Cover?> = _covers.asStateFlow()
+
+    fun publishCover(mediaId: String, url: String) {
+        _covers.value = Cover(mediaId, url)
+    }
 }

@@ -115,6 +115,7 @@ class MainActivity : ComponentActivity() {
             val glowReactive by settingsViewModel.glowReactive.collectAsStateWithLifecycle()
             val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
             val washBeat by settingsViewModel.washBeat.collectAsStateWithLifecycle()
+            val expressiveType by settingsViewModel.expressiveType.collectAsStateWithLifecycle()
             val albumArtMotion by settingsViewModel.albumArtMotion.collectAsStateWithLifecycle()
             val design by settingsViewModel.designScheme.collectAsStateWithLifecycle()
             // Glass's flowing background pulses on the beat only while it is moving at all.
@@ -290,6 +291,7 @@ class MainActivity : ComponentActivity() {
                     LocalAudioSignal provides (if (shouldVisualize) visualizerSignalFlow else null),
                     com.verza.ui.theme.LocalSpectrumOn provides glowReactive,
                     com.verza.ui.theme.LocalWashBeatOn provides washBeatOn,
+                    com.verza.ui.expressive.LocalExpressiveType provides expressiveType,
                 ) {
                     // One surface, edge to edge, behind everything including the system bars.
                     Box(modifier = Modifier.fillMaxSize().drawBehind { drawRect(canvas.value) }) {

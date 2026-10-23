@@ -173,6 +173,10 @@ fun VerzaNavigation(
         } else {
             val release = noticesVm.checkForUpdateQuietly()
             if (release != null && noticesVm.dismissedUpdateVersion() != release.version) {
+                // Fetched first, offered after: Update then opens the installer at once instead of
+                // making you watch a download. If it fails (offline, Data Saver), the offer still
+                // comes and Update downloads as it always did.
+                noticesVm.prefetchUpdate(release)
                 updateOffer = release
             }
         }

@@ -445,7 +445,10 @@ private fun PlayerPane(
             TitleFonts.covers(context, pool[i], title)
         }?.let { TitleFonts.faces.indexOf(pool[it]) }.also { faceMemory.face = it }
     }
-    val titleFamily = remember(face) { face?.let { FontFamily(Font(TitleFonts.faces[it])) } }
+    val expressiveType = LocalExpressiveType.current
+    val titleFamily = remember(face, expressiveType) {
+        face?.takeIf { expressiveType }?.let { FontFamily(Font(TitleFonts.faces[it])) }
+    }
     // A hard shadow in the canvas colour, straight down and unblurred. The title now sits on the
     // cover as well as beside it, and a cover can be any colour at all, including the title's; the
     // slab of canvas behind each letter is what keeps it legible there, and it is the flat, printed
