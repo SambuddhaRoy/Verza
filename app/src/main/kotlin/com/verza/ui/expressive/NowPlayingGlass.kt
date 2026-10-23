@@ -347,6 +347,27 @@ private fun Modifier.washGlass(shape: Shape): Modifier = liquidGlass(
  */
 @Composable
 private fun CoverWash(artworkUrl: String?, motion: Boolean, modifier: Modifier) {
+    Box(modifier.clipToBounds().background(Color(0xFF101012))) {
+        // The desktop's flowing cover where there is AGSL to run it (13+), the drifting one below that.
+        val flowing = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            FluidWash(artworkUrl, motion, Modifier.fillMaxSize())
+        if (!flowing) DriftWash(artworkUrl, motion, Modifier.fillMaxSize())
+        // Dark enough for white type on any cover, darker still at the foot, where the controls are.
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.30f),
+                    0.5f to Color.Black.copy(alpha = 0.30f),
+                    1f to Color.Black.copy(alpha = 0.52f),
+                ),
+            ),
+        )
+    }
+}
+
+/** Two copies of the blurred cover turning against each other: the wash before Android 13. */
+@Composable
+private fun DriftWash(artworkUrl: String?, motion: Boolean, modifier: Modifier) {
     val context = LocalContext.current
     // Small on purpose: a blur this wide needs no detail, and below Android 12, where there is no
     // blur, a tiny picture stretched is the blur.
@@ -376,7 +397,7 @@ private fun CoverWash(artworkUrl: String?, motion: Boolean, modifier: Modifier) 
         spin = remember { mutableFloatStateOf(0f) }
         breathe = remember { mutableFloatStateOf(1f) }
     }
-    BoxWithConstraints(modifier.clipToBounds().background(Color(0xFF101012)), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val side = hypot(maxWidth.value, maxHeight.value).dp
         for (layer in 0..1) {
             Box(
@@ -398,16 +419,6 @@ private fun CoverWash(artworkUrl: String?, motion: Boolean, modifier: Modifier) 
                 )
             }
         }
-        // Dark enough for white type on any cover, darker still at the foot, where the controls are.
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.30f),
-                    0.5f to Color.Black.copy(alpha = 0.30f),
-                    1f to Color.Black.copy(alpha = 0.52f),
-                ),
-            ),
-        )
     }
 }
 
@@ -851,16 +862,28 @@ private fun LightStatusIcons() {
     DisposableEffect(view) {
         val window = view.context.findActivity()?.window ?: return@DisposableEffect onDispose {}
         val controller = WindowCompat.getInsetsController(window, view)
-        val status = controller.isAppearanceLightStatusBars
-        val nav = controller.isAppearanceLightNavigationBars
+        if (lightIconPages++ == 0) {
+            savedLightStatus = controller.isAppearanceLightStatusBars
+            savedLightNav = controller.isAppearanceLightNavigationBars
+        }
         controller.isAppearanceLightStatusBars = false
         controller.isAppearanceLightNavigationBars = false
         onDispose {
-            controller.isAppearanceLightStatusBars = status
-            controller.isAppearanceLightNavigationBars = nav
+            // Counted, because two of these overlap: Now Playing is kept until Lyrics has slid in
+            // over it, so it left last and put back the dark icons it had saved, over Lyrics.
+            if (--lightIconPages == 0) {
+                controller.isAppearanceLightStatusBars = savedLightStatus
+                controller.isAppearanceLightNavigationBars = savedLightNav
+            }
         }
     }
 }
+
+// How many pages on the cover are showing, and the icons to put back when the last one goes.
+// Main thread only, like everything that composes.
+private var lightIconPages = 0
+private var savedLightStatus = false
+private var savedLightNav = false
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
