@@ -37,7 +37,7 @@ minSdk 26, target/compile 35. A separate Electron desktop port lives at
 ## Design setting: Material or Glass (Settings > Design)
 
 Two looks over the same app, switchable live. **Material** is the app as it was (rounded, M3
-Expressive, the whole palette from the cover). **Glass** is the Apple Music-like one (below). Stored
+Expressive, the whole palette from the cover). **Glass** is the quiet one with floating glass (below). Stored
 as `design_scheme`; **absent or unknown means Material**, so an update never restyles anyone
 (tested). There was a third, **Poster** (square slabs, GASS Records), removed in 1.19.0; anyone on it
 lands on Material, since "POSTER" is now an unknown name.
@@ -70,7 +70,7 @@ lands on Material, since "POSTER" is now an unknown name.
 **The emulator gets killed with the turn when started as a background task**; start it with
 PowerShell `Start-Process` instead.
 
-## Design setting: Glass (Apple Music-like)
+## Design setting: Glass
 
 Black or white with the system's dark mode, one accent from the cover, Inter's display cut for
 headings, continuous corners, glass chrome, and plain rows with hairlines instead of tiles
@@ -97,30 +97,62 @@ headings, continuous corners, glass chrome, and plain rows with hairlines instea
   fill. The recording references the live display list, so scrolling updates the glass for free.
   The lens's colour fringe divides by each sample's own alpha: past the end of the recording (the
   foot of the screen) a sample is transparent, and taking its red channel raw left a cyan edge.
+  **Bend, then blur, with a gentle profile** (offset grows with t², strength 0.45 x the rim).
+  Blurring first with a circular bevel (vertical slope at the edge) drew a sharp mirrored copy of
+  the outline just inside the rim, which read as the effect stopping short of the edge.
 - **A glass pane must never be inside the source it shows** (it would draw a recording of itself).
   The NavHost is the source for the bottom chrome only (`LocalGlassBackdrop` is provided to the
   bottom bar, not the pages). Now Playing records its own cover wash for its buttons; Collection and
   Artist record their page for the floating header buttons. Anywhere else glass falls back to a fill.
-- **Bottom chrome** (`GlassChrome.kt`): a capsule of tabs (Home, Library) with a highlight that slides
-  and swells, a separate search circle, the mini player above. Scrolling a page down folds all three
-  into one row (a NestedScrollConnection on the NavHost, `onPostScroll` so pulling at a list's top
-  does nothing). The chrome keeps its full height while folded so `LocalBottomChrome` never changes.
-  Its side margin is concentric with the display's corner (`Display.getRoundedCorner`, 12+), its
-  type is capped at 1.3x (fixed-height capsule), and it is placed with `placeRelative` for RTL.
+- **Its own look, not Apple Music's.** The first version copied Apple's signatures one for one
+  (the iOS tab capsule with a separate search circle, large titles, a red chevron list for Library,
+  the cover shrinking on pause, the volume slider, "Playing Next"), and read as a rip-off. What
+  replaced each is Verza's own; keep it that way rather than drifting back to the reference:
+- **The dock** (`GlassDock` in `GlassChrome.kt`): one pane of glass holding the player and the tabs
+  (Home, Search, Library), divided by a hairline that is also the song's progress. The selected tab
+  sits in a soft pool of the accent's light that slides between tabs. Scrolling a page down folds
+  the tabs away and leaves the player, with the current tab's icon at its end to bring them back
+  (a NestedScrollConnection on the NavHost, `onPostScroll` so pulling at a list's top does
+  nothing). The dock keeps its full height while folded so `LocalBottomChrome` never changes. Its
+  margin is concentric with the display's corner (`Display.getRoundedCorner`, 12+), its type is
+  capped at 1.3x, and it lays out in RTL.
+- **Mastheads** (`GlassMasthead`): the Material masthead's dateline in small capitals in the accent,
+  over the page's name ("For you", "Library", "Search").
+- **Library** is tiles, each lit from a corner by the accent (the dock's light again); each opens
+  as a page (BackHandler returns).
+- **Albums**: the cover full width with the name on a plate of glass across its foot (the cover is
+  its own glass source), then Play as the one accent-filled control, beside Shuffle.
 - **Motion:** pages push in from the edge with the old one sliding a third behind (`PushSpring`,
   critically damped), tabs cross-fade, Now Playing rises over the page and drops back (NavHost
   transitions with `KeepUntilTransitionsFinished`); drag down to close.
 - **Haptics** (`Haptics`, `rememberHaptics`), sparing on purpose: a tick for tab changes, like and
-  the queue toggles, and the volume slider's ends; a click for play/pause; a bump when a drag crosses
-  the point where letting go acts (closing Now Playing, swiping to the next song).
-- **Now Playing** (`NowPlayingGlass.kt`) is its own layout: the cover blurred into a slowly turning
-  wash (blurred once; only the layer holding it turns, so a frame of drift is not a re-blur), the
-  cover shrinking while paused, a scrubber and the system volume that thicken under a finger, and the
-  queue opening in place of the cover. The rest of the player's actions are in More. Lyrics sits on
-  the same wash (`OnCoverWash`), and the NavHost leaves its top unpadded on that route.
-- **Library** in Glass is an index of categories that each open as a page (BackHandler returns),
-  with recently played as covers underneath. Empty states are `GlassEmpty`: a large quiet symbol
-  over one line saying what to do.
+  the queue toggles; a click for play/pause; a bump when a drag crosses the point where letting go
+  acts (closing Now Playing, swiping to the next song).
+- **Now Playing** (`NowPlayingGlass.kt`): the cover blurred into a slowly turning wash (blurred once;
+  only the layer holding it turns, so a frame of drift is not a re-blur). The title is set in the
+  song's own display face (`TitleFonts`, sized by the shared `FitTitle`), the position is the
+  spectrum (`VisualizerSeekBar`), the transport is one capsule of glass, and Lyrics, the output (by
+  name) and "Up next" are labelled pills. Paused, the cover dims. No volume slider: the keys do it.
+  The queue opens in place of the cover. Lyrics sits on the same wash (`OnCoverWash`), and the
+  NavHost leaves its top unpadded on that route.
+- Empty states are `GlassEmpty`: a large quiet symbol over one line saying what to do.
+
+## Both designs
+
+- **Mix covers** (`MixCover` in `MixScreen.kt`): a duotone of the mix's own two colours (a 2x2
+  mosaic of four of its covers when it has four, else one) with the name on a flat band of the
+  mix's colour. Replaced a single cover under a gradient scrim with a small kind label on it. The
+  same cover is the mix page's banner, wide.
+- **Tapping the tab you are on** bumps `LocalTabReselect`; pages react with `onTabReselected`
+  (which ignores the starting value): Home scrolls to the top, Library leaves a category for its
+  index, Search focuses its field. **Search hides the keyboard on submit.** On the emulator, adb's
+  Enter goes through a hardware keyboard whose floating toolbar stays up; tap the IME's own search
+  key to test it.
+- **A card's long press goes through its own `combinedClickable`** (`ExpressiveCard(onLongPress)`).
+  A second clickable wrapped outside it never saw the long press: the inner one took the press and
+  played the song on release.
+- **Flow test**: `verza-shots/mob/r11_flow.py` walks every main interaction in Glass and checks each
+  by its effect (media session state, settings, what is on screen). 33 checks.
 
 ## Architecture pointers
 - **Background glow** (app-wide, behind the NavHost in `MainActivity`): `ui/theme/Glow.kt`.

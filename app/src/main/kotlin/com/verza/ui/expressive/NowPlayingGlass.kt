@@ -1,5 +1,8 @@
 package com.verza.ui.expressive
 
+import com.verza.ui.theme.LocalAudioSignal
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.foundation.layout.statusBars
 import android.app.Activity
 import android.content.Context
@@ -171,6 +174,7 @@ fun NowPlayingGlass(
     title: String,
     artist: String,
     artworkUrl: String?,
+    trackKey: String?,
     albumArtMotion: Boolean,
     isPlaying: Boolean,
     isLiked: Boolean,
@@ -261,13 +265,11 @@ fun NowPlayingGlass(
                     )
                 }
                 val controls: @Composable ColumnScope.(Boolean) -> Unit = { withTitle ->
-                    if (withTitle) TitleRow(title, artist, isLiked, onToggleLike, onOpenMore)
-                    Spacer(Modifier.height(18.dp))
-                    Scrubber(positionMs, durationMs, onSeek)
+                    if (withTitle) TitleBlock(title, artist, trackKey, isLiked, onToggleLike, onOpenMore)
                     Spacer(Modifier.height(14.dp))
+                    Scrubber(positionMs, durationMs, isPlaying, onSeek)
+                    Spacer(Modifier.height(16.dp))
                     Transport(isPlaying, onTogglePlay, onNext, onPrevious)
-                    Spacer(Modifier.height(14.dp))
-                    Volume()
                     Spacer(Modifier.height(14.dp))
                     FootRow(
                         showQueue = showQueue,
@@ -425,8 +427,8 @@ private fun Grabber(onBack: () -> Unit, drag: Modifier) {
 }
 
 /**
- * The cover. Full size while playing, drawn back while paused, on a spring with a little bounce:
- * the one place a pause shows itself without a word.
+ * The cover. Paused, it dims a little and settles back a step, the light going down rather than the
+ * picture shrinking away.
  */
 @Composable
 private fun Artwork(
@@ -437,9 +439,14 @@ private fun Artwork(
     modifier: Modifier,
 ) {
     val scale by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.84f,
-        animationSpec = spring(dampingRatio = 0.62f, stiffness = 260f),
+        targetValue = if (isPlaying) 1f else 0.97f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 260f),
         label = "artScale",
+    )
+    val dim by animateFloatAsState(
+        targetValue = if (isPlaying) 0f else 0.32f,
+        animationSpec = tween(400),
+        label = "artDim",
     )
     val scope = rememberCoroutineScope()
     val swipe = remember { Animatable(0f) }
@@ -480,34 +487,50 @@ private fun Artwork(
             model = ImageRequest.Builder(LocalContext.current).data(artworkUrl).crossfade(300).build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().drawWithContent {
+                drawContent()
+                if (dim > 0f) drawRect(Color.Black.copy(alpha = dim))
+            },
         )
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * The title in a face of its own, a different one for each song (TitleFonts), sized to fill the
+ * width in at most two lines; the artist under it with like and more. Verza's per-song type is
+ * what this screen is recognisably Verza by, so Glass keeps it.
+ */
 @Composable
-private fun TitleRow(title: String, artist: String, isLiked: Boolean, onToggleLike: () -> Unit, onOpenMore: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = TitleStyle,
-                color = Ink,
-                maxLines = 1,
-                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 2_000),
+private fun TitleBlock(
+    title: String,
+    artist: String,
+    trackKey: String?,
+    isLiked: Boolean,
+    onToggleLike: () -> Unit,
+    onOpenMore: () -> Unit,
+) {
+    val context = LocalContext.current
+    val family = remember(trackKey, title) {
+        val pool = TitleFonts.poolFor(title)
+        pickTitleFace(trackKey ?: title, pool.size, avoid = null) { TitleFonts.covers(context, pool[it], title) }
+            ?.let { TitleFonts.family(pool[it]) }
+    }
+    val style = if (family != null) TextStyle(fontFamily = family, fontWeight = FontWeight.Normal) else TitleStyle
+    Column {
+        FitTitle(text = title, style = style, color = Ink, maxLines = 2, maxSp = 56f, screenShare = 0.14f)
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(artist, style = ArtistStyle, color = InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
+            val haptics = rememberHaptics()
+            WashButton(
+                icon = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                contentDescription = if (isLiked) "Unlike" else "Like",
+                onClick = { haptics.tick(); onToggleLike() },
             )
-            Text(artist, style = ArtistStyle, color = InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.width(10.dp))
+            WashButton(icon = Icons.Rounded.MoreHoriz, contentDescription = "More", onClick = onOpenMore)
         }
-        Spacer(Modifier.width(12.dp))
-        val haptics = rememberHaptics()
-        WashButton(
-            icon = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-            contentDescription = if (isLiked) "Unlike" else "Like",
-            onClick = { haptics.tick(); onToggleLike() },
-        )
-        Spacer(Modifier.width(10.dp))
-        WashButton(icon = Icons.Rounded.MoreHoriz, contentDescription = "More", onClick = onOpenMore)
     }
 }
 
@@ -526,107 +549,47 @@ private fun WashButton(icon: androidx.compose.ui.graphics.vector.ImageVector, co
 }
 
 /**
- * A thin track that thickens while it is held, so the finger has something to hold, and goes back
- * to a hairline once it is let go. Tap anywhere on it to jump.
+ * The position as Verza's spectrum: bars that move with the music (when the visualizer is allowed
+ * to listen) and fill white as the song plays. Drag or tap to seek.
  */
 @Composable
-private fun GlassTrack(
-    fraction: Float,
-    onChange: (Float) -> Unit,
-    onRelease: (Float) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-) {
-    var dragging by remember { mutableStateOf(false) }
-    var local by remember { mutableFloatStateOf(0f) }
-    val change by rememberUpdatedState(onChange)
-    val release by rememberUpdatedState(onRelease)
-    val thick by animateDpAsState(if (dragging) 12.dp else 7.dp, spring(dampingRatio = 0.7f, stiffness = 700f), label = "trackThick")
-    val stretch by animateFloatAsState(if (dragging) 1.025f else 1f, spring(dampingRatio = 0.6f, stiffness = 600f), label = "trackStretch")
-    val shown = if (dragging) local else fraction.coerceIn(0f, 1f)
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(28.dp)
-            .graphicsLayer { scaleX = stretch }
-            .pointerInput(Unit) {
-                detectTapGestures { o -> release((o.x / size.width).coerceIn(0f, 1f)) }
-            }
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragStart = { o ->
-                        dragging = true
-                        local = (o.x / size.width).coerceIn(0f, 1f)
-                        change(local)
-                    },
-                    onDragEnd = { dragging = false; release(local) },
-                    onDragCancel = { dragging = false },
-                ) { c, dx ->
-                    c.consume()
-                    local = (local + dx / size.width).coerceIn(0f, 1f)
-                    change(local)
-                }
-            }
-            .semantics {
-                contentDescription = label
-                progressBarRangeInfo = ProgressBarRangeInfo(shown, 0f..1f)
-                setProgress { release(it.coerceIn(0f, 1f)); true }
-            }
-            .drawBehind {
-                val h = thick.toPx()
-                val top = (size.height - h) / 2f
-                drawRoundRect(InkFaint, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2f))
-                if (shown > 0f) drawRoundRect(
-                    if (dragging) Ink else Ink.copy(alpha = 0.78f),
-                    Offset(0f, top),
-                    Size(size.width * shown, h),
-                    CornerRadius(h / 2f),
-                )
-            },
-    )
-}
-
-@Composable
-private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit) {
-    // Where the finger is while scrubbing, and for a moment after letting go, so the bar does not
-    // jump back to the old position while the player is still getting to the new one.
-    var held by remember { mutableStateOf<Float?>(null) }
-    LaunchedEffect(held) { if (held != null) { delay(900); held = null } }
+private fun Scrubber(positionMs: Long, durationMs: Long, isPlaying: Boolean, onSeek: (Long) -> Unit) {
     val live = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
-    val at = held ?: live
     Column {
-        GlassTrack(
-            fraction = at,
-            onChange = { held = it },
-            onRelease = {
-                held = it
-                if (durationMs > 0) onSeek((it * durationMs).toLong())
-            },
-            label = "Position",
+        VisualizerSeekBar(
+            progress = live,
+            onSeek = { f -> if (durationMs > 0) onSeek((f * durationMs).toLong()) },
+            accent = Ink,
+            trackColor = InkFaint,
+            signalFlow = LocalAudioSignal.current,
+            animating = isPlaying,
+            height = 34.dp,
+            modifier = Modifier.semantics { contentDescription = "Position" },
         )
+        Spacer(Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth()) {
-            val shownMs = (at * durationMs).toLong()
-            Text(formatDuration(shownMs), style = SmallStyle, color = InkSoft)
+            Text(formatDuration(positionMs), style = SmallStyle, color = InkSoft)
             Spacer(Modifier.weight(1f))
-            Text(
-                if (durationMs > 0) "-" + formatDuration((durationMs - shownMs).coerceAtLeast(0)) else "--:--",
-                style = SmallStyle,
-                color = InkSoft,
-            )
+            Text(formatDuration(durationMs), style = SmallStyle, color = InkSoft)
         }
     }
 }
 
+/** Previous, play and next, in one capsule of glass. */
 @Composable
 private fun Transport(isPlaying: Boolean, onTogglePlay: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit) {
     val haptics = rememberHaptics()
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(78.dp)
+            .washGlass(CircleShape)
+            .padding(horizontal = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PlainIconButton(Icons.Rounded.FastRewind, "Previous track", onPrevious, Ink, size = 64.dp, iconSize = 42.dp)
-        Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
+        PlainIconButton(Icons.Rounded.SkipPrevious, "Previous track", onPrevious, Ink, size = 58.dp, iconSize = 36.dp)
+        Box(Modifier.size(70.dp), contentAlignment = Alignment.Center) {
             AnimatedContent(
                 targetState = isPlaying,
                 transitionSpec = {
@@ -640,62 +603,27 @@ private fun Transport(isPlaying: Boolean, onTogglePlay: () -> Unit, onNext: () -
                     contentDescription = if (playing) "Pause" else "Play",
                     onClick = { haptics.click(); onTogglePlay() },
                     tint = Ink,
-                    size = 80.dp,
-                    iconSize = 56.dp,
+                    size = 70.dp,
+                    iconSize = 48.dp,
                 )
             }
         }
-        PlainIconButton(Icons.Rounded.FastForward, "Next track", onNext, Ink, size = 64.dp, iconSize = 42.dp)
+        PlainIconButton(Icons.Rounded.SkipNext, "Next track", onNext, Ink, size = 58.dp, iconSize = 36.dp)
     }
 }
 
-/** The system's media volume, the same one the volume keys move, and kept in step with them. */
-@Composable
-private fun Volume() {
-    val context = LocalContext.current
-    val audio = remember(context) { context.getSystemService(AudioManager::class.java) }
-    val max = remember(audio) { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
-    var level by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()) }
-    DisposableEffect(audio) {
-        // A volume change, by the keys or anything else, is written to system settings; there is no
-        // public broadcast for it.
-        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) {
-                level = audio.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()
-            }
-        }
-        context.contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, observer)
-        onDispose { context.contentResolver.unregisterContentObserver(observer) }
-    }
-    val haptics = rememberHaptics()
-    val set: (Float) -> Unit = { v ->
-        // Volume is in steps; setting the same step again is a no-op, so this is cheap to call per frame.
-        val step = (v * max).roundToInt()
-        val was = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-        if (step != was && (step == 0 || step == max)) haptics.tick()
-        runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, step, 0) }
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.AutoMirrored.Rounded.VolumeDown, contentDescription = null, tint = InkSoft, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(10.dp))
-        GlassTrack(fraction = level, onChange = set, onRelease = set, label = "Volume", modifier = Modifier.weight(1f))
-        Spacer(Modifier.width(10.dp))
-        Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = InkSoft, modifier = Modifier.size(20.dp))
-    }
-}
-
+/** Lyrics, where the sound is going (by name), and the queue: three labelled pills of glass. */
 @Composable
 private fun FootRow(showQueue: Boolean, onOpenLyrics: () -> Unit, onToggleQueue: () -> Unit) {
     val context = LocalContext.current
     val output by rememberAudioOutput()
-    val external = output.kind != OutputKind.SPEAKER && output.kind != OutputKind.EARPIECE
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PlainIconButton(Icons.Rounded.Lyrics, "Lyrics", onOpenLyrics, InkSoft, size = 48.dp, iconSize = 24.dp)
-        PlainIconButton(
+        WashPill(Icons.Rounded.Lyrics, "Lyrics", "Lyrics", onClick = onOpenLyrics)
+        WashPill(
             icon = when (output.kind) {
                 OutputKind.BLUETOOTH -> Icons.Rounded.Bluetooth
                 OutputKind.WIRED -> Icons.Rounded.Headphones
@@ -704,24 +632,45 @@ private fun FootRow(showQueue: Boolean, onOpenLyrics: () -> Unit, onToggleQueue:
                 OutputKind.REMOTE -> Icons.Rounded.Cast
                 else -> Icons.Rounded.Speaker
             },
-            contentDescription = "Playing on ${output.name}. Change output.",
+            label = output.name,
+            description = "Playing on ${output.name}. Change output.",
             onClick = { AudioOutputs.openSwitcher(context) },
-            tint = if (external) Ink else InkSoft,
-            size = 48.dp,
-            iconSize = 24.dp,
+            modifier = Modifier.weight(1f),
         )
-        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-            // Open, it sits in glass, the state shown the way a selected tab is.
-            if (showQueue) Box(Modifier.size(40.dp).washGlass(CircleShape))
-            PlainIconButton(
-                Icons.AutoMirrored.Rounded.QueueMusic,
-                if (showQueue) "Hide queue" else "Queue",
-                onToggleQueue,
-                if (showQueue) Ink else InkSoft,
-                size = 48.dp,
-                iconSize = 24.dp,
-            )
-        }
+        WashPill(
+            Icons.AutoMirrored.Rounded.QueueMusic,
+            "Up next",
+            if (showQueue) "Hide queue" else "Queue",
+            on = showQueue,
+            onClick = onToggleQueue,
+        )
+    }
+}
+
+/** A labelled pill over the wash: glass when off, white with dark ink when on. */
+@Composable
+private fun WashPill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    on: Boolean = false,
+) {
+    val ink = if (on) Color.Black.copy(alpha = 0.78f) else Ink
+    Row(
+        modifier = modifier
+            .height(40.dp)
+            .then(if (on) Modifier.clip(CircleShape).background(Ink.copy(alpha = 0.9f)) else Modifier.washGlass(CircleShape))
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(label, style = SmallStyle.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold), color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -772,7 +721,7 @@ private fun QueuePane(
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Playing Next", style = TitleStyle.copy(fontSize = 17.sp), color = Ink)
+                Text("Up next", style = TitleStyle.copy(fontSize = 17.sp), color = Ink)
                 Text(
                     if (upNext.isEmpty()) "Nothing after this song" else "${upNext.size} song${if (upNext.size == 1) "" else "s"}",
                     style = SmallStyle.copy(fontSize = 13.sp),
@@ -832,21 +781,17 @@ private fun QueuePane(
     }
 }
 
-/** Shuffle and repeat: glass when off, a white lozenge with dark glyph when on, as Apple draws it. */
+/** Shuffle and repeat: labelled pills, glass when off, white when on. */
 @Composable
 private fun QueueToggle(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, on: Boolean, onClick: () -> Unit) {
-    val shape = SquircleShape(12.dp)
     val haptics = rememberHaptics()
-    Box(
-        modifier = Modifier
-            .size(width = 52.dp, height = 34.dp)
-            .then(if (on) Modifier.clip(shape).background(Ink.copy(alpha = 0.88f)) else Modifier.washGlass(shape))
-            .clickable { haptics.tick(); onClick() }
-            .semantics { contentDescription = label + if (on) ", on" else ", off" },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = null, tint = if (on) Color.Black.copy(alpha = 0.75f) else Ink, modifier = Modifier.size(19.dp))
-    }
+    WashPill(
+        icon = icon,
+        label = label.substringBefore(' '),
+        description = label + if (on) ", on" else ", off",
+        on = on,
+        onClick = { haptics.tick(); onClick() },
+    )
 }
 
 /** Fades a scrolling list out at its top and bottom edges instead of cutting it off. */

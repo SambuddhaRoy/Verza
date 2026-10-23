@@ -1,5 +1,6 @@
 package com.verza.ui.navigation
 
+import com.verza.ui.expressive.LocalTabReselect
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -9,7 +10,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.animation.core.spring
-import com.verza.ui.expressive.GlassBottomChrome
+import com.verza.ui.expressive.GlassDock
+import androidx.compose.material.icons.rounded.Search
 import com.verza.ui.expressive.GlassMiniPlayer
 import com.verza.ui.expressive.MiniPlayerState
 import com.verza.ui.theme.LocalGlassBackdrop
@@ -224,9 +226,13 @@ fun VerzaNavigation(
 
     // Switching tabs, shared by the bottom bar and the rail, so widening the window changes where
     // navigation is drawn and nothing about how it behaves.
+    val tabReselect = remember { mutableIntStateOf(0) }
     val onSelectTab: (String) -> Unit = onSelect@{ route ->
         val screen = SCREEN_FOR_ROUTE[route] ?: return@onSelect
-        if (currentRoute == screen.route) return@onSelect
+        if (currentRoute == screen.route) {
+            tabReselect.intValue++
+            return@onSelect
+        }
         // Two-phase nav for tab taps:
         // 1. If the target tab is already in the back stack (the common case for Home, which is the
         //    start destination and always present), pop straight back to it. This is the only path
@@ -280,6 +286,7 @@ fun VerzaNavigation(
         artist = currentArtist,
         artworkUrl = currentArtworkUrl,
         isPlaying = playback.isPlaying,
+        progress = if (playback.durationMs > 0) positionMs.toFloat() / playback.durationMs else 0f,
         onExpand = { navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true } },
         onTogglePlay = { playbackViewModel.togglePlay() },
         onNext = { playbackViewModel.seekToNext() },
@@ -344,11 +351,10 @@ fun VerzaNavigation(
                                 .height(58.dp),
                         )
                     } else {
-                        GlassBottomChrome(
+                        GlassDock(
                             tabs = GLASS_NAV,
                             currentRoute = currentRoute,
                             onNavigate = onSelectTab,
-                            searchRoute = Screen.Search.route,
                             minimized = chromeFolded.value,
                             onExpand = { chromeFolded.value = false },
                             mini = miniState,
@@ -438,6 +444,7 @@ fun VerzaNavigation(
       CompositionLocalProvider(
           LocalTrackActions provides trackActions,
           LocalBottomChrome provides innerPadding.calculateBottomPadding(),
+          LocalTabReselect provides tabReselect.intValue,
       ) {
         NavHost(
             navController = navController,
@@ -886,9 +893,10 @@ private val EXPRESSIVE_NAV = listOf(
     NavDestination(Screen.NowPlaying.route, Icons.Outlined.MusicNote, "Playing"),
 )
 
-/** Glass keeps Search out of the capsule, as its own button beside it, and Now Playing in the player. */
+/** Glass's dock: the three places, with Now Playing reached through the player above them. */
 private val GLASS_NAV = listOf(
     NavDestination(Screen.Home.route, Icons.Rounded.Home, "Home"),
+    NavDestination(Screen.Search.route, Icons.Rounded.Search, "Search"),
     NavDestination(Screen.Library.route, Icons.Rounded.LibraryMusic, "Library"),
 )
 

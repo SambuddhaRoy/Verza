@@ -77,6 +77,26 @@ data class NavDestination(
 val LocalBottomChrome = compositionLocalOf { 0.dp }
 
 /**
+ * Goes up by one each time the tab already showing is tapped again. A tab page takes that as "back
+ * to the top": Home scrolls up, Library leaves a category for its index, Search puts the cursor in
+ * its field. Read it with [onTabReselected], which ignores the value it starts with.
+ */
+val LocalTabReselect = compositionLocalOf { 0 }
+
+/** Runs [action] when the current tab is tapped again, not when the page first appears. */
+@Composable
+fun onTabReselected(action: suspend () -> Unit) {
+    val count = LocalTabReselect.current
+    val seen = remember { androidx.compose.runtime.mutableIntStateOf(count) }
+    androidx.compose.runtime.LaunchedEffect(count) {
+        if (count != seen.intValue) {
+            seen.intValue = count
+            action()
+        }
+    }
+}
+
+/**
  * A floating navigation bar. The selected destination expands into a filled pill carrying its label;
  * the others stay as bare icons.
  *

@@ -1,5 +1,13 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.ColorFilter
 import com.verza.ui.theme.isGlass
 import com.verza.ui.expressive.LocalBottomChrome
 import com.verza.ui.expressive.ShapeLargeIncreased
@@ -84,7 +92,11 @@ fun MixScreen(
             modifier = Modifier.padding(start = 4.dp, end = 20.dp, top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            if (com.verza.ui.theme.isGlass()) {
+                Box(Modifier.padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
+                    GlassHeaderButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Back", onBack)
+                }
+            } else IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onBackground)
             }
         }
@@ -104,44 +116,22 @@ fun MixScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             item {
-                // Banner fronted by real art from inside the mix, washed with the kind tint
-                // (same treatment as the Home "Made for you" cards); falls back to the gradient.
-                val (top, bottom) = mixGradient(m)
-                val bannerArt = remember(m.id, m.items) { mixCoverArt(m) }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .clip(ShapeLargeIncreased)
-                        .background(Brush.linearGradient(listOf(top, bottom))),
-                ) {
-                    if (bannerArt != null) {
-                        AsyncImage(
-                            model = bannerArt,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                        Box(
-                            Modifier.fillMaxSize().background(
-                                Brush.verticalGradient(
-                                    0f to top.copy(alpha = 0.25f),
-                                    1f to bottom.copy(alpha = 0.92f),
-                                ),
-                            ),
-                        )
-                    }
-                    Text(
-                        m.title,
-                        style = MaterialTheme.typography.displaySmall,
-                        color = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(18.dp),
-                    )
-                }
+                // The same cover as on Home, wide: the picture to the left of nothing, the name on
+                // its band across the foot.
+                MixCover(
+                    mix = m,
+                    titleStyle = MixTitleStyle.copy(fontSize = 30.sp, lineHeight = 32.sp),
+                    band = 0.34f,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth().height(170.dp).clip(ShapeLargeIncreased),
+                )
                 Spacer(Modifier.height(10.dp))
-                Text(m.subtitle, style = CaptionItalic, color = ext.muted)
+                // Italic is an editorial voice; Glass keeps to the one upright face.
+                Text(
+                    m.subtitle,
+                    style = if (com.verza.ui.theme.isGlass()) MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp) else CaptionItalic,
+                    color = ext.muted,
+                )
                 Spacer(Modifier.height(14.dp))
                 if (playable.isNotEmpty()) {
                     // Glass: grey with red ink, like an album's Play.
@@ -211,4 +201,86 @@ private val TASTE_GRADIENTS = listOf(
     Color(0xFFB36AE2) to Color(0xFF3A1650),
     Color(0xFF26C6B9) to Color(0xFF0C4540),
     Color(0xFFFF7043) to Color(0xFF5C1E0C),
+)
+
+/**
+ * A curated mix's cover, made the way Spotify and YouTube Music make theirs. A picture from inside
+ * the mix, recoloured into the mix's own two colours (a duotone, so every mix of a kind reads as one
+ * set however different its songs' covers are), and the name set large on a flat band of the mix's
+ * colour below it. No label over the picture and no gradient scrim: the band is what carries the
+ * name, so it reads the same on every cover.
+ *
+ * @param band how much of the height the name's band takes.
+ */
+@Composable
+internal fun MixCover(
+    mix: com.verza.data.CuratedMix,
+    titleStyle: TextStyle,
+    modifier: Modifier = Modifier,
+    band: Float = 0.36f,
+    maxLines: Int = 2,
+) {
+    val (vivid, deep) = mixGradient(mix)
+    val art = remember(mix.id, mix.items) { mixCoverArt(mix) }
+    // Four or more covers make a 2x2 mosaic, the way a playlist's cover is built from its songs. A
+    // single picture can be a flat field of colour that the duotone leaves empty; four rarely are.
+    val mosaic = remember(mix.id, mix.items) { mix.items.mapNotNull { it.thumbnailUrl }.distinct().take(4).takeIf { it.size == 4 } }
+    // Shadows go to the deep colour, highlights to a lifted version of the vivid one, so the
+    // picture keeps its shapes and loses its own colours.
+    val duotone = remember(vivid, deep) {
+        ColorFilter.colorMatrix(duotoneMatrix(deep, androidx.compose.ui.graphics.lerp(vivid, Color.White, 0.3f)))
+    }
+    val ink = remember(vivid) { com.verza.ui.expressive.readableOn(vivid) }
+    Column(modifier.background(deep)) {
+        if (mosaic != null) Column(Modifier.fillMaxWidth().weight(1f - band)) {
+            for (rowCovers in mosaic.chunked(2)) Row(Modifier.fillMaxWidth().weight(1f)) {
+                for (cover in rowCovers) AsyncImage(
+                    model = cover,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    colorFilter = duotone,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                )
+            }
+        } else Box(Modifier.fillMaxWidth().weight(1f - band)) {
+            if (art != null) AsyncImage(
+                model = art,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                colorFilter = duotone,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(band)
+                .background(vivid)
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(mix.title, style = titleStyle, color = ink, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/**
+ * A colour matrix mapping each pixel's luminance onto the line from [dark] to [light]. The offsets
+ * column is in 0..255, as Android's ColorMatrix has it.
+ */
+private fun duotoneMatrix(dark: Color, light: Color): ColorMatrix {
+    fun row(d: Float, l: Float) = floatArrayOf((l - d) * 0.299f, (l - d) * 0.587f, (l - d) * 0.114f, 0f, d * 255f)
+    return ColorMatrix(
+        row(dark.red, light.red) + row(dark.green, light.green) + row(dark.blue, light.blue) +
+            floatArrayOf(0f, 0f, 0f, 1f, 0f),
+    )
+}
+
+/** The mix's name on its cover: heavy and tight, a lockup rather than a caption. */
+internal val MixTitleStyle = TextStyle(
+    fontFamily = com.verza.ui.theme.FontDisplayCut,
+    fontWeight = FontWeight.Bold,
+    fontSize = 17.sp,
+    lineHeight = 19.sp,
+    letterSpacing = (-0.01).em,
 )

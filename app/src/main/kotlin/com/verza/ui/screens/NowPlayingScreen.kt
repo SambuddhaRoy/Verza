@@ -157,6 +157,7 @@ fun NowPlayingScreen(
             title = title,
             artist = artist,
             artworkUrl = artworkUrl,
+            trackKey = videoId,
             albumArtMotion = albumArtMotion,
             isPlaying = isPlaying,
             isLiked = isLiked,

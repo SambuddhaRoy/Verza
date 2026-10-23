@@ -10,6 +10,7 @@ import com.verza.ui.components.pressableScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -127,8 +128,11 @@ private fun HomeContent(
 
     val xc = LocalExpressiveColors.current
     val glass = isGlass()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    com.verza.ui.expressive.onTabReselected { listState.animateScrollToItem(0) }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize().background(xc.container),
         contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp + LocalBottomChrome.current),
         verticalArrangement = Arrangement.spacedBy(if (isGlass()) 22.dp else 28.dp),
@@ -139,7 +143,7 @@ private fun HomeContent(
                 modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Home", style = HeroTitle, color = xc.onContainer, modifier = Modifier.weight(1f))
+                GlassMasthead("${greeting()} · ${dateline()}", "For you", Modifier.weight(1f))
                 GlassHeaderButton(Icons.Outlined.Settings, "Settings", onOpenSettings)
             }
         } else item {
@@ -179,7 +183,7 @@ private fun HomeContent(
         // "Made for you": Verza's on-device curated mixes (Daylist / Discover / Release radar).
         val core = mixes.filter { it.kind != com.verza.data.MixKind.GENRE && it.kind != com.verza.data.MixKind.VIBE }
         if (core.isNotEmpty()) {
-            item { MadeForYouRow(title = "Made for you", mixes = core, onOpenMix = onOpenMix) }
+            item { MadeForYouRow(title = if (glass) "Your mixes" else "Made for you", mixes = core, onOpenMix = onOpenMix) }
         }
 
         // Playlists by genre and vibe, from the listener's own favourites. These took the place of a
@@ -273,142 +277,36 @@ private fun MadeForYouRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             mixes.forEach { mix ->
-                if (glass) GlassMixCard(mix = mix, onClick = { onOpenMix(mix.id) })
-                else MixCard(mix = mix, onClick = { onOpenMix(mix.id) })
+                MixTile(mix = mix, glass = glass, onClick = { onOpenMix(mix.id) })
             }
         }
     }
 }
 
 /**
- * The cover for a curated mix: real album art from a song *inside* the mix, washed with the
- * mix kind's signature tint so Daylist/Discovery/Release radar keep their colour identities
- * (and the eyebrow + title stay legible over any artwork). Falls back to the plain gradient
- * while the mix is still being generated.
+ * A mix on Home: its cover ([MixCover]) and nothing else. The kind of mix used to sit on the art in
+ * small capitals; the cover's colour and name say it, and the label was noise at that size.
  */
 @Composable
-private fun MixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
-    val (top, bottom) = mixGradient(mix)
-    val eyebrow = when (mix.kind) {
-        com.verza.data.MixKind.DAYLIST -> "DAYLIST"
-        com.verza.data.MixKind.DISCOVER -> "DISCOVERY"
-        com.verza.data.MixKind.RELEASE_RADAR -> "NEW RELEASES"
-        com.verza.data.MixKind.GENRE -> "GENRE"
-        com.verza.data.MixKind.VIBE -> "VIBE"
-        com.verza.data.MixKind.LISTENBRAINZ -> "LISTENBRAINZ"
-    }
-    // The first item with art fronts the mix — stable for the life of the generated mix.
-    val coverArt = remember(mix.id, mix.items) { mixCoverArt(mix) }
-    Box(
-        modifier = Modifier
-            .size(154.dp)
-            .clip(VerzaShape)
-            .background(Brush.linearGradient(listOf(top, bottom)))
-            .clickable(onClick = onClick),
-    ) {
-        if (coverArt != null) {
-            AsyncImage(
-                model = coverArt,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            // Kind-tinted scrim: light at the top, deep at the foot where the title sits.
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        0f to top.copy(alpha = 0.30f),
-                        0.45f to bottom.copy(alpha = 0.35f),
-                        1f to bottom.copy(alpha = 0.92f),
-                    ),
-                ),
-            )
-        }
-        // The card is a fixed square, so text at the largest system font split words in half
-        // ("Evenin/g") and wrapped the badge into the title. Text here follows the system size up
-        // to 1.2x; the card's own size is what has to stay put.
-        val d = LocalDensity.current
-        CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale.coerceAtMost(1.2f))) {
-        Box(Modifier.fillMaxSize().padding(14.dp)) {
-            Text(
-                text = eyebrow,
-                maxLines = 1,
-                softWrap = false,
-                style = TextStyle(fontFamily = FontMono, fontSize = 10.sp, letterSpacing = 0.12.em),
-                color = Color.White,
-                // On a dark pill, so it reads over whatever lettering the cover has at the top.
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .background(Color.Black.copy(alpha = 0.45f), CircleShape)
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-            )
-            Text(
-                text = mix.title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = Color.White,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.BottomStart),
-            )
-        }
-        }
-    }
-}
-
-/**
- * A mix in the Glass design: what kind of mix it is in small grey type above, then a tall cover
- * with the name set on the foot of it, over a wash of the mix's colour. Apple Music's Top Picks.
- */
-@Composable
-private fun GlassMixCard(mix: com.verza.data.CuratedMix, onClick: () -> Unit) {
-    val xc = LocalExpressiveColors.current
-    val (top, bottom) = mixGradient(mix)
-    val coverArt = remember(mix.id, mix.items) { mixCoverArt(mix) }
-    val kind = when (mix.kind) {
-        com.verza.data.MixKind.DAYLIST -> "Daylist"
-        com.verza.data.MixKind.DISCOVER -> "Discovery"
-        com.verza.data.MixKind.RELEASE_RADAR -> "New releases"
-        com.verza.data.MixKind.GENRE -> "Genre"
-        com.verza.data.MixKind.VIBE -> "Vibe"
-        com.verza.data.MixKind.LISTENBRAINZ -> "ListenBrainz"
-    }
+private fun MixTile(mix: com.verza.data.CuratedMix, glass: Boolean, onClick: () -> Unit) {
+    val side = if (glass) 170.dp else 154.dp
+    // The cover is a fixed square, so its name follows the system's text size only up to 1.2x;
+    // past that, words longer than the card split mid-word.
     val d = LocalDensity.current
     CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale.coerceAtMost(1.2f))) {
-        Column(modifier = Modifier.width(176.dp)) {
-            Text(kind, style = MaterialTheme.typography.labelMedium, color = xc.onContainerMuted, maxLines = 1)
-            Spacer(Modifier.height(6.dp))
-            Box(
-                modifier = Modifier
-                    .size(width = 176.dp, height = 226.dp)
-                    .pressableScale(onClick = onClick)
-                    .clip(com.verza.ui.expressive.ShapeLargeIncreased)
-                    .background(Brush.linearGradient(listOf(top, bottom))),
-            ) {
-                if (coverArt != null) AsyncImage(
-                    model = coverArt,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(
-                            0.45f to Color.Transparent,
-                            0.72f to bottom.copy(alpha = 0.75f),
-                            1f to bottom.copy(alpha = 0.97f),
-                        ),
-                    ),
-                )
-                Text(
-                    text = mix.title,
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 19.sp, lineHeight = 23.sp),
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(14.dp),
-                )
-            }
-        }
+        MixCover(
+            mix = mix,
+            titleStyle = MixTitleStyle,
+            modifier = Modifier
+                .size(side)
+                .pressableScale(onClick = onClick)
+                .clip(VerzaShape)
+                // One label, read once: the name is also printed on the cover.
+                .clearAndSetSemantics {
+                    contentDescription = mix.title
+                    role = androidx.compose.ui.semantics.Role.Button
+                },
+        )
     }
 }
 
@@ -469,5 +367,31 @@ private fun dateline(): String {
         Calendar.FRIDAY -> "Friday"
         Calendar.SATURDAY -> "Saturday"
         else -> "Sunday"
+    }
+}
+
+/**
+ * A page's heading in Glass: a short line of small capitals in the accent (the time of day on
+ * Home, as the Material masthead has it), over the page's name. Verza's dateline rather than a
+ * bare large title, and the accent is the cover's, so the heading changes colour with the music.
+ */
+@Composable
+internal fun GlassMasthead(eyebrow: String, title: String, modifier: Modifier = Modifier) {
+    val xc = LocalExpressiveColors.current
+    Column(modifier) {
+        Text(
+            eyebrow.uppercase(),
+            style = TextStyle(
+                fontFamily = com.verza.ui.theme.FontBody,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                letterSpacing = 0.12.em,
+            ),
+            color = xc.accent,
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(title, style = HeroTitle, color = xc.onContainer, maxLines = 1)
     }
 }
