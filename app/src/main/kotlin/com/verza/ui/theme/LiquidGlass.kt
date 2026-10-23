@@ -102,7 +102,7 @@ fun Modifier.liquidGlass(
     rim: Color = Color.White,
     edge: Color = Color.Transparent,
     blur: Dp = 10.dp,
-    bend: Dp = 14.dp,
+    bend: Dp = 18.dp,
 ): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val layer = rememberGraphicsLayer()
@@ -183,35 +183,35 @@ private class GlassPane {
     private fun effectFor(w: Float, h: Float, radius: Float, margin: Float, blur: Float, bezel: Float): RenderEffect {
         val k = listOf(w, h, radius, margin, blur, bezel)
         effect?.let { if (k == key) return it }
-        val blurred = android.graphics.RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.CLAMP)
-        val vivid = android.graphics.RenderEffect.createColorFilterEffect(
-            ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(1.45f) }),
-            blurred,
-        )
-        val fx = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && bezel > 1f) {
+        // Bend first, then frost. Blurring last is what real frosted glass does, and it is what
+        // keeps the bent rim soft: blurred first, the bent band kept a sharp inner contour, a
+        // mirrored copy of the outline that read as the effect stopping short of the edge.
+        val bent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && bezel > 1f) {
             val lens = RuntimeShader(LENS).apply {
                 setFloatUniform("origin", margin, margin)
                 setFloatUniform("size", w, h)
                 setFloatUniform("radius", min(radius, min(w, h) / 2f))
                 setFloatUniform("bezel", bezel)
-                setFloatUniform("strength", bezel * 0.85f)
-                setFloatUniform("shine", 0.10f)
+                setFloatUniform("strength", bezel * 0.45f)
+                setFloatUniform("shine", 0.08f)
             }
-            android.graphics.RenderEffect.createChainEffect(
-                android.graphics.RenderEffect.createRuntimeShaderEffect(lens, "content"),
-                vivid,
-            )
+            android.graphics.RenderEffect.createRuntimeShaderEffect(lens, "content")
         } else {
-            vivid
+            null
         }
+        val vivid = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(1.45f) })
+        val tinted = if (bent != null) android.graphics.RenderEffect.createColorFilterEffect(vivid, bent)
+        else android.graphics.RenderEffect.createColorFilterEffect(vivid)
+        val fx = android.graphics.RenderEffect.createBlurEffect(blur, blur, tinted, Shader.TileMode.CLAMP)
         return fx.asComposeRenderEffect().also { effect = it; key = k }
     }
 }
 
 /**
  * The lens. Inside the rim (the last [bezel] pixels before the edge of a rounded rectangle) each
- * pixel samples further out along the edge's normal, more steeply towards the edge, the profile of
- * a rounded bevel: content from just beyond the pane is pulled in and bent round it. Red and blue
+ * pixel samples further out along the edge's normal, growing with the square of how close it is to
+ * the edge: content from just beyond the pane is pulled in and bent round it. Not a true circular
+ * bevel, whose slope is vertical at the edge and squeezed the rim into a hard line. Red and blue
  * are bent by slightly different amounts, which is the faint colour fringe real glass has, and the
  * top-left of the rim is lifted a little, as if lit.
  */
@@ -242,7 +242,7 @@ half4 main(float2 p) {
         n = n / len;
     }
     float t = 1.0 + d / bezel;
-    float k = 1.0 - sqrt(max(1.0 - t * t, 0.0));
+    float k = t * t;
     float2 off = n * (k * strength);
     half4 c = content.eval(p + off);
     half4 cr = content.eval(p + off * 1.12);

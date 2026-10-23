@@ -1,5 +1,9 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.contentDescription
+import com.verza.ui.theme.liquidGlass
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.runtime.CompositionLocalProvider
 import com.verza.ui.theme.LocalGlassBackdrop
@@ -392,8 +396,9 @@ private fun SleeveCollectionHeader(detail: CollectionDetail, trackCount: Int) {
 }
 
 /**
- * The Glass album header: the cover centred and large, the name under it, the artist in the
- * accent, and Play and Shuffle as two equal grey buttons, as an album opens on Apple Music.
+ * The Glass album header: the cover at full width, with the album's name on a plate of glass across
+ * its foot (the glass blurs the cover itself), then Play as the one filled thing on the page, in
+ * the accent, beside Shuffle.
  */
 @Composable
 private fun GlassCollectionHeader(
@@ -403,74 +408,95 @@ private fun GlassCollectionHeader(
 ) {
     val xc = com.verza.ui.expressive.LocalExpressiveColors.current
     val tracks = detail.tracks
+    val art = rememberGlassBackdrop()
+    val haptics = com.verza.ui.expressive.rememberHaptics()
     Column(
-        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.68f)
-                .widthIn(max = 300.dp)
+                .fillMaxWidth()
+                .widthIn(max = 420.dp)
                 .aspectRatio(1f)
-                .shadow(elevation = 18.dp, shape = ShapeLarge, clip = false)
-                .clip(ShapeLarge)
+                .shadow(elevation = 18.dp, shape = ShapeLargeIncreased, clip = false)
+                .clip(ShapeLargeIncreased)
                 .background(xc.surfaceHigh),
         ) {
-            if (detail.thumbnailUrl != null) AsyncImage(
-                model = detail.thumbnailUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            Box(Modifier.fillMaxSize().glassSource(art)) {
+                if (detail.thumbnailUrl != null) AsyncImage(
+                    model = detail.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            CompositionLocalProvider(LocalGlassBackdrop provides art) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(10.dp)
+                        .liquidGlass(
+                            shape = com.verza.ui.expressive.SquircleShape(16.dp),
+                            tint = Color.Black.copy(alpha = 0.34f),
+                            fallback = Color.Black.copy(alpha = 0.62f),
+                            rim = Color.White.copy(alpha = 0.6f),
+                            blur = 16.dp,
+                            bend = 12.dp,
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Text(
+                        detail.title,
+                        style = com.verza.ui.expressive.HeroDisplay,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (detail.subtitle.isNotBlank()) Text(
+                        detail.subtitle,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                        color = Color.White.copy(alpha = 0.78f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
-        Spacer(Modifier.height(18.dp))
-        Text(
-            detail.title,
-            style = com.verza.ui.expressive.HeroDisplay,
-            color = xc.onContainer,
-            textAlign = TextAlign.Center,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (detail.subtitle.isNotBlank()) Text(
-            detail.subtitle,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal, fontSize = 18.sp),
-            color = xc.accent,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(trackSummary(tracks.size, tracks), style = MaterialTheme.typography.bodySmall, color = xc.onContainerMuted)
-        Spacer(Modifier.height(18.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.widthIn(max = 420.dp)) {
-            GlassWideButton(Icons.Filled.PlayArrow, "Play", Modifier.weight(1f), enabled = tracks.isNotEmpty()) { onPlayTracks(tracks, 0) }
-            GlassWideButton(Icons.Filled.Shuffle, "Shuffle", Modifier.weight(1f), enabled = tracks.isNotEmpty()) { onShuffle(tracks) }
+        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().widthIn(max = 420.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .pressableScale(enabled = tracks.isNotEmpty()) { haptics.click(); onPlayTracks(tracks, 0) }
+                    .clip(CircleShape)
+                    .background(xc.accent)
+                    .semantics { contentDescription = "Play"; role = androidx.compose.ui.semantics.Role.Button },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = xc.onAccent, modifier = Modifier.size(30.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Row(
+                modifier = Modifier
+                    .height(44.dp)
+                    .pressableScale(enabled = tracks.isNotEmpty()) { onShuffle(tracks) }
+                    .clip(CircleShape)
+                    .background(xc.surface)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Shuffle, contentDescription = null, tint = xc.accent, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Shuffle", style = MaterialTheme.typography.titleMedium, color = xc.onSurface)
+            }
+            Spacer(Modifier.weight(1f))
+            Text(trackSummary(tracks.size, tracks), style = MaterialTheme.typography.bodySmall, color = xc.onContainerMuted)
         }
-    }
-}
-
-@Composable
-private fun GlassWideButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    modifier: Modifier,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val xc = com.verza.ui.expressive.LocalExpressiveColors.current
-    Row(
-        modifier = modifier
-            .height(48.dp)
-            .pressableScale(enabled = enabled, onClick = onClick)
-            .clip(ShapeLargeIncreased)
-            .background(xc.surface),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, contentDescription = null, tint = xc.accent, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp), color = xc.accent)
     }
 }
 

@@ -100,10 +100,7 @@ private fun FeatureRow(
                     "featureCard",
                 ),
                 aspect = 1f,
-                modifier = if (onItemLongPress == null) Modifier else Modifier.combinedClickable(
-                    onClick = { onItemClick(item) },
-                    onLongClick = { onItemLongPress(item) },
-                ),
+                onLongPress = onItemLongPress?.let { { it(item) } },
             )
         }
     }
@@ -139,10 +136,7 @@ private fun StandardRow(
                     "standardCard",
                 ),
                 aspect = if (wide) 1.32f else 1f,
-                modifier = if (onItemLongPress == null) Modifier else Modifier.combinedClickable(
-                    onClick = { onItemClick(item) },
-                    onLongClick = { onItemLongPress(item) },
-                ),
+                onLongPress = onItemLongPress?.let { { it(item) } },
             )
         }
     }

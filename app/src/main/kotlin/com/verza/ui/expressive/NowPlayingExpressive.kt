@@ -924,15 +924,22 @@ private fun lerpPx(from: Int, to: Int, t: Float): Int = (from + (to - from) * t)
  * title, the face or the width changes.
  */
 @Composable
-private fun FitTitle(text: String, style: TextStyle, color: Color, maxLines: Int = 3) {
+internal fun FitTitle(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    maxLines: Int = 3,
+    maxSp: Float = TITLE_MAX_SP,
+    screenShare: Float = TITLE_MAX_SCREEN_SHARE,
+) {
     val measurer = rememberTextMeasurer()
     val maxHeightPx = with(LocalDensity.current) {
-        (LocalConfiguration.current.screenHeightDp * TITLE_MAX_SCREEN_SHARE).dp.roundToPx()
+        (LocalConfiguration.current.screenHeightDp * screenShare).dp.roundToPx()
     }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val widthPx = constraints.maxWidth
-        val size = remember(text, style, widthPx, maxHeightPx) {
-            var sp = TITLE_MAX_SP
+        val size = remember(text, style, widthPx, maxHeightPx, maxSp) {
+            var sp = maxSp
             while (sp > TITLE_MIN_SP) {
                 val result = measurer.measure(
                     text = text,

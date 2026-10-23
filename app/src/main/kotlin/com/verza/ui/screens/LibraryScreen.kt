@@ -1,5 +1,7 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import com.verza.ui.expressive.GlassEmpty
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
@@ -495,6 +497,7 @@ private fun GlassLibrary(
 ) {
     val xc = LocalExpressiveColors.current
     var open by rememberSaveable { mutableStateOf<LibraryTab?>(null) }
+    com.verza.ui.expressive.onTabReselected { open = null }
     BackHandler(enabled = open != null) { open = null }
     AnimatedContent(
         targetState = open,
@@ -516,12 +519,15 @@ private fun GlassLibrary(
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
-                    Text("Library", style = HeroTitle, color = xc.onContainer, modifier = Modifier.weight(1f))
+                    GlassMasthead("Your collection", "Library", Modifier.weight(1f))
                     GlassHeaderButton(Icons.Filled.Add, "New playlist", onCreatePlaylist)
                 }
             }
-            items(LibraryTab.entries.toList()) { tab ->
-                GlassIndexRow(tab.label, tab.icon) { open = tab }
+            items(LibraryTab.entries.toList().chunked(2)) { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    for (tab in pair) GlassTile(tab.label, tab.icon, Modifier.weight(1f)) { open = tab }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
             }
             if (recent.isNotEmpty()) {
                 item {
@@ -582,30 +588,37 @@ private fun GlassLibrary(
     }
 }
 
-/** One line of the index: accent icon, the name at reading size, a chevron, a hairline. */
+/**
+ * One part of the library, as a tile: its icon and name on a grey glass-like surface, with the
+ * accent glowing from one corner, the same light the dock's selected tab sits in.
+ */
 @Composable
-private fun GlassIndexRow(label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun GlassTile(label: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
     val xc = LocalExpressiveColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(ShapeMedium)
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = modifier
+            .height(88.dp)
+            .pressableScale(onClick = onClick)
+            .clip(ShapeLargeIncreased)
+            .background(xc.surface)
+            .drawBehind {
+                val r = size.width * 0.55f
+                drawCircle(
+                    androidx.compose.ui.graphics.Brush.radialGradient(
+                        0f to xc.accent.copy(alpha = 0.11f),
+                        1f to androidx.compose.ui.graphics.Color.Transparent,
+                        center = Offset(size.width, 0f),
+                        radius = r,
+                    ),
+                    radius = r,
+                    center = Offset(size.width, 0f),
+                )
+            }
+            .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button }
+            .padding(14.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Icon(icon, contentDescription = null, tint = xc.accent, modifier = Modifier.padding(start = 2.dp).size(25.dp))
-        Spacer(Modifier.width(16.dp))
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .height(54.dp)
-                .drawBehind {
-                    drawLine(xc.line, Offset(0f, size.height - 0.5f), Offset(size.width, size.height - 0.5f), strokeWidth = 1f)
-                },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(label, style = BodyText.copy(fontSize = 19.sp, lineHeight = 24.sp), color = xc.onContainer, modifier = Modifier.weight(1f))
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = xc.onContainerMuted.copy(alpha = 0.7f), modifier = Modifier.size(22.dp))
-        }
+        Icon(icon, contentDescription = null, tint = xc.accent, modifier = Modifier.size(24.dp))
+        Text(label, style = BodyStrong.copy(fontSize = 16.sp), color = xc.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

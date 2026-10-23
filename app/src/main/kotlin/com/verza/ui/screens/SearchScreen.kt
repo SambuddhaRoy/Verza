@@ -1,5 +1,9 @@
 package com.verza.ui.screens
 
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.rounded.Search
 import com.verza.ui.expressive.GlassEmpty
 import com.verza.ui.expressive.GlassListRow
@@ -83,18 +87,23 @@ fun SearchScreen(
         // ── Header ─────────────────────────────────────────────────────────
         // Same masthead as Home and Library: mono dateline over an italic display serif.
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            if (!isGlass()) {
+            if (isGlass()) GlassMasthead("Explore", "Search")
+            else {
                 Text("EXPLORE", style = MetaLabel, color = xc.onContainerMuted)
                 Spacer(Modifier.height(6.dp))
+                Text("Search", style = HeroTitle.variedFace("Search"), color = xc.onContainer)
             }
-            Text("Search", style = HeroTitle.variedFace("Search"), color = xc.onContainer)
         }
 
         // ── Pill search bar ────────────────────────────────────────────────
+        // Tapping Search again while on it puts the cursor in the field, ready to type.
+        val field = remember { FocusRequester() }
+        com.verza.ui.expressive.onTabReselected { runCatching { field.requestFocus() } }
         SearchPill(
             value = viewModel.query,
             onValueChange = viewModel::onQueryChange,
             onSearch = { viewModel.search() },
+            focus = field,
             modifier = Modifier.padding(horizontal = 20.dp),
         )
 
@@ -148,9 +157,12 @@ private fun SearchPill(
     value: String,
     onValueChange: (String) -> Unit,
     onSearch: () -> Unit,
+    focus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalExpressiveColors.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     val glass = isGlass()
     Row(
         modifier = modifier
@@ -178,8 +190,14 @@ private fun SearchPill(
                 textStyle = BodyText.copy(color = colors.onSurface),
                 cursorBrush = SolidColor(colors.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                modifier = Modifier.fillMaxWidth(),
+                // The keyboard goes once you have asked: it was covering the results it had just
+                // fetched.
+                keyboardActions = KeyboardActions(onSearch = {
+                    onSearch()
+                    keyboard?.hide()
+                    focusManager.clearFocus()
+                }),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
         }
         if (value.isNotEmpty()) {

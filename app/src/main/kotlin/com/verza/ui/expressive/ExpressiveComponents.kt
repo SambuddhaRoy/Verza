@@ -137,6 +137,7 @@ fun ExpressiveSectionHeader(
  * The corner radius grows on press. It is a one-line use of shape as feedback, and it is what makes
  * a grid of covers feel like it responds to touch rather than merely registering it.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ExpressiveCard(
     title: String,
@@ -167,7 +168,14 @@ fun ExpressiveCard(
         modifier = modifier
             .width(width)
             .scale(scale)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+            // One handler for both, here: a long press handled by a second clickable outside this
+            // one never fired, because this one took the press and played the song on release.
+            .combinedClickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+                onLongClick = onLongPress,
+            ),
     ) {
         Box(
             modifier = Modifier
