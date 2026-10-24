@@ -139,7 +139,7 @@ private fun Progress(label: String, fraction: Float?, colors: ExpressiveColors) 
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "Keep Verza open until this finishes",
+            "Keep Verza open until it finishes",
             style = BodyText,
             color = colors.onSurfaceMuted,
         )

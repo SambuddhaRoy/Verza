@@ -357,7 +357,7 @@ private fun SleepTimerSheet(
             Spacer(Modifier.height(16.dp))
             Text("Wind down", style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
             Text(
-                text = "A long, gradual fade across the final minutes — drift off without a hard cut.",
+                text = "Fade out slowly over the last few minutes.",
                 style = MaterialTheme.typography.bodySmall,
                 color = ext.muted,
             )
@@ -414,7 +414,7 @@ private fun FocusSheet(
         ) {
             Text("Focus session", style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
             Text(
-                text = "Uninterrupted flow for deep work — the music keeps going on its own, so silence never breaks your concentration.",
+                text = "The queue refills itself so the music never stops.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ext.muted,
             )
@@ -520,7 +520,7 @@ private fun shareSessionLink(context: Context, link: String) {
         putExtra(Intent.EXTRA_SUBJECT, "Listen along on Verza")
         putExtra(
             Intent.EXTRA_TEXT,
-            "Pick up where I'm at — open this in Verza to play the same set:\n$link",
+            "Open this in Verza to hear what I'm playing:\n$link",
         )
     }
     context.startActivity(Intent.createChooser(intent, "Share listening session"))

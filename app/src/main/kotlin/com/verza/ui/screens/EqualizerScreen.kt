@@ -87,7 +87,7 @@ fun EqualizerScreen(
             modifier = Modifier.padding(start = 20.dp, end = 20.dp),
         )
         Text(
-            "Shape the sound. Effects apply to everything you play. Gapless playback is automatic.",
+            "Applies to everything you play.",
             style = CaptionItalic,
             color = ext.muted,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp),
@@ -98,7 +98,7 @@ fun EqualizerScreen(
         // ── Master switch ─────────────────────────────────────────────────────────
         ToggleLine(
             title = "Equalizer",
-            subtitle = if (state.enabled) "On — band gains below are live" else "Off — bands are flat",
+            subtitle = if (state.enabled) "The bands below are active" else "Sound is unchanged",
             checked = state.enabled,
             onToggle = viewModel::setEnabled,
         )
@@ -149,7 +149,7 @@ fun EqualizerScreen(
         EditorialSectionHeader(title = "Loudness")
         ToggleLine(
             title = "Volume leveling",
-            subtitle = "Lift quiet tracks toward a steadier perceived loudness",
+            subtitle = "Raise quiet tracks to a steadier volume",
             checked = state.loudnessEnabled,
             onToggle = viewModel::setLoudnessEnabled,
         )

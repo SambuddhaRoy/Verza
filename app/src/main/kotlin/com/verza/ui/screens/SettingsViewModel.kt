@@ -97,7 +97,7 @@ class SettingsViewModel @Inject constructor(
             _lbState.value = LbState(message = "That is not a ListenBrainz username.")
             return
         }
-        _lbState.value = LbState(busy = true, message = "Finding your ListenBrainz playlists on YouTube Music. Up to a minute the first time.")
+        _lbState.value = LbState(busy = true, message = "Matching your playlists on YouTube Music. The first time takes up to a minute.")
         viewModelScope.launch {
             _lbState.value = when (val check = listenBrainz.check(user)) {
                 ListenBrainzRepository.Check.NoSuchUser -> LbState(message = "ListenBrainz has no user by that name.")
@@ -111,7 +111,7 @@ class SettingsViewModel @Inject constructor(
                     val titles = mixes.mixes.value.filter { it.kind == MixKind.LISTENBRAINZ }.map { it.title }
                     LbState(
                         message = if (titles.isNotEmpty()) "Connected as $user. On Home now: ${titles.joinToString(", ")}."
-                        else "Connected as $user. ListenBrainz makes its weekly playlists on Mondays once it has a week of your listens; they will appear on Home then.",
+                        else "Connected as $user. ListenBrainz makes weekly playlists on Mondays, after a week of listens. They will show up on Home then.",
                     )
                 }
             }

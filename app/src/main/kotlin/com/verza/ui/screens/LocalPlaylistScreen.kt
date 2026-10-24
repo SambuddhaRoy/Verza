@@ -95,7 +95,7 @@ fun LocalPlaylistScreen(
                                 style = TextStyle(fontFamily = FontSleeve, fontWeight = FontWeight.Normal, fontSize = 18.sp),
                                 color = cover.ink,
                             )
-                            Eyebrow(text = "Curated by you", color = cover.faint)
+                            Eyebrow(text = "Your playlist", color = cover.faint)
                         }
                         SleeveOutlineAction(
                             cover = cover,

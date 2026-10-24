@@ -193,7 +193,7 @@ class MixesRepository @Inject constructor(
             id = "daylist",
             kind = MixKind.DAYLIST,
             title = label,
-            subtitle = "The songs that score your ${label.lowercase()}",
+            subtitle = "Songs for your ${label.lowercase()}",
             items = list,
             generatedAt = System.currentTimeMillis(),
         )
@@ -221,7 +221,7 @@ class MixesRepository @Inject constructor(
             id = "discover",
             kind = MixKind.DISCOVER,
             title = "Discover weekly",
-            subtitle = "Fresh tracks you haven't heard, picked from what you love",
+            subtitle = "New songs picked from what you like",
             items = list,
             generatedAt = System.currentTimeMillis(),
         )
@@ -259,7 +259,7 @@ class MixesRepository @Inject constructor(
             id = "release_radar",
             kind = MixKind.RELEASE_RADAR,
             title = "Release radar",
-            subtitle = "The latest from artists you love",
+            subtitle = "New releases from artists you play",
             items = list,
             generatedAt = System.currentTimeMillis(),
         )

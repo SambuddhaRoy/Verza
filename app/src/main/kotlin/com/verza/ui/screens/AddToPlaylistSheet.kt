@@ -102,7 +102,7 @@ fun AddToPlaylistSheet(
             if (playlists.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        "No playlists yet — create one above.",
+                        "No playlists yet. Create one above.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = ext.muted,
                     )
