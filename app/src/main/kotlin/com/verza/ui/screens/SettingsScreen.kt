@@ -245,13 +245,13 @@ fun SettingsScreen(
             )
             SwitchRow(
                 title = "Gentle start",
-                subtitle = "Ease the volume up when playback resumes",
+                subtitle = "Fade in when playback resumes",
                 checked = gentleStart,
                 onToggle = viewModel::setGentleStart,
             )
             SwitchRow(
                 title = "Skip silence",
-                subtitle = "Trim silent gaps inside a track",
+                subtitle = "Skip silent stretches inside a song",
                 checked = skipSilence,
                 onToggle = viewModel::setSkipSilence,
             )
@@ -260,9 +260,9 @@ fun SettingsScreen(
                 // tracks, and calling it crossfade would be promising the thing it is not.
                 title = "Fade between tracks",
                 subtitle = if (crossfade == 0) {
-                    "Tracks change on a hard cut"
+                    "No fade between songs"
                 } else {
-                    "Each track fades out and the next fades in, over $crossfade seconds"
+                    "Songs crossfade over $crossfade seconds"
                 },
                 options = CROSSFADE_STEPS,
                 selected = crossfade,
@@ -272,9 +272,9 @@ fun SettingsScreen(
             ChoiceRow(
                 title = "Audio quality",
                 subtitle = when (audioQuality) {
-                    AudioQuality.HIGH -> "The best bitrate the track offers"
+                    AudioQuality.HIGH -> "Highest bitrate available"
                     AudioQuality.MEDIUM -> "About 128 kbps"
-                    AudioQuality.LOW -> "The smallest stream, for saving data"
+                    AudioQuality.LOW -> "Lowest bitrate, uses the least data"
                 },
                 options = listOf(AudioQuality.LOW, AudioQuality.MEDIUM, AudioQuality.HIGH),
                 selected = audioQuality,
@@ -292,9 +292,9 @@ fun SettingsScreen(
             SwitchRow(
                 title = "Spectrum seek bar",
                 subtitle = if (hasAudioPermission) {
-                    "The played part of the progress bar becomes a live spectrum"
+                    "Show the music's spectrum in the progress bar"
                 } else {
-                    "Needs the audio capture permission. It reads Verza's own playback, never the microphone."
+                    "Needs audio permission. Verza only reads its own playback, never the microphone."
                 },
                 checked = spectrumOn && hasAudioPermission,
                 onToggle = { on ->
@@ -308,7 +308,7 @@ fun SettingsScreen(
             SwitchRow(
                 title = "Feel the beat",
                 subtitle = if (hasAudioPermission) {
-                    "A soft vibration on the bass"
+                    "Vibrate gently on the bass"
                 } else {
                     "Needs the same audio capture permission as the spectrum"
                 },
@@ -338,7 +338,7 @@ fun SettingsScreen(
         if (design != DesignScheme.GLASS) group("Colour") {
             item {
                 Text(
-                    "Verza takes its colours from the cover. This decides how far to push them.",
+                    "How strongly the cover's colours tint the app.",
                     style = BodyText,
                     color = colors.onContainerMuted,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
@@ -368,9 +368,9 @@ fun SettingsScreen(
             SwitchRow(
                 title = if (design == DesignScheme.GLASS) "Moving background" else "Album art motion",
                 subtitle = if (design == DesignScheme.GLASS) {
-                    "The cover flows behind Now Playing"
+                    "Animate the cover behind Now Playing"
                 } else {
-                    "The cover breathes with the bass"
+                    "The cover pulses with the bass"
                 },
                 checked = albumArtMotion,
                 onToggle = viewModel::setAlbumArtMotion,
@@ -379,7 +379,7 @@ fun SettingsScreen(
             if (design == DesignScheme.GLASS && albumArtMotion) SwitchRow(
                 title = "Move to the beat",
                 subtitle = if (hasAudioPermission) {
-                    "The background swells with the bass and pulses on each kick"
+                    "The background pulses with the bass and kick drum"
                 } else {
                     "Needs the same audio capture permission as the spectrum"
                 },
@@ -395,9 +395,9 @@ fun SettingsScreen(
             SwitchRow(
                 title = "Expressive type",
                 subtitle = if (design == DesignScheme.GLASS) {
-                    "Set every song's title in a typeface of its own"
+                    "A different typeface for each song title"
                 } else {
-                    "Serif headings, and a typeface of its own for every song and heading"
+                    "Serif headings and a different typeface for each song"
                 },
                 checked = expressiveType,
                 onToggle = viewModel::setExpressiveType,
@@ -426,7 +426,7 @@ fun SettingsScreen(
             if (downloadTree.isNotBlank()) {
                 LinkRow(
                     title = "Use the Music folder instead",
-                    subtitle = "Back to Music/Verza. Files already saved stay where they are.",
+                    subtitle = "Save to Music/Verza again. Files already saved stay put.",
                     onClick = { viewModel.setDownloadTree(""); toast(context, "Back to Music/Verza") },
                 )
             }
@@ -441,17 +441,17 @@ fun SettingsScreen(
             )
             LinkRow(
                 title = "Export",
-                subtitle = "Save playlists, likes and stats to a file you own",
+                subtitle = "Save playlists, likes and stats to a file",
                 onClick = { exportFile.launch("verza-library-backup.json") },
             )
             LinkRow(
                 title = "Import",
-                subtitle = "Merge a backup from another device",
+                subtitle = "Merge in a backup file",
                 onClick = { importFile.launch(arrayOf("application/json", "text/plain", "*/*")) },
             )
             LinkRow(
                 title = "Reset listening stats",
-                subtitle = "Wipe the play history behind Your Sound",
+                subtitle = "Delete your play history",
                 onClick = { confirmResetStats = true },
                 destructive = true,
             )
@@ -460,7 +460,7 @@ fun SettingsScreen(
         group("Listening elsewhere") {
             LinkRow(
                 title = "ListenBrainz",
-                subtitle = if (lbUser.isBlank()) "Your Spotify listening on Home: Weekly Exploration, Weekly Jams and more"
+                subtitle = if (lbUser.isBlank()) "Add your Spotify mixes to Home"
                 else "Connected as $lbUser",
                 onClick = { showListenBrainz = true },
             )
@@ -475,7 +475,7 @@ fun SettingsScreen(
             )
             LinkRow(
                 title = "Clear search history",
-                subtitle = "Forget everything searched so far",
+                subtitle = "Delete your search history",
                 onClick = viewModel::clearSearchHistory,
             )
         }
@@ -488,13 +488,13 @@ fun SettingsScreen(
         group("About") {
             LinkRow(
                 title = "Take the tour",
-                subtitle = "A quick guide to what is where",
+                subtitle = "Where to find each feature",
                 onClick = onOpenTour,
             )
             crashReport?.let { report ->
                 LinkRow(
                     title = "Send the last crash report",
-                    subtitle = "Verza closed unexpectedly. This contains the error and your Android version, nothing else.",
+                    subtitle = "Verza crashed. The report has the error and your Android version, nothing else.",
                     onClick = {
                         val send = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
@@ -530,8 +530,7 @@ fun SettingsScreen(
             title = { Text("Reset listening stats?", style = BodyStrong) },
             text = {
                 Text(
-                    "Your play history is what builds Your Sound, your mixes and the home page. " +
-                        "This cannot be undone.",
+                    "Verza builds Your Sound, your mixes and Home from this history. This can't be undone.",
                     style = BodyText,
                 )
             },
@@ -568,8 +567,8 @@ private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Connect Spotify (or import Last.fm) at listenbrainz.org, then enter your username here. " +
-                        "Your weekly playlists and last month's most played appear on Home and play through Verza.",
+                    "Link Spotify or Last.fm at listenbrainz.org, then enter your username. " +
+                        "Your weekly playlists show up on Home and play through Verza.",
                     style = BodyText,
                 )
                 androidx.compose.material3.OutlinedTextField(
@@ -838,9 +837,9 @@ private fun AccountCard(signedIn: Boolean, onSignIn: () -> Unit, onSignOut: () -
         Spacer(Modifier.height(4.dp))
         Text(
             if (signedIn) {
-                "Your home feed, library and recommendations are yours."
+                "Your feed, playlists and likes are synced."
             } else {
-                "Sign in to bring your feed, playlists and liked songs along. Everything else works without it."
+                "Sign in to sync your feed, playlists and likes. Everything else works without it."
             },
             style = BodyText,
             color = colors.onSurfaceMuted,
@@ -963,12 +962,12 @@ private fun UpdateRow(state: SettingsViewModel.UpdateState, viewModel: SettingsV
     when (state) {
         is SettingsViewModel.UpdateState.Idle -> SettingLink(
             "Check for updates",
-            "Verza is sideloaded, so it looks for new versions on GitHub itself",
+            "Checks GitHub for a new version",
             viewModel::checkForUpdate,
             false,
         )
         is SettingsViewModel.UpdateState.Checking -> SettingLink(
-            "Checking", "Asking GitHub for the latest release", {}, false,
+            "Checking", "Checking GitHub", {}, false,
         )
         is SettingsViewModel.UpdateState.UpToDate -> SettingLink(
             "Up to date",
@@ -984,7 +983,7 @@ private fun UpdateRow(state: SettingsViewModel.UpdateState, viewModel: SettingsV
         )
         is SettingsViewModel.UpdateState.Downloading -> SettingLink(
             "Downloading ${(state.progress * 100).toInt()}%",
-            "Keep Verza open until this finishes",
+            "Keep Verza open until it finishes",
             {},
             false,
         )

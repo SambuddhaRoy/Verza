@@ -93,19 +93,19 @@ enum class ColorFlavour(
         0.45f..0.82f, 0.30f..0.52f, 0.90f, 0.62f, 0.10f..0.60f, 1.00f,
     ),
     DEEP(
-        "Deep", "The same colours, further down",
+        "Deep", "The cover's colours, darker",
         0.50f..0.88f, 0.13f..0.24f, 0.92f, 0.70f, 0.06f..0.34f, 1.00f,
     ),
     HUSHED(
-        "Hushed", "Dark, and desaturated to a whisper",
+        "Hushed", "Dark and nearly grey",
         0.08f..0.22f, 0.11f..0.20f, 0.85f, 0.78f, 0.05f..0.30f, 0.45f,
     ),
     VIVID(
-        "Vivid", "Pushed to full saturation",
+        "Vivid", "The cover's colours, fully saturated",
         0.82f..1.00f, 0.44f..0.64f, 0.95f, 0.66f, 0.14f..0.74f, 1.00f,
     ),
     PASTEL(
-        "Pastel", "A light room, tinted by the cover",
+        "Pastel", "Light, with a tint of the cover",
         0.08f..0.20f, 0.90f..0.98f, 0.70f, 0.97f, 0.78f..1.00f, 1.00f,
     ),
     ;
@@ -129,8 +129,8 @@ enum class ColorFlavour(
  * search, so neither can produce an unreadable control.
  */
 enum class AccentSource(val displayName: String, val blurb: String) {
-    COMPLEMENT("Complementary", "The opposite of the cover on the colour wheel"),
-    ARTWORK("From the artwork", "A second colour taken out of the cover itself"),
+    COMPLEMENT("Complementary", "The cover's complementary colour"),
+    ARTWORK("From the artwork", "A second colour from the cover"),
     ;
 
     companion object {

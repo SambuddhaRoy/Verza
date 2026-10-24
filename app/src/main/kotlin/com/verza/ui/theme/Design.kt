@@ -16,8 +16,8 @@ import androidx.compose.ui.graphics.Shape
  * behaviour depends on the design.
  */
 enum class DesignScheme(val displayName: String, val blurb: String, val experimental: Boolean = false) {
-    MATERIAL("Material", "Rounded and soft, the way Android draws things"),
-    GLASS("Glass", "Quiet and clean, coloured by the cover, with floating glass controls"),
+    MATERIAL("Material", "Rounded shapes and bold colour from the cover"),
+    GLASS("Glass", "Clean and quiet, with glass controls"),
     ;
 
     companion object {

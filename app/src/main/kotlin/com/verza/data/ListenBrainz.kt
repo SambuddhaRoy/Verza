@@ -233,21 +233,21 @@ class ListenBrainzRepository @Inject constructor(
         private const val JSPF = "https://musicbrainz.org/doc/jspf#playlist"
 
         val WEEKLY = listOf(
-            Weekly("lb_exploration", "weekly-exploration", "Weekly Exploration", "New to you, from what you play everywhere"),
-            Weekly("lb_jams", "weekly-jams", "Weekly Jams", "Your favourites from everywhere you listen"),
-            Weekly("lb_daily", "daily-jams", "Daily Jams", "Fresh every day, from what you have been playing"),
+            Weekly("lb_exploration", "weekly-exploration", "Weekly Exploration", "New songs based on everything you play"),
+            Weekly("lb_jams", "weekly-jams", "Weekly Jams", "Your favourites from all your listening"),
+            Weekly("lb_daily", "daily-jams", "Daily Jams", "Updated daily from your recent listening"),
         )
 
         /** Yearly lists never expire and one arrives each year, so the newest year of each is shown. */
         private class Yearly(val id: String, val re: Regex, val title: (Int) -> String, val subtitle: String)
         private val YEARLY = listOf(
             Yearly("lb_discoveries", Regex("^top-discoveries-of-(\\d{4})$"), { "Top Discoveries of $it" },
-                "The new music you found that year"),
+                "New music you found that year"),
             Yearly("lb_missed", Regex("^top-missed-recordings-of-(\\d{4})$"), { "Top Missed Songs of $it" },
-                "Songs you would have loved and never played"),
+                "Songs you'd probably like but haven't played"),
         )
 
-        private val RECOMMENDED = Weekly("lb_recommended", "", "Recommended for you", "What listeners with your taste are playing")
+        private val RECOMMENDED = Weekly("lb_recommended", "", "Recommended for you", "What people with similar taste play")
         private fun stat(id: String, title: String, subtitle: String) = Weekly(id, "", title, subtitle)
         private val STATS = listOf(
             listOf(
@@ -255,10 +255,10 @@ class ListenBrainzRepository @Inject constructor(
                 "this_month" to stat("lb_month", "This month on repeat", "Your most played, Spotify and everywhere else"),
             ),
             listOf(
-                "week" to stat("lb_week", "Last week on repeat", "What you could not stop playing"),
-                "this_week" to stat("lb_week", "This week on repeat", "What you could not stop playing"),
+                "week" to stat("lb_week", "Last week on repeat", "Your most played songs"),
+                "this_week" to stat("lb_week", "This week on repeat", "Your most played songs"),
             ),
-            listOf("all_time" to stat("lb_alltime", "All-time favourites", "The songs you keep coming back to")),
+            listOf("all_time" to stat("lb_alltime", "All-time favourites", "Your most played, all time")),
         )
 
         /** More than this share of a mix already on the shelf makes it a repeat of that one. */

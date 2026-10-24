@@ -68,93 +68,91 @@ private val tourPages = listOf(
         icon = Icons.Rounded.Wallpaper,
         eyebrow = "Now Playing",
         title = "It moves with the music",
-        body = "The cover's colours fill Now Playing and move with the bass. The progress bar turns " +
-            "into a live spectrum, and the bass can tap back as a soft vibration.",
+        body = "The background moves with the bass. The progress bar can show a live spectrum, " +
+            "and your phone can vibrate on the beat.",
         where = "Settings › Appearance  ·  Settings › Sound",
     ),
     TourPage(
         icon = Icons.Rounded.AutoAwesome,
-        eyebrow = "Made for you",
+        eyebrow = "Home",
         title = "Mixes from your listening",
-        body = "Mixes made on your phone from what you play: one for the time of day, Discover weekly, " +
-            "Release radar and your genres. Connect ListenBrainz and your Spotify listening joins in.",
+        body = "Verza builds mixes on your phone from what you play, like Discover weekly, " +
+            "Release radar and your genres. Connect ListenBrainz to add your Spotify mixes.",
         where = "Home  ·  Settings › Listening elsewhere",
     ),
     TourPage(
         icon = Icons.Rounded.Lyrics,
-        eyebrow = "Sing along",
-        title = "Lyrics in time",
-        body = "Lyrics follow the song line by line, on the same background as Now Playing.",
+        eyebrow = "Lyrics",
+        title = "Synced lyrics",
+        body = "Lyrics scroll with the song, line by line.",
         where = "Now Playing › Lyrics",
     ),
     TourPage(
         icon = Icons.Rounded.SelfImprovement,
-        eyebrow = "Deep work",
+        eyebrow = "Focus",
         title = "Focus sessions",
-        body = "Start a timed or open-ended focus block. The queue tops itself up so silence never " +
-            "breaks your flow, and a timed block fades out when it ends.",
+        body = "Play for a set time or until you stop. The queue refills itself so the music " +
+            "never stops, and a timed session fades out at the end.",
         where = "Now Playing › ⋯ › Focus session",
     ),
     TourPage(
         icon = Icons.Rounded.Bedtime,
-        eyebrow = "Drift off",
-        title = "Sleep timer & wind-down",
-        body = "Fade out and pause after a set time, or wind down with a long, gradual fade across the " +
-            "last minutes. With Gentle start, the volume eases back up when you resume.",
+        eyebrow = "Sleep",
+        title = "Sleep timer",
+        body = "Pause after a set time, or fade out slowly over the last few minutes. Gentle " +
+            "start fades the volume back in when you press play.",
         where = "Now Playing › ⋯ › Sleep timer  ·  Settings › Playback › Gentle start",
     ),
     TourPage(
         icon = Icons.Rounded.Schedule,
-        eyebrow = "Lean back",
+        eyebrow = "Display",
         title = "Ambient display",
-        body = "A full-screen clock with a drifting cover that keeps the screen on, for a desk or a " +
-            "nightstand. Tap anywhere to leave.",
+        body = "A full-screen clock over the cover that keeps the screen on. Tap to leave.",
         where = "Now Playing › ⋯ › Ambient display",
     ),
     TourPage(
         icon = Icons.AutoMirrored.Rounded.MenuBook,
-        eyebrow = "Context",
+        eyebrow = "Info",
         title = "Liner notes",
-        body = "A short card about what's playing: the album, the year, the genre and a few words.",
+        body = "The album, year and genre of what's playing, with a short note about it.",
         where = "Now Playing › ⋯ › Liner notes",
     ),
     TourPage(
         icon = Icons.Rounded.GraphicEq,
         eyebrow = "Sound",
-        title = "Tune it to your ears",
-        body = "A ten-band equaliser with presets, bass boost, and loudness that lifts quiet tracks.",
+        title = "Equaliser",
+        body = "Ten bands, presets, bass boost, and loudness that raises quiet tracks.",
         where = "Settings › Sound › Equalizer",
     ),
     TourPage(
         icon = Icons.Rounded.Insights,
-        eyebrow = "Just for you",
+        eyebrow = "Stats",
         title = "Your Sound",
-        body = "Your top tracks, artists and genres, worked out on your phone from what you play. " +
-            "It never leaves it.",
+        body = "Your top tracks, artists and genres. Worked out on your phone and never uploaded.",
         where = "Settings › Your library › Your Sound",
     ),
     TourPage(
         icon = Icons.Rounded.LibraryMusic,
-        eyebrow = "Yours to keep",
-        title = "Your library, your file",
-        body = "Play music stored on your phone, and save your playlists, likes and stats to a single " +
-            "file you can back up or take to another device.",
+        eyebrow = "Library",
+        title = "Your music, your file",
+        body = "Play music stored on your phone. Export your playlists, likes and stats to a " +
+            "file to back them up or move them to another phone.",
         where = "Library › On device  ·  Settings › Your library › Export",
     ),
     TourPage(
         icon = Icons.Rounded.Link,
-        eyebrow = "Together",
+        eyebrow = "Sharing",
         title = "Listen along",
-        body = "Share your queue as a link. A friend opens it in Verza and picks up the same songs at " +
-            "the same spot. No account, no server.",
+        body = "Send your queue as a link. A friend opens it in Verza and hears the same songs " +
+            "from the same point. No account needed.",
         where = "Now Playing › ⋯ › Share listening session",
     ),
     TourPage(
         icon = Icons.Rounded.TouchApp,
         eyebrow = "Shortcut",
         title = "Press and hold",
-        body = "Press and hold any song, album or playlist on Home to play it next, queue it, start a " +
-            "radio or like it.",
+        body = "Press and hold any song, album or playlist on Home to play it next, queue it, " +
+            "start a radio or like it.",
         where = "Home › press and hold any card",
     ),
 )

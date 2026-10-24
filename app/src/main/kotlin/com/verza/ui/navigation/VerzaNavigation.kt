@@ -201,7 +201,7 @@ fun VerzaNavigation(
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_SUBJECT, item.title)
-                    putExtra(Intent.EXTRA_TEXT, "${item.title} — ${item.artist}\n$url")
+                    putExtra(Intent.EXTRA_TEXT, "${item.title} by ${item.artist}\n$url")
                 }
                 context.startActivity(Intent.createChooser(intent, "Share song"))
             },
@@ -829,7 +829,7 @@ fun VerzaNavigation(
                     buildString {
                         append("Someone shared a set of $count track")
                         if (count != 1) append("s")
-                        lead?.takeIf { it.title.isNotBlank() }?.let { append(", starting with “${it.title}”") }
+                        lead?.takeIf { it.title.isNotBlank() }?.let { append(", starting with \"${it.title}\"") }
                         append(". Load it and start playing? This replaces your current queue.")
                     }
                 )

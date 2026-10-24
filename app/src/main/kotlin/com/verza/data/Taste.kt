@@ -139,7 +139,7 @@ object Taste {
      */
     enum class Vibe(val title: String, val subtitle: String, val words: List<String>) {
         CHILL(
-            "Chill", "The mellow side of your rotation, and more like it",
+            "Chill", "The mellow songs you play, and more like them",
             listOf(
                 "chill", "chillout", "mellow", "relaxing", "calm", "ambient", "lo-fi", "lofi", "downtempo",
                 "dream pop", "acoustic", "bossa nova", "trip hop", "easy listening", "folk",
@@ -147,7 +147,7 @@ object Taste {
             ),
         ),
         ENERGY(
-            "High energy", "The loud, fast end of what you play",
+            "High energy", "Your loudest, fastest songs",
             listOf(
                 "energetic", "upbeat", "edm", "house", "techno", "drum and bass", "dubstep", "trap", "punk",
                 "metal", "hard rock", "hardcore", "electro", "big beat", "grime", "drill", "party",
@@ -155,7 +155,7 @@ object Taste {
             ),
         ),
         FEEL_GOOD(
-            "Feel good", "Bright, bouncy and easy to love",
+            "Feel good", "Upbeat songs from your library",
             listOf(
                 "happy", "feel good", "funk", "disco", "motown", "summer", "reggae", "ska", "britpop",
                 "indie pop", "power pop", "synth-pop", "synthpop", "k-pop", "bubblegum pop", "afrobeats",
@@ -163,14 +163,14 @@ object Taste {
             ),
         ),
         MOODY(
-            "In your feelings", "The heavy-hearted corner of your library",
+            "In your feelings", "Your saddest songs",
             listOf(
                 "sad", "melancholic", "melancholy", "emo", "dark", "sadcore", "slowcore", "gothic", "post-punk",
                 "shoegaze", "post-rock", "grunge", "depressive", "heartbreak", "blues", "darkwave",
             ),
         ),
         AFTER_HOURS(
-            "After hours", "Smooth and late, for when the lights go down",
+            "After hours", "Slow songs for late at night",
             listOf(
                 "r&b", "rnb", "contemporary r&b", "neo soul", "soul", "jazz", "smooth", "sensual", "romantic",
                 "lounge", "synthwave", "quiet storm", "alternative r&b",

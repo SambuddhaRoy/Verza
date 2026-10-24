@@ -3,14 +3,14 @@
     <string name="app_name">Verza</string>
 
     <!-- Widgets. The label is the name in the widget picker, the description the line under it. -->
-    <string name="widget_description">A pill with the cover, the song and transport controls</string>
+    <string name="widget_description">Cover, song and playback controls</string>
     <string name="widget_strip_label">Verza Strip</string>
     <string name="widget_sticker_label">Verza Sticker</string>
-    <string name="widget_sticker_description">The cover as a badge on a burst, with a play button stuck on</string>
+    <string name="widget_sticker_description">The cover as a badge, with a play button</string>
     <string name="widget_poster_label">Verza Poster</string>
-    <string name="widget_poster_description">A big title, the cover in an arch and full controls</string>
+    <string name="widget_poster_description">Large title, cover and full controls</string>
     <string name="widget_record_label">Verza Record</string>
-    <string name="widget_record_description">The cover as a record label. The arm drops on while it plays</string>
+    <string name="widget_record_description">The cover as a record. The tonearm moves while it plays</string>
     <string name="widget_totem_label">Verza Totem</string>
     <string name="widget_totem_description">A tall stack: cover, play and skip</string>
 

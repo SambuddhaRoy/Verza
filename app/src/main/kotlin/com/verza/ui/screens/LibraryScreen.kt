@@ -231,7 +231,7 @@ fun LibraryScreen(
                         item {
                             Box(modifier = Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.Center) {
                                 Text(
-                                    "Sign in to see your YouTube Music playlists here too",
+                                    "Sign in to see your YouTube Music playlists",
                                     style = BodyText,
                                     color = xc.onContainerMuted,
                                 )
@@ -379,7 +379,7 @@ private fun LocalMusicContent(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Grant access to your audio files to see and play them here. Verza only reads them — it never changes or deletes anything.",
+                "Allow access to play the music on your phone. Verza only reads your files, never changes them.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ext.muted,
                 textAlign = TextAlign.Center,

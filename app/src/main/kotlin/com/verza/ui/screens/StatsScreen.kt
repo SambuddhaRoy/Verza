@@ -95,7 +95,7 @@ fun StatsScreen(
         if (isEmpty) {
             item {
                 Text(
-                    "Play some music and your listening story will appear here.",
+                    "Play some music to see your stats here.",
                     style = CaptionItalic,
                     color = ext.muted,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 40.dp),

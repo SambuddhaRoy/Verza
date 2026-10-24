@@ -192,7 +192,7 @@ private fun StepWelcome(onContinue: () -> Unit) {
                 Text("Verza", style = HeroDisplay.copy(fontSize = 60.sp, lineHeight = 64.sp), color = Color.White)
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Your music, coloured by its covers and moving with every beat.",
+                    "YouTube Music, coloured by every cover.",
                     style = BodyText.copy(fontSize = 18.sp, lineHeight = 26.sp),
                     color = Color.White.copy(alpha = 0.78f),
                 )
@@ -235,14 +235,14 @@ private fun StepLook(selected: DesignScheme, onPick: (DesignScheme) -> Unit, onC
     Column(modifier = Modifier.fillMaxSize()) {
         StepHeader(
             eyebrow = "Your look",
-            title = "How should Verza feel?",
-            body = "Both are the same app underneath. You can switch any time in Settings.",
+            title = "Pick a look.",
+            body = "Same features either way. Change it any time in Settings.",
         )
         Spacer(Modifier.height(24.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LookCard(
                 name = "Glass",
-                blurb = "Quiet and clean, with floating glass",
+                blurb = "Clean and quiet, with glass controls",
                 recommended = true,
                 selected = selected == DesignScheme.GLASS,
                 onClick = { onPick(DesignScheme.GLASS) },
@@ -421,8 +421,8 @@ private fun StepColour(
     Column(modifier = Modifier.fillMaxSize()) {
         StepHeader(
             eyebrow = "Colour",
-            title = "Pick a mood.",
-            body = "Material takes its colours from whatever is playing. This decides how far to push them.",
+            title = "How much colour?",
+            body = "Material takes its colours from the cover of what's playing. Choose how strong.",
         )
         Spacer(Modifier.height(22.dp))
 
@@ -475,14 +475,14 @@ private fun StepSignIn(
         StepHeader(
             eyebrow = "Your music",
             title = "Bring your library.",
-            body = "Sign in with YouTube Music for your home feed, library and recommendations. " +
-                "Or skip it: likes, playlists and downloads all work without an account.",
+            body = "Sign in with YouTube Music to sync your feed, playlists and likes. " +
+                "Likes, playlists and downloads also work without an account.",
         )
         Spacer(Modifier.height(28.dp))
         Points(
-            Point(Icons.Rounded.Home, "Your home feed", "Quick picks and mixes made for you"),
+            Point(Icons.Rounded.Home, "Your home feed", "Quick picks and mixes"),
             Point(Icons.Rounded.LibraryMusic, "Your library", "Playlists, albums and liked songs"),
-            Point(Icons.Rounded.Favorite, "Likes that sync", "A like here is a like on YouTube Music"),
+            Point(Icons.Rounded.Favorite, "Likes that sync", "Likes in Verza show up on YouTube Music"),
         )
         Spacer(Modifier.weight(1f))
         if (isSignedIn) {
@@ -509,13 +509,13 @@ private fun StepDone(onFinish: (takeTour: Boolean) -> Unit) {
         StepHeader(
             eyebrow = "Ready",
             title = "You're set.",
-            body = "A few things worth knowing about. The tour shows them all in a minute.",
+            body = "The tour shows where everything is. It takes a minute.",
         )
         Spacer(Modifier.height(28.dp))
         Points(
-            Point(Icons.Rounded.AutoAwesome, "Mixes from your listening", "New ones as your taste moves"),
-            Point(Icons.Rounded.Lyrics, "Lyrics in time", "Follow along, line by line"),
-            Point(Icons.Rounded.GraphicEq, "Sound your way", "An equaliser, and downloads for offline"),
+            Point(Icons.Rounded.AutoAwesome, "Mixes from your listening", "Updated as you listen"),
+            Point(Icons.Rounded.Lyrics, "Synced lyrics", "Highlighted as the song plays"),
+            Point(Icons.Rounded.GraphicEq, "Equaliser and downloads", "Tune the sound, save songs for offline"),
         )
         Spacer(Modifier.weight(1f))
         PrimaryAction(text = "Take the tour", onClick = { onFinish(true) })
