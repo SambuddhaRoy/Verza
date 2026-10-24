@@ -18,7 +18,11 @@ datastore           = "1.1.1"
 splashscreen        = "1.0.1"
 palette             = "1.0.0"
 junit               = "4.13.2"
-newpipe             = "v0.26.1"
+# A commit on NewPipeExtractor's main, not a release. Every release up to 0.26.5 still asks
+# YouTube's Android and iOS clients for streams, which YouTube no longer serves to many
+# devices (SABR), and that is "Couldn't play this track" on every song. Main uses the visionOS
+# client alone (#1508, #1529). Go back to a tag once one carries it.
+newpipe             = "711f13b15be3"
 
 [libraries]
 # ── Compose BOM ────────────────────────────────────────────────────────────────

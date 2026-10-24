@@ -22,6 +22,17 @@ minSdk 26, target/compile 35. A separate Electron desktop port lives at
    No `Co-Authored-By: Claude` trailer or any other AI attribution, anywhere: the owner had
    every one stripped from history in October 2026. Commit as SambuddhaRoy only.
 
+## Streams come from NewPipeExtractor, and it is pinned to a commit
+
+`newpipe` in `gradle/libs.versions.toml` is a commit on NewPipeExtractor's main (JitPack builds
+any commit), not a tag. Releases up to 0.26.5 ask YouTube's Android and iOS clients for streams;
+YouTube enforces SABR on those for some devices and networks, so extraction returns nothing and
+every song toasts "Couldn't play this track" (MusicService's resolver, the only place that
+string comes from). It came and went per device: the emulator still played on 0.26.1 while a real
+phone failed on every song. Main uses the visionOS client alone and runs no JavaScript for it.
+When playback breaks for users, check NewPipeExtractor's recent merges before anything else, and
+move back to a tag once one carries the fix.
+
 ## Security (do NOT relax)
 - Author commits as **SambuddhaRoy <rsambuddha476@gmail.com>**.
 - NEVER commit `keystore.properties`, `*.jks`, `*.keystore`, `local.properties`.
