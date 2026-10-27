@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -82,6 +83,8 @@ import com.verza.ui.expressive.SquircleShape
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.ui.theme.DesignScheme
 import com.verza.ui.theme.LocalArtworkColors
+import com.verza.ui.theme.offeredFlavours
+import com.verza.ui.theme.seedColors
 
 /**
  * First launch, button-driven, no swipe:
@@ -422,13 +425,14 @@ private fun StepColour(
         StepHeader(
             eyebrow = "Colour",
             title = "How much colour?",
-            body = "Material takes its colours from the cover of what's playing. Choose how strong.",
+            body = "Material takes its colours from the cover of what's playing, or from your phone. Choose how strong.",
         )
         Spacer(Modifier.height(22.dp))
 
+        val context = LocalContext.current
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ColorFlavour.entries.forEach { flavour ->
-                val preview = remember(cover, flavour) { expressiveColorsFrom(cover, flavour) }
+            offeredFlavours.forEach { flavour ->
+                val preview = remember(cover, flavour) { expressiveColorsFrom(seedColors(context, flavour, cover), flavour) }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

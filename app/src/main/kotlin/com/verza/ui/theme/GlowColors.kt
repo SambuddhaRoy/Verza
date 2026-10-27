@@ -16,6 +16,7 @@ import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
+import com.verza.ui.expressive.ColorFlavour
 
 /**
  * The three colours the fluid glow shader mixes across its field. Keeping it a triad (rather
@@ -141,6 +142,32 @@ private fun darkCanvasFrom(c: Color): Color {
     val hsv = FloatArray(3)
     AndroidColor.colorToHSV(c.toArgb(), hsv)
     return Color(AndroidColor.HSVToColor(floatArrayOf(hsv[0], (hsv[1] * 0.6f).coerceAtMost(0.5f), 0.07f)))
+}
+
+/** The System colour style needs Android 12's wallpaper colours; older phones are not offered it. */
+val offeredFlavours: List<ColorFlavour> = ColorFlavour.entries.filter {
+    it != ColorFlavour.SYSTEM || android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+}
+
+/** What [flavour] is coloured from: the phone's own colours for System, the [cover] otherwise. */
+fun seedColors(context: Context, flavour: ColorFlavour, cover: CoverColors): CoverColors =
+    if (flavour == ColorFlavour.SYSTEM) systemCoverColors(context) ?: cover else cover
+
+/**
+ * The phone's Material You colours in the shape of a cover's: its primary as the cover's colour,
+ * its tertiary and secondary as the swatches the accent is picked from. Null before Android 12.
+ */
+private fun systemCoverColors(context: Context): CoverColors? {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return null
+    fun c(id: Int) = Color(context.getColor(id))
+    val primary = c(android.R.color.system_accent1_500)
+    val hsv = FloatArray(3).also { AndroidColor.colorToHSV(primary.toArgb(), it) }
+    return DefaultCoverColors.copy(
+        accent = primary,
+        swatches = listOf(c(android.R.color.system_accent3_300), c(android.R.color.system_accent2_300)),
+        // The monochrome wallpaper style: grey, and it should stay grey.
+        monochrome = hsv[1] < 0.1f,
+    )
 }
 
 /**

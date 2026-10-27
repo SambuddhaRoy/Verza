@@ -108,6 +108,11 @@ enum class ColorFlavour(
         "Pastel", "Light, with a tint of the cover",
         0.08f..0.20f, 0.90f..0.98f, 0.70f, 0.97f, 0.78f..1.00f, 1.00f,
     ),
+    /** Signature's windows, seeded from the phone's colours instead of the cover ([seedColors]). */
+    SYSTEM(
+        "System", "Your phone's own colours",
+        0.45f..0.82f, 0.30f..0.52f, 0.90f, 0.62f, 0.10f..0.60f, 1.00f,
+    ),
     ;
 
     companion object {
@@ -321,7 +326,10 @@ fun expressiveColorsFrom(
     // contrast. 55° was only adjacent — near enough in hue that accent text on the container read as
     // a shade of it rather than as a different colour, which is what made toggles and labels hard to
     // pick out. Opposite hues are maximally distinguishable at equal luminance.
-    val accentSeed = when (accentSource) {
+    // System's swatches are the phone's other two accent colours, and its accent comes from them:
+    // a complement would be a colour the phone's theme does not have.
+    val source = if (flavour == ColorFlavour.SYSTEM) AccentSource.ARTWORK else accentSource
+    val accentSeed = when (source) {
         AccentSource.COMPLEMENT -> fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2])
         AccentSource.ARTWORK -> pickFromArtwork(cover.swatches, container)
             ?: fromHsv((seed[0] + 180f) % 360f, seed[1], seed[2])

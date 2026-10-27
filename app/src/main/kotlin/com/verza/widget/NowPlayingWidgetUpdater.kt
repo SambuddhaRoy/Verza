@@ -10,6 +10,7 @@ import coil3.toBitmap
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.ui.theme.CoverColors
 import com.verza.ui.theme.DefaultCoverColors
+import com.verza.ui.theme.seedColors
 import com.verza.ui.theme.coverColorsFrom
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -67,7 +68,7 @@ object NowPlayingWidgetUpdater {
         val state = last
         val cover = coverFor(context, state.artworkUrl)
         val palette = if (cover != null) cachedColors else null
-        val colors = expressiveColorsFrom(palette ?: DefaultCoverColors, state.flavour, state.accentSource)
+        val colors = expressiveColorsFrom(seedColors(context, state.flavour, palette ?: DefaultCoverColors), state.flavour, state.accentSource)
         // A widget that fails to draw must not take the app process, and the music, down with it.
         runCatching { WidgetRenderer.render(context, state, cover, colors) }
             .onFailure { Log.w("VerzaWidget", "Widget render failed", it) }

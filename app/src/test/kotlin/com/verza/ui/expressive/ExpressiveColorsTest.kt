@@ -136,7 +136,8 @@ class ExpressiveColorsTest {
         // Guards against a windows edit that quietly collapses two of them onto the same palette —
         // which is the failure that made the cover-shape shuffle look broken, in another costume.
         val mid = fromHsv(210f, 0.7f, 0.7f)
-        val containers = ColorFlavour.entries.map { expressiveColorsFrom(coverOf(mid), it).container }
+        // System is Signature's windows on the phone's colours: the same cover gives the same palette.
+        val containers = (ColorFlavour.entries - ColorFlavour.SYSTEM).map { expressiveColorsFrom(coverOf(mid), it).container }
         assertEquals("every flavour distinct", containers.size, containers.distinct().size)
     }
 
