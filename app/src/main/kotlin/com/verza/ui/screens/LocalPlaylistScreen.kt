@@ -50,6 +50,7 @@ import com.verza.ui.theme.FontSleeve
 import com.verza.ui.theme.LocalCoverColors
 import com.verza.ui.theme.LocalVerzaExtendedColors
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun LocalPlaylistScreen(
     onBack: () -> Unit,
@@ -68,11 +69,11 @@ fun LocalPlaylistScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
+        if (sleeve) LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = if (sleeve) 0.dp else 64.dp, bottom = 28.dp + LocalBottomChrome.current),
+            contentPadding = PaddingValues(top = 0.dp, bottom = 28.dp + LocalBottomChrome.current),
         ) {
-            if (sleeve) {
+            run {
                 // ── Editorial (UMBRA) layout ─────────────────────────────────────
                 item { SleevePlaylistHeader(name, tracks) }
                 item {
@@ -132,9 +133,10 @@ fun LocalPlaylistScreen(
                         )
                     }
                 }
-            } else {
-                // ── Standard layout ──────────────────────────────────────────────
-                item {
+            }
+        } else com.verza.ui.expressive.HeaderAndList(
+            contentPadding = PaddingValues(top = 64.dp, bottom = 28.dp + LocalBottomChrome.current),
+            header = {
                     Column(
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -178,7 +180,10 @@ fun LocalPlaylistScreen(
                                 Text(tracksLabel(tracks.size), style = MaterialTheme.typography.labelSmall, color = ext.muted)
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
                             Button(
                                 onClick = { onPlayTracks(tracks.map { it.toMusicItem() }, 0) },
                                 enabled = tracks.isNotEmpty(),
@@ -216,19 +221,18 @@ fun LocalPlaylistScreen(
                             }
                         }
                     }
-                }
-
-                if (tracks.isEmpty()) {
-                    item { EmptyHint(ext.muted) }
-                } else {
-                    itemsIndexed(tracks) { index, track ->
-                        LocalPlaylistTrackRow(
-                            index = index + 1,
-                            track = track,
-                            onClick = { onPlayTracks(tracks.map { it.toMusicItem() }, index) },
-                            onRemove = { viewModel.removeTrack(track.id) },
-                        )
-                    }
+            },
+        ) {
+            if (tracks.isEmpty()) {
+                item { EmptyHint(ext.muted) }
+            } else {
+                itemsIndexed(tracks) { index, track ->
+                    LocalPlaylistTrackRow(
+                        index = index + 1,
+                        track = track,
+                        onClick = { onPlayTracks(tracks.map { it.toMusicItem() }, index) },
+                        onRemove = { viewModel.removeTrack(track.id) },
+                    )
                 }
             }
         }

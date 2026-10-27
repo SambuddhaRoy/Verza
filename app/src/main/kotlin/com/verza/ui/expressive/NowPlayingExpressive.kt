@@ -71,6 +71,8 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -192,13 +194,11 @@ fun NowPlayingExpressive(
     val scope = rememberCoroutineScope()
     val queueWidth = animatedReadableWidth()
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize().background(colors.container),
-    ) {
-        item(key = "player") {
+    val player: @Composable (Modifier, Boolean, Boolean) -> Unit = { paneModifier, twoPane, queueHint ->
             PlayerPane(
-                modifier = Modifier.fillParentMaxHeight(),
+                modifier = paneModifier,
+                twoPane = twoPane,
+                showQueueHint = queueHint,
                 onBack = onBack,
                 title = title,
                 artist = artist,
@@ -232,6 +232,68 @@ fun NowPlayingExpressive(
                 onShare = onShare,
                 onShowQueue = { scope.launch { listState.animateScrollToItem(1) } },
             )
+    }
+    val queueRow: @Composable (Int, QueueItem) -> Unit = { index, item ->
+        ExpressiveListItem(
+            title = item.title,
+            subtitle = item.artist,
+            artworkUrl = item.artworkUrl,
+            onClick = { onPlayQueueItem(index) },
+            selected = index == currentIndex,
+            position = segmentPositionOf(index, queue.size),
+            trailing = {
+                ExpressiveControl(
+                    onClick = { onRemoveQueueItem(index) },
+                    icon = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "Remove ${item.title} from the queue",
+                    container = androidx.compose.ui.graphics.Color.Transparent,
+                    content = if (index == currentIndex) colors.onAccent else colors.onSurfaceMuted,
+                    iconSize = 18.dp,
+                    modifier = Modifier.size(36.dp),
+                )
+            },
+        )
+    }
+
+    BoxWithConstraints(modifier.fillMaxSize().background(colors.container)) {
+    // A tablet or an open fold: the queue beside the player instead of below it, where it is in view
+    // without scrolling the player away. The player keeps its own two-pane rule, on its own share of
+    // the window: cover beside the controls on a landscape tablet, over them on a fold.
+    if (maxWidth >= 840.dp) {
+        val queuePaneWidth = (maxWidth * 0.34f).coerceIn(320.dp, 460.dp)
+        val playerWidth = maxWidth - queuePaneWidth
+        val landscapePlayer = playerWidth > maxHeight
+        Row(Modifier.fillMaxSize()) {
+            player(Modifier.width(playerWidth).fillMaxHeight(), landscapePlayer, false)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(1f)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.End)),
+                contentPadding = PaddingValues(start = 4.dp, end = 20.dp, top = 24.dp, bottom = 24.dp),
+            ) {
+                item(key = "queue-header") {
+                    Column(Modifier.padding(bottom = 10.dp)) {
+                        Text("UP NEXT", style = MetaLabel, color = colors.onContainerMuted)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Queue", style = HeroTitle, color = colors.onContainer)
+                    }
+                }
+                itemsIndexed(queue, key = { i, item -> "q-$i-${item.mediaId}" }) { index, item ->
+                    Box(Modifier.padding(vertical = 2.dp)) { queueRow(index, item) }
+                }
+            }
+        }
+        return@BoxWithConstraints
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        item(key = "player") {
+            player(Modifier.fillParentMaxHeight(), useTwoPane(), true)
         }
 
         item(key = "queue-header") {
@@ -260,25 +322,7 @@ fun NowPlayingExpressive(
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                     .padding(horizontal = 20.dp, vertical = 2.dp),
             ) {
-                ExpressiveListItem(
-                    title = item.title,
-                    subtitle = item.artist,
-                    artworkUrl = item.artworkUrl,
-                    onClick = { onPlayQueueItem(index) },
-                    selected = index == currentIndex,
-                    position = segmentPositionOf(index, queue.size),
-                    trailing = {
-                        ExpressiveControl(
-                            onClick = { onRemoveQueueItem(index) },
-                            icon = Icons.Filled.KeyboardArrowDown,
-                            contentDescription = "Remove ${item.title} from the queue",
-                            container = androidx.compose.ui.graphics.Color.Transparent,
-                            content = if (index == currentIndex) colors.onAccent else colors.onSurfaceMuted,
-                            iconSize = 18.dp,
-                            modifier = Modifier.size(36.dp),
-                        )
-                    },
-                )
+                queueRow(index, item)
             }
         }
 
@@ -291,11 +335,16 @@ fun NowPlayingExpressive(
             }
         }
     }
+    }
 }
 
 @Composable
 private fun PlayerPane(
     modifier: Modifier,
+    /** The cover beside the controls rather than over them. */
+    twoPane: Boolean,
+    /** The pointer down to the queue, where the queue is below the player. */
+    showQueueHint: Boolean,
     onBack: () -> Unit,
     title: String,
     artist: String,
@@ -369,7 +418,6 @@ private fun PlayerPane(
     // column it has always been; on a wide window the artwork takes one half and everything else
     // the other, because a tall column of controls on a landscape tablet leaves the cover small
     // and most of the screen empty.
-    val twoPane = useTwoPane()
     // The boost lets the cover crowd the title on a phone, which is the look. Beside the controls on
     // a landscape screen it only runs the art off the top and bottom edges, and on a portrait tablet
     // it pushes the cover wider than the controls and into the header buttons. So it is phone-only,
@@ -752,7 +800,7 @@ private fun PlayerPane(
             Spacer(Modifier.height(6.dp))
 
             // ── the hint that there is more below ────────────────────────────────────
-            QueueHint(count = queueCount, onClick = onShowQueue)
+            if (showQueueHint) QueueHint(count = queueCount, onClick = onShowQueue)
     }
 
     // One adaptive layout, not a Row in one orientation and a Column in the other.

@@ -1,7 +1,22 @@
 package com.verza.ui.expressive
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalConfiguration
@@ -86,6 +101,43 @@ fun readableWidth(): Dp = when (windowClass()) {
     WindowClass.COMPACT -> LocalConfiguration.current.screenWidthDp.dp
     WindowClass.MEDIUM -> 640.dp
     WindowClass.EXPANDED -> 760.dp
+}
+
+/**
+ * A page that is a header over a list of songs: an album, a playlist, a mix.
+ *
+ * On a phone the header is the list's first item and scrolls away with it. From 840dp it holds still
+ * in a column of its own on the left and the songs take the rest, instead of a banner and rows the
+ * width of a tablet. [contentPadding] is the list's, and the header column's too.
+ */
+@Composable
+fun HeaderAndList(
+    contentPadding: PaddingValues,
+    modifier: Modifier = Modifier,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    header: @Composable ColumnScope.(wide: Boolean) -> Unit,
+    list: LazyListScope.() -> Unit,
+) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        if (maxWidth >= 840.dp) {
+            val headerWidth = (maxWidth * 0.38f).coerceIn(340.dp, 440.dp)
+            Row(Modifier.fillMaxSize()) {
+                Column(
+                    Modifier
+                        .width(headerWidth)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(contentPadding),
+                ) { header(true) }
+                LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = contentPadding, verticalArrangement = verticalArrangement) { list() }
+            }
+        } else {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding, verticalArrangement = verticalArrangement) {
+                item { Column { header(false) } }
+                list()
+            }
+        }
+    }
 }
 
 /** [readableWidth], sprung, so a capped column glides to its new width on a rotation. */
