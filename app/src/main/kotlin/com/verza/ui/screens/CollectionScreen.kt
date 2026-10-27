@@ -137,6 +137,7 @@ fun CollectionScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun CollectionContent(
     detail: CollectionDetail,
@@ -152,11 +153,113 @@ private fun CollectionContent(
     val tracks = detail.tracks
     val glass = isGlass()
 
+    if (!sleeve) {
+        // The header clears the floating back button.
+        com.verza.ui.expressive.HeaderAndList(
+            contentPadding = PaddingValues(top = 64.dp, bottom = 28.dp + LocalBottomChrome.current),
+            header = {
+                if (glass) GlassCollectionHeader(detail, onPlayTracks, onShuffle)
+                else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // Album cover with soft shadow.
+                        Box(
+                            modifier = Modifier
+                                .size(140.dp)
+                                .shadow(elevation = 12.dp, shape = ShapeLargeIncreased, clip = false)
+                                .clip(ShapeLargeIncreased)
+                                .background(colors.surfaceVariant),
+                        ) {
+                            if (detail.thumbnailUrl != null) {
+                                AsyncImage(
+                                    model = detail.thumbnailUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .align(Alignment.CenterVertically),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = detail.title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = colors.onBackground,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (detail.subtitle.isNotBlank()) {
+                                Text(
+                                    text = detail.subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ext.muted,
+                                )
+                            }
+                            Text(
+                                text = tracksLabel(tracks.size),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ext.muted,
+                            )
+                        }
+                    }
+
+                    // Action pills, wrapping where a tablet's header column is narrower than a phone.
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Button(
+                            onClick = { onPlayTracks(tracks, 0) },
+                            enabled = tracks.isNotEmpty(),
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
+                        ) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Play all")
+                        }
+                        OutlinedButton(
+                            onClick = { onShuffle(tracks) },
+                            enabled = tracks.isNotEmpty(),
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
+                        ) {
+                            Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Shuffle")
+                        }
+                        OutlinedButton(
+                            onClick = { onAddToQueue(tracks) },
+                            enabled = tracks.isNotEmpty(),
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Icon(Icons.Filled.AddToQueue, contentDescription = "Add to queue", modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+                }
+            },
+        ) {
+            itemsIndexed(tracks) { index, track ->
+                TrackRow(index = index + 1, track = track) { onPlayTracks(tracks, index) }
+            }
+        }
+        return
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        // Sleeve's full-bleed header runs to the top edge; the standard header clears the
-        // floating back button.
-        contentPadding = PaddingValues(top = if (sleeve) 0.dp else 64.dp, bottom = 28.dp + LocalBottomChrome.current),
+        // Sleeve's full-bleed header runs to the top edge.
+        contentPadding = PaddingValues(top = 0.dp, bottom = 28.dp + LocalBottomChrome.current),
     ) {
         if (sleeve) {
             // ── Editorial (UMBRA) layout ─────────────────────────────────────────
@@ -213,102 +316,6 @@ private fun CollectionContent(
                     onClick = { onPlayTracks(tracks, index) },
                     trailing = { TrackActionsMenu(item = track) },
                 )
-            }
-        } else if (glass) {
-            item { GlassCollectionHeader(detail, onPlayTracks, onShuffle) }
-            itemsIndexed(tracks) { index, track ->
-                TrackRow(index = index + 1, track = track) { onPlayTracks(tracks, index) }
-            }
-        } else {
-            // ── Standard layout ──────────────────────────────────────────────────
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Album cover with soft shadow.
-                        Box(
-                            modifier = Modifier
-                                .size(140.dp)
-                                .shadow(elevation = 12.dp, shape = ShapeLargeIncreased, clip = false)
-                                .clip(ShapeLargeIncreased)
-                                .background(colors.surfaceVariant),
-                        ) {
-                            if (detail.thumbnailUrl != null) {
-                                AsyncImage(
-                                    model = detail.thumbnailUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
-                        }
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .align(Alignment.CenterVertically),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text = detail.title,
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = colors.onBackground,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            if (detail.subtitle.isNotBlank()) {
-                                Text(
-                                    text = detail.subtitle,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = ext.muted,
-                                )
-                            }
-                            Text(
-                                text = tracksLabel(tracks.size),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = ext.muted,
-                            )
-                        }
-                    }
-
-                    // Action pills
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button(
-                            onClick = { onPlayTracks(tracks, 0) },
-                            enabled = tracks.isNotEmpty(),
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Play all")
-                        }
-                        OutlinedButton(
-                            onClick = { onShuffle(tracks) },
-                            enabled = tracks.isNotEmpty(),
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
-                        ) {
-                            Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Shuffle")
-                        }
-                        OutlinedButton(
-                            onClick = { onAddToQueue(tracks) },
-                            enabled = tracks.isNotEmpty(),
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                        ) {
-                            Icon(Icons.Filled.AddToQueue, contentDescription = "Add to queue", modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-            }
-
-            itemsIndexed(tracks) { index, track ->
-                TrackRow(index = index + 1, track = track) { onPlayTracks(tracks, index) }
             }
         }
     }

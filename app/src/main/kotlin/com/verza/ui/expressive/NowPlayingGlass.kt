@@ -245,8 +245,11 @@ fun NowPlayingGlass(
                 val cover: @Composable (Modifier) -> Unit = { m ->
                     Artwork(artworkUrl, isPlaying, onNext, onPrevious, m)
                 }
+                // A tablet or an open fold: the queue has the room to stay open beside the player.
+                val wide = maxWidth >= 780.dp
                 val queuePane: @Composable (Modifier) -> Unit = { m ->
                     QueuePane(
+                        nowPlayingHeader = !wide,
                         title = title,
                         artist = artist,
                         artworkUrl = artworkUrl,
@@ -274,12 +277,35 @@ fun NowPlayingGlass(
                     FootRow(
                         showQueue = showQueue,
                         onOpenLyrics = onOpenLyrics,
-                        onToggleQueue = { showQueue = !showQueue },
+                        onToggleQueue = if (wide) null else ({ showQueue = !showQueue }),
                     )
                 }
 
-                if (!landscape) {
+                if (wide) {
+                    // The player is a column of its own, the cover over the controls, and stops at a
+                    // width that still reads as a player. The queue takes the rest of the window.
+                    val queueWidth = (maxWidth * 0.36f).coerceIn(320.dp, 440.dp)
                     Column(Modifier.fillMaxSize()) {
+                        header()
+                        Row(
+                            Modifier.weight(1f).fillMaxWidth().padding(bottom = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(40.dp),
+                        ) {
+                            Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                                Column(Modifier.fillMaxHeight().widthIn(max = 560.dp)) {
+                                    Box(Modifier.weight(1f).fillMaxWidth().then(dismissDrag), contentAlignment = Alignment.Center) {
+                                        cover(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
+                                    }
+                                    Spacer(Modifier.height(26.dp))
+                                    controls(true)
+                                }
+                            }
+                            queuePane(Modifier.width(queueWidth).fillMaxHeight().padding(top = 6.dp))
+                        }
+                    }
+                } else if (!landscape) {
+                    // A tablet held upright would otherwise get a phone's player at twice the size.
+                    Column(Modifier.fillMaxHeight().widthIn(max = 620.dp).align(Alignment.Center)) {
                         header()
                         AnimatedContent(
                             targetState = showQueue,
@@ -306,7 +332,9 @@ fun NowPlayingGlass(
                             contentAlignment = Alignment.Center,
                         ) {
                             if (showQueue) queuePane(Modifier.fillMaxSize())
-                            else cover(Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true))
+                            // Not fillMaxHeight: a square the height of the window is wider than this
+                            // half, and it ran off the left edge.
+                            else cover(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
                         }
                         Column(
                             Modifier.weight(1f).fillMaxHeight().widthIn(max = 480.dp),
@@ -627,7 +655,7 @@ private fun Transport(isPlaying: Boolean, onTogglePlay: () -> Unit, onNext: () -
 
 /** Lyrics, where the sound is going (by name), and the queue: three labelled pills of glass. */
 @Composable
-private fun FootRow(showQueue: Boolean, onOpenLyrics: () -> Unit, onToggleQueue: () -> Unit) {
+private fun FootRow(showQueue: Boolean, onOpenLyrics: () -> Unit, onToggleQueue: (() -> Unit)?) {
     val context = LocalContext.current
     val output by rememberAudioOutput()
     Row(
@@ -650,7 +678,8 @@ private fun FootRow(showQueue: Boolean, onOpenLyrics: () -> Unit, onToggleQueue:
             onClick = { AudioOutputs.openSwitcher(context) },
             modifier = Modifier.weight(1f),
         )
-        WashPill(
+        // Null where the queue is always open beside the player.
+        if (onToggleQueue != null) WashPill(
             Icons.AutoMirrored.Rounded.QueueMusic,
             "Up next",
             if (showQueue) "Hide queue" else "Queue",
@@ -689,6 +718,8 @@ private fun WashPill(
 
 @Composable
 private fun QueuePane(
+    /** The playing song at the head of the list; left out where the player is beside it anyway. */
+    nowPlayingHeader: Boolean,
     title: String,
     artist: String,
     artworkUrl: String?,
@@ -707,7 +738,7 @@ private fun QueuePane(
 ) {
     val upNext = queue.withIndex().filter { it.index > currentIndex }
     Column(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp)) {
+        if (nowPlayingHeader) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp)) {
             AsyncImage(
                 model = artworkUrl,
                 contentDescription = null,

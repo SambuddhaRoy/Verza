@@ -506,12 +506,22 @@ private fun GlassLibrary(
         modifier = modifier.fillMaxSize().background(xc.container),
         label = "libraryPage",
     ) { page ->
-        Box(Modifier.fillMaxSize().background(xc.container)) {
+        BoxWithConstraints(Modifier.fillMaxSize().background(xc.container)) {
+            // The index is tiles and covers, not lines of text, so it is not held to a reading width:
+            // on a tablet it fills the window with more of them, rather than two of everything at
+            // half the screen each.
+            val gridWidth = minOf(maxWidth, 1100.dp) - 40.dp
+            val tilesPerRow = when {
+                gridWidth >= 900.dp -> 6
+                gridWidth >= 520.dp -> 3
+                else -> 2
+            }
+            val coversPerRow = (gridWidth / 160.dp).toInt().coerceIn(2, 7)
             if (page == null) LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .wrapContentWidth()
-                    .widthIn(max = animatedReadableWidth())
+                    .widthIn(max = 1100.dp)
                     .fillMaxWidth(),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 16.dp + LocalBottomChrome.current),
             ) {
@@ -521,10 +531,10 @@ private fun GlassLibrary(
                         GlassHeaderButton(Icons.Filled.Add, "New playlist", onCreatePlaylist)
                     }
                 }
-                items(LibraryTab.entries.toList().chunked(2)) { pair ->
+                items(LibraryTab.entries.toList().chunked(tilesPerRow)) { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                        for (tab in pair) GlassTile(tab.label, tab.icon, Modifier.weight(1f)) { open = tab }
-                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        for (tab in row) GlassTile(tab.label, tab.icon, Modifier.weight(1f)) { open = tab }
+                        repeat(tilesPerRow - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
                 if (recent.isNotEmpty()) {
@@ -536,10 +546,11 @@ private fun GlassLibrary(
                             modifier = Modifier.padding(top = 30.dp, bottom = 12.dp),
                         )
                     }
-                    val shown = recent.take(12)
-                    items(shown.chunked(2)) { pair ->
+                    // Whole rows: twelve on a phone, two rows' worth wherever more fit across.
+                    val shown = recent.take(maxOf(12, coversPerRow * 2))
+                    items(shown.chunked(coversPerRow)) { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 18.dp)) {
-                            for (song in pair) {
+                            for (song in row) {
                                 val art = rememberSongArtwork(song.title, song.artist, song.thumbnailUrl)
                                 Column(Modifier.weight(1f).pressableScale { onPlaySongs(shown, shown.indexOf(song)) }) {
                                     AsyncImage(
@@ -553,7 +564,7 @@ private fun GlassLibrary(
                                     Text(song.artist, style = BodyText.copy(fontSize = 13.sp), color = xc.onContainerMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
-                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                            repeat(coversPerRow - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
                 }

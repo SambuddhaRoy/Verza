@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -110,20 +111,21 @@ fun MixScreen(
         }
 
         val playable = m.playableSongs
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+        com.verza.ui.expressive.HeaderAndList(
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp + LocalBottomChrome.current),
             verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            item {
+            header = { wide ->
                 // The same cover as on Home, wide: the picture to the left of nothing, the name on
-                // its band across the foot.
+                // its band across the foot. Square in a tablet's header column, as it is on Home.
                 MixCover(
                     mix = m,
                     titleStyle = MixTitleStyle.copy(fontSize = 30.sp, lineHeight = 32.sp),
-                    band = 0.34f,
-                    maxLines = 1,
-                    modifier = Modifier.fillMaxWidth().height(170.dp).clip(ShapeLargeIncreased),
+                    band = if (wide) 0.26f else 0.34f,
+                    maxLines = if (wide) 2 else 1,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (wide) Modifier.aspectRatio(1f) else Modifier.height(170.dp))
+                        .clip(ShapeLargeIncreased),
                 )
                 Spacer(Modifier.height(10.dp))
                 // Italic is an editorial voice; Glass keeps to the one upright face.
@@ -151,8 +153,8 @@ fun MixScreen(
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-            }
-
+            },
+        ) {
             items(m.items) { item -> MixRow(item = item, onClick = { onItemClick(item) }) }
         }
     }
