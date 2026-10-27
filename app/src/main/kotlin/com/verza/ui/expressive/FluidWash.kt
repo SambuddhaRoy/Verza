@@ -39,10 +39,11 @@ import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import com.verza.ui.theme.LocalAudioSignal
 import kotlin.math.exp
+import kotlin.random.Random
 
 /*
  * The desktop's flowing cover (renderer.js, COVER_FRAG) behind Glass's Now Playing: the cover,
- * blurred once, then domain-warped by two octaves of simplex noise every frame, so it moves like
+ * blurred once, then domain-warped by two octaves of noise every frame, so it moves like
  * liquid rather than turning like a picture. Its uniforms are the desktop's; what is added is the
  * bass, which swells the warp, and the kick, which pumps it.
  */
@@ -53,62 +54,72 @@ private const val TEX_PX = 256
 private const val OVERSCAN = 26        // drawn oversized, so the blur never pulls in a hard edge
 private const val BLUR_RADIUS = 20     // 3 box passes of this ~ a Gaussian with sigma 20px
 
+// The noise lattice: random values the noise is read from, NOISE_PX to a side and tiling, so the
+// drift can be wrapped at NOISE_PX without a seam.
+private const val NOISE_PX = 32
+
+/*
+ * Every number in here stays small. The first version ran simplex noise, whose hash multiplies its
+ * way into the millions, plus a grain hash in the hundreds of thousands and a clock that only ever
+ * grew. That needs full 32-bit floats, and on Pixels and other Mali GPUs the wash broke into blocks.
+ * So the noise reads a small random texture instead, the drift is wrapped on the CPU, and every
+ * texture read is at a texel's centre and blended here, which gives the same answer whatever
+ * filtering the GPU applies to a child shader.
+ */
 private const val FLUID_SRC = """
 uniform shader uTexA;
 uniform shader uTexB;
+uniform shader uNoise;
 uniform float uMix;
-uniform float uTime;
 uniform float uIntensity;
 uniform float uScale;
 uniform float uGain;
 uniform float uTexSize;
 uniform float2 uRes;
+uniform float4 uDriftA;
+uniform float4 uDriftB;
+uniform float2 uGrain;
 
-float3 mod289(float3 x){ return x - floor(x * (1.0/289.0)) * 289.0; }
-float2 mod289(float2 x){ return x - floor(x * (1.0/289.0)) * 289.0; }
-float3 permute(float3 x){ return mod289(((x*34.0)+1.0)*x); }
-float snoise(float2 v){
-  const float4 C = float4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
-  float2 i = floor(v + dot(v, C.yy));
-  float2 x0 = v - i + dot(i, C.xx);
-  float2 i1 = (x0.x > x0.y) ? float2(1.0, 0.0) : float2(0.0, 1.0);
-  float4 x12 = x0.xyxy + C.xxzz;
-  x12.xy -= i1;
-  i = mod289(i);
-  float3 p = permute(permute(i.y + float3(0.0, i1.y, 1.0)) + i.x + float3(0.0, i1.x, 1.0));
-  float3 m = max(0.5 - float3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
-  m = m * m; m = m * m;
-  float3 x = 2.0 * fract(p * C.www) - 1.0;
-  float3 h = abs(x) - 0.5;
-  float3 ox = floor(x + 0.5);
-  float3 a0 = x - ox;
-  m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
-  float3 g;
-  g.x = a0.x * x0.x + h.x * x0.y;
-  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-  return 130.0 * dot(m, g);
+// Value noise, -1..1, smooth to the second derivative.
+float vnoise(float2 p){
+  float2 i = floor(p) + 0.5;
+  float2 f = fract(p);
+  f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+  float a = uNoise.eval(i).r;
+  float b = uNoise.eval(i + float2(1.0, 0.0)).r;
+  float c = uNoise.eval(i + float2(0.0, 1.0)).r;
+  float d = uNoise.eval(i + float2(1.0, 1.0)).r;
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y) * 2.0 - 1.0;
 }
 
-// The desktop's lattice-free hash: the sin() one lays a visible grid at these scales.
-float hash21(float2 p){ p = fract(p * float2(443.897, 441.423)); p += dot(p, p + 19.19); return fract((p.x + p.y) * p.x); }
+float3 coverA(float2 i, float2 f){
+  return mix(mix(float3(uTexA.eval(i).rgb), float3(uTexA.eval(i + float2(1.0, 0.0)).rgb), f.x),
+             mix(float3(uTexA.eval(i + float2(0.0, 1.0)).rgb), float3(uTexA.eval(i + float2(1.0, 1.0)).rgb), f.x), f.y);
+}
+float3 coverB(float2 i, float2 f){
+  return mix(mix(float3(uTexB.eval(i).rgb), float3(uTexB.eval(i + float2(1.0, 0.0)).rgb), f.x),
+             mix(float3(uTexB.eval(i + float2(0.0, 1.0)).rgb), float3(uTexB.eval(i + float2(1.0, 1.0)).rgb), f.x), f.y);
+}
 
 half4 main(float2 fragCoord){
   float2 uv = fragCoord / uRes;
   float2 z = (uv - 0.5) / uScale + 0.5;
-  float t = uTime * 0.05;
   float cw = 1.0 - smoothstep(0.0, 0.7, length(z - 0.5));
-  float n1 = snoise(z * 0.35 + float2(t, t * 0.7));
-  float n2 = snoise(z * 0.35 + float2(-t * 0.8, t * 0.5) + float2(50.0, 50.0));
-  float n3 = snoise(z * 0.9  + float2(t * 1.2, -t)       + float2(100.0, 0.0));
-  float n4 = snoise(z * 0.9  + float2(-t, t * 1.1)        + float2(0.0, 100.0));
+  float n1 = vnoise(z * 0.35 + uDriftA.xy);
+  float n2 = vnoise(z * 0.35 + uDriftA.zw);
+  float n3 = vnoise(z * 0.9  + uDriftB.xy);
+  float n4 = vnoise(z * 0.9  + uDriftB.zw);
   float2 warp = float2(n1 * 0.65 + n3 * 0.35, n2 * 0.65 + n4 * 0.35) * cw;
-  float2 px = clamp(z + warp * uIntensity, 0.0, 1.0) * uTexSize;
-  float3 col = mix(float3(uTexA.eval(px).rgb), float3(uTexB.eval(px).rgb), uMix);
+  float2 q = clamp(z + warp * uIntensity, 0.0, 1.0) * uTexSize - 0.5;
+  float2 i = floor(q) + 0.5;
+  float2 f = q - floor(q);
+  float3 col = coverA(i, f);
+  if (uMix > 0.0) col = mix(col, coverB(i, f), uMix);
   float2 cen = uv - 0.5;
   col *= 1.0 - dot(cen, cen) * 0.5;
   float gray = dot(col, float3(0.299, 0.587, 0.114));
   col = mix(float3(gray), col, 1.5) * uGain;
-  col += (hash21(floor(fragCoord) + fract(uTime * 0.37) * 311.0) - 0.5) * 0.02;
+  col += (float(uNoise.eval(floor(fragCoord) + 0.5 + uGrain).g) - 0.5) * 0.02;
   return half4(half3(col), 1.0);
 }
 """
@@ -159,6 +170,7 @@ class BeatPulse {
 @Composable
 internal fun FluidWash(artworkUrl: Any?, motion: Boolean, modifier: Modifier): Boolean {
     val shader = remember { runCatching { RuntimeShader(FLUID_SRC) }.getOrNull() } ?: return false
+    val noise = remember { noiseShader() }
     val context = LocalContext.current
     var texA by remember { mutableStateOf<BitmapShader?>(null) }
     var texB by remember { mutableStateOf<BitmapShader?>(null) }
@@ -225,9 +237,16 @@ internal fun FluidWash(artworkUrl: Any?, motion: Boolean, modifier: Modifier): B
                 .drawBehind {
                     shader.setInputShader("uTexA", a)
                     shader.setInputShader("uTexB", b)
+                    shader.setInputShader("uNoise", noise)
                     shader.setFloatUniform("uRes", size.width, size.height)
                     shader.setFloatUniform("uTexSize", TEX_PX.toFloat())
-                    shader.setFloatUniform("uTime", time)
+                    // The desktop's drift, wrapped where the noise repeats. The constants keep
+                    // the four fields apart, as the old +50 and +100 did.
+                    val t = time * 0.05f
+                    fun w(v: Float) = v.mod(NOISE_PX.toFloat())
+                    shader.setFloatUniform("uDriftA", w(t), w(0.7f * t), w(11f - 0.8f * t), w(5f + 0.5f * t))
+                    shader.setFloatUniform("uDriftB", w(3f + 1.2f * t), w(19f - t), w(23f - t), w(13f + 1.1f * t))
+                    shader.setFloatUniform("uGrain", Random.nextInt(NOISE_PX).toFloat(), Random.nextInt(NOISE_PX).toFloat())
                     shader.setFloatUniform("uMix", mix.value)
                     shader.setFloatUniform("uIntensity", intensity)
                     shader.setFloatUniform("uScale", scale)
@@ -243,6 +262,14 @@ private fun Bitmap.toClampShader() =
     BitmapShader(this, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) filterMode = BitmapShader.FILTER_MODE_LINEAR
     }
+
+/** Random values to read the noise from; any filtering, since the shader reads texel centres. */
+private fun noiseShader(): BitmapShader {
+    val rnd = Random(7)
+    val px = IntArray(NOISE_PX * NOISE_PX) { 0xff000000.toInt() or rnd.nextInt(0x1000000) }
+    val bmp = Bitmap.createBitmap(px, NOISE_PX, NOISE_PX, Bitmap.Config.ARGB_8888)
+    return BitmapShader(bmp, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+}
 
 /** [url] is anything Coil loads: a cover's address, or a bundled drawable (onboarding's wash). */
 private suspend fun blurredCover(context: Context, url: Any): Bitmap? {
