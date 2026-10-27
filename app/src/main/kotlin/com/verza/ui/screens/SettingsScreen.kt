@@ -80,6 +80,8 @@ import com.verza.ui.expressive.ShapeLargeIncreased
 import com.verza.ui.expressive.ShapeMedium
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.ui.theme.LocalArtworkColors
+import com.verza.ui.theme.offeredFlavours
+import com.verza.ui.theme.seedColors
 
 /**
  * Settings, grouped by what a setting is for rather than by when it was written.
@@ -338,13 +340,13 @@ fun SettingsScreen(
         if (design != DesignScheme.GLASS) group("Colour") {
             item {
                 Text(
-                    "How strongly the cover's colours tint the app.",
+                    "How strongly the cover's colours tint the app, or use your phone's colours instead.",
                     style = BodyText,
                     color = colors.onContainerMuted,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                 )
             }
-            items(ColorFlavour.entries.toList()) { option ->
+            items(offeredFlavours) { option ->
                 FlavourRow(
                     flavour = option,
                     selected = option == flavour,
@@ -352,7 +354,8 @@ fun SettingsScreen(
                 )
             }
             item { Spacer(Modifier.height(8.dp)) }
-            items(AccentSource.entries.toList()) { option ->
+            // System takes its accent from the phone too, so there is no source to choose.
+            if (flavour != ColorFlavour.SYSTEM) items(AccentSource.entries.toList()) { option ->
                 AccentRow(
                     source = option,
                     selected = option == accentSource,
@@ -912,7 +915,8 @@ private fun DesignRow(design: DesignScheme, selected: Boolean, onClick: () -> Un
 private fun FlavourRow(flavour: ColorFlavour, selected: Boolean, onClick: () -> Unit) {
     val colors = LocalExpressiveColors.current
     val cover = LocalArtworkColors.current
-    val preview = remember(cover, flavour) { expressiveColorsFrom(cover, flavour) }
+    val context = LocalContext.current
+    val preview = remember(cover, flavour) { expressiveColorsFrom(seedColors(context, flavour, cover), flavour) }
     RowSurface(onClick = onClick) {
         Row(modifier = Modifier.clip(ShapeMedium)) {
             Box(Modifier.size(22.dp).background(preview.container))

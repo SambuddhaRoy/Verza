@@ -49,6 +49,7 @@ import com.verza.ui.navigation.Screen
 import com.verza.ui.navigation.VerzaNavigation
 import com.verza.ui.screens.SettingsViewModel
 import com.verza.ui.theme.DefaultCoverColors
+import com.verza.ui.theme.seedColors
 import com.verza.ui.theme.LocalArtworkColors
 import com.verza.ui.theme.LocalAudioSignal
 import com.verza.ui.theme.LocalCoverColors
@@ -229,7 +230,7 @@ class MainActivity : ComponentActivity() {
                 // on a neutral ground. Handed the stand-in palette, it took that amber for a cover
                 // and turned the whole app beige and brown, onboarding included.
                 if (design == DesignScheme.GLASS) glassColors(artworkColors.takeIf { it !== DefaultCoverColors }, systemDark)
-                else expressiveColorsFrom(artworkColors, flavour, accentSource)
+                else expressiveColorsFrom(seedColors(context, flavour, artworkColors), flavour, accentSource)
             }
             val materialScheme = remember(expressive) { expressiveColorScheme(expressive) }
 
