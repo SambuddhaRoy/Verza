@@ -1,5 +1,9 @@
 package com.verza.ui.screens
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.LaunchedEffect
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import com.verza.ui.expressive.LocalBottomChrome
 import androidx.compose.ui.unit.sp
 import com.verza.ui.theme.DesignScheme
@@ -116,6 +120,10 @@ fun SettingsScreen(
     val startScreen by viewModel.startScreen.collectAsStateWithLifecycle()
     val resumeOnOpen by viewModel.resumeOnOpen.collectAsStateWithLifecycle()
     val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
+    val addons by viewModel.addons.collectAsStateWithLifecycle()
+    val addonsOnMobileData by viewModel.addonsOnMobileData.collectAsStateWithLifecycle()
+    var showAddAddon by remember { mutableStateOf(false) }
+    var removingAddon by remember { mutableStateOf<com.verza.player.AddonSource?>(null) }
     val gentleStart by viewModel.gentleStart.collectAsStateWithLifecycle()
     val crossfade by viewModel.crossfadeSeconds.collectAsStateWithLifecycle()
     val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
@@ -415,6 +423,31 @@ fun SettingsScreen(
             )
         }
 
+        // ── where lossless comes from ───────────────────────────────────────
+        group("Lossless sources") {
+            addons.forEach { source ->
+                LinkRow(
+                    title = source.name,
+                    // Only the host: the rest of the link can be a secret.
+                    subtitle = source.url.toHttpUrlOrNull()?.host.orEmpty().ifBlank { "Tap to remove" },
+                    onClick = { removingAddon = source },
+                )
+            }
+            LinkRow(
+                title = "Add a source",
+                subtitle = if (addons.isEmpty()) "Play FLAC from a server of your own, instead of YouTube" else "Tried in this order, then YouTube",
+                onClick = { showAddAddon = true },
+            )
+            if (addons.isNotEmpty()) {
+                SwitchRow(
+                    title = "Use on mobile data",
+                    subtitle = "A lossless song is roughly 30 MB, several times more than YouTube",
+                    checked = addonsOnMobileData,
+                    onToggle = viewModel::setAddonsOnMobileData,
+                )
+            }
+        }
+
         // ── where things go ─────────────────────────────────────────────────
         group("Downloads") {
             LinkRow(
@@ -513,6 +546,33 @@ fun SettingsScreen(
             item { VersionCard() }
         }
     }
+    }
+
+    if (showAddAddon) {
+        AddAddonDialog(viewModel, onDismiss = { showAddAddon = false; viewModel.clearAddonState() })
+    }
+
+    removingAddon?.let { source ->
+        val colors = LocalExpressiveColors.current
+        AlertDialog(
+            onDismissRequest = { removingAddon = null },
+            containerColor = colors.surface,
+            titleContentColor = colors.onSurface,
+            textContentColor = colors.onSurfaceMuted,
+            shape = ShapeExtraLarge,
+            title = { Text(source.name, style = BodyStrong) },
+            text = { Text("Remove this source? You'd need its link again to add it back.", style = BodyText) },
+            confirmButton = {
+                TextButton(shape = ButtonDefaults.textShape, onClick = { viewModel.removeAddon(source); removingAddon = null }) {
+                    Text("Remove", color = colors.accent, style = BodyStrong)
+                }
+            },
+            dismissButton = {
+                TextButton(shape = ButtonDefaults.textShape, onClick = { removingAddon = null }) {
+                    Text("Keep", color = colors.onSurfaceMuted, style = BodyText)
+                }
+            },
+        )
     }
 
     if (showListenBrainz) {
@@ -616,6 +676,103 @@ private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String
         },
     )
 }
+
+/**
+ * Paste a source's link, with where to get one underneath, since nothing ships with the app.
+ *
+ * Only projects that serve music the listener has a right to are listed. Others exist; anyone holding
+ * a link to one can still paste it, but Verza doesn't send people to them.
+ */
+@Composable
+private fun AddAddonDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
+    val colors = LocalExpressiveColors.current
+    val context = LocalContext.current
+    val state by viewModel.addonState.collectAsStateWithLifecycle()
+    var input by remember { mutableStateOf("") }
+    val links = androidx.compose.ui.platform.LocalUriHandler.current
+    LaunchedEffect(state.added) {
+        state.added?.let { toast(context, "Added $it"); onDismiss() }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        titleContentColor = colors.onSurface,
+        textContentColor = colors.onSurfaceMuted,
+        shape = ShapeExtraLarge,
+        title = { Text("Add a lossless source", style = BodyStrong) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "YouTube doesn't offer lossless audio. A source is a server that holds FLAC files: " +
+                        "when it has the song you're playing, Verza plays its copy, and uses YouTube when it doesn't.",
+                    style = BodyText,
+                )
+                androidx.compose.material3.OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    enabled = !state.busy,
+                    singleLine = true,
+                    label = { Text("Source link") },
+                    placeholder = { Text("https://…/manifest.json") },
+                    shape = ShapeMedium,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        autoCorrectEnabled = false,
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { viewModel.addAddon(input) }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                state.message?.let { Text(it, style = BodyText, color = colors.onSurface) }
+
+                Text("Where to get a link", style = BodyStrong, color = colors.onSurface)
+                Text(
+                    "Verza doesn't come with any sources. These are free projects by other people that you " +
+                        "run yourself, on a home server or a cheap VPS. Each one gives you an https link to paste above.",
+                    style = BodyText,
+                )
+                ADDON_GUIDES.forEach { guide ->
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(ShapeMedium)
+                            .clickable { links.openUri(guide.url) }
+                            .padding(vertical = 6.dp),
+                    ) {
+                        Text(guide.title, style = BodyStrong, color = colors.accent)
+                        Text(guide.detail, style = BodyText)
+                    }
+                }
+                Text(
+                    "Any server made for BitChord's addon format works, so if someone has given you a link, " +
+                        "paste that. A source can see which songs you play, so only add ones you trust, and " +
+                        "it's on you to have the rights to what it serves.",
+                    style = BodyText,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(shape = ButtonDefaults.textShape, enabled = !state.busy, onClick = { viewModel.addAddon(input) }) {
+                Text(if (state.busy) "Checking" else "Add", color = colors.accent, style = BodyStrong)
+            }
+        },
+        dismissButton = {
+            TextButton(shape = ButtonDefaults.textShape, onClick = onDismiss) {
+                Text("Cancel", color = colors.onSurfaceMuted, style = BodyText)
+            }
+        },
+    )
+}
+
+private class AddonGuide(val title: String, val detail: String, val url: String)
+
+private val ADDON_GUIDES = listOf(
+    AddonGuide("Plex, Jellyfin, Emby or Navidrome", "Your own music server", "https://github.com/rairulyle/bitchord-selfhosted-addon"),
+    AddonGuide("Telegram", "FLAC files in a private channel of your own", "https://github.com/Imnotshashwat/Telegram-Music-Addon"),
+)
 
 private fun toast(context: android.content.Context, message: String) {
     android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()

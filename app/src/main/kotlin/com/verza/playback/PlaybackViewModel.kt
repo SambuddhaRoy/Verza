@@ -239,7 +239,7 @@ class PlaybackViewModel @Inject constructor(
         val saved = prefs.loadQueue() ?: return
         if (saved.tracks.isEmpty()) return
         val mediaItems = saved.tracks.map {
-            PlayerConnection.buildMediaItem(it.videoId, it.title, it.artist, it.artworkUrl)
+            PlayerConnection.buildMediaItem(it.videoId, it.title, it.artist, it.artworkUrl, it.durationMs)
         }
         playerConnection.restoreQueue(mediaItems, saved.index, saved.positionMs)
         // "Resume on open" — pick up where the user left off instead of restoring paused.
@@ -250,7 +250,7 @@ class PlaybackViewModel @Inject constructor(
         val st = playbackState.value
         if (st.queue.isEmpty()) return null
         return SavedQueue(
-            tracks = st.queue.map { SavedTrack(it.mediaId, it.title, it.artist, it.artworkUrl) },
+            tracks = st.queue.map { SavedTrack(it.mediaId, it.title, it.artist, it.artworkUrl, it.durationMs) },
             index = st.currentIndex.coerceAtLeast(0),
             positionMs = playerConnection.currentPositionMs,
         )
@@ -298,7 +298,7 @@ class PlaybackViewModel @Inject constructor(
     // ── Per-track actions (used by row overflow menus) ────────────────────────
 
     private fun MusicItem.toMediaItem() = PlayerConnection.buildMediaItem(
-        videoId = id, title = title, artist = artist, albumArtUri = thumbnailUrl,
+        videoId = id, title = title, artist = artist, albumArtUri = thumbnailUrl, durationMs = durationMs,
     )
 
     fun playNext(item: MusicItem) = playerConnection.addNext(item.toMediaItem())
@@ -313,7 +313,7 @@ class PlaybackViewModel @Inject constructor(
     /** Adds a home card to the queue: a song directly, or an album/playlist expanded into tracks. */
     fun enqueueHomeItem(item: HomeItem) {
         if (item.isSong && item.videoId != null) {
-            enqueue(MusicItem(id = item.videoId!!, title = item.title, artist = item.artist, thumbnailUrl = item.thumbnailUrl))
+            enqueue(MusicItem(id = item.videoId!!, title = item.title, artist = item.artist, thumbnailUrl = item.thumbnailUrl, durationMs = item.durationMs))
         } else {
             viewModelScope.launch {
                 repository.collectionTracks(item.browseId, item.playlistId)
@@ -351,6 +351,7 @@ class PlaybackViewModel @Inject constructor(
                     title = item.title,
                     artist = item.artist,
                     thumbnailUrl = item.thumbnailUrl,
+                    durationMs = item.durationMs,
                 )
             )
         } else {
@@ -366,7 +367,7 @@ class PlaybackViewModel @Inject constructor(
     /** Plays the playable songs of a curated mix (Home item rows), from the top. */
     fun playSongItems(items: List<HomeItem>) {
         val songs = items.mapNotNull { item ->
-            item.videoId?.let { MusicItem(id = it, title = item.title, artist = item.artist, thumbnailUrl = item.thumbnailUrl) }
+            item.videoId?.let { MusicItem(id = it, title = item.title, artist = item.artist, thumbnailUrl = item.thumbnailUrl, durationMs = item.durationMs) }
         }
         if (songs.isNotEmpty()) playSongs(songs, 0)
     }
@@ -378,6 +379,7 @@ class PlaybackViewModel @Inject constructor(
                 title = it.title,
                 artist = it.artist,
                 albumArtUri = it.thumbnailUrl,
+                durationMs = it.durationMs,
             )
         }
         playerConnection.setQueue(mediaItems, startIndex)

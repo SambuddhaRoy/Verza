@@ -76,9 +76,24 @@ class MusicService : MediaLibraryService() {
 
     // Short-TTL cache of resolved stream URLs, keyed by videoId — so seeks / re-opens don't re-run
     // the expensive NewPipe extraction. Concurrent because ExoPlayer resolves on loader threads.
-    private data class CachedStreamUrl(val url: String, val resolvedAt: Long)
+    private data class CachedStreamUrl(val url: String, val resolvedAt: Long, val fromAddon: Boolean = false)
     private val streamUrlCache = java.util.concurrent.ConcurrentHashMap<String, CachedStreamUrl>()
     private val STREAM_URL_TTL_MS = 5 * 60 * 60 * 1000L // 5h; googlevideo URLs last ~6h
+    private val ADDON_URL_TTL_MS = 30 * 60 * 1000L      // a source's links can be signed for far less
+
+    private lateinit var addons: AddonClient
+
+    /** Songs whose source link failed in the player. They come from YouTube for the rest of the session. */
+    private val addonFailed = java.util.Collections.newSetFromMap(
+        java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    )
+
+    private fun addonsUsableNow(): Boolean {
+        if (PlayerSettings.addons.value.isEmpty()) return false
+        if (PlayerSettings.addonsOnMobileData.value) return true
+        val connectivity = getSystemService(android.net.ConnectivityManager::class.java)
+        return !connectivity.isActiveNetworkMetered
+    }
 
     /**
      * Stream URLs a load has already failed on, so the cache above cannot keep serving one.
@@ -96,6 +111,7 @@ class MusicService : MediaLibraryService() {
 
         // Base HTTP source for the actual googlevideo stream bytes.
         val httpFactory = OkHttpDataSource.Factory(okHttpClient)
+        addons = AddonClient(okHttpClient)
 
         // Intercept our placeholder innertube://<videoId> URIs and swap in a freshly
         // resolved stream URL right before ExoPlayer opens the connection. Resolution
@@ -112,7 +128,7 @@ class MusicService : MediaLibraryService() {
             // (on-device music, downloaded files) pass straight through to the upstream
             // DefaultDataSource, which opens them natively.
             if (!raw.startsWith(INNERTUBE_SCHEME)) return@Resolver dataSpec
-            val videoId = raw.removePrefix(INNERTUBE_SCHEME)
+            val videoId = raw.removePrefix(INNERTUBE_SCHEME).substringBefore('?')
             if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Resolving $videoId …")
 
             try {
@@ -145,13 +161,30 @@ class MusicService : MediaLibraryService() {
                 // left a track unplayable until the TTL ran out — and each retry and each seek got
                 // handed the same dead URL.
                 streamUrlCache[videoId]?.let { c ->
-                    if (System.currentTimeMillis() - c.resolvedAt < STREAM_URL_TTL_MS &&
-                        !failedStreamUrls.contains(c.url)
+                    val ttl = if (c.fromAddon) ADDON_URL_TTL_MS else STREAM_URL_TTL_MS
+                    if (System.currentTimeMillis() - c.resolvedAt < ttl &&
+                        !failedStreamUrls.contains(c.url) &&
+                        (!c.fromAddon || addonsUsableNow())
                     ) {
                         if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Using cached stream URL for $videoId")
                         return@Resolver dataSpec.withUri(Uri.parse(c.url))
                     }
                     streamUrlCache.remove(videoId)
+                }
+
+                // A source the listener added comes before YouTube, when it holds this recording.
+                if (videoId !in addonFailed && addonsUsableNow()) {
+                    val hint = dataSpec.uri
+                    val found = addons.find(
+                        title = hint.getQueryParameter("t").orEmpty(),
+                        artist = hint.getQueryParameter("a").orEmpty(),
+                        durationMs = hint.getQueryParameter("d")?.toLongOrNull() ?: 0L,
+                    )
+                    if (found != null) {
+                        if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "$videoId from a lossless source")
+                        streamUrlCache[videoId] = CachedStreamUrl(found, System.currentTimeMillis(), fromAddon = true)
+                        return@Resolver dataSpec.withUri(Uri.parse(found))
+                    }
                 }
 
                 val stream = runBlocking { InnerTube.resolveAudioStream(videoId) }
@@ -214,7 +247,16 @@ class MusicService : MediaLibraryService() {
              */
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 val id = player.currentMediaItem?.mediaId ?: return
-                streamUrlCache.remove(id)?.let { failedStreamUrls.add(it.url) }
+                streamUrlCache.remove(id)?.let {
+                    failedStreamUrls.add(it.url)
+                    // The listener picked this song, and YouTube probably has it, so play it from
+                    // there, from the same spot, rather than letting the error skip to the next one.
+                    if (it.fromAddon) {
+                        addonFailed.add(id)
+                        PlayerSettings.noteAddonRetry()
+                        player.prepare()
+                    }
+                }
                 if (failedStreamUrls.size > 256) failedStreamUrls.clear()
             }
         })
@@ -222,6 +264,14 @@ class MusicService : MediaLibraryService() {
         // Apply the skip-silence option pushed from the app's settings (PlayerSettings bridge).
         serviceScope.launch {
             PlayerSettings.skipSilence.collect { player.skipSilenceEnabled = it }
+        }
+
+        // Changing the sources changes the answer for every song already resolved.
+        serviceScope.launch {
+            PlayerSettings.addons.collect {
+                streamUrlCache.clear()
+                addonFailed.clear()
+            }
         }
 
         serviceScope.launch { runTrackFade() }
@@ -559,7 +609,9 @@ class MusicService : MediaLibraryService() {
             val index = siblings.indexOfFirst { it.id == single.mediaId }.coerceAtLeast(0)
             return Futures.immediateFuture(
                 MediaSession.MediaItemsWithStartPosition(
-                    resolveUris(siblings.map { it.toMediaItem() }.toMutableList(), true),
+                    // The song itself stays as it was handed over: it knows its own length, which
+                    // is what stops a lossless source substituting a different cut of it.
+                    resolveUris(siblings.map { if (it.id == single.mediaId) single else it.toMediaItem() }.toMutableList(), true),
                     index,
                     startPositionMs,
                 ),
@@ -573,6 +625,7 @@ class MusicService : MediaLibraryService() {
                     .setTitle(title)
                     .setArtist(subtitle.ifBlank { null })
                     .setArtworkUri(artworkUri?.let { android.net.Uri.parse(it) })
+                    .setDurationMs(durationMs.takeIf { it > 0 })
                     .setIsBrowsable(browsable)
                     .setIsPlayable(!browsable)
                     .setMediaType(
@@ -676,9 +729,17 @@ class MusicService : MediaLibraryService() {
             items.map { item ->
                 val id = item.mediaId
                 val local = id.startsWith("content://") || id.startsWith("file://")
-                val uri = if (local && trusted) id else "$INNERTUBE_SCHEME${sanitiseVideoId(id)}"
+                val uri = if (local && trusted) id else "$INNERTUBE_SCHEME${sanitiseVideoId(id)}" + trackHint(item)
                 item.buildUpon().setUri(uri).build()
             }.toMutableList()
+
+        /** What a lossless source gets searched for. The resolver sees only the URI, so it travels there. */
+        private fun trackHint(item: MediaItem): String {
+            val md = item.mediaMetadata
+            return "?t=" + Uri.encode(md.title?.toString().orEmpty()) +
+                "&a=" + Uri.encode(md.artist?.toString().orEmpty()) +
+                "&d=" + (md.durationMs ?: 0L)
+        }
 
         /**
          * YouTube ids are 11 characters of [A-Za-z0-9_-]. Anything else from an untrusted caller is

@@ -180,6 +180,7 @@ fun NowPlayingGlass(
     isLiked: Boolean,
     positionMs: Long,
     durationMs: Long,
+    audioFormat: String?,
     shuffleEnabled: Boolean,
     repeatMode: Int,
     queue: List<QueueItem>,
@@ -270,7 +271,7 @@ fun NowPlayingGlass(
                 val controls: @Composable ColumnScope.(Boolean) -> Unit = { withTitle ->
                     if (withTitle) TitleBlock(title, artist, trackKey, isLiked, onToggleLike, onOpenMore)
                     Spacer(Modifier.height(14.dp))
-                    Scrubber(positionMs, durationMs, isPlaying, onSeek)
+                    Scrubber(positionMs, durationMs, audioFormat, isPlaying, onSeek)
                     Spacer(Modifier.height(16.dp))
                     Transport(isPlaying, onTogglePlay, onNext, onPrevious)
                     Spacer(Modifier.height(14.dp))
@@ -594,7 +595,7 @@ private fun WashButton(icon: androidx.compose.ui.graphics.vector.ImageVector, co
  * to listen) and fill white as the song plays. Drag or tap to seek.
  */
 @Composable
-private fun Scrubber(positionMs: Long, durationMs: Long, isPlaying: Boolean, onSeek: (Long) -> Unit) {
+private fun Scrubber(positionMs: Long, durationMs: Long, audioFormat: String?, isPlaying: Boolean, onSeek: (Long) -> Unit) {
     val live = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
     Column {
         VisualizerSeekBar(
@@ -611,6 +612,10 @@ private fun Scrubber(positionMs: Long, durationMs: Long, isPlaying: Boolean, onS
         Row(Modifier.fillMaxWidth()) {
             Text(formatDuration(positionMs), style = SmallStyle, color = InkSoft)
             Spacer(Modifier.weight(1f))
+            if (audioFormat != null) {
+                Text(audioFormat, style = SmallStyle, color = InkSoft, maxLines = 1)
+                Spacer(Modifier.weight(1f))
+            }
             Text(formatDuration(durationMs), style = SmallStyle, color = InkSoft)
         }
     }

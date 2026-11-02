@@ -60,6 +60,7 @@ class BrowseTreePublisher @Inject constructor(
                 subtitle = song.artist,
                 artworkUri = song.thumbnailUrl,
                 browsable = false,
+                durationMs = song.durationMs,
             )
         },
     )

@@ -26,6 +26,7 @@ object MediaBrowseTree {
         val artworkUri: String? = null,
         val browsable: Boolean = false,
         val children: List<Node> = emptyList(),
+        val durationMs: Long = 0L,
     )
 
     private val _root = MutableStateFlow<List<Node>>(emptyList())
