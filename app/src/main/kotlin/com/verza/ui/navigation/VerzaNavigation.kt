@@ -113,6 +113,7 @@ fun VerzaNavigation(
     val likedIds by playbackViewModel.likedIds.collectAsStateWithLifecycle()
     val downloadedIds by playbackViewModel.downloadedIds.collectAsStateWithLifecycle()
     val downloading by playbackViewModel.downloading.collectAsStateWithLifecycle()
+    val downloadProgress by playbackViewModel.downloadProgress.collectAsStateWithLifecycle()
     val sleepTimerEndAt by playbackViewModel.sleepTimerEndAt.collectAsStateWithLifecycle()
     val focusSession by playbackViewModel.focusSession.collectAsStateWithLifecycle()
     val focusComplete by playbackViewModel.focusComplete.collectAsStateWithLifecycle()
@@ -351,6 +352,7 @@ fun VerzaNavigation(
                         .windowInsetsPadding(chromeInsets.only(bottomSides)),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    DownloadPill(downloadProgress, glass = true)
                     if (rail) {
                         // The rail has the tabs; only the player floats along the foot.
                         if (miniState != null) GlassMiniPlayer(
@@ -378,6 +380,7 @@ fun VerzaNavigation(
                     .windowInsetsPadding(chromeInsets.only(bottomSides)),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                DownloadPill(downloadProgress, glass = false)
                 AnimatedVisibility(
                     visible = showMiniPlayer,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
@@ -868,6 +871,26 @@ private val PREAPP_ROUTES = setOf(
 /** Fade-through enter: a beat after the old screen clears, the new one fades + eases up to scale. */
 // Spring-backed rather than timed: the incoming screen settles into place with a slight overshoot,
 // which is the expressive motion scheme applied to navigation.
+/** The download pill, sliding in while anything downloads and away once the batch is done. */
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.DownloadPill(progress: com.verza.data.DownloadProgress, glass: Boolean) {
+    // Keeps the last batch on screen while it slides away, instead of an empty pill.
+    // Not state: this recomposes on every change of [progress] anyway.
+    val last = remember { arrayOf(progress) }
+    if (progress.active) last[0] = progress
+    AnimatedVisibility(
+        visible = progress.active,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(200)),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200)),
+    ) {
+        com.verza.ui.expressive.DownloadProgressPill(
+            last[0],
+            glass = glass,
+            modifier = Modifier.widthIn(max = 720.dp).padding(bottom = 8.dp),
+        )
+    }
+}
+
 private fun fadeThroughIn(): EnterTransition =
     fadeIn(tween(220, delayMillis = 60, easing = Emphasized)) +
         scaleIn(initialScale = 0.92f, animationSpec = ExpressiveMotion.spatialDefault())
