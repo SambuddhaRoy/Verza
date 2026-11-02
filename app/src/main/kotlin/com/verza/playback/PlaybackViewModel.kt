@@ -89,6 +89,9 @@ class PlaybackViewModel @Inject constructor(
     /** IDs being downloaded right now (for showing a spinner / progress hint). */
     val downloading: StateFlow<Set<String>> = downloadManager.inProgress
 
+    /** The running downloads as one batch, for the progress pill. */
+    val downloadProgress = downloadManager.progress
+
     /**
      * High-resolution album artwork resolved from an external metadata source (iTunes) for the
      * currently-playing track. The UI uses this in preference to the YouTube thumbnail, which is

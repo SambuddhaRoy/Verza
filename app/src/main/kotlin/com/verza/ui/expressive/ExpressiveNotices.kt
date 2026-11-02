@@ -1,5 +1,6 @@
 package com.verza.ui.expressive
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,11 +24,17 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.verza.data.DownloadProgress
 
 /**
  * The two things the app has to say for itself after a release: what changed, and that there is
@@ -254,6 +261,43 @@ fun UpdateAvailableSheet(
             }
 
             Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+/**
+ * What is downloading and how far it has got, above the mini player for as long as anything is.
+ * An album reads "3 of 12" so a long one visibly moves; a single song reads in percent.
+ */
+@Composable
+fun DownloadProgressPill(progress: DownloadProgress, glass: Boolean, modifier: Modifier = Modifier) {
+    val colors = LocalExpressiveColors.current
+    val fraction by animateFloatAsState(progress.fraction, label = "downloadProgress")
+    val surface =
+        if (glass) Modifier.padding(horizontal = 16.dp).chromeGlass(SquircleShape(20.dp))
+        else Modifier.padding(horizontal = 14.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp)).background(colors.surface)
+    val title = if (progress.label.isBlank()) "Downloading" else "Downloading ${progress.label}"
+    val detail =
+        if (progress.total > 1) "${minOf(progress.done + 1, progress.total)} of ${progress.total}"
+        // Most of a song's wait comes before its first byte, while the stream is looked up.
+        else if (progress.fraction == 0f) "Getting ready"
+        else "${(progress.fraction * 100).toInt()}%"
+    Column(
+        modifier
+            .then(surface)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .semantics(mergeDescendants = true) { progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f) },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.Icon(Icons.Filled.Download, contentDescription = null, tint = colors.accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(10.dp))
+            Text(title, style = BodyStrong, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Spacer(Modifier.size(10.dp))
+            Text(detail, style = BodyText, color = colors.onSurfaceMuted)
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.fillMaxWidth().height(3.dp).clip(PillShape).background(colors.surfaceHigh)) {
+            Box(Modifier.fillMaxWidth(fraction).height(3.dp).clip(PillShape).background(colors.accent))
         }
     }
 }
