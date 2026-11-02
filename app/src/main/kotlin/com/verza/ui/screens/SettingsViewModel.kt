@@ -35,7 +35,47 @@ class SettingsViewModel @Inject constructor(
     private val downloads: DownloadStore,
     private val listenBrainz: ListenBrainzRepository,
     private val mixes: MixesRepository,
+    private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
+
+    // ── Lossless sources ───────────────────────────────────────────────────────
+    val addons: StateFlow<List<com.verza.player.AddonSource>> = prefs.addonsFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val addonsOnMobileData: StateFlow<Boolean> = prefs.addonsOnMobileDataFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** What the add dialog says. [added] is the new source's name, which closes it. */
+    data class AddonState(val busy: Boolean = false, val message: String? = null, val added: String? = null)
+    private val _addonState = kotlinx.coroutines.flow.MutableStateFlow(AddonState())
+    val addonState: StateFlow<AddonState> = _addonState
+
+    fun addAddon(input: String) {
+        if (_addonState.value.busy) return
+        _addonState.value = AddonState(busy = true)
+        viewModelScope.launch {
+            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { com.verza.player.AddonClient(http).inspect(input) }
+            }
+            _addonState.value = result.fold(
+                onSuccess = { source ->
+                    val current = addons.value
+                    if (current.any { it.url == source.url }) AddonState(message = "You've already added that one.")
+                    else { prefs.setAddons(current + source); AddonState(added = source.name) }
+                },
+                onFailure = { AddonState(message = (it as? com.verza.player.AddonProblem)?.message ?: "Couldn't reach a source at that link. Check it and try again.") },
+            )
+        }
+    }
+
+    fun clearAddonState() { _addonState.value = AddonState() }
+
+    fun removeAddon(source: com.verza.player.AddonSource) {
+        viewModelScope.launch { prefs.setAddons(addons.value - source) }
+    }
+
+    fun setAddonsOnMobileData(allowed: Boolean) {
+        viewModelScope.launch { prefs.setAddonsOnMobileData(allowed) }
+    }
 
     val isSignedIn: StateFlow<Boolean> = prefs.cookieFlow
         .map { !it.isNullOrBlank() }

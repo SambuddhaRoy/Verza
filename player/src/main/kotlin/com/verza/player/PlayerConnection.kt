@@ -3,6 +3,7 @@ package com.verza.player
 import android.content.ComponentName
 import android.content.Context
 import android.widget.Toast
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -24,6 +25,8 @@ data class PlaybackState(
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val queue: List<QueueItem> = emptyList(),
     val currentIndex: Int = -1,
+    /** "FLAC · 24-bit / 96 kHz" while a lossless file is playing, else null. */
+    val audioFormat: String? = null,
 )
 
 /** A lightweight, UI-friendly snapshot of one item in the playback queue. */
@@ -32,6 +35,7 @@ data class QueueItem(
     val title: String,
     val artist: String,
     val artworkUrl: String?,
+    val durationMs: Long = 0L,
 )
 
 // ── Connection wrapper ────────────────────────────────────────────────────────
@@ -71,6 +75,7 @@ class PlayerConnection(context: Context) {
          */
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             val ctrl = controller ?: return
+            if (PlayerSettings.takeAddonRetry()) return
             // Offline, every song that is not downloaded fails. Skipping walked the queue away from
             // where the listener was, and whichever song loaded once the network came back started
             // playing by itself. Stay on this song, paused, and say why.
@@ -98,6 +103,7 @@ class PlayerConnection(context: Context) {
             syncState()
         }
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) = syncState()
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) = syncState()
         override fun onShuffleModeEnabledChanged(enabled: Boolean) = syncState()
         override fun onRepeatModeChanged(repeatMode: Int) = syncState()
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) = syncState()
@@ -256,6 +262,7 @@ class PlayerConnection(context: Context) {
                 title = mi.mediaMetadata.title?.toString() ?: "",
                 artist = mi.mediaMetadata.artist?.toString() ?: "",
                 artworkUrl = mi.mediaMetadata.artworkUri?.toString(),
+                durationMs = mi.mediaMetadata.durationMs ?: 0L,
             )
         }
         _playbackState.value = PlaybackState(
@@ -267,7 +274,15 @@ class PlayerConnection(context: Context) {
             repeatMode     = ctrl.repeatMode,
             queue          = queue,
             currentIndex   = ctrl.currentMediaItemIndex,
+            audioFormat    = audioFormatOf(ctrl),
         )
+    }
+
+    private fun audioFormatOf(ctrl: MediaController): String? {
+        val group = ctrl.currentTracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected } ?: return null
+        val index = (0 until group.length).firstOrNull(group::isTrackSelected) ?: return null
+        val format = group.getTrackFormat(index)
+        return losslessLabel(format.sampleMimeType, format.pcmEncoding, format.sampleRate)
     }
 
     // ── MediaItem factory ─────────────────────────────────────────────────────
@@ -281,6 +296,7 @@ class PlayerConnection(context: Context) {
             title: String,
             artist: String,
             albumArtUri: String? = null,
+            durationMs: Long = 0L,
         ): MediaItem = MediaItem.Builder()
             .setMediaId(videoId)
             .setUri("innertube://$videoId") // resolved by a DataSource in MusicService
@@ -295,6 +311,7 @@ class PlayerConnection(context: Context) {
                     .setIsBrowsable(false)
                     .setIsPlayable(true)
                     .apply { albumArtUri?.let { setArtworkUri(android.net.Uri.parse(it)) } }
+                    .apply { if (durationMs > 0) setDurationMs(durationMs) }
                     .build()
             )
             .build()

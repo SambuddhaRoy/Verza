@@ -121,6 +121,7 @@ fun NowPlayingScreen(
     onConsumeFocusComplete: () -> Unit,
     onBuildSessionLink: () -> String?,
     albumArtMotion: Boolean = true,
+    audioFormat: String? = null,
     modifier: Modifier = Modifier,
 ) {
     // Opens the "share this track as a poster" card; used from both Sleeve and standard layouts.
@@ -164,6 +165,7 @@ fun NowPlayingScreen(
             isLiked = isLiked,
             positionMs = positionMs,
             durationMs = durationMs,
+            audioFormat = audioFormat,
             shuffleEnabled = shuffleEnabled,
             repeatMode = repeatMode,
             queue = queue,
@@ -196,6 +198,7 @@ fun NowPlayingScreen(
             isDownloaded = isDownloaded,
             positionMs = positionMs,
             durationMs = durationMs,
+            audioFormat = audioFormat,
             shuffleEnabled = shuffleEnabled,
             repeatMode = repeatMode,
             sleepTimerActive = sleepTimerEndAt != null,

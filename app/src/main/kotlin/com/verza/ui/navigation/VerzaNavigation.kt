@@ -738,6 +738,7 @@ fun VerzaNavigation(
                     onConsumeFocusComplete = { playbackViewModel.consumeFocusComplete() },
                     onBuildSessionLink = { playbackViewModel.buildSessionShareLink() },
                     albumArtMotion = albumArtMotion,
+                    audioFormat = playback.audioFormat,
                     speed = speed,
                     onSetSpeed = playbackViewModel::setSpeed,
                 )

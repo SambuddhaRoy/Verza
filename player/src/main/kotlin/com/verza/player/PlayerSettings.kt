@@ -40,4 +40,37 @@ object PlayerSettings {
     fun setVolumeHeldElsewhere(held: Boolean) {
         _volumeHeldElsewhere.value = held
     }
+
+    /** Lossless sources, asked in this order before YouTube. See [AddonClient]. */
+    private val _addons = MutableStateFlow<List<AddonSource>>(emptyList())
+    val addons: StateFlow<List<AddonSource>> = _addons.asStateFlow()
+
+    fun setAddons(sources: List<AddonSource>) {
+        _addons.value = sources
+    }
+
+    /** Whether sources are used on a metered connection. A FLAC is several times the data. */
+    private val _addonsOnMobileData = MutableStateFlow(false)
+    val addonsOnMobileData: StateFlow<Boolean> = _addonsOnMobileData.asStateFlow()
+
+    fun setAddonsOnMobileData(allowed: Boolean) {
+        _addonsOnMobileData.value = allowed
+    }
+
+    /**
+     * When the service last took over a source's failure by replaying the song from YouTube. The
+     * controller sees the same error and would otherwise skip the song as well.
+     */
+    @Volatile private var addonRetryAt = 0L
+
+    fun noteAddonRetry() {
+        addonRetryAt = System.currentTimeMillis()
+    }
+
+    /** Whether the error just seen is one the service is already handling. Answers once. */
+    fun takeAddonRetry(): Boolean {
+        val handled = System.currentTimeMillis() - addonRetryAt < 3_000L
+        addonRetryAt = 0L
+        return handled
+    }
 }

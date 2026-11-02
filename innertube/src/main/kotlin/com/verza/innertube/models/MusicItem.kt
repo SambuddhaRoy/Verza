@@ -1,5 +1,6 @@
 package com.verza.innertube.models
 
+import com.verza.innertube.durationLabelToMillis
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -59,6 +60,12 @@ data class HomeItem(
      * 3:45"; everything else carries the artist alone. Not serialised, just read from the subtitle.
      */
     val artist: String get() = subtitle.substringBefore(" • ").trim()
+
+    /** A song's length, from the same subtitle, or 0 where it doesn't say (Home's shelves don't). */
+    val durationMs: Long
+        get() = subtitle.substringAfterLast(" • ").trim()
+            .takeIf { Regex("""\d{1,2}(:\d{2}){1,2}""").matches(it) }
+            .durationLabelToMillis()
 }
 
 // A titled row of items on the home/explore feed (e.g. "Quick picks", "Listen again").

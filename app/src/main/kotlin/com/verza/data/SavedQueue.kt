@@ -16,4 +16,5 @@ data class SavedTrack(
     val title: String,
     val artist: String,
     val artworkUrl: String? = null,
+    val durationMs: Long = 0L,
 )

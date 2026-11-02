@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.verza.di.ApplicationScope
 import com.verza.innertube.AudioQuality
 import com.verza.innertube.InnerTube
+import com.verza.player.AddonSource
 import com.verza.player.PlayerSettings
 import com.verza.ui.expressive.AccentSource
 import com.verza.ui.expressive.ColorFlavour
@@ -69,6 +70,10 @@ class PreferencesRepository @Inject constructor(
     // SAF tree Uri for the folder downloads are written to. Blank = app-private storage, which is
     // where they used to go unconditionally: invisible to other apps and wiped on uninstall.
     private val downloadTreeKey = stringPreferencesKey("download_tree_uri")
+    // In here rather than the database because a source's link can hold a secret: this file is
+    // excluded from backups (data_extraction_rules.xml) and the library export doesn't read it.
+    private val addonsKey = stringPreferencesKey("addon_sources")
+    private val addonsOnMobileDataKey = booleanPreferencesKey("addons_on_mobile_data")
     // Which silhouette the album art is masked with. Defaults to SHUFFLE — the shape changing per
     // track is the point of having it at all.
     private val colorFlavourKey = stringPreferencesKey("color_flavour")
@@ -148,6 +153,21 @@ class PreferencesRepository @Inject constructor(
 
     val downloadTreeFlow: Flow<String> = store.data.map { it[downloadTreeKey].orEmpty() }
 
+    val addonsFlow: Flow<List<AddonSource>> = store.data.map { prefs ->
+        prefs[addonsKey]?.let { saved ->
+            runCatching { kotlinx.serialization.json.Json.decodeFromString<List<AddonSource>>(saved) }.getOrNull()
+        }.orEmpty()
+    }
+    val addonsOnMobileDataFlow: Flow<Boolean> = store.data.map { it[addonsOnMobileDataKey] ?: false }
+
+    suspend fun setAddons(sources: List<AddonSource>) {
+        store.edit { it[addonsKey] = kotlinx.serialization.json.Json.encodeToString(sources) }
+    }
+
+    suspend fun setAddonsOnMobileData(allowed: Boolean) {
+        store.edit { it[addonsOnMobileDataKey] = allowed }
+    }
+
     /** The ListenBrainz username whose listening becomes mixes on Home. Blank = not connected. */
     val listenBrainzUserFlow: Flow<String> = store.data.map { it[listenBrainzUserKey].orEmpty() }
 
@@ -222,6 +242,8 @@ class PreferencesRepository @Inject constructor(
         scope.launch { cookieFlow.collect { InnerTube.cookie = it } }
         scope.launch { audioQualityFlow.collect { InnerTube.audioQuality = it } }
         scope.launch { crossfadeSecondsFlow.collect { PlayerSettings.setFadeSeconds(it) } }
+        scope.launch { addonsFlow.collect { PlayerSettings.setAddons(it) } }
+        scope.launch { addonsOnMobileDataFlow.collect { PlayerSettings.setAddonsOnMobileData(it) } }
     }
 
     suspend fun setAudioQuality(quality: AudioQuality) {

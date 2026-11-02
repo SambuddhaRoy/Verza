@@ -165,6 +165,7 @@ fun NowPlayingExpressive(
     isDownloaded: Boolean,
     positionMs: Long,
     durationMs: Long,
+    audioFormat: String?,
     shuffleEnabled: Boolean,
     repeatMode: Int,
     sleepTimerActive: Boolean,
@@ -210,6 +211,7 @@ fun NowPlayingExpressive(
                 isDownloaded = isDownloaded,
                 positionMs = positionMs,
                 durationMs = durationMs,
+                audioFormat = audioFormat,
                 shuffleEnabled = shuffleEnabled,
                 repeatMode = repeatMode,
                 sleepTimerActive = sleepTimerActive,
@@ -356,6 +358,7 @@ private fun PlayerPane(
     isDownloaded: Boolean,
     positionMs: Long,
     durationMs: Long,
+    audioFormat: String?,
     shuffleEnabled: Boolean,
     repeatMode: Int,
     sleepTimerActive: Boolean,
@@ -687,6 +690,10 @@ private fun PlayerPane(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(formatDuration(positionMs), style = Timecode, color = colors.onContainerMuted)
                 Spacer(Modifier.weight(1f))
+                if (audioFormat != null) {
+                    Text(audioFormat, style = Timecode, color = colors.onContainerMuted, maxLines = 1)
+                    Spacer(Modifier.weight(1f))
+                }
                 Text(formatDuration(durationMs), style = Timecode, color = colors.onContainerMuted)
             }
 
