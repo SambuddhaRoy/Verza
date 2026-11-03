@@ -58,22 +58,21 @@ private val MaterialHeroTitle = TextStyle(
     letterSpacing = (-0.015).em,
 )
 
-// The Glass design's heads: Inter's display cut at its heaviest declared weight, tracked in, the
-// way a large title is set on a phone that is not trying to be a magazine.
+// The Glass design's heads, after the Zune: very large and light, the type being the decoration.
 private val GlassHeroDisplay = TextStyle(
     fontFamily = com.verza.ui.theme.FontDisplayCut,
-    fontWeight = FontWeight.Bold,
-    fontSize = 22.sp,
-    lineHeight = 27.sp,
-    letterSpacing = (-0.015).em,
+    fontWeight = FontWeight.Normal,
+    fontSize = 26.sp,
+    lineHeight = 31.sp,
+    letterSpacing = (-0.018).em,
 )
 
 private val GlassHeroTitle = TextStyle(
     fontFamily = com.verza.ui.theme.FontDisplayCut,
-    fontWeight = FontWeight.Bold,
-    fontSize = 32.sp,
-    lineHeight = 38.sp,
-    letterSpacing = (-0.025).em,
+    fontWeight = FontWeight.Light,
+    fontSize = 46.sp,
+    lineHeight = 52.sp,
+    letterSpacing = (-0.03).em,
 )
 
 /**
@@ -116,14 +115,22 @@ val HeroTitle: TextStyle
         else -> PlainHeroTitle
     }
 
-/** A section heading in the Glass design: "Recently played ›". */
+/** A section heading in the Glass design: "recently played". */
 val GlassSectionTitle = TextStyle(
     fontFamily = com.verza.ui.theme.FontDisplayCut,
-    fontWeight = FontWeight.Bold,
-    fontSize = 21.sp,
-    lineHeight = 26.sp,
-    letterSpacing = (-0.012).em,
+    fontWeight = FontWeight.Light,
+    fontSize = 27.sp,
+    lineHeight = 33.sp,
+    letterSpacing = (-0.02).em,
 )
+
+/**
+ * Lowercase in Glass: what the app itself says (page and section names, tabs), never what it's
+ * showing you. A song keeps the capitals its artist gave it.
+ */
+@Composable
+@ReadOnlyComposable
+fun String.head(): String = if (isGlass()) lowercase() else this
 
 /** Label/value metadata, the "Where / Echo Bridge" columns. */
 val MetaLabel = TextStyle(
@@ -159,12 +166,17 @@ val BodyText = TextStyle(
     lineHeight = 20.sp,
 )
 
-val BodyStrong = TextStyle(
+private val MaterialBodyStrong = TextStyle(
     fontFamily = FontBody,
     fontWeight = FontWeight.SemiBold,
     fontSize = 16.sp,
     lineHeight = 21.sp,
 )
+
+private val GlassBodyStrong = MaterialBodyStrong.copy(fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 22.sp)
+
+val BodyStrong: TextStyle
+    @Composable @ReadOnlyComposable get() = if (isGlass()) GlassBodyStrong else MaterialBodyStrong
 
 /**
  * This style set in a face of its own: one of the legible display faces, chosen by [key] so a given

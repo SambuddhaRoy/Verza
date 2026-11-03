@@ -20,6 +20,17 @@ import javax.inject.Singleton
 @Singleton
 class MusicRepository @Inject constructor() {
 
+    // One request per song while the process lives. A failure isn't kept, so offline clears itself.
+    private val links = java.util.concurrent.ConcurrentHashMap<String, com.verza.innertube.TrackLinks>()
+
+    /** Where [videoId]'s artist and album live, or null if it can't say: offline, or a local file. */
+    suspend fun trackLinks(videoId: String): com.verza.innertube.TrackLinks? {
+        if (!Regex("[A-Za-z0-9_-]{11}").matches(videoId)) return null
+        links[videoId]?.let { return it }
+        return runCatching { withContext(Dispatchers.IO) { InnerTube.trackLinks(videoId) } }.getOrNull()
+            ?.also { links[videoId] = it }
+    }
+
     suspend fun searchSongs(query: String): Result<List<MusicItem>> =
         runCatching { withContext(Dispatchers.IO) { InnerTube.searchSongs(query) } }
 

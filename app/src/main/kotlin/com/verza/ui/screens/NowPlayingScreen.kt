@@ -31,7 +31,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -122,6 +121,9 @@ fun NowPlayingScreen(
     onBuildSessionLink: () -> String?,
     albumArtMotion: Boolean = true,
     audioFormat: String? = null,
+    links: com.verza.innertube.TrackLinks? = null,
+    onOpenArtist: (String) -> Unit = {},
+    onOpenAlbum: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // Opens the "share this track as a poster" card; used from both Sleeve and standard layouts.
@@ -149,6 +151,8 @@ fun NowPlayingScreen(
     // near-black canvas at fixed contrast.
     //
     var showMore by remember { mutableStateOf(false) }
+    // One tap on a button beside Like shouldn't be all it takes to lose an offline copy.
+    var confirmRemoveDownload by remember { mutableStateOf(false) }
     // The cover-shape preference lives in Settings; read it here so the player can morph the mask.
     val settingsVm: com.verza.ui.screens.SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
@@ -158,11 +162,13 @@ fun NowPlayingScreen(
             onBack = onBack,
             title = title,
             artist = artist,
+            links = links,
             artworkUrl = artworkUrl,
-            trackKey = videoId,
             albumArtMotion = albumArtMotion,
             isPlaying = isPlaying,
             isLiked = isLiked,
+            isDownloaded = isDownloaded,
+            isDownloading = isDownloading,
             positionMs = positionMs,
             durationMs = durationMs,
             audioFormat = audioFormat,
@@ -175,12 +181,19 @@ fun NowPlayingScreen(
             onPrevious = onPrevious,
             onSeek = onSeek,
             onToggleLike = onToggleLike,
+            onAddToPlaylist = onAddToPlaylist,
+            onStartRadio = onStartRadio,
+            onDownload = onDownload,
+            onRemoveDownload = { confirmRemoveDownload = true },
+            onOpenArtist = onOpenArtist,
+            onOpenAlbum = onOpenAlbum,
             onToggleShuffle = onToggleShuffle,
             onCycleRepeat = onCycleRepeat,
             onPlayQueueItem = onPlayQueueItem,
             onRemoveQueueItem = onRemoveQueueItem,
             onOpenLyrics = onOpenLyrics,
             onOpenMore = { showMore = true },
+            onOpenLinerNotes = { showLinerNotes = true },
             modifier = Modifier.fillMaxSize(),
         ) else NowPlayingExpressive(
             onBack = onBack,
@@ -213,7 +226,7 @@ fun NowPlayingScreen(
             onOpenLyrics = onOpenLyrics,
             onStartRadio = onStartRadio,
             onDownload = onDownload,
-            onRemoveDownload = onRemoveDownload,
+            onRemoveDownload = { confirmRemoveDownload = true },
             onOpenSleepTimer = { showSleepSheet = true },
             onOpenMore = { showMore = true },
             onShare = { showShareCard = true },
@@ -232,33 +245,16 @@ fun NowPlayingScreen(
                 onFocus = { showMore = false; showFocusSheet = true },
                 onShareSession = { showMore = false; shareSession() },
                 onDismiss = { showMore = false },
-                // Glass's Now Playing keeps only the essentials on screen; the rest of what the
-                // other designs show as buttons lives here.
+                // Now Playing in Glass has no room for where the sound is going; the rest of what
+                // the other designs show as buttons lives here too.
                 extra = if (!glass) null else { c ->
                     val sheetColors = com.verza.ui.expressive.LocalExpressiveColors.current
+                    val context = LocalContext.current
+                    val output by com.verza.audio.rememberAudioOutput()
                     ExpressiveSheetRow(
-                        icon = Icons.AutoMirrored.Filled.PlaylistAdd,
-                        label = "Add to playlist",
-                        onClick = { showMore = false; onAddToPlaylist() },
-                        colors = sheetColors,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    ExpressiveSheetRow(
-                        icon = if (isDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
-                        label = when {
-                            isDownloaded -> "Remove download"
-                            isDownloading -> "Downloading…"
-                            else -> "Download"
-                        },
-                        onClick = { showMore = false; if (isDownloaded) onRemoveDownload() else if (!isDownloading) onDownload() },
-                        colors = sheetColors,
-                        active = isDownloaded,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    ExpressiveSheetRow(
-                        icon = Icons.Filled.Radio,
-                        label = "Start radio",
-                        onClick = { showMore = false; onStartRadio() },
+                        icon = Icons.Filled.Speaker,
+                        label = "Playing on ${output.name}",
+                        onClick = { showMore = false; com.verza.audio.AudioOutputs.openSwitcher(context) },
                         colors = sheetColors,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -278,6 +274,19 @@ fun NowPlayingScreen(
                         colors = sheetColors,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                },
+            )
+        }
+        if (confirmRemoveDownload) {
+            AlertDialog(
+                onDismissRequest = { confirmRemoveDownload = false },
+                title = { Text("Remove this download?") },
+                text = { Text("$title won't play offline until you download it again.") },
+                confirmButton = {
+                    TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { confirmRemoveDownload = false; onRemoveDownload() }) { Text("Remove") }
+                },
+                dismissButton = {
+                    TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { confirmRemoveDownload = false }) { Text("Keep") }
                 },
             )
         }
@@ -472,7 +481,7 @@ private fun FocusCompleteBanner(
             modifier = Modifier
                 .statusBarsPadding()
                 .padding(top = 12.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(com.verza.ui.theme.CornerShape)
                 .background(colors.primaryContainer)
                 .clickable(onClick = onConsume)
                 .padding(horizontal = 18.dp, vertical = 10.dp),

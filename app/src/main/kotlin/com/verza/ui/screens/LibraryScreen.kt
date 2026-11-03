@@ -52,7 +52,6 @@ import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.MetaLabel
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
@@ -65,6 +64,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.verza.ui.expressive.coverEdge
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -301,7 +301,7 @@ fun LibraryScreen(
                 )
             },
             confirmButton = {
-                TextButton(shape = ButtonDefaults.textShape, onClick = {
+                TextButton(shape = com.verza.ui.theme.CornerShape, onClick = {
                     val name = newPlaylistName.trim()
                     if (name.isNotEmpty()) {
                         viewModel.createPlaylist(name)
@@ -309,7 +309,7 @@ fun LibraryScreen(
                     }
                 }) { Text("Create") }
             },
-            dismissButton = { TextButton(shape = ButtonDefaults.textShape, onClick = { showCreatePlaylist = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { showCreatePlaylist = false }) { Text("Cancel") } },
         )
     }
 }
@@ -385,7 +385,7 @@ private fun LocalMusicContent(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(20.dp))
-            Button(onClick = onRequestPermission, shape = CircleShape) { Text("Grant access") }
+            Button(onClick = onRequestPermission, shape = com.verza.ui.theme.CornerShape) { Text("Grant access") }
         }
         return
     }
@@ -507,15 +507,7 @@ private fun GlassLibrary(
         label = "libraryPage",
     ) { page ->
         BoxWithConstraints(Modifier.fillMaxSize().background(xc.container)) {
-            // The index is tiles and covers, not lines of text, so it is not held to a reading width:
-            // on a tablet it fills the window with more of them, rather than two of everything at
-            // half the screen each.
             val gridWidth = minOf(maxWidth, 1100.dp) - 40.dp
-            val tilesPerRow = when {
-                gridWidth >= 900.dp -> 6
-                gridWidth >= 520.dp -> 3
-                else -> 2
-            }
             val coversPerRow = (gridWidth / 160.dp).toInt().coerceIn(2, 7)
             if (page == null) LazyColumn(
                 modifier = Modifier
@@ -531,16 +523,22 @@ private fun GlassLibrary(
                         GlassHeaderButton(Icons.Filled.Add, "New playlist", onCreatePlaylist)
                     }
                 }
-                items(LibraryTab.entries.toList().chunked(tilesPerRow)) { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                        for (tab in row) GlassTile(tab.label, tab.icon, Modifier.weight(1f)) { open = tab }
-                        repeat(tilesPerRow - row.size) { Spacer(Modifier.weight(1f)) }
-                    }
+                // The index is the words themselves, as big as a heading: the Zune's main menu.
+                items(LibraryTab.entries.toList()) { tab ->
+                    Text(
+                        tab.label.lowercase(),
+                        style = HeroTitle.copy(fontSize = 36.sp, lineHeight = 42.sp),
+                        color = xc.onContainer,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { open = tab }
+                            .padding(vertical = 4.dp),
+                    )
                 }
                 if (recent.isNotEmpty()) {
                     item {
                         Text(
-                            "Recently played",
+                            "recently played",
                             style = GlassSectionTitle,
                             color = xc.onContainer,
                             modifier = Modifier.padding(top = 30.dp, bottom = 12.dp),
@@ -557,7 +555,7 @@ private fun GlassLibrary(
                                         model = art,
                                         contentDescription = null,
                                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(ShapeLarge).background(xc.surfaceHigh),
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(ShapeLarge).coverEdge().background(xc.surfaceHigh),
                                     )
                                     Spacer(Modifier.height(7.dp))
                                     Text(song.title, style = BodyText.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = xc.onContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -583,11 +581,11 @@ private fun GlassLibrary(
                         .padding(horizontal = 6.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = xc.accent, modifier = Modifier.size(28.dp))
-                    Text("Library", style = BodyText.copy(fontSize = 17.sp), color = xc.accent)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = xc.onContainerMuted, modifier = Modifier.size(28.dp))
+                    Text("library", style = BodyText.copy(fontSize = 17.sp), color = xc.onContainerMuted)
                 }
                 Text(
-                    page.label,
+                    page.label.lowercase(),
                     style = HeroTitle,
                     color = xc.onContainer,
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
@@ -598,37 +596,3 @@ private fun GlassLibrary(
     }
 }
 
-/**
- * One part of the library, as a tile: its icon and name on a grey glass-like surface, with the
- * accent glowing from one corner, the same light the dock's selected tab sits in.
- */
-@Composable
-private fun GlassTile(label: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    val xc = LocalExpressiveColors.current
-    Column(
-        modifier = modifier
-            .height(88.dp)
-            .pressableScale(onClick = onClick)
-            .clip(ShapeLargeIncreased)
-            .background(xc.surface)
-            .drawBehind {
-                val r = size.width * 0.55f
-                drawCircle(
-                    androidx.compose.ui.graphics.Brush.radialGradient(
-                        0f to xc.accent.copy(alpha = 0.11f),
-                        1f to androidx.compose.ui.graphics.Color.Transparent,
-                        center = Offset(size.width, 0f),
-                        radius = r,
-                    ),
-                    radius = r,
-                    center = Offset(size.width, 0f),
-                )
-            }
-            .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button }
-            .padding(14.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Icon(icon, contentDescription = null, tint = xc.accent, modifier = Modifier.size(24.dp))
-        Text(label, style = BodyStrong.copy(fontSize = 16.sp), color = xc.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}

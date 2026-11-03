@@ -48,7 +48,7 @@ move back to a tag once one carries the fix.
 ## Design setting: Material or Glass (Settings > Design)
 
 Two looks over the same app, switchable live. **Material** is the app as it was (rounded, M3
-Expressive, the whole palette from the cover). **Glass** is the quiet one with floating glass (below). Stored
+Expressive, the whole palette from the cover). **Glass** is the Zune with a little glass on it (below). Stored
 as `design_scheme`. **Absent means Material once onboarding is done, Glass before it**
 (`DesignScheme.fromName(name, onboarded)`): an update never restyles anyone, and a new install
 starts in Glass. `setOnboardingCompleted` writes the design down in the same edit, or finishing
@@ -90,24 +90,23 @@ PowerShell `Start-Process` instead.
 
 ## Design setting: Glass
 
-Black or white with the system's dark mode, one accent from the cover, Inter's display cut for
-headings, continuous corners, glass chrome, and plain rows with hairlines instead of tiles
-(`GlassListRow`). The Colour settings are hidden in it: the flavours have nothing to push there.
+After the Microsoft Zune: true black or white with the system's dark mode, content before chrome,
+one accent from the cover. Very large light type does the work a card's edge would, lowercase where
+the app speaks for itself (`head()`) and never where it shows you a name; navigation is words; lists
+are bare rows (`GlassListRow`). The Colour settings are hidden in it: the flavours have nothing to
+push there. The Expressive type and Spectrum settings are hidden too, and capture must not run for a
+spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
 
 - **Colour, with restraint** (`glassColors(cover, dark)`): the accent is the cover's most vivid
   swatch, searched through value and then saturation until it clears 4.5:1 on the canvas; its ink is
   `readableOn`. The canvas and surfaces carry only a breath of the cover's hue. A colourless (or
-  missing) cover gets Verza's red, because a grey accent reads as a disabled one. Many covers in a
-  library are black and white, so red is common, not a bug. `ExpressiveColorsTest` sweeps the hue
+  missing) cover gets the Zune's magenta, because a grey accent reads as a disabled one. Many covers in a
+  library are black and white, so magenta is common, not a bug. `ExpressiveColorsTest` sweeps the hue
   wheel through both modes.
 - **Type:** Inter has an optical-size axis (`opsz` 14 to 32). `FontDisplayCut` is the 32 end, used by
   `GlassTypography`'s display, headline and large-title slots and by `HeroTitle`/`HeroDisplay`/
   `GlassSectionTitle` in Glass; text sizes stay on `FontBody` (14). That is what keeps a large title
   from looking like body text zoomed in.
-- **Continuous corners** (`SquircleShape`, Figma's corner smoothing at iOS's 0.6) for artwork, cards,
-  buttons and the Now Playing cover; 6dp thumbnails stay plain (too small to tell). It is a path
-  outline, so it clips by path; fine for these, avoid it for hundreds of tiny thumbnails. The Material
-  theme's `Shapes` slots need `CornerBasedShape`, so `GlassShapes` stays plain rounded.
 - **Real glass, recorded rather than read back** (`ui/theme/LiquidGlass.kt`). Compose has no backdrop
   filter. `glassSource(backdrop)` records a node into a `GraphicsLayer`; `liquidGlass(shape, ...)`
   redraws its own patch of that recording through a RenderEffect: blur + saturation (API 31+), then
@@ -122,24 +121,20 @@ headings, continuous corners, glass chrome, and plain rows with hairlines instea
   The NavHost is the source for the bottom chrome only (`LocalGlassBackdrop` is provided to the
   bottom bar, not the pages). Now Playing records its own cover wash for its buttons; Collection and
   Artist record their page for the floating header buttons. Anywhere else glass falls back to a fill.
-- **Its own look, not Apple Music's.** The first version copied Apple's signatures one for one
-  (the iOS tab capsule with a separate search circle, large titles, a red chevron list for Library,
-  the cover shrinking on pause, the volume slider, "Playing Next"), and read as a rip-off. What
-  replaced each is Verza's own; keep it that way rather than drifting back to the reference:
-- **The dock** (`GlassDock` in `GlassChrome.kt`): one pane of glass holding the player and the tabs
-  (Home, Search, Library), divided by a hairline that is also the song's progress. The selected tab
-  sits in a soft pool of the accent's light that slides between tabs. Scrolling a page down folds
-  the tabs away and leaves the player, with the current tab's icon at its end to bring them back
-  (a NestedScrollConnection on the NavHost, `onPostScroll` so pulling at a list's top does
-  nothing). The dock keeps its full height while folded so `LocalBottomChrome` never changes. Its
-  margin is concentric with the display's corner (`Display.getRoundedCorner`, 12+), its type is
-  capped at 1.3x, and it lays out in RTL.
-- **Mastheads** (`GlassMasthead`): the Material masthead's dateline in small capitals in the accent,
-  over the page's name ("For you", "Library", "Search").
-- **Library** is tiles, each lit from a corner by the accent (the dock's light again); each opens
-  as a page (BackHandler returns).
-- **Albums**: the cover full width with the name on a plate of glass across its foot (the cover is
-  its own glass source), then Play as the one accent-filled control, beside Shuffle.
+- **The dock** (`GlassDock` in `GlassChrome.kt`): one pane of frosted glass, hardly bent, holding the
+  player and the tabs, divided by a hairline that is also the song's progress. The tabs are lowercase
+  words from the left, the current one lit. Scrolling a page down folds them away and leaves the
+  player with the current tab's name at its end to bring them back (a NestedScrollConnection on the
+  NavHost, `onPostScroll` so pulling at a list's top does nothing). The dock keeps its full height while
+  folded so `LocalBottomChrome` never changes. Its type is capped at 1.3x, and it lays out in RTL.
+- **Sideways between tabs** (`swipeTabs` in `VerzaNavigation.kt`), the Zune's panels: a drag across a
+  page goes to the next tab. A shelf or the filter words consume the drag first, so they still scroll.
+- **Mastheads** (`GlassMasthead`): the dateline small and quiet over the page's name, very large and
+  light. Filters (`ExpressiveChip`) are words too.
+- **Library** is its categories as a list of big words, the Zune's main menu; each opens as a page
+  (BackHandler returns).
+- **Albums**: the cover, the name, then `play` and `shuffle` as words.
+- **A cover has a hairline on a light page** (`coverEdge`), or a white one is a gap in the list.
 - **Motion:** pages push in from the edge with the old one sliding a third behind (`PushSpring`,
   critically damped), tabs cross-fade, Now Playing rises over the page and drops back (NavHost
   transitions with `KeepUntilTransitionsFinished`); drag down to close.
@@ -161,16 +156,30 @@ headings, continuous corners, glass chrome, and plain rows with hairlines instea
   - The flowing wash measured smoother than the drift (61fps and no janky frames on the emulator,
     against 35fps and two thirds janky): the drift re-blurred two full-screen layers every frame.
 
-  The title is set in the
-  song's own display face (`TitleFonts`, sized by the shared `FitTitle`), the position is the
-  spectrum (`VisualizerSeekBar`), the transport is one capsule of glass, and Lyrics, the output (by
-  name) and "Up next" are labelled pills. Paused, the cover dims. No volume slider: the keys do it.
-  The queue opens in place of the cover. Lyrics sits on the same wash (`OnCoverWash`), and the
-  NavHost leaves its top unpadded on that route.
+  On a phone upright the cover fills the screen over that wash (`Poster`), fading at the top into it
+  and at the foot to near black (`PosterGrade`). The black under the type is measured per cover
+  (`typeScrim`, `coverBrightness`): a dark cover keeps its colour, white type still reads on a white
+  one (`verza-shots/mob/_contrast.py`). Pills (Close, Now Playing, Lyrics), then the title in Inter's
+  display cut, with no per-song face, then every artist and the album, each going to its page; under
+  that the line with the queue position and the liner notes, which shows the format instead of "VERZA"
+  for a lossless song. At the foot six glyphs, a thin scrubber and a bare transport. No spectrum, no
+  volume slider. The queue opens over the picture as a numbered list. The output is in More. Landscape
+  and tablets have the square cover on the plain wash. Removing a download asks first
+  (`NowPlayingScreen`, for both designs). Lyrics sits on the same wash (`OnCoverWash`), and the NavHost
+  leaves its top unpadded on that route.
+  - **Where the links come from** (`InnerTube.trackLinks`): the byline runs of the song's line in
+    `next`. A video has no album, so it searches songs and takes the same title by one of the same
+    artists (`parseSongMatch`); anything looser hands a tribute its album. A video's uploader is a
+    `USER_CHANNEL`, and `parseArtistPage` opens those too.
 - Empty states are `GlassEmpty`: a large quiet symbol over one line saying what to do.
 
 ## Both designs
 
+- **One corner radius, everywhere** (`VerzaCorner`, 12dp, `CornerShape` in `ui/theme/Shapes.kt`): covers,
+  cards, buttons, chips, fields, sheets, dialogs, the dock, widgets. Nothing morphs on press. Something
+  smaller than twice it comes out as a pill or a circle by itself, so bars and dots need no exception.
+  Write a corner any other way and `CornerConsistencyTest` fails. A launcher's widget corner is ignored
+  on purpose: the widgets match the app, not the launcher.
 - **Every page paints the app's background itself** (`page()` in `VerzaNavigation.kt`, reading
   `LocalCanvas`, the root's animated canvas). Pages used to be see-through over one root fill, so
   during a push the page underneath (dimmed to 60%, a third of the way out) showed through the new
@@ -184,9 +193,9 @@ headings, continuous corners, glass chrome, and plain rows with hairlines instea
   "Background glow" group and a "Sleeve" switch long gone; move a path there when a setting moves.
   The dock is hidden on it (it covered the tour's button).
 - **Each reader of the visualizer checks its own switch** (`LocalSpectrumOn`, `LocalWashBeatOn` in
-  `Glow.kt`). The visualizer runs when the spectrum, "Feel the beat" or Glass's "Move to the beat"
+  `Glow.kt`). Glass ignores the spectrum switch. The visualizer runs when the spectrum, "Feel the beat" or Glass's "Move to the beat"
   wants it, and the seek bar used to draw the spectrum whenever it ran.
-- **Glass with no cover is Verza's red** on a neutral ground: MainActivity passes `null`, not
+- **Glass with no cover is the Zune's magenta** on a neutral ground: MainActivity passes `null`, not
   `DefaultCoverColors`, whose amber made a fresh install's Glass beige and brown.
 
 - **Mix covers** (`MixCover` in `MixScreen.kt`): a duotone of the mix's own two colours (a 2x2

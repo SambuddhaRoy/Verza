@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Explore
@@ -52,7 +51,7 @@ import com.verza.player.QueueItem
 @Composable
 private fun SpeedRow(speed: Float, onSelect: (Float) -> Unit, colors: ExpressiveColors) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Text("SPEED", style = MetaLabel, color = colors.onSurfaceMuted)
+        Text("SPEED".head(), style = MetaLabel, color = colors.onSurfaceMuted)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (option in floatArrayOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)) {
@@ -159,7 +158,8 @@ private fun SheetHeader(title: String, subtitle: String?, onDismiss: () -> Unit)
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, color = colors.onSurface, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            if (com.verza.ui.theme.isGlass()) Text(title.lowercase(), style = GlassSectionTitle, color = colors.onSurface)
+            else Text(text = title, color = colors.onSurface, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             if (subtitle != null) {
                 Text(text = subtitle, color = colors.onContainerMuted, fontSize = 13.sp)
             }
@@ -170,7 +170,7 @@ private fun SheetHeader(title: String, subtitle: String?, onDismiss: () -> Unit)
             contentDescription = "Close",
             container = colors.container,
             content = colors.onSurface,
-            shape = CircleShape,
+            shape = com.verza.ui.theme.CornerShape,
             iconSize = 18.dp,
             modifier = Modifier.size(40.dp),
         )

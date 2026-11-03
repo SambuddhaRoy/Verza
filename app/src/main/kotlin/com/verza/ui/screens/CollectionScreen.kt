@@ -26,7 +26,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddToQueue
@@ -37,6 +36,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.verza.ui.expressive.coverEdge
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,7 +98,7 @@ fun CollectionScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(s.message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
-                OutlinedButton(onClick = viewModel::load, shape = CircleShape) { Text("Retry") }
+                OutlinedButton(onClick = viewModel::load, shape = com.verza.ui.theme.CornerShape) { Text("Retry") }
             }
             is CollectionUiState.Content ->
                 CollectionContent(s.detail, onPlayTracks, onShuffle, onAddToQueue, onDownloadAll)
@@ -129,7 +129,7 @@ fun CollectionScreen(
                 .align(Alignment.TopStart)
                 .padding(12.dp)
                 .size(40.dp)
-                .clip(CircleShape)
+                .clip(com.verza.ui.theme.CornerShape)
                 .background(colors.surface),
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onSurface)
@@ -219,7 +219,7 @@ private fun CollectionContent(
                         Button(
                             onClick = { onPlayTracks(tracks, 0) },
                             enabled = tracks.isNotEmpty(),
-                            shape = CircleShape,
+                            shape = com.verza.ui.theme.CornerShape,
                             contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
                         ) {
                             Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -229,7 +229,7 @@ private fun CollectionContent(
                         OutlinedButton(
                             onClick = { onShuffle(tracks) },
                             enabled = tracks.isNotEmpty(),
-                            shape = CircleShape,
+                            shape = com.verza.ui.theme.CornerShape,
                             contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
                         ) {
                             Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -239,7 +239,7 @@ private fun CollectionContent(
                         OutlinedButton(
                             onClick = { onAddToQueue(tracks) },
                             enabled = tracks.isNotEmpty(),
-                            shape = CircleShape,
+                            shape = com.verza.ui.theme.CornerShape,
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                         ) {
                             Icon(Icons.Filled.AddToQueue, contentDescription = "Add to queue", modifier = Modifier.size(18.dp))
@@ -415,92 +415,61 @@ private fun GlassCollectionHeader(
 ) {
     val xc = com.verza.ui.expressive.LocalExpressiveColors.current
     val tracks = detail.tracks
-    val art = rememberGlassBackdrop()
     val haptics = com.verza.ui.expressive.rememberHaptics()
     Column(
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 420.dp)
                 .aspectRatio(1f)
-                .shadow(elevation = 18.dp, shape = ShapeLargeIncreased, clip = false)
-                .clip(ShapeLargeIncreased)
-                .background(xc.surfaceHigh),
+                .clip(com.verza.ui.theme.CornerShape)
+                .background(xc.surfaceHigh)
+                .coverEdge(),
         ) {
-            Box(Modifier.fillMaxSize().glassSource(art)) {
-                if (detail.thumbnailUrl != null) AsyncImage(
-                    model = detail.thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            CompositionLocalProvider(LocalGlassBackdrop provides art) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .padding(10.dp)
-                        .liquidGlass(
-                            shape = com.verza.ui.expressive.SquircleShape(16.dp),
-                            tint = Color.Black.copy(alpha = 0.34f),
-                            fallback = Color.Black.copy(alpha = 0.62f),
-                            rim = Color.White.copy(alpha = 0.6f),
-                            blur = 16.dp,
-                            bend = 12.dp,
-                        )
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    Text(
-                        detail.title,
-                        style = com.verza.ui.expressive.HeroDisplay,
-                        color = Color.White,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (detail.subtitle.isNotBlank()) Text(
-                        detail.subtitle,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
-                        color = Color.White.copy(alpha = 0.78f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+            if (detail.thumbnailUrl != null) AsyncImage(
+                model = detail.thumbnailUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
+        Text(detail.title, style = com.verza.ui.expressive.HeroDisplay.copy(fontSize = 32.sp, lineHeight = 37.sp), color = xc.onContainer, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        if (detail.subtitle.isNotBlank()) Text(
+            detail.subtitle,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
+            color = xc.onContainerMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(10.dp))
+        // Words for buttons, as everywhere in this design: play lit, the rest quiet.
         Row(
             modifier = Modifier.fillMaxWidth().widthIn(max = 420.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
+            val word = com.verza.ui.expressive.GlassSectionTitle
+            Text(
+                "play",
+                style = word,
+                color = xc.accent,
                 modifier = Modifier
-                    .size(56.dp)
-                    .pressableScale(enabled = tracks.isNotEmpty()) { haptics.click(); onPlayTracks(tracks, 0) }
-                    .clip(CircleShape)
-                    .background(xc.accent)
-                    .semantics { contentDescription = "Play"; role = androidx.compose.ui.semantics.Role.Button },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = xc.onAccent, modifier = Modifier.size(30.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Row(
+                    .clickable(enabled = tracks.isNotEmpty()) { haptics.click(); onPlayTracks(tracks, 0) }
+                    .semantics { contentDescription = "Play"; role = androidx.compose.ui.semantics.Role.Button }
+                    .padding(vertical = 6.dp),
+            )
+            Text(
+                "shuffle",
+                style = word,
+                color = xc.onContainer,
                 modifier = Modifier
-                    .height(44.dp)
-                    .pressableScale(enabled = tracks.isNotEmpty()) { onShuffle(tracks) }
-                    .clip(CircleShape)
-                    .background(xc.surface)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Filled.Shuffle, contentDescription = null, tint = xc.accent, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Shuffle", style = MaterialTheme.typography.titleMedium, color = xc.onSurface)
-            }
+                    .clickable(enabled = tracks.isNotEmpty()) { onShuffle(tracks) }
+                    .semantics { contentDescription = "Shuffle"; role = androidx.compose.ui.semantics.Role.Button }
+                    .padding(vertical = 6.dp),
+            )
             Spacer(Modifier.weight(1f))
             Text(trackSummary(tracks.size, tracks), style = MaterialTheme.typography.bodySmall, color = xc.onContainerMuted)
         }
@@ -538,7 +507,7 @@ private fun TrackRow(index: Int, track: MusicItem, onClick: () -> Unit) {
             TrackActionsMenu(item = track)
         }
         // Hairline between tracks — reads as a magazine track listing rather than a tile stack.
-        HorizontalDivider(
+        if (!glass) HorizontalDivider(
             thickness = 0.5.dp,
             color = ext.borderGlass,
             // In Glass the rule starts under the title, the number hanging in the margin.

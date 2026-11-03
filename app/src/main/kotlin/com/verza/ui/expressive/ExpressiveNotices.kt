@@ -274,8 +274,8 @@ fun DownloadProgressPill(progress: DownloadProgress, glass: Boolean, modifier: M
     val colors = LocalExpressiveColors.current
     val fraction by animateFloatAsState(progress.fraction, label = "downloadProgress")
     val surface =
-        if (glass) Modifier.padding(horizontal = 16.dp).chromeGlass(SquircleShape(20.dp))
-        else Modifier.padding(horizontal = 14.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp)).background(colors.surface)
+        if (glass) Modifier.padding(horizontal = 16.dp).chromeGlass(com.verza.ui.theme.CornerShape)
+        else Modifier.padding(horizontal = 14.dp).clip(com.verza.ui.theme.CornerShape).background(colors.surface)
     val title = if (progress.label.isBlank()) "Downloading" else "Downloading ${progress.label}"
     val detail =
         if (progress.total > 1) "${minOf(progress.done + 1, progress.total)} of ${progress.total}"

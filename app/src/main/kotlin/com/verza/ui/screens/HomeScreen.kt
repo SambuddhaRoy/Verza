@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -53,6 +52,7 @@ import com.verza.ui.expressive.ExpressiveControl
 import com.verza.ui.expressive.ExpressiveSectionRow
 import com.verza.ui.expressive.SectionDensity
 import com.verza.ui.expressive.HeroTitle
+import com.verza.ui.expressive.head
 import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.MetaLabel
 import com.verza.ui.components.SectionRow
@@ -264,7 +264,7 @@ private fun MadeForYouRow(
         verticalArrangement = Arrangement.spacedBy(if (glass) 10.dp else 12.dp),
     ) {
         Text(
-            text = title,
+            text = title.head(),
             style = if (glass) GlassSectionTitle else MaterialTheme.typography.titleLarge,
             color = colors.onBackground,
             modifier = Modifier.padding(horizontal = 20.dp),
@@ -322,10 +322,7 @@ internal fun GlassHeaderButton(icon: androidx.compose.ui.graphics.vector.ImageVe
         modifier = Modifier
             .size(38.dp)
             .pressableScale(onClick = onClick)
-            .then(
-                if (floating) Modifier.chromeGlass(CircleShape)
-                else Modifier.clip(CircleShape).background(xc.surface),
-            )
+            .then(if (floating) Modifier.chromeGlass(com.verza.ui.theme.CornerShape) else Modifier)
             .semantics { contentDescription = label; role = androidx.compose.ui.semantics.Role.Button },
         contentAlignment = Alignment.Center,
     ) {
@@ -380,18 +377,16 @@ internal fun GlassMasthead(eyebrow: String, title: String, modifier: Modifier = 
     val xc = LocalExpressiveColors.current
     Column(modifier) {
         Text(
-            eyebrow.uppercase(),
+            eyebrow.lowercase(),
             style = TextStyle(
                 fontFamily = com.verza.ui.theme.FontBody,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
-                letterSpacing = 0.12.em,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
             ),
-            color = xc.accent,
+            color = xc.onContainerMuted,
             maxLines = 1,
         )
-        Spacer(Modifier.height(2.dp))
-        Text(title, style = HeroTitle, color = xc.onContainer, maxLines = titleLines)
+        // Past the edge rather than wrapped or shrunk, if it comes to it: the Zune let its headings run off.
+        Text(title.lowercase(), style = HeroTitle, color = xc.onContainer, maxLines = titleLines, softWrap = titleLines > 1)
     }
 }

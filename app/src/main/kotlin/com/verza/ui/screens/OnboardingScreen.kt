@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -79,7 +78,6 @@ import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.PillShape
 import com.verza.ui.expressive.ShapeLargeIncreased
 import com.verza.ui.expressive.ShapeSmall
-import com.verza.ui.expressive.SquircleShape
 import com.verza.ui.expressive.expressiveColorsFrom
 import com.verza.ui.theme.DesignScheme
 import com.verza.ui.theme.LocalArtworkColors
@@ -245,7 +243,7 @@ private fun StepLook(selected: DesignScheme, onPick: (DesignScheme) -> Unit, onC
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LookCard(
                 name = "Glass",
-                blurb = "Clean and quiet, with glass controls",
+                blurb = "Big type, nothing extra, a little glass",
                 recommended = true,
                 selected = selected == DesignScheme.GLASS,
                 onClick = { onPick(DesignScheme.GLASS) },
@@ -276,7 +274,7 @@ private fun LookCard(
     sketch: @Composable BoxScope.() -> Unit,
 ) {
     val colors = LocalExpressiveColors.current
-    val shape = SquircleShape(22.dp)
+    val shape = com.verza.ui.theme.CornerShape
     // Not clipped as a whole: the card's corner cut the first letter off the lines below it.
     Column(
         modifier = modifier
@@ -354,7 +352,7 @@ private fun BoxScope.GlassSketch() {
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(SquircleShape(12.dp))
+                .clip(com.verza.ui.theme.CornerShape)
                 .background(Brush.linearGradient(listOf(Color(0xFFF29D38), Color(0xFFE5233F), Color(0xFF8E1F5C)))),
         )
         Spacer(Modifier.height(12.dp))
@@ -386,11 +384,11 @@ private fun BoxScope.MaterialSketch() {
         Spacer(Modifier.height(14.dp))
         Line(0.55f, 10.dp, Color(0xFF4A2511))
         Spacer(Modifier.height(10.dp))
-        Box(Modifier.fillMaxWidth().aspectRatio(1.35f).clip(RoundedCornerShape(20.dp)).background(Color(0xFFE8833A)))
+        Box(Modifier.fillMaxWidth().aspectRatio(1.35f).clip(com.verza.ui.theme.CornerShape).background(Color(0xFFE8833A)))
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Color(0xFF2BB8A6)))
-            Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Color(0xFF7B5CD6)))
+            Box(Modifier.weight(1f).aspectRatio(1f).clip(com.verza.ui.theme.CornerShape).background(Color(0xFF2BB8A6)))
+            Box(Modifier.weight(1f).aspectRatio(1f).clip(com.verza.ui.theme.CornerShape).background(Color(0xFF7B5CD6)))
         }
         Spacer(Modifier.weight(1f))
         Box(
@@ -540,7 +538,7 @@ private fun Points(vararg points: Point) {
         points.forEach { p ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(44.dp).clip(SquircleShape(13.dp)).background(colors.accent.copy(alpha = 0.12f)),
+                    Modifier.size(44.dp).clip(com.verza.ui.theme.CornerShape).background(colors.accent.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(p.icon, contentDescription = null, tint = colors.accent, modifier = Modifier.size(22.dp))
