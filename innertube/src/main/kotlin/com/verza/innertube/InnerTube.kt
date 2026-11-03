@@ -269,6 +269,14 @@ object InnerTube {
         parseArtistPage(browse(browseId))
 
     /** Pushes a like/un-like for [videoId] to the signed-in account. No-op when signed out. */
+    suspend fun trackLinks(videoId: String): TrackLinks? {
+        val (title, links) = parseTrackLinks(next(videoId), videoId) ?: return null
+        if (links.album != null || title == null || links.artists.isEmpty()) return links
+        // A failed search only costs the album: what the queue said still stands.
+        val song = runCatching { parseSongMatch(search("$title ${links.artists.first().name}"), title, links.artists.map { it.name }) }.getOrNull()
+        return song ?: links
+    }
+
     suspend fun setLikeStatus(videoId: String, liked: Boolean) {
         if (cookie.isNullOrBlank()) return
         val c = YouTubeClient.WEB_REMIX

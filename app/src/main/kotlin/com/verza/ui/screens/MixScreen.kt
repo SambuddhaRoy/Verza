@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -40,6 +39,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
@@ -136,20 +138,26 @@ fun MixScreen(
                 )
                 Spacer(Modifier.height(14.dp))
                 if (playable.isNotEmpty()) {
-                    // Glass: grey with red ink, like an album's Play.
-                    val glass = isGlass()
-                    Row(
+                    // Glass: the word, as on an album.
+                    if (isGlass()) Text(
+                        "play",
+                        style = com.verza.ui.expressive.GlassSectionTitle,
+                        color = com.verza.ui.expressive.LocalExpressiveColors.current.accent,
                         modifier = Modifier
-                            .clip(if (glass) com.verza.ui.expressive.ShapeLargeIncreased else CircleShape)
-                            .background(if (glass) colors.surfaceVariant else colors.primary)
                             .clickable { onPlayAll(playable) }
-                            .padding(horizontal = if (glass) 28.dp else 22.dp, vertical = 12.dp),
+                            .semantics { contentDescription = "Play"; role = androidx.compose.ui.semantics.Role.Button }
+                            .padding(vertical = 6.dp),
+                    ) else Row(
+                        modifier = Modifier
+                            .clip(com.verza.ui.theme.CornerShape)
+                            .background(colors.primary)
+                            .clickable { onPlayAll(playable) }
+                            .padding(horizontal = 22.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        val ink = if (glass) colors.primary else colors.onPrimary
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = ink, modifier = Modifier.size(20.dp))
-                        Text("Play", style = MaterialTheme.typography.titleSmall, color = ink)
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(20.dp))
+                        Text("Play", style = MaterialTheme.typography.titleSmall, color = colors.onPrimary)
                     }
                 }
                 Spacer(Modifier.height(10.dp))

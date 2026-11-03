@@ -447,6 +447,8 @@ class PlaybackViewModel @Inject constructor(
     }
 
     /** Builds a radio mix seeded by [videoId] and starts playing it. */
+    suspend fun trackLinks(videoId: String) = repository.trackLinks(videoId)
+
     fun startRadio(videoId: String) {
         if (videoId.isBlank()) return
         viewModelScope.launch {

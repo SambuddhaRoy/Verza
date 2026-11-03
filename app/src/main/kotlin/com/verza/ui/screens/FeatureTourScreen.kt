@@ -49,7 +49,6 @@ import com.verza.ui.expressive.BodyStrong
 import com.verza.ui.expressive.BodyText
 import com.verza.ui.expressive.LocalExpressiveColors
 import com.verza.ui.expressive.PillShape
-import com.verza.ui.expressive.SquircleShape
 import kotlinx.coroutines.launch
 
 /** One page of the feature tour: what it is, and — crucially — where to find it. */
@@ -68,8 +67,8 @@ private val tourPages = listOf(
         icon = Icons.Rounded.Wallpaper,
         eyebrow = "Now Playing",
         title = "It moves with the music",
-        body = "The background moves with the bass. The progress bar can show a live spectrum, " +
-            "and your phone can vibrate on the beat.",
+        body = "The background moves with the bass, and your phone can vibrate on the beat. " +
+            "In the Material design, the progress bar can show a live spectrum too.",
         where = "Settings › Appearance  ·  Settings › Sound",
     ),
     TourPage(
@@ -247,7 +246,7 @@ private fun TourCard(page: TourPage) {
         Box(
             modifier = Modifier
                 .size(72.dp)
-                .clip(SquircleShape(20.dp))
+                .clip(com.verza.ui.theme.CornerShape)
                 .background(colors.accent.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -262,7 +261,7 @@ private fun TourCard(page: TourPage) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(SquircleShape(16.dp))
+                .clip(com.verza.ui.theme.CornerShape)
                 .background(colors.onContainer.copy(alpha = 0.05f))
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {

@@ -7,7 +7,6 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import com.verza.ui.expressive.LocalBottomChrome
 import androidx.compose.ui.unit.sp
 import com.verza.ui.theme.DesignScheme
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material3.ButtonDefaults
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,7 +33,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -226,13 +224,13 @@ fun SettingsScreen(
                     onClick = onBack,
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    container = colors.surface,
+                    container = if (com.verza.ui.theme.isGlass()) androidx.compose.ui.graphics.Color.Transparent else colors.surface,
                     content = colors.onSurface,
                     iconSize = 22.dp,
                     modifier = Modifier.size(46.dp),
                 )
                 Spacer(Modifier.width(14.dp))
-                Text("Settings", style = HeroTitle, color = colors.onContainer)
+                Text(if (com.verza.ui.theme.isGlass()) "settings" else "Settings", style = HeroTitle, color = colors.onContainer)
             }
         }
 
@@ -299,7 +297,8 @@ fun SettingsScreen(
                 subtitle = "Ten bands, bass boost and loudness",
                 onClick = onOpenEqualizer,
             )
-            SwitchRow(
+            // Glass has a plain line for a seek bar, with no spectrum to show in it.
+            if (design != DesignScheme.GLASS) SwitchRow(
                 title = "Spectrum seek bar",
                 subtitle = if (hasAudioPermission) {
                     "Show the music's spectrum in the progress bar"
@@ -320,7 +319,7 @@ fun SettingsScreen(
                 subtitle = if (hasAudioPermission) {
                     "Vibrate gently on the bass"
                 } else {
-                    "Needs the same audio capture permission as the spectrum"
+                    "Needs audio permission. Verza only reads its own playback, never the microphone."
                 },
                 checked = hapticsEnabled && hasAudioPermission,
                 onToggle = { on ->
@@ -392,7 +391,7 @@ fun SettingsScreen(
                 subtitle = if (hasAudioPermission) {
                     "The background pulses with the bass and kick drum"
                 } else {
-                    "Needs the same audio capture permission as the spectrum"
+                    "Needs audio permission. Verza only reads its own playback, never the microphone."
                 },
                 checked = washBeat && hasAudioPermission,
                 onToggle = { on ->
@@ -403,13 +402,10 @@ fun SettingsScreen(
                     }
                 },
             )
-            SwitchRow(
+            // Glass is one typeface, whatever this says; the setting belongs to Material.
+            if (design != DesignScheme.GLASS) SwitchRow(
                 title = "Expressive type",
-                subtitle = if (design == DesignScheme.GLASS) {
-                    "A different typeface for each song title"
-                } else {
-                    "Serif headings and a different typeface for each song"
-                },
+                subtitle = "Serif headings and a different typeface for each song",
                 checked = expressiveType,
                 onToggle = viewModel::setExpressiveType,
             )
@@ -563,12 +559,12 @@ fun SettingsScreen(
             title = { Text(source.name, style = BodyStrong) },
             text = { Text("Remove this source? You'd need its link again to add it back.", style = BodyText) },
             confirmButton = {
-                TextButton(shape = ButtonDefaults.textShape, onClick = { viewModel.removeAddon(source); removingAddon = null }) {
+                TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { viewModel.removeAddon(source); removingAddon = null }) {
                     Text("Remove", color = colors.accent, style = BodyStrong)
                 }
             },
             dismissButton = {
-                TextButton(shape = ButtonDefaults.textShape, onClick = { removingAddon = null }) {
+                TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { removingAddon = null }) {
                     Text("Keep", color = colors.onSurfaceMuted, style = BodyText)
                 }
             },
@@ -598,12 +594,12 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(shape = ButtonDefaults.textShape, onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
+                TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { viewModel.resetListeningStats(); confirmResetStats = false }) {
                     Text("Reset", color = colors.accent, style = BodyStrong)
                 }
             },
             dismissButton = {
-                TextButton(shape = ButtonDefaults.textShape, onClick = { confirmResetStats = false }) {
+                TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { confirmResetStats = false }) {
                     Text("Cancel", color = colors.onSurfaceMuted, style = BodyText)
                 }
             },
@@ -655,7 +651,7 @@ private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String
         },
         confirmButton = {
             TextButton(
-                shape = ButtonDefaults.textShape,
+                shape = com.verza.ui.theme.CornerShape,
                 enabled = !state.busy,
                 onClick = {
                     if (connectedAs.isBlank()) viewModel.connectListenBrainz(input)
@@ -670,7 +666,7 @@ private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String
             }
         },
         dismissButton = {
-            TextButton(shape = ButtonDefaults.textShape, onClick = onDismiss) {
+            TextButton(shape = com.verza.ui.theme.CornerShape, onClick = onDismiss) {
                 Text("Close", color = colors.onSurfaceMuted, style = BodyText)
             }
         },
@@ -755,12 +751,12 @@ private fun AddAddonDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) 
             }
         },
         confirmButton = {
-            TextButton(shape = ButtonDefaults.textShape, enabled = !state.busy, onClick = { viewModel.addAddon(input) }) {
+            TextButton(shape = com.verza.ui.theme.CornerShape, enabled = !state.busy, onClick = { viewModel.addAddon(input) }) {
                 Text(if (state.busy) "Checking" else "Add", color = colors.accent, style = BodyStrong)
             }
         },
         dismissButton = {
-            TextButton(shape = ButtonDefaults.textShape, onClick = onDismiss) {
+            TextButton(shape = com.verza.ui.theme.CornerShape, onClick = onDismiss) {
                 Text("Cancel", color = colors.onSurfaceMuted, style = BodyText)
             }
         },
@@ -824,7 +820,12 @@ private fun <T> androidx.compose.foundation.lazy.LazyListScope.ChoiceRow(
 @Composable
 private fun GroupHeader(title: String) {
     val colors = LocalExpressiveColors.current
-    Text(
+    if (com.verza.ui.theme.isGlass()) Text(
+        text = title.lowercase(),
+        style = com.verza.ui.expressive.GlassSectionTitle,
+        color = colors.onContainer,
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp),
+    ) else Text(
         text = title.uppercase(),
         style = MetaLabel,
         color = colors.accent,
@@ -848,13 +849,14 @@ private fun RowSurface(
         animationSpec = ExpressiveMotion.spatialFast(),
         label = "settingPress",
     )
+    // Bare rows in Glass, the same words with no card round them.
+    val glass = com.verza.ui.theme.isGlass()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp)
+            .padding(horizontal = if (glass) 2.dp else 16.dp, vertical = if (glass) 0.dp else 3.dp)
             .scale(scale)
-            .clip(ShapeLargeIncreased)
-            .background(colors.surface)
+            .then(if (glass) Modifier else Modifier.clip(ShapeLargeIncreased).background(colors.surface))
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             // The pill is drawn by hand, so nothing told TalkBack this row was a switch or whether it
             // was on: it read as a plain button, with no way to know the setting's state.
@@ -943,9 +945,10 @@ private fun <T> SettingChoice(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp)
-            .clip(ShapeLargeIncreased)
-            .background(colors.surface)
+            .then(
+                if (com.verza.ui.theme.isGlass()) Modifier.padding(horizontal = 2.dp)
+                else Modifier.padding(horizontal = 16.dp, vertical = 3.dp).clip(ShapeLargeIncreased).background(colors.surface),
+            )
             .padding(18.dp),
     ) {
         Text(title, style = BodyStrong, color = colors.onSurface)
@@ -984,9 +987,10 @@ private fun AccountCard(signedIn: Boolean, onSignIn: () -> Unit, onSignOut: () -
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(ShapeLargeIncreased)
-            .background(colors.surface)
+            .then(
+                if (com.verza.ui.theme.isGlass()) Modifier.padding(horizontal = 2.dp)
+                else Modifier.padding(horizontal = 16.dp).clip(ShapeLargeIncreased).background(colors.surface),
+            )
             .padding(20.dp),
     ) {
         Text(
@@ -1035,16 +1039,16 @@ private fun DesignRow(design: DesignScheme, selected: Boolean, onClick: () -> Un
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (design == DesignScheme.GLASS) {
                 // Glass: the accent, and a clear pill with a lit edge.
-                Box(Modifier.size(22.dp).clip(RoundedCornerShape(percent = 50)).background(colors.accent))
+                Box(Modifier.size(22.dp).clip(com.verza.ui.theme.CornerShape).background(colors.accent))
                 Box(
                     Modifier.size(width = 30.dp, height = 22.dp)
-                        .clip(RoundedCornerShape(percent = 50))
+                        .clip(com.verza.ui.theme.CornerShape)
                         .background(colors.onSurface.copy(alpha = 0.12f))
-                        .border(1.dp, colors.onSurface.copy(alpha = 0.35f), RoundedCornerShape(percent = 50)),
+                        .border(1.dp, colors.onSurface.copy(alpha = 0.35f), com.verza.ui.theme.CornerShape),
                 )
             } else {
-            Box(Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(colors.accent))
-            Box(Modifier.size(width = 30.dp, height = 22.dp).clip(RoundedCornerShape(percent = 50)).background(colors.onSurfaceMuted))
+            Box(Modifier.size(22.dp).clip(com.verza.ui.theme.CornerShape).background(colors.accent))
+            Box(Modifier.size(width = 30.dp, height = 22.dp).clip(com.verza.ui.theme.CornerShape).background(colors.onSurfaceMuted))
             }
         }
         Spacer(Modifier.width(14.dp))
@@ -1169,12 +1173,13 @@ private fun VersionCard() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp)
-            .clip(ShapeLargeIncreased)
-            .background(colors.surface)
+            .then(
+                if (com.verza.ui.theme.isGlass()) Modifier.padding(horizontal = 2.dp)
+                else Modifier.padding(horizontal = 16.dp, vertical = 3.dp).clip(ShapeLargeIncreased).background(colors.surface),
+            )
             .padding(20.dp),
     ) {
-        Text("Verza", style = HeroTitle, color = colors.onSurface)
+        Text(if (com.verza.ui.theme.isGlass()) "verza" else "Verza", style = HeroTitle, color = colors.onSurface)
         Spacer(Modifier.height(4.dp))
         Text(
             "Version ${com.verza.BuildConfig.VERSION_NAME}",

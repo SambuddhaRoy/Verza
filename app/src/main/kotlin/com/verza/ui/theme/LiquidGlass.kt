@@ -115,7 +115,7 @@ fun Modifier.liquidGlass(
             val outline = shape.createOutline(size, layoutDirection, this)
             if (live) {
                 if (base.isSpecified) drawRect(base)
-                pane.drawBackdrop(this, backdrop!!, layer, outline, (shape as? com.verza.ui.expressive.SquircleShape)?.radius?.toPx(), blur.toPx(), bend.toPx())
+                pane.drawBackdrop(this, backdrop!!, layer, outline, null, blur.toPx(), bend.toPx())
                 drawRect(tint)
             } else {
                 drawRect(fallback)

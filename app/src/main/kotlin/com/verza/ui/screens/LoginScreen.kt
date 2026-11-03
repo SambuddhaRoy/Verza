@@ -9,7 +9,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
@@ -113,7 +112,7 @@ fun LoginScreen(
             )
             TextButton(
                 onClick = { showManual = !showManual },
-                shape = CircleShape,
+                shape = com.verza.ui.theme.CornerShape,
             ) {
                 Text(if (showManual) "Browser" else "Paste cookie")
             }
@@ -202,7 +201,7 @@ private fun ManualCookieEntry(
         )
         Button(
             onClick = onSubmit,
-            shape = CircleShape,
+            shape = com.verza.ui.theme.CornerShape,
             enabled = value.contains("SAPISID"),
         ) { Text("Use this cookie") }
     }

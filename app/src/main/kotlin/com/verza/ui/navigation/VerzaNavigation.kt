@@ -26,6 +26,10 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -292,6 +296,27 @@ fun VerzaNavigation(
             }
         }
     }
+    // Glass: a sideways drag on a page goes to the next tab, the Zune's panels. A shelf that scrolls
+    // sideways takes the drag first, and the gesture only starts where nothing below wants it.
+    val swipeRoute = rememberUpdatedState(currentRoute)
+    val swipeSelect = rememberUpdatedState(onSelectTab)
+    val swipeRtl = rememberUpdatedState(androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl)
+    val swipeTabs = if (!glass) Modifier else Modifier.pointerInput(Unit) {
+        val order = GLASS_NAV.map { it.route }
+        val needed = 72.dp.toPx()
+        var travelled = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { travelled = 0f },
+            onDragEnd = {
+                val at = order.indexOf(swipeRoute.value)
+                val step = if (swipeRtl.value) -1 else 1
+                if (at >= 0 && kotlin.math.abs(travelled) > needed) {
+                    order.getOrNull(at + if (travelled < 0) step else -step)?.let { swipeSelect.value(it) }
+                }
+            },
+        ) { _, dx -> travelled += dx }
+    }
+
     val miniState = if (showMiniPlayer) MiniPlayerState(
         title = currentTitle,
         artist = currentArtist,
@@ -469,6 +494,7 @@ fun VerzaNavigation(
                     end = innerPadding.calculateEndPadding(layoutDirection),
                 )
                 .consumeWindowInsets(innerPadding)
+                .then(swipeTabs)
                 .then(if (glass) Modifier.glassSource(backdrop).nestedScroll(foldOnScroll) else Modifier),
             // Two motion idioms, chosen per-navigation (see helpers at the bottom of the file):
             //  • Switching between the bottom-bar tabs uses Material **fade-through** — the
@@ -684,7 +710,15 @@ fun VerzaNavigation(
                 )
             }
             page(Screen.NowPlaying.route) {
+                // Only Glass shows these, so only Glass asks.
+                val links by androidx.compose.runtime.produceState<com.verza.innertube.TrackLinks?>(null, current?.mediaId, glass) {
+                    value = null
+                    if (glass) value = current?.mediaId?.let { playbackViewModel.trackLinks(it) }
+                }
                 NowPlayingScreen(
+                    links = links,
+                    onOpenArtist = { navController.navigate(Screen.Artist.create(it)) },
+                    onOpenAlbum = { navController.navigate(Screen.Collection.create(it)) },
                     onBack = { navController.popBackStack() },
                     videoId = current?.mediaId,
                     title = currentTitle,
@@ -839,13 +873,13 @@ fun VerzaNavigation(
                 )
             },
             confirmButton = {
-                TextButton(shape = ButtonDefaults.textShape, onClick = {
+                TextButton(shape = com.verza.ui.theme.CornerShape, onClick = {
                     playbackViewModel.acceptSharedSession()
                     navController.navigate(Screen.NowPlaying.route) { launchSingleTop = true }
                 }) { Text("Listen") }
             },
             dismissButton = {
-                TextButton(shape = ButtonDefaults.textShape, onClick = { playbackViewModel.dismissSharedSession() }) { Text("Not now") }
+                TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { playbackViewModel.dismissSharedSession() }) { Text("Not now") }
             },
         )
     }

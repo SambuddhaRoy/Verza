@@ -16,7 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:importantForAccessibility="no"
-            android:src="@drawable/widget_shape_circle"
+            android:src="@drawable/widget_shape_card"
             android:tint="@color/widget_surface" />
 
         <ImageView
@@ -44,7 +44,7 @@
             android:layout_height="match_parent"
             android:importantForAccessibility="no"
             android:scaleType="fitXY"
-            android:src="@drawable/widget_shape_pill"
+            android:src="@drawable/widget_shape_card"
             android:tint="@color/widget_accent" />
 
         <LinearLayout
@@ -84,7 +84,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:importantForAccessibility="no"
-            android:src="@drawable/widget_shape_circle"
+            android:src="@drawable/widget_shape_card"
             android:tint="@color/widget_surface" />
 
         <ImageView

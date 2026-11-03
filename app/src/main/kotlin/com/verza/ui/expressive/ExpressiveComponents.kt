@@ -10,6 +10,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -27,7 +29,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Icon
@@ -47,8 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import coil3.compose.AsyncImage
 
@@ -75,7 +76,7 @@ fun ExpressiveSectionHeader(
 ) {
     val colors = LocalExpressiveColors.current
     if (isGlass()) {
-        // "Title ›": the whole line is the link, the way a shelf heading works on Apple Music.
+        // A word in large light type, and the whole line is the link.
         Row(
             modifier = modifier
                 .fillMaxWidth()
@@ -84,8 +85,8 @@ fun ExpressiveSectionHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f, fill = false)) {
-                if (subtitle != null) Text(subtitle, style = BodyText.copy(fontSize = 13.sp), color = colors.onContainerMuted)
-                Text(title, style = GlassSectionTitle, color = colors.onContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (subtitle != null) Text(subtitle.head(), style = BodyText.copy(fontSize = 13.sp), color = colors.onContainerMuted)
+                Text(title.head(), style = GlassSectionTitle, color = colors.onContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (onSeeAll != null) Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -153,11 +154,6 @@ fun ExpressiveCard(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val glass = isGlass()
-    val radius by animateDpAsState(
-        targetValue = if (glass) 10.dp else if (pressed) 32.dp else 20.dp,
-        animationSpec = ExpressiveMotion.spatialFast(),
-        label = "cardCorner",
-    )
     val scale by animateFloatAsState(
         targetValue = if (pressed) (if (glass) 0.97f else 0.96f) else 1f,
         animationSpec = ExpressiveMotion.spatialDefault(),
@@ -181,8 +177,9 @@ fun ExpressiveCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspect)
-                .clip(RoundedCornerShape(radius))
-                .background(colors.surface),
+                .clip(com.verza.ui.theme.CornerShape)
+                .background(colors.surface)
+                .coverEdge(),
         ) {
             AsyncImage(
                 model = artworkUrl,
@@ -243,18 +240,10 @@ fun ExpressiveListItem(
             leadingIcon = leadingIcon,
             trailing = trailing,
             selected = selected,
-            divider = position != SegmentPosition.LAST,
         )
         return
     }
-    val big = 20.dp
-    val small = 6.dp
-    val shape = when (position) {
-        SegmentPosition.SINGLE -> RoundedCornerShape(big)
-        SegmentPosition.FIRST -> RoundedCornerShape(topStart = big, topEnd = big, bottomStart = small, bottomEnd = small)
-        SegmentPosition.MIDDLE -> RoundedCornerShape(small)
-        SegmentPosition.LAST -> RoundedCornerShape(topStart = small, topEnd = small, bottomStart = big, bottomEnd = big)
-    }
+    val shape = com.verza.ui.theme.CornerShape
     // Effects spring: this is a colour, so it must not overshoot.
     val bg by animateColorAsState(
         targetValue = if (selected) colors.accent else colors.surface,
@@ -308,7 +297,7 @@ fun RowTitle(text: String, color: Color, style: TextStyle = BodyStrong) {
         // One face, at reading size: a list of names in Glass is a list, not a specimen sheet.
         Text(
             text = text,
-            style = style.copy(fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium),
+            style = style.copy(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Normal),
             color = color,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -340,15 +329,12 @@ fun RowSubtitle(text: String, color: Color, style: TextStyle = BodyText) {
 /** Card captions in Glass: one line each, the title a weight up from the subtitle. */
 private val GlassCaption = TextStyle(
     fontFamily = com.verza.ui.theme.FontBody,
-    fontWeight = FontWeight.Medium,
+    fontWeight = FontWeight.Normal,
     fontSize = 14.sp,
     lineHeight = 18.sp,
 )
 
-/**
- * A list row in the Glass design: no tile, just the picture, the two lines and a hairline under
- * the text, the way a list is drawn on Apple Music. The playing row's title takes the accent.
- */
+/** A list row in the Glass design: the picture and two lines, and no edges. The playing row's title takes the accent. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun GlassListRow(
@@ -361,7 +347,6 @@ fun GlassListRow(
     circularArt: Boolean = false,
     trailing: @Composable (() -> Unit)? = null,
     selected: Boolean = false,
-    divider: Boolean = true,
     onLongClick: (() -> Unit)? = null,
 ) {
     val colors = LocalExpressiveColors.current
@@ -381,8 +366,9 @@ fun GlassListRow(
                 modifier = Modifier
                     .padding(vertical = 6.dp)
                     .size(50.dp)
-                    .clip(if (circularArt) PillShape else ShapeMedium)
-                    .background(colors.surfaceHigh),
+                    .clip(com.verza.ui.theme.CornerShape)
+                    .background(colors.surfaceHigh)
+                    .coverEdge(),
             )
             leadingIcon != null -> Box(Modifier.padding(vertical = 6.dp).size(50.dp), contentAlignment = Alignment.Center) {
                 Icon(leadingIcon, contentDescription = null, tint = colors.accent, modifier = Modifier.size(26.dp))
@@ -392,15 +378,7 @@ fun GlassListRow(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 62.dp)
-                .drawBehind {
-                    if (divider) drawLine(
-                        colors.line,
-                        Offset(0f, size.height - 0.5f),
-                        Offset(size.width, size.height - 0.5f),
-                        strokeWidth = 1f,
-                    )
-                },
+                .heightIn(min = 62.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
@@ -409,6 +387,20 @@ fun GlassListRow(
             }
             trailing?.invoke()
         }
+    }
+}
+
+/**
+ * A hairline round a cover on a light page. Without it a white cover has no edge against a white
+ * page and reads as a gap in the list. On a dark page a dark cover losing its edge looks intended.
+ */
+@Composable
+fun Modifier.coverEdge(): Modifier {
+    val colors = LocalExpressiveColors.current
+    return if (isGlass() && colors.container.luminance() > 0.5f) {
+        border(1.dp, colors.line, com.verza.ui.theme.CornerShape)
+    } else {
+        this
     }
 }
 
@@ -434,14 +426,22 @@ fun ExpressiveChip(
 ) {
     val colors = LocalExpressiveColors.current
     val glass = isGlass()
-    val radius by animateDpAsState(
-        targetValue = if (glass) 50.dp else if (selected) 14.dp else 24.dp,
-        animationSpec = ExpressiveMotion.spatialFast(),
-        label = "chipCorner",
-    )
+    if (glass) {
+        // A word, lit when it's the one you're on: the Zune's way of switching views.
+        Text(
+            label.lowercase(),
+            style = GlassSectionTitle.copy(fontSize = 21.sp, lineHeight = 26.sp),
+            color = if (selected) colors.onContainer else colors.onContainerMuted,
+            maxLines = 1,
+            modifier = modifier
+                .clickable(onClick = onClick)
+                .semantics { this.selected = selected }
+                .padding(vertical = 8.dp),
+        )
+        return
+    }
     val bg by animateColorAsState(
         targetValue = when {
-            glass && selected -> colors.onContainer
             selected -> colors.accent
             else -> colors.surface
         },
@@ -449,14 +449,13 @@ fun ExpressiveChip(
         label = "chipFill",
     )
     val fg = when {
-        glass && selected -> colors.container
         selected -> colors.onAccent
         else -> colors.onSurface
     }
 
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(radius))
+            .clip(com.verza.ui.theme.CornerShape)
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -481,7 +480,7 @@ fun <T> ExpressiveChipRow(
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (isGlass()) 20.dp else 8.dp),
     ) {
         items(options) { option ->
             ExpressiveChip(

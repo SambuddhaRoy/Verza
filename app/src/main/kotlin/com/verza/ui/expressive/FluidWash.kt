@@ -38,6 +38,7 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import com.verza.ui.theme.LocalAudioSignal
+import kotlin.math.pow
 import kotlin.math.exp
 import kotlin.random.Random
 
@@ -320,4 +321,38 @@ private fun blurTranspose(src: IntArray, dst: IntArray, w: Int, h: Int, r: Int) 
             sb += (pin and 0xff) - (pout and 0xff)
         }
     }
+}
+
+/**
+ * How bright a cover gets: the 90th percentile of its pixels, as the sRGB level of a grey of the same
+ * luminance. Not the mean, because a pale poster with one dark corner still has to carry white type.
+ */
+internal fun brightnessOf(pixels: IntArray): Float {
+    if (pixels.isEmpty()) return 0f
+    fun linear(c: Int) = (c / 255f).let { if (it <= 0.04045f) it / 12.92f else ((it + 0.055f) / 1.055f).pow(2.4f) }
+    val levels = FloatArray(pixels.size) { i ->
+        val p = pixels[i]
+        val y = 0.2126f * linear(p shr 16 and 255) + 0.7152f * linear(p shr 8 and 255) + 0.0722f * linear(p and 255)
+        if (y <= 0.0031308f) y * 12.92f else 1.055f * y.pow(1f / 2.4f) - 0.055f
+    }
+    levels.sort()
+    return levels[(levels.size * 0.9f).toInt().coerceAtMost(levels.lastIndex)]
+}
+
+/**
+ * The black to lay over a cover of [brightness] so white type on it reads. 0.38 is the brightest grey
+ * that white text reaches 6:1 on and the softer white 4.5:1. A floor, so that even a dark cover's
+ * bright patch doesn't surprise the type, and a ceiling, since a white cover needs no more than this.
+ */
+internal fun typeScrim(brightness: Float): Float =
+    if (brightness <= 0f) 0.10f else (1f - 0.38f / brightness).coerceIn(0.10f, 0.62f)
+
+/** [brightnessOf] the cover at [url], from a thumbnail; null if it won't load. */
+internal suspend fun coverBrightness(context: Context, url: Any): Float? {
+    val request = ImageRequest.Builder(context).data(url).allowHardware(false).size(24).build()
+    val result = runCatching { SingletonImageLoader.get(context).execute(request) }.getOrNull()
+    val bmp = (result as? SuccessResult)?.image?.toBitmap() ?: return null
+    val pixels = IntArray(bmp.width * bmp.height)
+    bmp.getPixels(pixels, 0, bmp.width, 0, 0, bmp.width, bmp.height)
+    return brightnessOf(pixels)
 }

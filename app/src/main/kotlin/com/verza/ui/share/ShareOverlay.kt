@@ -79,8 +79,8 @@ fun ShareCardOverlay(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(shape = ButtonDefaults.textShape, onClick = onDismiss, enabled = working == null) { Text("Close") }
-                Button(shape = ButtonDefaults.shape, 
+                TextButton(shape = com.verza.ui.theme.CornerShape, onClick = onDismiss, enabled = working == null) { Text("Close") }
+                Button(shape = com.verza.ui.theme.CornerShape, 
                     enabled = working == null,
                     onClick = {
                         if (working == null) {
@@ -97,7 +97,7 @@ fun ShareCardOverlay(
                     Text(if (working == "image") "Preparing…" else "Image")
                 }
                 if (allowVideo) {
-                    Button(shape = ButtonDefaults.shape, 
+                    Button(shape = com.verza.ui.theme.CornerShape, 
                         enabled = working == null,
                         onClick = {
                             if (working == null) {

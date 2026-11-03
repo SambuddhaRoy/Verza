@@ -389,7 +389,7 @@ fun expressiveColorsFrom(
  */
 fun glassColors(cover: CoverColors?, dark: Boolean): ExpressiveColors {
     val mono = cover == null || cover.monochrome
-    val vivid = if (mono) GlassRed else (cover!!.swatches + cover.accent).maxBy { val c = hsv(it); c[1] * (0.4f + c[2]) }
+    val vivid = if (mono) GlassMagenta else (cover!!.swatches + cover.accent).maxBy { val c = hsv(it); c[1] * (0.4f + c[2]) }
     val seed = hsv(vivid)
     val hue = seed[0]
     // How much of the hue the neutrals carry: enough to feel of a piece with the cover, not enough
@@ -397,7 +397,7 @@ fun glassColors(cover: CoverColors?, dark: Boolean): ExpressiveColors {
     val tint = if (mono) 0f else 1f
     fun neutral(sat: Float, value: Float) = fromHsv(hue, sat * tint, value)
 
-    val container = if (dark) neutral(0.32f, 0.035f) else neutral(0.025f, 1f)
+    val container = if (dark) Color.Black else Color.White
     val surface = if (dark) neutral(0.16f, 0.12f) else neutral(0.035f, 0.955f)
     val onContainer = if (dark) Color.White else Color.Black
     val accent = glassAccent(hue, if (mono) 0.85f else seed[1], container, dark)
@@ -417,12 +417,12 @@ fun glassColors(cover: CoverColors?, dark: Boolean): ExpressiveColors {
         surfaceHighest = if (dark) neutral(0.12f, 0.23f) else neutral(0.05f, 0.84f),
         tertiary = tertiary,
         onTertiary = readableOn(tertiary),
-        line = onContainer.copy(alpha = if (dark) 0.18f else 0.13f),
+        line = onContainer.copy(alpha = if (dark) 0.14f else 0.10f),
     )
 }
 
-/** Verza's red, for covers with no colour to give. */
-internal val GlassRed = Color(0xFFE5233F)
+/** The Zune's magenta, for covers with no colour to give. */
+internal val GlassMagenta = Color(0xFFE6007E)
 
 /**
  * An accent of [hue] that reads on [canvas]: as bright as it can be on a dark canvas, as rich as it

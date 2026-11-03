@@ -58,25 +58,28 @@ fun StatsScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onBackground)
                 }
-                Box(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .width(40.dp)
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(colors.primary),
-                )
-                Spacer(Modifier.height(12.dp))
+                val glass = com.verza.ui.theme.isGlass()
+                if (!glass) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .width(40.dp)
+                            .height(3.dp)
+                            .clip(com.verza.ui.theme.CornerShape)
+                            .background(colors.primary),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Insights",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.primary,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                }
                 Text(
-                    "Insights",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.primary,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Your Sound",
-                    style = MaterialTheme.typography.displaySmall,
+                    if (glass) "your sound" else "Your Sound",
+                    style = if (glass) com.verza.ui.expressive.HeroTitle else MaterialTheme.typography.displaySmall,
                     color = colors.onBackground,
                     modifier = Modifier.padding(start = 8.dp),
                 )
@@ -298,7 +301,7 @@ private fun ListeningChart(fingerprint: ListeningFingerprint) {
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(value.coerceAtLeast(0.03f))
-                        .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                        .clip(RoundedCornerShape(topStart = com.verza.ui.theme.VerzaCorner, topEnd = com.verza.ui.theme.VerzaCorner))
                         .background(
                             if (hour == fingerprint.peakHour) colors.primary
                             else colors.primary.copy(alpha = 0.28f),

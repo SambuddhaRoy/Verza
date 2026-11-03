@@ -46,7 +46,7 @@ internal object WidgetRenderer {
         // is an oval and the row inside it left the title one letter, so it also has a card with the
         // controls below.
         update(context, manager, NowPlayingWidget::class.java) {
-            val art = shaped(context, cover, R.drawable.widget_shape_cookie9, ink)
+            val art = shaped(context, cover, R.drawable.widget_shape_card, ink)
             bySize(
                 R.layout.widget_now_playing,
                 SizeF(180f, 40f) to R.layout.widget_now_playing,
@@ -57,7 +57,7 @@ internal object WidgetRenderer {
         // Beside the cover the controls need about 330dp; on a 3-cell-wide widget they left the PLAY
         // pill a sliver, so narrower than that the controls run along the foot instead.
         update(context, manager, PosterWidget::class.java) {
-            val art = shaped(context, cover, R.drawable.widget_shape_arch, ink)
+            val art = shaped(context, cover, R.drawable.widget_shape_card, ink)
             bySize(
                 R.layout.widget_poster,
                 SizeF(330f, 110f) to R.layout.widget_poster,
@@ -104,7 +104,7 @@ internal object WidgetRenderer {
     private fun sticker(context: Context, state: WidgetState, cover: Bitmap?, ink: Ink) =
         views(context, R.layout.widget_sticker).apply {
             tint(R.id.widget_burst, ink.container)
-            setImageViewBitmap(R.id.widget_cover, shaped(context, cover, R.drawable.widget_shape_cookie12, ink))
+            setImageViewBitmap(R.id.widget_cover, shaped(context, cover, R.drawable.widget_shape_card, ink))
             tint(R.id.widget_tag_bg, ink.tertiary)
             setTextViewText(R.id.widget_title, title(context, state))
             setTextColor(R.id.widget_title, ink.onTertiary)
@@ -161,7 +161,7 @@ internal object WidgetRenderer {
 
     private fun totem(context: Context, state: WidgetState, cover: Bitmap?, ink: Ink) =
         views(context, R.layout.widget_totem).apply {
-            setImageViewBitmap(R.id.widget_cover, shaped(context, cover, R.drawable.widget_shape_clover4, ink, rim = true))
+            setImageViewBitmap(R.id.widget_cover, shaped(context, cover, R.drawable.widget_shape_card, ink, rim = true))
             toggle(
                 context, state, R.id.widget_toggle_bg, R.id.widget_toggle, ink.accent, ink.onAccent,
                 play = R.drawable.ic_widget_play_large, pause = R.drawable.ic_widget_pause_large,
@@ -289,8 +289,8 @@ internal object WidgetRenderer {
         val out = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(out)
         val rim = side * RIM_PERCENT / 100
-        canvas.outline(context, R.drawable.widget_shape_scallop24, rim, side - 2 * rim, ContextCompat.getColor(context, R.color.widget_paper))
-        ContextCompat.getDrawable(context, R.drawable.widget_shape_scallop24)!!.mutate().apply {
+        canvas.outline(context, R.drawable.widget_shape_card, rim, side - 2 * rim, ContextCompat.getColor(context, R.color.widget_paper))
+        ContextCompat.getDrawable(context, R.drawable.widget_shape_card)!!.mutate().apply {
             setBounds(rim, rim, side - rim, side - rim)
             setTint(ink.container)
             draw(canvas)
@@ -309,7 +309,7 @@ internal object WidgetRenderer {
 
     /** The record's centre label. */
     private fun labelArt(context: Context, cover: Bitmap?, ink: Ink, side: Int): Bitmap =
-        shaped(context, cover, R.drawable.widget_shape_circle, ink, side)
+        shaped(context, cover, R.drawable.widget_shape_card, ink, side)
 
     /**
      * An even outline around a [size]-px [shape] drawn at ([offset], [offset]), [offset] px thick.

@@ -152,12 +152,17 @@ val VerzaTypography = Typography(
 // in screens that want the editorial italic voice or tabular monospace timecode.
 
 /** Italic "deck" voice for short captions and descriptive subtitles (sans italic). */
-val CaptionItalic = TextStyle(
+private val MaterialCaption = TextStyle(
     fontFamily = FontBody,
     fontWeight = FontWeight.Normal,
     fontStyle = FontStyle.Italic,
     fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = 0.sp,
 )
+
+/** A caption: italic in Material, upright in Glass, which has one voice. */
+val CaptionItalic: TextStyle
+    @androidx.compose.runtime.Composable @androidx.compose.runtime.ReadOnlyComposable
+    get() = if (isGlass()) MaterialCaption.copy(fontStyle = FontStyle.Normal) else MaterialCaption
 
 /** Small-caps-feel eyebrow label — used by [EditorialSectionHeader]. */
 val EditorialEyebrow = TextStyle(
@@ -172,6 +177,7 @@ val EditorialEyebrow = TextStyle(
  * zoomed in, which is most of the difference between Inter and a system face that has them.
  */
 val FontDisplayCut = FontFamily(
+    varFont(R.font.inter_variable, FontWeight.Light, opsz = 32f),
     varFont(R.font.inter_variable, FontWeight.Normal, opsz = 32f),
     varFont(R.font.inter_variable, FontWeight.Medium, opsz = 32f),
     varFont(R.font.inter_variable, FontWeight.SemiBold, opsz = 32f),
@@ -180,14 +186,14 @@ val FontDisplayCut = FontFamily(
 
 /** The Glass design's type: display, headline and the large title in the display cut. */
 val GlassTypography: Typography = VerzaTypography.run {
-    fun TextStyle.display() = copy(fontFamily = FontDisplayCut)
+    fun TextStyle.display(weight: FontWeight) = copy(fontFamily = FontDisplayCut, fontWeight = weight)
     copy(
-        displayLarge = displayLarge.display(),
-        displayMedium = displayMedium.display(),
-        displaySmall = displaySmall.display(),
-        headlineLarge = headlineLarge.display(),
-        headlineMedium = headlineMedium.display(),
-        headlineSmall = headlineSmall.display(),
-        titleLarge = titleLarge.display(),
+        displayLarge = displayLarge.display(FontWeight.Light),
+        displayMedium = displayMedium.display(FontWeight.Light),
+        displaySmall = displaySmall.display(FontWeight.Light),
+        headlineLarge = headlineLarge.display(FontWeight.Light),
+        headlineMedium = headlineMedium.display(FontWeight.Light),
+        headlineSmall = headlineSmall.display(FontWeight.Light),
+        titleLarge = titleLarge.display(FontWeight.Normal),
     )
 }

@@ -37,6 +37,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
@@ -352,11 +353,16 @@ private fun HistoryView(history: List<String>, onPick: (String) -> Unit, onClear
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Recent", style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+            val glass = isGlass()
             Text(
-                "Clear",
-                style = MaterialTheme.typography.labelLarge,
-                color = colors.primary,
+                if (glass) "recent" else "Recent",
+                style = if (glass) com.verza.ui.expressive.GlassSectionTitle else MaterialTheme.typography.titleMedium,
+                color = colors.onBackground,
+            )
+            Text(
+                if (glass) "clear" else "Clear",
+                style = if (glass) BodyText.copy(fontSize = 17.sp) else MaterialTheme.typography.labelLarge,
+                color = if (glass) colors.onSurfaceVariant else colors.primary,
                 modifier = Modifier
                     .clip(ShapeSmall)
                     .clickable(onClick = onClear)

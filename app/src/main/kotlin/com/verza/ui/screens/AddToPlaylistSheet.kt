@@ -168,7 +168,7 @@ fun AddToPlaylistSheet(
                 )
             },
             confirmButton = {
-                TextButton(shape = ButtonDefaults.textShape, 
+                TextButton(shape = com.verza.ui.theme.CornerShape, 
                     onClick = {
                         val name = newName.trim()
                         if (name.isNotEmpty()) {
@@ -179,7 +179,7 @@ fun AddToPlaylistSheet(
                     },
                 ) { Text("Create") }
             },
-            dismissButton = { TextButton(shape = ButtonDefaults.textShape, onClick = { showCreate = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { showCreate = false }) { Text("Cancel") } },
         )
     }
 }

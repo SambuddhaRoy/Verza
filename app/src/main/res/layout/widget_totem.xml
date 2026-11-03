@@ -32,7 +32,7 @@
             android:layout_height="match_parent"
             android:importantForAccessibility="no"
             android:scaleType="fitCenter"
-            android:src="@drawable/widget_shape_burst"
+            android:src="@drawable/widget_shape_card"
             android:tint="@color/widget_paper" />
 
         <ImageView
@@ -42,7 +42,7 @@
             android:layout_margin="4dp"
             android:importantForAccessibility="no"
             android:scaleType="fitCenter"
-            android:src="@drawable/widget_shape_burst"
+            android:src="@drawable/widget_shape_card"
             android:tint="@color/widget_accent" />
 
         <ImageView
@@ -69,7 +69,7 @@
             android:layout_height="match_parent"
             android:importantForAccessibility="no"
             android:scaleType="fitXY"
-            android:src="@drawable/widget_shape_pill"
+            android:src="@drawable/widget_shape_card"
             android:tint="@color/widget_paper" />
 
         <ImageView
@@ -79,7 +79,7 @@
             android:layout_margin="3dp"
             android:importantForAccessibility="no"
             android:scaleType="fitXY"
-            android:src="@drawable/widget_shape_pill"
+            android:src="@drawable/widget_shape_card"
             android:tint="@color/widget_container" />
 
         <ImageView

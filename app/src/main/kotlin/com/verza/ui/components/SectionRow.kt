@@ -57,6 +57,11 @@ fun SectionRow(
     style: SectionStyle = SectionStyle.STANDARD,
     onSeeAll: (() -> Unit)? = null,
 ) {
+    // One shelf in Glass, so the Artist page's look like Home's.
+    if (com.verza.ui.theme.isGlass()) {
+        com.verza.ui.expressive.ExpressiveSectionRow(title, items, onItemClick, modifier, onItemLongPress = onItemLongPress, onSeeAll = onSeeAll)
+        return
+    }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = title, large = style == SectionStyle.LARGE, onSeeAll = onSeeAll)
         when (style) {
@@ -87,7 +92,7 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
             ) {
                 Eyebrow(text = title, color = cover.sub, modifier = Modifier.weight(1f))
                 if (onSeeAll != null) {
-                    TextButton(shape = ButtonDefaults.textShape, onClick = onSeeAll) {
+                    TextButton(shape = com.verza.ui.theme.CornerShape, onClick = onSeeAll) {
                         Text(
                             "see all",
                             style = TextStyle(fontFamily = FontMono, fontSize = 9.5.sp, letterSpacing = 0.08.em),
@@ -102,7 +107,7 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
                 Modifier
                     .width(28.dp)
                     .height(1.dp)
-                    .clip(RoundedCornerShape(0.5.dp))
+                    .clip(com.verza.ui.theme.CornerShape)
                     .background(colors.primary),
             )
             Row(
@@ -118,7 +123,7 @@ private fun SectionHeader(title: String, large: Boolean, onSeeAll: (() -> Unit)?
                     modifier = Modifier.weight(1f),
                 )
                 if (onSeeAll != null) {
-                    TextButton(shape = ButtonDefaults.textShape, onClick = onSeeAll) {
+                    TextButton(shape = com.verza.ui.theme.CornerShape, onClick = onSeeAll) {
                         // Italic serif "see all" reads as an editor's note rather than a button.
                         Text("see all", style = CaptionItalic, color = colors.primary)
                     }

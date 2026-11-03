@@ -151,7 +151,9 @@ class MainActivity : ComponentActivity() {
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             // The visualizer feeds the spectrum seek bar, the music haptics and the background's
             // beat, so any one being on (plus permission + an active session) is enough to run it.
-            val shouldVisualize = (glowReactive || hapticsEnabled || washBeatOn) && hasAudioPermission &&
+            // Glass has no spectrum, so a switch left on from Material mustn't keep capture running there.
+            val spectrumShown = glowReactive && design != DesignScheme.GLASS
+            val shouldVisualize = (spectrumShown || hapticsEnabled || washBeatOn) && hasAudioPermission &&
                 audioSessionId != 0 && isPlaying
 
             // The signal flow is owned at the Activity composition scope so the GlowBackground

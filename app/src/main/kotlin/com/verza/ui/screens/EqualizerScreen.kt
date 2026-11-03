@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.border
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -81,7 +80,7 @@ fun EqualizerScreen(
             }
         }
         Text(
-            "Equalizer",
+            if (com.verza.ui.theme.isGlass()) "equalizer" else "Equalizer",
             style = MaterialTheme.typography.displaySmall,
             color = colors.onBackground,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp),
@@ -132,7 +131,7 @@ fun EqualizerScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RectangleShape)
+                    .clip(com.verza.ui.theme.CornerShape)
                     .then(if (state.enabled) Modifier.clickable(onClick = viewModel::resetBands) else Modifier)
                     .padding(vertical = 12.dp),
             )
@@ -170,7 +169,7 @@ private fun PresetChips(active: EqPreset?, onPick: (EqPreset) -> Unit) {
             val selected = preset == active
             Box(
                 modifier = Modifier
-                    .clip(RectangleShape)
+                    .clip(com.verza.ui.theme.CornerShape)
                     .background(if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f))
                     .clickable { onPick(preset) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),

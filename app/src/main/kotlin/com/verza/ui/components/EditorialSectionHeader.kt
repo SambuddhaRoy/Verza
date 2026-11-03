@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,12 +39,21 @@ fun EditorialSectionHeader(
     val colors = MaterialTheme.colorScheme
     val sleeve = LocalSleeveMode.current
     val cover = LocalCoverColors.current
+    if (com.verza.ui.theme.isGlass()) {
+        Text(
+            text = title.lowercase(),
+            style = com.verza.ui.expressive.GlassSectionTitle,
+            color = colors.onBackground,
+            modifier = modifier.padding(horizontal = 20.dp),
+        )
+        return
+    }
     Column(modifier = modifier.padding(horizontal = 24.dp)) {
         Box(
             Modifier
                 .width(accentWidth.dp)
                 .height(1.dp)
-                .clip(RoundedCornerShape(0.5.dp))
+                .clip(com.verza.ui.theme.CornerShape)
                 .background(if (sleeve) cover.accent else colors.primary),
         )
         Spacer(Modifier.height(8.dp))

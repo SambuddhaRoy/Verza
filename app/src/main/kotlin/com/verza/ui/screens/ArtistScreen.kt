@@ -12,7 +12,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -57,7 +56,7 @@ fun ArtistScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(s.message, style = MaterialTheme.typography.bodyMedium, color = ext.muted)
-                OutlinedButton(onClick = viewModel::load, shape = CircleShape) { Text("Retry") }
+                OutlinedButton(onClick = viewModel::load, shape = com.verza.ui.theme.CornerShape) { Text("Retry") }
             }
             is ArtistUiState.Content -> ArtistContent(s.detail, onItemClick)
         }
@@ -73,7 +72,7 @@ fun ArtistScreen(
                 .align(Alignment.TopStart)
                 .padding(12.dp)
                 .size(40.dp)
-                .clip(CircleShape)
+                .clip(com.verza.ui.theme.CornerShape)
                 .background(colors.surface),
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.onSurface)
@@ -120,15 +119,17 @@ private fun ArtistContent(detail: ArtistDetail, onItemClick: (HomeItem) -> Unit)
                         .align(Alignment.BottomStart)
                         .padding(horizontal = 20.dp, vertical = 20.dp),
                 ) {
-                    Text(
-                        "Artist",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.primary,
-                    )
-                    Spacer(Modifier.height(4.dp))
+                    if (!isGlass()) {
+                        Text(
+                            "Artist",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.primary,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
                     Text(
                         text = detail.name,
-                        style = MaterialTheme.typography.displaySmall,
+                        style = if (isGlass()) com.verza.ui.expressive.HeroTitle else MaterialTheme.typography.displaySmall,
                         color = colors.onBackground,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
