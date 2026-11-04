@@ -157,6 +157,7 @@ fun NowPlayingScreen(
     val settingsVm: com.verza.ui.screens.SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
     val glass = com.verza.ui.theme.isGlass()
+    val fullBleed by settingsVm.nowPlayingFullBleed.collectAsStateWithLifecycle()
     Box(modifier = modifier.fillMaxSize()) {
         if (glass) NowPlayingGlass(
             onBack = onBack,
@@ -165,6 +166,7 @@ fun NowPlayingScreen(
             links = links,
             artworkUrl = artworkUrl,
             albumArtMotion = albumArtMotion,
+            fullBleed = fullBleed,
             isPlaying = isPlaying,
             isLiked = isLiked,
             isDownloaded = isDownloaded,
@@ -193,7 +195,6 @@ fun NowPlayingScreen(
             onRemoveQueueItem = onRemoveQueueItem,
             onOpenLyrics = onOpenLyrics,
             onOpenMore = { showMore = true },
-            onOpenLinerNotes = { showLinerNotes = true },
             modifier = Modifier.fillMaxSize(),
         ) else NowPlayingExpressive(
             onBack = onBack,

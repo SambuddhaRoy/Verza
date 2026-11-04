@@ -127,6 +127,7 @@ fun SettingsScreen(
     val crossfade by viewModel.crossfadeSeconds.collectAsStateWithLifecycle()
     val albumArtMotion by viewModel.albumArtMotion.collectAsStateWithLifecycle()
     val washBeat by viewModel.washBeat.collectAsStateWithLifecycle()
+    val nowPlayingFullBleed by viewModel.nowPlayingFullBleed.collectAsStateWithLifecycle()
     val expressiveType by viewModel.expressiveType.collectAsStateWithLifecycle()
     val saveSearchHistory by viewModel.saveSearchHistory.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
@@ -376,6 +377,14 @@ fun SettingsScreen(
         }
 
         group("Appearance") {
+            if (design == DesignScheme.GLASS) ChoiceRow(
+                title = "Now Playing",
+                subtitle = if (nowPlayingFullBleed) "The cover fills the screen" else "A square cover on its own colours",
+                options = listOf(true, false),
+                selected = nowPlayingFullBleed,
+                label = { if (it) "Poster" else "Square" },
+                onSelect = viewModel::setNowPlayingFullBleed,
+            )
             SwitchRow(
                 title = if (design == DesignScheme.GLASS) "Moving background" else "Album art motion",
                 subtitle = if (design == DesignScheme.GLASS) {

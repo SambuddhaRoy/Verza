@@ -104,6 +104,10 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val washBeat: StateFlow<Boolean> = prefs.washBeatFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val standbyFace: StateFlow<Int> = prefs.standbyFaceFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val nowPlayingFullBleed: StateFlow<Boolean> = prefs.nowPlayingFullBleedFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val expressiveType: StateFlow<Boolean> = prefs.expressiveTypeFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val hapticsEnabled: StateFlow<Boolean> = prefs.hapticsEnabledFlow
@@ -220,6 +224,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setWashBeat(enabled: Boolean) {
         viewModelScope.launch { prefs.setWashBeat(enabled) }
+    }
+
+    fun setStandbyFace(face: Int) {
+        viewModelScope.launch { prefs.setStandbyFace(face) }
+    }
+
+    fun setNowPlayingFullBleed(enabled: Boolean) {
+        viewModelScope.launch { prefs.setNowPlayingFullBleed(enabled) }
     }
 
     fun setExpressiveType(enabled: Boolean) {

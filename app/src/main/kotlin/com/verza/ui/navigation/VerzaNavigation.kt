@@ -76,6 +76,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -343,7 +344,9 @@ fun VerzaNavigation(
         if (rail) WindowInsetsSides.Bottom + WindowInsetsSides.End
         else WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
 
-    Row(modifier = modifier.tapHaptics()) {
+    // Under standby nothing here needs drawing, Now Playing's moving background least of all: that
+    // can be on a charger for hours.
+    Row(modifier = modifier.tapHaptics().then(if (ambientActive) Modifier.alpha(0f) else Modifier)) {
     // The rail slides in while the bottom bar folds away, rather than one replacing the other in a
     // single frame, so rotating a tablet or opening a fold reads as the app rearranging itself.
     AnimatedVisibility(
@@ -815,7 +818,7 @@ fun VerzaNavigation(
         AddToPlaylistSheet(item = item, onDismiss = { pendingAdd = null })
     }
 
-    // Full-screen ambient "lean-back" display — sits above the whole nav graph; exits on tap/back.
+    // Standby: sits above the whole nav graph.
     if (ambientActive && hasTrack) {
         AmbientDisplay(
             title = currentTitle,
@@ -825,6 +828,8 @@ fun VerzaNavigation(
             positionMs = positionMs,
             durationMs = playback.durationMs,
             onTogglePlay = { playbackViewModel.togglePlay() },
+            onNext = { playbackViewModel.seekToNext() },
+            onPrevious = { playbackViewModel.seekToPrevious() },
             onExit = { ambientActive = false },
         )
     }
