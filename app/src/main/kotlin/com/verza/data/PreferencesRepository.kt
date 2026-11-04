@@ -61,6 +61,8 @@ class PreferencesRepository @Inject constructor(
     private val saveSearchHistoryKey = booleanPreferencesKey("save_search_history")
     private val albumArtMotionKey = booleanPreferencesKey("album_art_motion")
     private val washBeatKey = booleanPreferencesKey("wash_beat")
+    private val nowPlayingFullBleedKey = booleanPreferencesKey("now_playing_full_bleed")
+    private val standbyFaceKey = intPreferencesKey("standby_face")
     private val expressiveTypeKey = booleanPreferencesKey("expressive_type")
     // Drives the spectrum seek bar and the music haptics. Named for the glow it used to
     // feed; the key is kept as-is so existing installs do not lose the setting.
@@ -148,6 +150,10 @@ class PreferencesRepository @Inject constructor(
     val albumArtMotionFlow: Flow<Boolean> = store.data.map { it[albumArtMotionKey] ?: true }
     /** Whether Glass's flowing background pulses on the beat, as well as flowing. Default on. */
     val washBeatFlow: Flow<Boolean> = store.data.map { it[washBeatKey] ?: true }
+    /** In Glass on a phone, whether Now Playing's cover fills the screen, or sits square on its colours. */
+    val nowPlayingFullBleedFlow: Flow<Boolean> = store.data.map { it[nowPlayingFullBleedKey] ?: true }
+    /** Which of standby's faces was last on show. */
+    val standbyFaceFlow: Flow<Int> = store.data.map { it[standbyFaceKey] ?: 0 }
     /** The decorative faces (serif heads, a face per song title). Default off: Inter throughout. */
     val expressiveTypeFlow: Flow<Boolean> = store.data.map { it[expressiveTypeKey] ?: false }
 
@@ -287,6 +293,14 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setWashBeat(enabled: Boolean) {
         store.edit { it[washBeatKey] = enabled }
+    }
+
+    suspend fun setStandbyFace(face: Int) {
+        store.edit { it[standbyFaceKey] = face }
+    }
+
+    suspend fun setNowPlayingFullBleed(enabled: Boolean) {
+        store.edit { it[nowPlayingFullBleedKey] = enabled }
     }
 
     suspend fun setExpressiveType(enabled: Boolean) {

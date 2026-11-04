@@ -106,9 +106,9 @@ private val tourPages = listOf(
     TourPage(
         icon = Icons.Rounded.Schedule,
         eyebrow = "Display",
-        title = "Ambient display",
-        body = "A full-screen clock over the cover that keeps the screen on. Tap to leave.",
-        where = "Now Playing › ⋯ › Ambient display",
+        title = "Standby",
+        body = "For a phone on a stand: a huge clock, the cover or the lyrics. Swipe between them, and tap for the controls.",
+        where = "Now Playing › ⋯ › Standby",
     ),
     TourPage(
         icon = Icons.AutoMirrored.Rounded.MenuBook,

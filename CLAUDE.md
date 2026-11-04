@@ -158,12 +158,17 @@ spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
   (`typeScrim`, `coverBrightness`): a dark cover keeps its colour, white type still reads on a white
   one (`verza-shots/mob/_contrast.py`). From the top: the line that says it pulls down (a tap closes it too), the title in Inter's
   display cut, with no per-song face, then every artist and the album, each going to its page; under
-  that the line with the queue position and the liner notes, which shows the format instead of "VERZA"
-  for a lossless song. At the foot six glyphs (Lyrics, like, add, radio, download, more), a thin scrubber
+  that `LosslessBadge`, only on a song that is (`audioFormat` is null otherwise), and a tap on it shows
+  the format. Liner notes are in More. At the foot six glyphs (Lyrics, like, add, radio, download, more), a thin scrubber
   and a bare transport. No spectrum, no volume slider, and the output is in More. Landscape and tablets
   have the square cover on the plain wash. Removing a download asks first (`NowPlayingScreen`, for both
   designs). Lyrics sits on the same wash (`OnCoverWash`), and the NavHost leaves its top unpadded on that
   route.
+  - **Settings > Appearance > Now Playing, Poster or Square** (`fullBleed`, phones upright only, since
+    landscape and tablets are already a square cover on the wash). Square is the first Glass layout in
+    this design's type: cover, title and names with like and more beside them, the times under the line
+    with the mark between them, transport, four glyphs. The times' row is a fixed height so the cover
+    doesn't change size between a lossless song and the next.
   - **The queue is below the player, on one list** (`queueRows`), with its heading just showing at the
     foot (`QUEUE_PEEK`). The player is the list's first item, a window high less the peek, so the page
     scrolls as one thing with nothing nested. Up next comes first and what has played after it, each
@@ -181,6 +186,18 @@ spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
 
 ## Both designs
 
+- **Standby** (`AmbientDisplay.kt`, Now Playing > More): three faces in a pager, the last one remembered.
+  The clock's digits are cut out of the cover: `saveLayer` with a `DstIn` paint, then the text. A `DstIn`
+  on the text itself only reaches the pixels under its glyphs, so the whole picture stays. Dark covers
+  are lifted with white (`lift`) so the digits read on black.
+  - It asks for `SCREEN_ORIENTATION_FULL_SENSOR`, which rotates even with rotation locked, and puts the old
+    request back on the way out. To test a lock, `wm user-rotation lock 0`: `settings put system
+    accelerometer_rotation 0` didn't take on the emulator, which reads as a lock while being none.
+  - Hours on a charger: the clock face is true black, nothing animates by itself, the pager shifts a few dp
+    each minute, it dims 22:00 to 07:00, and the nav graph under it is at alpha 0 so that Now Playing's
+    wash isn't drawn. The position reaches only the two things using it, through a lambda.
+  - A `wm size` change mid-run leaves the wash a stale rectangle. A real rotation (`adb emu rotate`) doesn't.
+    The controls last 4s and a UI dump can take longer, so check them from a dump right after the tap.
 - **Haptics are felt from above, not asked for** (`tapHaptics` in `GlassChrome.kt`, on the root Row of
   `VerzaNavigation` and each sheet and dialog through `TAP_HAPTICS`, those being windows of their own).
   It watches in the Main pass, which runs child to parent, so by then a clickable has consumed the lift;

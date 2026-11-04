@@ -59,6 +59,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -115,8 +116,12 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -161,9 +166,12 @@ import kotlinx.coroutines.launch
  *
  * The cover fills the screen, sharp, and dissolves at the top into the moving field of its own
  * colours and at the foot into near black. Over it, from the top: the line that says this pulls down;
- * the title, large; the artists and album, which go to their pages; and a line of where you are. At the
- * foot: six actions, the scrubber, and the transport. Scroll down and the queue comes up from below,
- * its heading just showing at the foot of the player so that you can tell it's there.
+ * the title, large; the artists and album, which go to their pages; and the lossless mark, if the song
+ * is. At the foot: six actions, the scrubber, and the transport. Scroll down and the queue comes up from
+ * below, its heading just showing at the foot of the player so that you can tell it's there.
+ *
+ * With [fullBleed] off a phone gets the layout Glass started with, the square cover on the moving
+ * field with everything under it, in this design's type and bare glyphs.
  *
  * Under the type there is a scrim as dark as this cover needs and no darker ([typeScrim]), so a dark
  * cover keeps its moving colour and white type still reads on a white one.
@@ -178,6 +186,7 @@ fun NowPlayingGlass(
     links: TrackLinks?,
     artworkUrl: String?,
     albumArtMotion: Boolean,
+    fullBleed: Boolean,
     isPlaying: Boolean,
     isLiked: Boolean,
     isDownloaded: Boolean,
@@ -204,7 +213,6 @@ fun NowPlayingGlass(
     onRemoveQueueItem: (Int) -> Unit,
     onOpenLyrics: () -> Unit,
     onOpenMore: () -> Unit,
-    onOpenLinerNotes: () -> Unit,
     onOpenArtist: (String) -> Unit,
     onOpenAlbum: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -241,7 +249,7 @@ fun NowPlayingGlass(
         // well as wide, because a phone on its side is 900dp wide with no height for this layout.
         val wide = maxWidth >= 780.dp && maxHeight >= 600.dp
         val landscape = maxWidth > maxHeight
-        val poster = !wide && !landscape
+        val poster = fullBleed && !wide && !landscape
         val screenPx = constraints.maxHeight.toFloat()
         val queueWidth = (maxWidth * 0.36f).coerceIn(320.dp, 440.dp)
         Box(Modifier.fillMaxSize()) {
@@ -251,7 +259,8 @@ fun NowPlayingGlass(
                 PosterGrade(typeEnd, scrim, Modifier.fillMaxSize())
             } else {
                 // Type all over the field here, so the scrim is all over it too.
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.50f)))
+                val ground by animateFloatAsState(scrim, tween(500), label = "groundScrim")
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = ground }.background(Color.Black))
             }
             // The picture goes down as the queue comes up, so the list is on a calm ground. Read in
             // the layer: a scroll is a redraw here, not a recomposition.
@@ -275,18 +284,15 @@ fun NowPlayingGlass(
                 .graphicsLayer { translationY = pull.value }
                 .windowInsetsPadding(WindowInsets.systemBars),
         ) {
-            val masthead: @Composable (Modifier, Int, Float, Boolean) -> Unit = { m, lines, maxSp, line ->
-                Masthead(
-                    title, artist, links, queue.size, currentIndex, audioFormat,
-                    onOpenArtist, onOpenAlbum, onOpenLinerNotes,
-                    m, lines, maxSp, line,
-                )
+            val masthead: @Composable (Modifier, Int, Float, Boolean) -> Unit = { m, lines, maxSp, roomy ->
+                Masthead(title, artist, links, audioFormat, onOpenArtist, onOpenAlbum, m, lines, maxSp, roomy)
             }
             val cover: @Composable (Modifier) -> Unit = { m ->
                 Artwork(artworkUrl, isPlaying, skip, m)
             }
-            val controls: @Composable ColumnScope.() -> Unit = {
+            val actions: @Composable (Boolean) -> Unit = { likeAndMore ->
                 ActionRow(
+                    likeAndMore = likeAndMore,
                     onOpenLyrics = onOpenLyrics,
                     isLiked = isLiked,
                     onToggleLike = onToggleLike,
@@ -298,10 +304,16 @@ fun NowPlayingGlass(
                     onRemoveDownload = onRemoveDownload,
                     onOpenMore = onOpenMore,
                 )
+            }
+            val transport: @Composable () -> Unit = {
+                Transport(isPlaying, shuffleEnabled, repeatMode, onTogglePlay, onNext, onPrevious, onToggleShuffle, onCycleRepeat)
+            }
+            val controls: @Composable ColumnScope.() -> Unit = {
+                actions(true)
                 Spacer(Modifier.height(6.dp))
                 Scrubber(positionMs, durationMs, onSeek)
                 Spacer(Modifier.height(2.dp))
-                Transport(isPlaying, shuffleEnabled, repeatMode, onTogglePlay, onNext, onPrevious, onToggleShuffle, onCycleRepeat)
+                transport()
             }
 
             if (wide) {
@@ -365,7 +377,25 @@ fun NowPlayingGlass(
                                 }
                             } else Box(Modifier.fillMaxWidth().height(playerHeight), contentAlignment = Alignment.TopCenter) {
                                 // A tablet held upright would otherwise get a phone's player at twice the size.
-                                Column(Modifier.fillMaxHeight().widthIn(max = 620.dp).padding(horizontal = 22.dp)) {
+                                if (!poster) Column(Modifier.fillMaxHeight().widthIn(max = 620.dp).padding(horizontal = 22.dp)) {
+                                    Grabber(onBack)
+                                    // Takes what the rest leaves, so a small phone gets a smaller cover
+                                    // rather than controls off the foot of the screen.
+                                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        cover(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
+                                    }
+                                    Spacer(Modifier.height(14.dp))
+                                    Masthead(
+                                        title, artist, links, null, onOpenArtist, onOpenAlbum, Modifier, 2, 40f, true,
+                                        screenShare = 0.11f,
+                                    ) {
+                                        LikeButton(isLiked, onToggleLike)
+                                        MoreButton(onOpenMore)
+                                    }
+                                    Scrubber(positionMs, durationMs, onSeek, stacked = true, audioFormat = audioFormat)
+                                    transport()
+                                    actions(false)
+                                } else Column(Modifier.fillMaxHeight().widthIn(max = 620.dp).padding(horizontal = 22.dp)) {
                                     Grabber(onBack)
                                     Spacer(Modifier.height(6.dp))
                                     masthead(
@@ -447,7 +477,7 @@ private val InkFaint = Color.White.copy(alpha = 0.34f)
 // grotesque wants to be.
 private val TitleStyle = TextStyle(fontFamily = com.verza.ui.theme.FontDisplayCut, fontWeight = FontWeight.Medium, letterSpacing = (-0.022).em)
 private val BylineStyle = TextStyle(fontFamily = FontBody, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 22.sp)
-private val EyebrowStyle = TextStyle(fontFamily = FontBody, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.sp, letterSpacing = 0.16.em)
+private val BadgeStyle = TextStyle(fontFamily = FontBody, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 17.sp)
 private val TimeStyle = TextStyle(fontFamily = FontBody, fontSize = 13.sp, lineHeight = 17.sp, fontFeatureSettings = "tnum")
 
 /**
@@ -732,7 +762,8 @@ private fun Artwork(
 
 /**
  * The title, large; under it the artist and the album, smaller, each of which goes to its page; then
- * the line that says where you are, and leads to the liner notes.
+ * the lossless mark, if the song is. With no line to spare ([roomy] off) the mark goes after the names,
+ * if it fits. [trailing] sits at the end of the names.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -740,48 +771,86 @@ private fun Masthead(
     title: String,
     artist: String,
     links: TrackLinks?,
-    queueSize: Int,
-    currentIndex: Int,
     audioFormat: String?,
     onOpenArtist: (String) -> Unit,
     onOpenAlbum: (String) -> Unit,
-    onOpenLinerNotes: () -> Unit,
     modifier: Modifier,
     maxLines: Int,
     maxSp: Float,
-    eyebrow: Boolean,
+    roomy: Boolean,
+    screenShare: Float = 0.17f,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxWidth().then(modifier)) {
-        FitTitle(text = title, style = TitleStyle, color = Ink, maxLines = maxLines, maxSp = maxSp, screenShare = 0.17f)
-        // Each artist goes to their own page. What doesn't fit on a line wraps; a landscape phone has
-        // room for the one line.
-        FlowRow(maxLines = if (eyebrow) 2 else 1) {
-            val artists = links?.artists.orEmpty()
-            if (artists.isEmpty()) Byline(artist.ifBlank { "Unknown artist" }, "", null)
-            artists.forEachIndexed { i, a ->
-                if (i > 0) BylineGap(",  ")
-                Byline(a.name, "Go to artist") { onOpenArtist(a.id) }
+        FitTitle(text = title, style = TitleStyle, color = Ink, maxLines = maxLines, maxSp = maxSp, screenShare = screenShare)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Each artist goes to their own page. What doesn't fit on a line wraps; a landscape phone has
+            // room for the one line.
+            FlowRow(Modifier.weight(1f), maxLines = if (roomy) 2 else 1) {
+                val artists = links?.artists.orEmpty()
+                if (artists.isEmpty()) Byline(artist.ifBlank { "Unknown artist" }, "", null)
+                artists.forEachIndexed { i, a ->
+                    if (i > 0) BylineGap(",  ")
+                    Byline(a.name, "Go to artist") { onOpenArtist(a.id) }
+                }
+                links?.album?.let { album ->
+                    BylineGap("  \u00B7  ")
+                    Byline(album.name, "Go to album") { onOpenAlbum(album.id) }
+                }
+                if (!roomy && audioFormat != null) {
+                    BylineGap("   ")
+                    LosslessBadge(audioFormat)
+                }
             }
-            links?.album?.let { album ->
-                BylineGap("  \u00B7  ")
-                Byline(album.name, "Go to album") { onOpenAlbum(album.id) }
-            }
+            trailing?.invoke()
         }
-        if (eyebrow) {
-            // Lossless says so in place of the name: the one fact here worth the room.
-            val place = if (queueSize > 1) "${currentIndex + 1} / $queueSize  \u00B7  " else ""
-            val source = audioFormat ?: "VERZA"
-            Text(
-                "$source  \u00B7  ${place}LINER NOTES",
-                style = EyebrowStyle,
-                color = InkSoft,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .clickable(onClick = onOpenLinerNotes)
-                    .padding(vertical = 8.dp),
+        if (roomy && audioFormat != null) LosslessBadge(audioFormat)
+    }
+}
+
+/**
+ * Says this song is lossless, the mark and the word, on songs that are and nowhere else. A tap swaps
+ * the word for the format itself ("FLAC \u00B7 16-bit / 44.1 kHz").
+ */
+@Composable
+private fun LosslessBadge(format: String) {
+    var detail by remember(format) { mutableStateOf(false) }
+    Row(
+        Modifier
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { detail = !detail }
+            .semantics(mergeDescendants = true) { contentDescription = "Lossless, $format" }
+            .padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Canvas(Modifier.size(width = 22.dp, height = 13.dp)) {
+            // Two square waves, half a step out from each other. A corner effect rounds their steps.
+            val step = size.width / 5f
+            val swing = size.height * 0.13f
+            val wave = Path()
+            listOf(size.height * 0.27f to true, size.height * 0.73f to false).forEach { (y, startHigh) ->
+                var high = startHigh
+                wave.moveTo(0f, if (high) y - swing else y + swing)
+                for (i in 1..5) {
+                    wave.lineTo(i * step, if (high) y - swing else y + swing)
+                    if (i < 5) {
+                        high = !high
+                        wave.lineTo(i * step, if (high) y - swing else y + swing)
+                    }
+                }
+            }
+            drawPath(
+                wave,
+                InkSoft,
+                style = Stroke(
+                    width = 1.5.dp.toPx(),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round,
+                    pathEffect = PathEffect.cornerPathEffect(step * 0.5f),
+                ),
             )
         }
+        Text(if (detail) format else "Lossless", style = BadgeStyle, color = InkSoft, maxLines = 1)
     }
 }
 
@@ -808,9 +877,10 @@ private fun Byline(text: String, action: String, onClick: (() -> Unit)?) {
     )
 }
 
-/** Lyrics, like, add to a playlist, radio, download, more: six bare glyphs. */
+/** Lyrics, like, add to a playlist, radio, download, more: six bare glyphs, or four with like and more elsewhere. */
 @Composable
 private fun ActionRow(
+    likeAndMore: Boolean,
     onOpenLyrics: () -> Unit,
     isLiked: Boolean,
     onToggleLike: () -> Unit,
@@ -823,19 +893,13 @@ private fun ActionRow(
     onOpenMore: () -> Unit,
 ) {
     val accent = LocalExpressiveColors.current.accent
-    val haptics = rememberHaptics()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ActionIcon(Icons.Filled.Lyrics, "Lyrics", onOpenLyrics, InkSoft)
-        ActionIcon(
-            if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-            if (isLiked) "Unlike" else "Like",
-            { haptics.tick(); onToggleLike() },
-            if (isLiked) accent else InkSoft,
-        )
+        if (likeAndMore) LikeButton(isLiked, onToggleLike)
         ActionIcon(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist", onAddToPlaylist, InkSoft)
         ActionIcon(Icons.Filled.Radio, "Start radio", onStartRadio, InkSoft)
         ActionIcon(
@@ -852,8 +916,24 @@ private fun ActionRow(
             { if (isDownloaded) onRemoveDownload() else if (!isDownloading) onDownload() },
             if (isDownloaded) accent else InkSoft,
         )
-        ActionIcon(Icons.Filled.MoreHoriz, "More", onOpenMore, InkSoft)
+        if (likeAndMore) MoreButton(onOpenMore)
     }
+}
+
+@Composable
+private fun LikeButton(isLiked: Boolean, onToggleLike: () -> Unit) {
+    val haptics = rememberHaptics()
+    ActionIcon(
+        if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+        if (isLiked) "Unlike" else "Like",
+        { haptics.tick(); onToggleLike() },
+        if (isLiked) LocalExpressiveColors.current.accent else InkSoft,
+    )
+}
+
+@Composable
+private fun MoreButton(onOpenMore: () -> Unit) {
+    ActionIcon(Icons.Filled.MoreHoriz, "More", onOpenMore, InkSoft)
 }
 
 @Composable
@@ -861,9 +941,12 @@ private fun ActionIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, de
     PlainIconButton(icon, description, onClick, tint, size = 46.dp, iconSize = 26.dp)
 }
 
-/** The time either side of a thin line with a dot on it. The line thickens under a finger. */
+/**
+ * The time either side of a thin line with a dot on it. The line thickens under a finger. [stacked] puts
+ * the times under the line instead, with the lossless mark between them.
+ */
 @Composable
-private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit) {
+private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit, stacked: Boolean = false, audioFormat: String? = null) {
     val seek by rememberUpdatedState(onSeek)
     val duration by rememberUpdatedState(durationMs)
     val accent = LocalExpressiveColors.current.accent
@@ -873,12 +956,9 @@ private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit)
     val shown = dragged ?: live
     val thickness by animateDpAsState(if (dragged != null) 5.dp else 2.dp, label = "scrubThickness")
     val haptics = rememberHaptics()
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(formatDuration((shown * durationMs).toLong()), style = TimeStyle, color = InkSoft)
-        Spacer(Modifier.width(12.dp))
+    val line: @Composable (Modifier) -> Unit = { lineModifier ->
         Canvas(
-            modifier = Modifier
-                .weight(1f)
+            modifier = lineModifier
                 .height(34.dp)
                 .pointerInput(Unit) {
                     detectTapGestures { o ->
@@ -918,6 +998,20 @@ private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit)
             drawLine(Ink, Offset(0f, y), Offset(x, y), w, StrokeCap.Round)
             drawCircle(accent, radius = 5.dp.toPx() + w / 2f, center = Offset(x, y))
         }
+    }
+    val elapsed = formatDuration((shown * durationMs).toLong())
+    if (stacked) {
+        line(Modifier.fillMaxWidth())
+        // Held open whether or not the song is lossless, so the cover doesn't change size between songs.
+        Box(Modifier.fillMaxWidth().height(31.dp), contentAlignment = Alignment.TopCenter) {
+            Text(elapsed, style = TimeStyle, color = InkSoft, modifier = Modifier.align(Alignment.TopStart))
+            if (audioFormat != null) Box(Modifier.offset(y = (-7).dp)) { LosslessBadge(audioFormat) }
+            Text(formatDuration(durationMs), style = TimeStyle, color = InkSoft, modifier = Modifier.align(Alignment.TopEnd))
+        }
+    } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(elapsed, style = TimeStyle, color = InkSoft)
+        Spacer(Modifier.width(12.dp))
+        line(Modifier.weight(1f))
         Spacer(Modifier.width(12.dp))
         Text(formatDuration(durationMs), style = TimeStyle, color = InkSoft)
     }
@@ -1149,7 +1243,7 @@ private var lightIconPages = 0
 private var savedLightStatus = false
 private var savedLightNav = false
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null

@@ -127,7 +127,7 @@ fun ExpressiveMoreSheet(
             )
             ExpressiveSheetRow(
                 icon = Icons.Filled.Nightlight,
-                label = "Ambient display",
+                label = "Standby",
                 onClick = onAmbient,
                 colors = colors,
                 modifier = Modifier.fillMaxWidth(),
