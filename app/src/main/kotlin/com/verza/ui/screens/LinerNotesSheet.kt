@@ -69,6 +69,7 @@ fun LinerNotesSheet(
     }
 
     ModalBottomSheet(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
@@ -90,7 +91,7 @@ fun LinerNotesSheet(
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Liner notes", style = MaterialTheme.typography.labelSmall, color = colors.primary)
+                    Text(if (com.verza.ui.theme.isGlass()) "liner notes" else "Liner notes", style = MaterialTheme.typography.labelSmall, color = if (com.verza.ui.theme.isGlass()) colors.onSurfaceVariant else colors.primary)
                     Text(
                         title,
                         style = MaterialTheme.typography.titleLarge,
@@ -126,9 +127,9 @@ fun LinerNotesSheet(
                     val eyebrow = listOfNotNull(n.album, n.year, n.genre).joinToString("  ·  ")
                     if (eyebrow.isNotBlank()) {
                         Text(
-                            eyebrow.uppercase(),
+                            if (com.verza.ui.theme.isGlass()) eyebrow else eyebrow.uppercase(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = colors.primary,
+                            color = if (com.verza.ui.theme.isGlass()) colors.onSurfaceVariant else colors.primary,
                         )
                     }
                     if (!n.blurb.isNullOrBlank()) {

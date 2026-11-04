@@ -74,7 +74,8 @@ fun HomeItemSheet(
     // Runs the action then closes the sheet.
     fun act(block: () -> Unit): () -> Unit = { block(); onDismiss() }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
             // ── Header: cover · title · subtitle ──────────────────────────────
             Row(

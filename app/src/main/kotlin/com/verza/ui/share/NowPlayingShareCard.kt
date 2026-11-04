@@ -88,23 +88,23 @@ fun NowPlayingCard(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = artist.uppercase(),
-                    style = TextStyle(fontFamily = FontMono, fontSize = 11.sp, letterSpacing = 0.14.em),
-                    color = cover.sub,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "“$title”",
+                    text = title,
                     style = TextStyle(
                         fontFamily = FontSleeve,
-                        fontWeight = FontWeight.Normal,
+                        fontWeight = FontWeight.Medium,
                         fontSize = 34.sp,
                         lineHeight = 38.sp,
                         letterSpacing = (-0.02).em,
                     ),
                     color = cover.ink,
                     maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = artist,
+                    style = TextStyle(fontFamily = FontMono, fontSize = 15.sp, lineHeight = 20.sp),
+                    color = cover.sub,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

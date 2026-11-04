@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.head
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.LaunchedEffect
@@ -551,12 +552,13 @@ fun SettingsScreen(
     removingAddon?.let { source ->
         val colors = LocalExpressiveColors.current
         AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
             onDismissRequest = { removingAddon = null },
             containerColor = colors.surface,
             titleContentColor = colors.onSurface,
             textContentColor = colors.onSurfaceMuted,
             shape = ShapeExtraLarge,
-            title = { Text(source.name, style = BodyStrong) },
+            title = { Text(source.name) },
             text = { Text("Remove this source? You'd need its link again to add it back.", style = BodyText) },
             confirmButton = {
                 TextButton(shape = com.verza.ui.theme.CornerShape, onClick = { viewModel.removeAddon(source); removingAddon = null }) {
@@ -581,12 +583,13 @@ fun SettingsScreen(
 
     if (confirmResetStats) {
         AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
             onDismissRequest = { confirmResetStats = false },
             containerColor = colors.surface,
             titleContentColor = colors.onSurface,
             textContentColor = colors.onSurfaceMuted,
             shape = ShapeExtraLarge,
-            title = { Text("Reset listening stats?", style = BodyStrong) },
+            title = { Text("Reset listening stats?") },
             text = {
                 Text(
                     "Verza builds Your Sound, your mixes and Home from this history. This can't be undone.",
@@ -617,12 +620,13 @@ private fun ListenBrainzDialog(viewModel: SettingsViewModel, connectedAs: String
     val state by viewModel.lbState.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf(connectedAs) }
     AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
         titleContentColor = colors.onSurface,
         textContentColor = colors.onSurfaceMuted,
         shape = ShapeExtraLarge,
-        title = { Text("ListenBrainz", style = BodyStrong) },
+        title = { Text("ListenBrainz") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
@@ -690,12 +694,13 @@ private fun AddAddonDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) 
         state.added?.let { toast(context, "Added $it"); onDismiss() }
     }
     AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
         titleContentColor = colors.onSurface,
         textContentColor = colors.onSurfaceMuted,
         shape = ShapeExtraLarge,
-        title = { Text("Add a lossless source", style = BodyStrong) },
+        title = { Text("Add a lossless source") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -1059,7 +1064,7 @@ private fun DesignRow(design: DesignScheme, selected: Boolean, onClick: () -> Un
                     Spacer(Modifier.width(8.dp))
                     // Still changing between releases, and said so where it is chosen.
                     Text(
-                        "EXPERIMENTAL",
+                        "EXPERIMENTAL".head(),
                         style = MetaLabel.copy(fontSize = 10.sp),
                         color = colors.onAccent,
                         modifier = Modifier.background(colors.accent).padding(horizontal = 5.dp, vertical = 1.dp),

@@ -183,6 +183,13 @@ fun LocalPlaylistScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
+                            if (com.verza.ui.theme.isGlass()) {
+                                val xc = com.verza.ui.expressive.LocalExpressiveColors.current
+                                com.verza.ui.expressive.GlassWord("play", xc.accent, tracks.isNotEmpty()) { onPlayTracks(tracks.map { it.toMusicItem() }, 0) }
+                                com.verza.ui.expressive.GlassWord("shuffle", xc.onContainer, tracks.isNotEmpty()) { onShuffle(tracks.map { it.toMusicItem() }) }
+                                com.verza.ui.expressive.GlassWord("queue", xc.onContainer, tracks.isNotEmpty()) { onAddToQueue(tracks.map { it.toMusicItem() }) }
+                                com.verza.ui.expressive.GlassWord("delete", xc.onContainerMuted) { showDeleteConfirm = true }
+                            } else {
                             Button(
                                 onClick = { onPlayTracks(tracks.map { it.toMusicItem() }, 0) },
                                 enabled = tracks.isNotEmpty(),
@@ -217,6 +224,7 @@ fun LocalPlaylistScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                             ) {
                                 Icon(Icons.Filled.Delete, contentDescription = "Delete playlist", modifier = Modifier.size(18.dp))
+                            }
                             }
                         }
                     }
@@ -256,6 +264,7 @@ fun LocalPlaylistScreen(
 
     if (showDeleteConfirm) {
         AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete this playlist?") },
             text = { Text("This removes the playlist. The songs themselves stay in your library.") },

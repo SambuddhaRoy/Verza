@@ -45,17 +45,15 @@ fun AddToPlaylistSheet(
     var newName by remember { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                "Add to playlist",
-                style = MaterialTheme.typography.titleLarge,
-                color = colors.onSurface,
+            Text(if (com.verza.ui.theme.isGlass()) "add to playlist" else "Add to playlist", style = if (com.verza.ui.theme.isGlass()) com.verza.ui.expressive.GlassSectionTitle else MaterialTheme.typography.titleLarge, color = colors.onSurface,
             )
             Text(
                 item.title,
@@ -157,6 +155,7 @@ fun AddToPlaylistSheet(
 
     if (showCreate) {
         AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
             onDismissRequest = { showCreate = false },
             title = { Text("New playlist") },
             text = {

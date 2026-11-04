@@ -65,6 +65,7 @@ import com.verza.ui.expressive.UpdateAvailableSheet
 import com.verza.ui.screens.SettingsViewModel
 import androidx.compose.foundation.layout.Row
 import com.verza.ui.expressive.ExpressiveNavRail
+import com.verza.ui.expressive.tapHaptics
 import com.verza.ui.expressive.useNavigationRail
 import com.verza.ui.expressive.animatedDp
 import com.verza.ui.expressive.ExpressiveMiniPlayer
@@ -300,6 +301,7 @@ fun VerzaNavigation(
     // sideways takes the drag first, and the gesture only starts where nothing below wants it.
     val swipeRoute = rememberUpdatedState(currentRoute)
     val swipeSelect = rememberUpdatedState(onSelectTab)
+    val swipeHaptics = com.verza.ui.expressive.rememberHaptics()
     val swipeRtl = rememberUpdatedState(androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl)
     val swipeTabs = if (!glass) Modifier else Modifier.pointerInput(Unit) {
         val order = GLASS_NAV.map { it.route }
@@ -311,7 +313,7 @@ fun VerzaNavigation(
                 val at = order.indexOf(swipeRoute.value)
                 val step = if (swipeRtl.value) -1 else 1
                 if (at >= 0 && kotlin.math.abs(travelled) > needed) {
-                    order.getOrNull(at + if (travelled < 0) step else -step)?.let { swipeSelect.value(it) }
+                    order.getOrNull(at + if (travelled < 0) step else -step)?.let { swipeHaptics.threshold(); swipeSelect.value(it) }
                 }
             },
         ) { _, dx -> travelled += dx }
@@ -341,7 +343,7 @@ fun VerzaNavigation(
         if (rail) WindowInsetsSides.Bottom + WindowInsetsSides.End
         else WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
 
-    Row(modifier = modifier) {
+    Row(modifier = modifier.tapHaptics()) {
     // The rail slides in while the bottom bar folds away, rather than one replacing the other in a
     // single frame, so rotating a tablet or opening a fold reads as the app rearranging itself.
     AnimatedVisibility(
@@ -860,6 +862,7 @@ fun VerzaNavigation(
         val count = session.tracks.size
         val lead = session.tracks.firstOrNull()
         AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
             onDismissRequest = { playbackViewModel.dismissSharedSession() },
             title = { Text("Listen along?") },
             text = {

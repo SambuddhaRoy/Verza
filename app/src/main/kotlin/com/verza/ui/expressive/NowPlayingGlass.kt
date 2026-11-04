@@ -20,6 +20,20 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.CoroutineScope
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.material.icons.filled.Lyrics
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import com.verza.innertube.TrackLinks
@@ -143,19 +157,18 @@ import kotlin.math.hypot
 import kotlinx.coroutines.launch
 
 /**
- * Now Playing in the Glass design: the poster.
+ * Now Playing in the Glass design: the poster, with the queue below it.
  *
  * The cover fills the screen, sharp, and dissolves at the top into the moving field of its own
- * colours and at the foot into near black. Over it, from the top: Close, Now Playing and Lyrics; the
- * title, large; the artist and album, which go to their pages; and a line of where you are. At the
- * foot: six actions, the scrubber, and the transport.
+ * colours and at the foot into near black. Over it, from the top: the line that says this pulls down;
+ * the title, large; the artists and album, which go to their pages; and a line of where you are. At the
+ * foot: six actions, the scrubber, and the transport. Scroll down and the queue comes up from below,
+ * its heading just showing at the foot of the player so that you can tell it's there.
  *
  * Under the type there is a scrim as dark as this cover needs and no darker ([typeScrim]), so a dark
  * cover keeps its moving colour and white type still reads on a white one.
  *
- * The queue opens over the picture, as a numbered list with the playing song large.
- *
- * Drag the picture sideways to change song; drag it or the type above it down to close.
+ * Drag the picture sideways to change song; pull down from the top of the page to close.
  */
 @Composable
 fun NowPlayingGlass(
@@ -197,21 +210,30 @@ fun NowPlayingGlass(
     modifier: Modifier = Modifier,
 ) {
     LightStatusIcons()
-    val wash = rememberGlassBackdrop()
-    var showQueue by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val context = LocalContext.current
+    val haptics = rememberHaptics()
+    val list = rememberLazyListState()
     // Pulling down moves the page with the finger, against some resistance, and closes it past a
     // threshold; short of it, it springs back.
     val pull = remember { Animatable(0f) }
-    val closeAt = with(density) { 110.dp.toPx() }
+    val closeAt = with(density) { 50.dp.toPx() }
+    val latestBack by rememberUpdatedState(onBack)
+    val pullToClose = remember { PullToClose(pull, scope, closeAt, haptics) { latestBack() } }
     val skip = rememberSkipSwipe(onNext, onPrevious)
     // Where the type ends, as a share of the screen's height: the scrim follows it, or a three-line
     // title puts its last lines out on the bare picture.
     var typeEnd by remember { mutableFloatStateOf(0.30f) }
     val scrim by produceState(0.4f, artworkUrl) {
         artworkUrl?.let { url -> coverBrightness(context, url) }?.let { value = typeScrim(it) }
+    }
+    val atPlayer by remember { derivedStateOf { list.firstVisibleItemIndex == 0 && list.firstVisibleItemScrollOffset == 0 } }
+    // Back from the queue is back to the player, not out of the page.
+    BackHandler(enabled = !atPlayer) { scope.launch { list.animateScrollToItem(0) } }
+    // A nudge as the player gives way to the queue, and again on the way back.
+    LaunchedEffect(list) {
+        snapshotFlow { list.firstVisibleItemIndex > 0 }.drop(1).collect { haptics.detent() }
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize().background(Color.Black)) {
@@ -222,151 +244,198 @@ fun NowPlayingGlass(
         val poster = !wide && !landscape
         val screenPx = constraints.maxHeight.toFloat()
         val queueWidth = (maxWidth * 0.36f).coerceIn(320.dp, 440.dp)
-        Box(Modifier.fillMaxSize().glassSource(wash)) {
+        Box(Modifier.fillMaxSize()) {
             CoverWash(artworkUrl, albumArtMotion, Modifier.fillMaxSize(), dim = !poster)
             if (poster) {
                 Poster(artworkUrl, albumArtMotion, isPlaying, skip.offset, Modifier.fillMaxSize())
-                PosterGrade(showQueue, typeEnd, scrim, Modifier.fillMaxSize())
+                PosterGrade(typeEnd, scrim, Modifier.fillMaxSize())
             } else {
                 // Type all over the field here, so the scrim is all over it too.
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.50f)))
             }
-        }
-        CompositionLocalProvider(LocalGlassBackdrop provides wash) {
+            // The picture goes down as the queue comes up, so the list is on a calm ground. Read in
+            // the layer: a scroll is a redraw here, not a recomposition.
             Box(
-                modifier = Modifier
+                Modifier
                     .fillMaxSize()
-                    .graphicsLayer { translationY = pull.value }
-                    .windowInsetsPadding(WindowInsets.systemBars)
-                    .padding(horizontal = 22.dp),
-            ) {
-                val haptics = rememberHaptics()
-                val dismissDrag = Modifier.pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragEnd = {
-                            scope.launch {
-                                if (pull.value > closeAt * 0.45f) onBack()
-                                else pull.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 500f))
-                            }
-                        },
-                        onDragCancel = { scope.launch { pull.animateTo(0f) } },
-                    ) { change, drag ->
-                        if (drag.y > 0f || pull.value > 0f) {
-                            change.consume()
-                            val before = pull.value
-                            val after = (before + drag.y * 0.45f).coerceAtLeast(0f)
-                            val line = closeAt * 0.45f
-                            if ((before < line) != (after < line)) haptics.threshold()
-                            scope.launch { pull.snapTo(after) }
+                    .graphicsLayer {
+                        val first = list.layoutInfo.visibleItemsInfo.firstOrNull()
+                        alpha = when {
+                            list.firstVisibleItemIndex > 0 -> 0.8f
+                            first == null || first.size == 0 -> 0f
+                            else -> (list.firstVisibleItemScrollOffset.toFloat() / first.size * 1.6f).coerceIn(0f, 1f) * 0.8f
                         }
                     }
-                }
-                val pills: @Composable () -> Unit = {
-                    PillRow(onBack, onNowPlaying = { showQueue = false }, onOpenLyrics, dismissDrag)
-                }
-                val masthead: @Composable (Modifier, Int, Float, Boolean) -> Unit = { m, lines, maxSp, line ->
-                    Masthead(
-                        title, artist, links, queue.size, currentIndex, audioFormat,
-                        onOpenArtist, onOpenAlbum, onOpenLinerNotes,
-                        m, lines, maxSp, line,
-                    )
-                }
-                val cover: @Composable (Modifier) -> Unit = { m ->
-                    Artwork(artworkUrl, isPlaying, skip, m)
-                }
-                val queuePane: @Composable (Modifier) -> Unit = { m ->
-                    QueuePane(queue, currentIndex, onPlayQueueItem, onRemoveQueueItem, m)
-                }
-                val controls: @Composable ColumnScope.() -> Unit = {
-                    ActionRow(
-                        showQueue = showQueue,
-                        // Null where the queue is always open beside the player.
-                        onToggleQueue = if (wide) null else ({ showQueue = !showQueue }),
-                        isLiked = isLiked,
-                        onToggleLike = onToggleLike,
-                        onAddToPlaylist = onAddToPlaylist,
-                        onStartRadio = onStartRadio,
-                        isDownloaded = isDownloaded,
-                        isDownloading = isDownloading,
-                        onDownload = onDownload,
-                        onRemoveDownload = onRemoveDownload,
-                        onOpenMore = onOpenMore,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Scrubber(positionMs, durationMs, onSeek)
-                    Spacer(Modifier.height(2.dp))
-                    Transport(isPlaying, shuffleEnabled, repeatMode, onTogglePlay, onNext, onPrevious, onToggleShuffle, onCycleRepeat)
-                }
+                    .background(Color.Black),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { translationY = pull.value }
+                .windowInsetsPadding(WindowInsets.systemBars),
+        ) {
+            val masthead: @Composable (Modifier, Int, Float, Boolean) -> Unit = { m, lines, maxSp, line ->
+                Masthead(
+                    title, artist, links, queue.size, currentIndex, audioFormat,
+                    onOpenArtist, onOpenAlbum, onOpenLinerNotes,
+                    m, lines, maxSp, line,
+                )
+            }
+            val cover: @Composable (Modifier) -> Unit = { m ->
+                Artwork(artworkUrl, isPlaying, skip, m)
+            }
+            val controls: @Composable ColumnScope.() -> Unit = {
+                ActionRow(
+                    onOpenLyrics = onOpenLyrics,
+                    isLiked = isLiked,
+                    onToggleLike = onToggleLike,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onStartRadio = onStartRadio,
+                    isDownloaded = isDownloaded,
+                    isDownloading = isDownloading,
+                    onDownload = onDownload,
+                    onRemoveDownload = onRemoveDownload,
+                    onOpenMore = onOpenMore,
+                )
+                Spacer(Modifier.height(6.dp))
+                Scrubber(positionMs, durationMs, onSeek)
+                Spacer(Modifier.height(2.dp))
+                Transport(isPlaying, shuffleEnabled, repeatMode, onTogglePlay, onNext, onPrevious, onToggleShuffle, onCycleRepeat)
+            }
 
-                if (wide) {
-                    // The player is a column of its own, the cover over the controls, and stops at a
-                    // width that still reads as a player. The queue takes the rest of the window.
-                    Row(
-                        Modifier.fillMaxSize().padding(top = 16.dp, bottom = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(40.dp),
-                    ) {
-                        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                            Column(Modifier.fillMaxHeight().widthIn(max = 560.dp)) {
-                                pills()
-                                Spacer(Modifier.height(16.dp))
-                                Box(Modifier.weight(1f).fillMaxWidth().then(dismissDrag), contentAlignment = Alignment.Center) {
-                                    cover(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
-                                }
-                                Spacer(Modifier.height(16.dp))
-                                masthead(dismissDrag, 2, 44f, true)
-                                Spacer(Modifier.height(8.dp))
-                                controls()
-                            }
-                        }
-                        queuePane(Modifier.width(queueWidth).fillMaxHeight())
-                    }
-                } else if (!landscape) {
-                    // A tablet held upright would otherwise get a phone's player at twice the size.
-                    Column(Modifier.fillMaxHeight().widthIn(max = 620.dp).align(Alignment.Center)) {
-                        Spacer(Modifier.height(24.dp))
-                        pills()
-                        Spacer(Modifier.height(20.dp))
-                        masthead(
-                            dismissDrag.onGloballyPositioned { typeEnd = it.boundsInRoot().bottom / screenPx },
-                            3, 44f, true,
-                        )
-                        AnimatedContent(
-                            targetState = showQueue,
-                            transitionSpec = { fadeIn(tween(220, delayMillis = 60)).togetherWith(fadeOut(tween(140))) },
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
-                            label = "queueOrPicture",
-                        ) { queueOpen ->
-                            if (queueOpen) queuePane(Modifier.fillMaxSize())
-                            // Nothing to draw: the picture is behind all of this, and only moves.
-                            else Box(Modifier.fillMaxSize().then(dismissDrag).then(skip.drag))
-                        }
-                        controls()
-                        Spacer(Modifier.height(8.dp))
-                    }
-                } else {
-                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                        Box(
-                            Modifier.fillMaxHeight().weight(1f).padding(vertical = 14.dp).then(dismissDrag),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (showQueue) queuePane(Modifier.fillMaxSize())
-                            // Not fillMaxHeight: a square the height of the window is wider than this
-                            // half, and it ran off the left edge.
-                            else cover(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
-                        }
+            if (wide) {
+                // The player is a column of its own, the cover over the controls, and stops at a
+                // width that still reads as a player. The queue takes the rest of the window.
+                Row(
+                    Modifier.fillMaxSize().padding(start = 22.dp, end = 22.dp, bottom = 10.dp).nestedScroll(pullToClose),
+                    horizontalArrangement = Arrangement.spacedBy(40.dp),
+                ) {
+                    BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
+                        // Exactly the window's height, so it never moves: the scroll is only there to
+                        // hand a drag on to pullToClose, the way the list does on a phone.
                         Column(
-                            Modifier.weight(1f).fillMaxHeight().widthIn(max = 480.dp),
-                            verticalArrangement = Arrangement.Center,
+                            Modifier
+                                .height(maxHeight)
+                                .widthIn(max = 560.dp)
+                                .verticalScroll(rememberScrollState()),
                         ) {
-                            pills()
-                            Spacer(Modifier.height(4.dp))
-                            masthead(dismissDrag, 2, 30f, false)
+                            Grabber(onBack)
+                            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                cover(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            masthead(Modifier, 2, 44f, true)
+                            Spacer(Modifier.height(8.dp))
                             controls()
                         }
+                    }
+                    LazyColumn(
+                        modifier = Modifier.width(queueWidth).fillMaxHeight().fadeEdges(),
+                        contentPadding = PaddingValues(vertical = 14.dp),
+                    ) {
+                        queueRows(queue, currentIndex, onPlayQueueItem, onRemoveQueueItem, showPlaying = true)
+                    }
+                }
+            } else {
+                BoxWithConstraints(Modifier.fillMaxSize().nestedScroll(pullToClose)) {
+                    // Its heading shows under the player upright. On a phone on its side every line
+                    // is spoken for, and the queue is a scroll away.
+                    val playerHeight = if (landscape) maxHeight else maxHeight - QUEUE_PEEK
+                    LazyColumn(state = list, modifier = Modifier.fillMaxSize().fadeEdges(10.dp)) {
+                        item(key = "player") {
+                            if (landscape) Column(Modifier.fillMaxWidth().height(playerHeight).padding(horizontal = 22.dp)) {
+                                Grabber(onBack)
+                                Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                                    Box(
+                                        Modifier.fillMaxHeight().weight(1f).padding(bottom = 10.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        // Not fillMaxHeight: a square the height of the window is wider
+                                        // than this half, and it ran off the left edge.
+                                        cover(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
+                                    }
+                                    Column(
+                                        Modifier.weight(1f).fillMaxHeight().widthIn(max = 480.dp),
+                                        verticalArrangement = Arrangement.Center,
+                                    ) {
+                                        masthead(Modifier, 2, 30f, false)
+                                        controls()
+                                    }
+                                }
+                            } else Box(Modifier.fillMaxWidth().height(playerHeight), contentAlignment = Alignment.TopCenter) {
+                                // A tablet held upright would otherwise get a phone's player at twice the size.
+                                Column(Modifier.fillMaxHeight().widthIn(max = 620.dp).padding(horizontal = 22.dp)) {
+                                    Grabber(onBack)
+                                    Spacer(Modifier.height(6.dp))
+                                    masthead(
+                                        Modifier.onGloballyPositioned {
+                                            // Only at rest: the type moves with a scroll or a pull, and the
+                                            // scrim shouldn't slide with it.
+                                            if (atPlayer && pull.value == 0f) typeEnd = it.boundsInRoot().bottom / screenPx
+                                        },
+                                        3, 44f, true,
+                                    )
+                                    // Nothing to draw: the picture is behind all of this, and only moves.
+                                    Box(Modifier.weight(1f).fillMaxWidth().then(skip.drag))
+                                    controls()
+                                }
+                            }
+                        }
+                        queueRows(queue, currentIndex, onPlayQueueItem, onRemoveQueueItem, showPlaying = false)
+                        item(key = "queueEnd") { Spacer(Modifier.height(28.dp)) }
                     }
                 }
             }
         }
+    }
+}
+
+/** How much of the queue's heading shows at the foot of the player, so that you can tell it's there. */
+private val QUEUE_PEEK = 40.dp
+
+/**
+ * Pulling down from the top of the page closes it. The list asks here before and after it scrolls,
+ * so a pull only takes what the list had no use for: it can't start until the player is all in view.
+ */
+private class PullToClose(
+    private val pull: Animatable<Float, *>,
+    private val scope: CoroutineScope,
+    private val closeAt: Float,
+    private val haptics: Haptics,
+    private val onClose: () -> Unit,
+) : NestedScrollConnection {
+    private var at = 0f
+
+    private fun moveTo(next: Float) {
+        val to = next.coerceAtLeast(0f)
+        if ((at < closeAt) != (to < closeAt)) haptics.threshold()
+        at = to
+        scope.launch { pull.snapTo(to) }
+    }
+
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        if (source != NestedScrollSource.UserInput || at <= 0f || available.y >= 0f) return Offset.Zero
+        val used = maxOf(available.y, -at)
+        moveTo(at + used)
+        return Offset(0f, used)
+    }
+
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+        moveTo(at + available.y * 0.45f)
+        return Offset(0f, available.y)
+    }
+
+    override suspend fun onPreFling(available: Velocity): Velocity {
+        if (at <= 0f) return Velocity.Zero
+        if (at >= closeAt) {
+            onClose()
+        } else {
+            at = 0f
+            pull.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 500f))
+        }
+        return available
     }
 }
 
@@ -380,16 +449,6 @@ private val TitleStyle = TextStyle(fontFamily = com.verza.ui.theme.FontDisplayCu
 private val BylineStyle = TextStyle(fontFamily = FontBody, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 22.sp)
 private val EyebrowStyle = TextStyle(fontFamily = FontBody, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.sp, letterSpacing = 0.16.em)
 private val TimeStyle = TextStyle(fontFamily = FontBody, fontSize = 13.sp, lineHeight = 17.sp, fontFeatureSettings = "tnum")
-
-/** Glass for the buttons over the wash: clear and white-edged. */
-@Composable
-private fun Modifier.washGlass(shape: Shape): Modifier = liquidGlass(
-    shape = shape,
-    tint = Color.White.copy(alpha = 0.10f),
-    fallback = Color.White.copy(alpha = 0.16f),
-    blur = 6.dp,
-    bend = 4.dp,
-)
 
 /**
  * The cover, blurred into a field of its colours. The blur is drawn once; only the layer holding it
@@ -550,25 +609,21 @@ private fun Poster(
     }
 }
 
-/**
- * What the type and controls sit on: [scrim] down to the end of the type, nothing over the middle of
- * the picture, and near black at the foot. With the queue open it reaches across the middle too.
- */
+/** What the type and controls sit on: [scrim] down to the end of the type, nothing over the middle of the picture, and near black at the foot. */
 @Composable
-private fun PosterGrade(showQueue: Boolean, typeEnd: Float, scrim: Float, modifier: Modifier) {
+private fun PosterGrade(typeEnd: Float, scrim: Float, modifier: Modifier) {
     val top by animateFloatAsState(scrim, tween(500), label = "gradeTop")
     val end by animateFloatAsState(typeEnd.coerceAtMost(0.44f), tween(260), label = "gradeEnd")
-    val middle by animateFloatAsState(if (showQueue) (scrim + 0.12f).coerceAtMost(0.7f) else 0f, tween(260), label = "gradeMiddle")
     Box(
         modifier.drawBehind {
             drawRect(
                 Brush.verticalGradient(
                     0f to Color.Black.copy(alpha = top),
                     end to Color.Black.copy(alpha = top),
-                    end + 0.05f to Color.Black.copy(alpha = maxOf(top * 0.55f, middle)),
-                    end + 0.12f to Color.Black.copy(alpha = middle),
-                    0.60f to Color.Black.copy(alpha = middle),
-                    0.70f to Color.Black.copy(alpha = maxOf(0.40f, middle)),
+                    end + 0.05f to Color.Black.copy(alpha = top * 0.55f),
+                    end + 0.12f to Color.Transparent,
+                    0.60f to Color.Transparent,
+                    0.70f to Color.Black.copy(alpha = 0.40f),
                     0.79f to Color.Black.copy(alpha = 0.66f),
                     1f to Color.Black.copy(alpha = 0.80f),
                 ),
@@ -577,40 +632,21 @@ private fun PosterGrade(showQueue: Boolean, typeEnd: Float, scrim: Float, modifi
     )
 }
 
-/** Close, Now Playing and Lyrics. Now Playing is lit, and brings you back here from the queue. */
+/** The line at the top that says this page pulls down. A tap closes it too. */
 @Composable
-private fun PillRow(onClose: () -> Unit, onNowPlaying: () -> Unit, onLyrics: () -> Unit, drag: Modifier) {
-    Row(
-        modifier = Modifier.fillMaxWidth().then(drag),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        PosterPill("Close", "Close Now Playing", onClick = onClose)
-        PosterPill("Now Playing", "Now Playing", filled = true, onClick = onNowPlaying)
-        PosterPill("Lyrics", "Lyrics", onClick = onLyrics)
-    }
-}
-
-@Composable
-private fun PosterPill(label: String, description: String, onClick: () -> Unit, filled: Boolean = false) {
+private fun Grabber(onClose: () -> Unit) {
     Box(
         modifier = Modifier
-            .height(40.dp)
-            .then(if (filled) Modifier.clip(com.verza.ui.theme.CornerShape).background(Ink.copy(alpha = 0.92f)) else Modifier.washGlass(com.verza.ui.theme.CornerShape))
-            .clickable(onClick = onClick)
-            .semantics(mergeDescendants = true) {
-                contentDescription = description
+            .fillMaxWidth()
+            .height(36.dp)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose)
+            .semantics {
+                contentDescription = "Close Now Playing"
                 role = Role.Button
-            }
-            .padding(horizontal = 14.dp),
+            },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            label,
-            style = TextStyle(fontFamily = FontBody, fontWeight = FontWeight.Medium, fontSize = 14.sp),
-            color = if (filled) Color.Black else Ink,
-            maxLines = 1,
-        )
+        Box(Modifier.size(width = 44.dp, height = 5.dp).clip(com.verza.ui.theme.CornerShape).background(Ink.copy(alpha = 0.72f)))
     }
 }
 
@@ -772,11 +808,10 @@ private fun Byline(text: String, action: String, onClick: (() -> Unit)?) {
     )
 }
 
-/** Queue, like, add to a playlist, radio, download, more: six bare glyphs. */
+/** Lyrics, like, add to a playlist, radio, download, more: six bare glyphs. */
 @Composable
 private fun ActionRow(
-    showQueue: Boolean,
-    onToggleQueue: (() -> Unit)?,
+    onOpenLyrics: () -> Unit,
     isLiked: Boolean,
     onToggleLike: () -> Unit,
     onAddToPlaylist: () -> Unit,
@@ -794,12 +829,7 @@ private fun ActionRow(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (onToggleQueue != null) ActionIcon(
-            Icons.AutoMirrored.Filled.QueueMusic,
-            if (showQueue) "Hide queue" else "Queue",
-            onToggleQueue,
-            if (showQueue) accent else InkSoft,
-        )
+        ActionIcon(Icons.Filled.Lyrics, "Lyrics", onOpenLyrics, InkSoft)
         ActionIcon(
             if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
             if (isLiked) "Unlike" else "Like",
@@ -842,6 +872,7 @@ private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit)
     val live = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val shown = dragged ?: live
     val thickness by animateDpAsState(if (dragged != null) 5.dp else 2.dp, label = "scrubThickness")
+    val haptics = rememberHaptics()
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(formatDuration((shown * durationMs).toLong()), style = TimeStyle, color = InkSoft)
         Spacer(Modifier.width(12.dp))
@@ -856,15 +887,19 @@ private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit)
                 }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
-                        onDragStart = { o -> dragged = (o.x / size.width).coerceIn(0f, 1f) },
+                        onDragStart = { o -> haptics.detent(); dragged = (o.x / size.width).coerceIn(0f, 1f) },
                         onDragEnd = {
+                            haptics.tick()
                             dragged?.let { if (duration > 0) seek((it * duration).toLong()) }
                             dragged = null
                         },
                         onDragCancel = { dragged = null },
                     ) { change, _ ->
                         change.consume()
-                        dragged = (change.position.x / size.width).coerceIn(0f, 1f)
+                        val to = (change.position.x / size.width).coerceIn(0f, 1f)
+                        // A notch every tenth of the song, felt under the thumb.
+                        if ((to * 10).toInt() != ((dragged ?: to) * 10).toInt()) haptics.detent()
+                        dragged = to
                     }
                 }
                 .semantics {
@@ -949,61 +984,88 @@ private fun Transport(
     }
 }
 
-/** The queue as a numbered list of type: the playing song large and near the top, the rest smaller. */
-@Composable
-private fun QueuePane(
+/**
+ * The queue as numbered type: what's next, then what has played, each numbered by its place in the
+ * whole queue. [showPlaying] puts the song at the head, for a list beside the player
+ * rather than under it.
+ */
+private fun LazyListScope.queueRows(
     queue: List<QueueItem>,
     currentIndex: Int,
     onPlayQueueItem: (Int) -> Unit,
     onRemoveQueueItem: (Int) -> Unit,
-    modifier: Modifier,
+    showPlaying: Boolean,
 ) {
-    // Start already framed, so it doesn't jump on the first frame, and follow the song after that.
-    val list = rememberLazyListState(initialFirstVisibleItemIndex = (currentIndex - 1).coerceAtLeast(0))
-    LaunchedEffect(currentIndex) { list.animateScrollToItem((currentIndex - 1).coerceAtLeast(0)) }
-    LazyColumn(
-        state = list,
-        modifier = modifier.fadeEdges(),
-        contentPadding = PaddingValues(vertical = 10.dp),
-    ) {
-        itemsIndexed(queue, key = { i, it -> "q-$i-${it.mediaId}" }) { index, item ->
-            val current = index == currentIndex
-            val size by animateFloatAsState(if (current) 30f else 22f, tween(380), label = "queueSize")
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onPlayQueueItem(index) }
-                    .padding(vertical = 3.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Text(
-                    "%02d".format(index + 1),
-                    style = TimeStyle.copy(fontSize = 12.sp),
-                    color = InkSoft,
-                    modifier = Modifier.width(26.dp).padding(top = if (current) 8.dp else 4.dp),
-                )
-                Text(
-                    item.title,
-                    style = TitleStyle.copy(
-                        fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal,
-                        fontSize = size.sp,
-                        lineHeight = (size * 1.14f).sp,
-                    ),
-                    color = if (current) Ink else InkSoft,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
-                )
-                if (!current) PlainIconButton(
-                    Icons.Filled.Close,
-                    "Remove ${item.title} from the queue",
-                    { onRemoveQueueItem(index) },
-                    InkFaint,
-                    size = 34.dp,
-                    iconSize = 16.dp,
-                )
-            }
+    val upNext = queue.withIndex().filter { it.index > currentIndex }
+    val played = queue.withIndex().filter { it.index < currentIndex }
+    item(key = "upNext") {
+        QueueHeading("up next", if (upNext.isEmpty()) "nothing after this song" else "${upNext.size} song${if (upNext.size == 1) "" else "s"}")
+    }
+    if (showPlaying) queue.getOrNull(currentIndex)?.let { item ->
+        item(key = "playing") { QueueRow(currentIndex, item, true, { onPlayQueueItem(currentIndex) }, null) }
+    }
+    itemsIndexed(upNext, key = { _, it -> "q-${it.index}-${it.value.mediaId}" }) { _, entry ->
+        QueueRow(entry.index, entry.value, false, { onPlayQueueItem(entry.index) }, { onRemoveQueueItem(entry.index) })
+    }
+    if (played.isNotEmpty()) {
+        item(key = "played") { Spacer(Modifier.height(14.dp)); QueueHeading("already played", null) }
+        itemsIndexed(played, key = { _, it -> "q-${it.index}-${it.value.mediaId}" }) { _, entry ->
+            QueueRow(entry.index, entry.value, false, { onPlayQueueItem(entry.index) }, { onRemoveQueueItem(entry.index) })
         }
+    }
+}
+
+@Composable
+private fun QueueHeading(title: String, detail: String?) {
+    Row(
+        Modifier.fillMaxWidth().height(QUEUE_PEEK).padding(horizontal = 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = GlassSectionTitle, color = Ink, modifier = Modifier.weight(1f))
+        if (detail != null) Text(detail, style = TimeStyle.copy(fontSize = 14.sp), color = InkSoft)
+    }
+}
+
+@Composable
+private fun QueueRow(index: Int, item: QueueItem, current: Boolean, onClick: () -> Unit, onRemove: (() -> Unit)?) {
+    val haptics = rememberHaptics()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 22.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "%02d".format(index + 1),
+            style = TimeStyle.copy(fontSize = 12.sp),
+            color = InkSoft,
+            modifier = Modifier.width(30.dp),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                item.title,
+                style = TitleStyle.copy(fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal, fontSize = 21.sp, lineHeight = 26.sp),
+                color = Ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (item.artist.isNotBlank()) Text(
+                item.artist,
+                style = TextStyle(fontFamily = FontBody, fontSize = 14.sp, lineHeight = 18.sp),
+                color = InkSoft,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (onRemove != null) PlainIconButton(
+            Icons.Filled.Close,
+            "Remove ${item.title} from the queue",
+            { haptics.click(); onRemove() },
+            InkSoft,
+            size = 44.dp,
+            iconSize = 18.dp,
+        )
     }
 }
 

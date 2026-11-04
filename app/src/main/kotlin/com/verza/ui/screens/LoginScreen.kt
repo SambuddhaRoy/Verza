@@ -90,7 +90,9 @@ fun LoginScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    // The raw height: it isn't padded for this page, which has no chrome, and the WebView below it is opaque.
+    val statusTop = with(androidx.compose.ui.platform.LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+    Column(modifier = modifier.fillMaxSize().padding(top = statusTop)) {
         // ── Header ─────────────────────────────────────────────────────────
         Row(
             modifier = Modifier

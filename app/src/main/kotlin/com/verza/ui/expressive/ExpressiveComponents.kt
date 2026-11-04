@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -151,6 +152,7 @@ fun ExpressiveCard(
     aspect: Float = 1f,
 ) {
     val colors = LocalExpressiveColors.current
+    val haptics = rememberHaptics()
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val glass = isGlass()
@@ -170,7 +172,7 @@ fun ExpressiveCard(
                 interactionSource = interaction,
                 indication = null,
                 onClick = onClick,
-                onLongClick = onLongPress,
+                onLongClick = onLongPress?.let { act -> { haptics.threshold(); act() } },
             ),
     ) {
         Box(
@@ -350,11 +352,12 @@ fun GlassListRow(
     onLongClick: (() -> Unit)? = null,
 ) {
     val colors = LocalExpressiveColors.current
+    val haptics = rememberHaptics()
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(ShapeMedium)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick?.let { act -> { haptics.threshold(); act() } })
             .padding(start = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -388,6 +391,20 @@ fun GlassListRow(
             trailing?.invoke()
         }
     }
+}
+
+/** A button in the Glass design: the word itself, in large light type. */
+@Composable
+fun GlassWord(text: String, color: Color, enabled: Boolean = true, onClick: () -> Unit) {
+    Text(
+        text,
+        style = GlassSectionTitle.copy(fontSize = 24.sp, lineHeight = 30.sp),
+        color = if (enabled) color else color.copy(alpha = 0.4f),
+        modifier = Modifier
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { role = androidx.compose.ui.semantics.Role.Button }
+            .padding(vertical = 6.dp),
+    )
 }
 
 /**

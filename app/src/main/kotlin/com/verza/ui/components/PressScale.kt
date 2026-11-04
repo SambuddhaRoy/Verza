@@ -35,6 +35,7 @@ fun Modifier.pressableScale(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ): Modifier = composed {
+    val haptics = com.verza.ui.expressive.rememberHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -57,6 +58,6 @@ fun Modifier.pressableScale(
             indication = LocalIndication.current,
             enabled = enabled,
             onClick = onClick,
-            onLongClick = onLongClick,
+            onLongClick = onLongClick?.let { act -> { haptics.threshold(); act() } },
         )
 }
