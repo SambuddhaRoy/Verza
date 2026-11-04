@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.head
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -314,7 +315,7 @@ private fun LookCard(
             if (recommended) {
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "RECOMMENDED",
+                    "RECOMMENDED".head(),
                     style = BodyStrong.copy(fontSize = 10.sp, letterSpacing = 0.8.sp),
                     color = colors.accent,
                 )

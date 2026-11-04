@@ -163,7 +163,7 @@ fun AmbientDisplay(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = artist.uppercase(),
+                text = if (com.verza.ui.theme.isGlass()) artist else artist.uppercase(),
                 style = TextStyle(fontFamily = FontMono, fontSize = 11.sp, letterSpacing = 0.14.em),
                 color = cover.sub,
                 textAlign = TextAlign.Center,

@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.head
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import com.verza.ui.expressive.GlassEmpty
@@ -213,7 +214,7 @@ fun LibraryScreen(
                     if (isSignedIn && playlists.isNotEmpty()) {
                         item {
                             Text(
-                                "SAVED FROM YOUTUBE MUSIC",
+                                "SAVED FROM YOUTUBE MUSIC".head(),
                                 style = MetaLabel,
                                 color = xc.accent,
                                 modifier = Modifier.padding(start = 6.dp, top = 20.dp, bottom = 8.dp),
@@ -290,6 +291,7 @@ fun LibraryScreen(
 
     if (showCreatePlaylist) {
         AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
             onDismissRequest = { showCreatePlaylist = false },
             title = { Text("New playlist") },
             text = {

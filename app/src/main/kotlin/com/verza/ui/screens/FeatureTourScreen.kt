@@ -1,5 +1,6 @@
 package com.verza.ui.screens
 
+import com.verza.ui.expressive.head
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -265,7 +266,7 @@ private fun TourCard(page: TourPage) {
                 .background(colors.onContainer.copy(alpha = 0.05f))
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
-            Text("FIND IT", style = BodyStrong.copy(fontSize = 11.sp, letterSpacing = 1.2.sp), color = colors.accent)
+            Text("FIND IT".head(), style = BodyStrong.copy(fontSize = 11.sp, letterSpacing = 1.2.sp), color = colors.accent)
             Spacer(Modifier.height(4.dp))
             // One place per line: two run together on a phone read as one long path.
             page.where.split("  ·  ").forEach { place ->

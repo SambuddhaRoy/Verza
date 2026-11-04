@@ -55,6 +55,7 @@ fun ChangelogSheet(
 ) {
     val colors = LocalExpressiveColors.current
     ModalBottomSheet(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(),
         containerColor = colors.surface,
@@ -66,7 +67,7 @@ fun ChangelogSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("WHAT'S NEW", style = MetaLabel, color = colors.onSurfaceMuted)
+                    Text("WHAT'S NEW".head(), style = MetaLabel, color = colors.onSurfaceMuted)
                     Spacer(Modifier.height(4.dp))
                     Text("Verza $version", style = HeroTitle, color = colors.onSurface)
                 }
@@ -177,6 +178,7 @@ fun UpdateAvailableSheet(
 ) {
     val colors = LocalExpressiveColors.current
     ModalBottomSheet(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
         onDismissRequest = onLater,
         sheetState = rememberModalBottomSheetState(),
         containerColor = colors.surface,
@@ -184,7 +186,7 @@ fun UpdateAvailableSheet(
     ) {
         Column(modifier = Modifier.navigationBarsPadding().padding(horizontal = 20.dp)) {
             Spacer(Modifier.height(22.dp))
-            Text("UPDATE AVAILABLE", style = MetaLabel, color = colors.onSurfaceMuted)
+            Text("UPDATE AVAILABLE".head(), style = MetaLabel, color = colors.onSurfaceMuted)
             Spacer(Modifier.height(4.dp))
             Text("Verza $version", style = HeroTitle, color = colors.onSurface)
 

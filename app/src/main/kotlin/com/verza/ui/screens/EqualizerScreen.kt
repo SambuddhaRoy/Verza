@@ -163,11 +163,12 @@ private fun PresetChips(active: EqPreset?, onPick: (EqPreset) -> Unit) {
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (com.verza.ui.theme.isGlass()) 20.dp else 8.dp),
     ) {
         EqPreset.entries.forEach { preset ->
             val selected = preset == active
-            Box(
+            if (com.verza.ui.theme.isGlass()) com.verza.ui.expressive.ExpressiveChip(preset.displayName, selected, { onPick(preset) })
+            else Box(
                 modifier = Modifier
                     .clip(com.verza.ui.theme.CornerShape)
                     .background(if (selected) colors.primary else colors.primaryContainer.copy(alpha = 0.5f))
@@ -223,6 +224,7 @@ private fun BandSlider(
     val ext = LocalVerzaExtendedColors.current
     // Local drag state re-seeds whenever the committed value changes (e.g. "reset to flat").
     var live by remember(levelMb) { mutableStateOf(levelMb.toFloat()) }
+    val haptics = com.verza.ui.expressive.rememberHaptics()
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -236,8 +238,11 @@ private fun BandSlider(
         )
         Slider(
             value = live,
-            onValueChange = { live = it },
-            onValueChangeFinished = { onCommit(live.roundToInt()) },
+            onValueChange = {
+                if ((it / 100f).roundToInt() != (live / 100f).roundToInt()) haptics.detent()
+                live = it
+            },
+            onValueChangeFinished = { haptics.tick(); onCommit(live.roundToInt()) },
             valueRange = minMb.toFloat()..maxMb.toFloat(),
             enabled = enabled,
             modifier = Modifier.weight(1f),
@@ -257,6 +262,7 @@ private fun BassSlider(strength: Int, onCommit: (Int) -> Unit) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
     var live by remember(strength) { mutableStateOf(strength.toFloat()) }
+    val haptics = com.verza.ui.expressive.rememberHaptics()
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -264,8 +270,11 @@ private fun BassSlider(strength: Int, onCommit: (Int) -> Unit) {
     ) {
         Slider(
             value = live,
-            onValueChange = { live = it },
-            onValueChangeFinished = { onCommit(live.roundToInt()) },
+            onValueChange = {
+                if ((it / 100f).roundToInt() != (live / 100f).roundToInt()) haptics.detent()
+                live = it
+            },
+            onValueChangeFinished = { haptics.tick(); onCommit(live.roundToInt()) },
             valueRange = 0f..1000f,
             modifier = Modifier.weight(1f),
         )

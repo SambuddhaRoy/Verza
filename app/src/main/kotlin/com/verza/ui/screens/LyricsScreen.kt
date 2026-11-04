@@ -67,7 +67,8 @@ fun LyricsScreen(
                     Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Close", tint = colors.onBackground)
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Lyrics", style = MaterialTheme.typography.labelSmall, color = colors.primary)
+                    if (isGlass()) Text("lyrics", style = MaterialTheme.typography.labelMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal), color = colors.onSurfaceVariant)
+                    else Text("Lyrics", style = MaterialTheme.typography.labelSmall, color = colors.primary)
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleLarge,

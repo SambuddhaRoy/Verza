@@ -196,8 +196,8 @@ private fun ArtistRow(rank: Int, artist: ArtistStat) {
         ) {
             Text(
                 rank.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.titleLarge,
-                color = colors.primary,
+                style = if (com.verza.ui.theme.isGlass()) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleLarge,
+                color = if (com.verza.ui.theme.isGlass()) ext.muted else colors.primary,
             )
             Text(
                 artist.artist,
@@ -213,7 +213,7 @@ private fun ArtistRow(rank: Int, artist: ArtistStat) {
                 color = ext.muted,
             )
         }
-        HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass, modifier = Modifier.padding(horizontal = 24.dp))
+        if (!com.verza.ui.theme.isGlass()) HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass, modifier = Modifier.padding(horizontal = 24.dp))
     }
 }
 
@@ -268,7 +268,7 @@ private fun SongStatRow(rank: Int, song: SongStat, showPlays: Boolean = false) {
                 color = ext.muted,
             )
         }
-        HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass, modifier = Modifier.padding(horizontal = 24.dp))
+        if (!com.verza.ui.theme.isGlass()) HorizontalDivider(thickness = 0.5.dp, color = ext.borderGlass, modifier = Modifier.padding(horizontal = 24.dp))
     }
 }
 

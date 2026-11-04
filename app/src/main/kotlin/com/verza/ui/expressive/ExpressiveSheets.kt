@@ -95,6 +95,7 @@ fun ExpressiveMoreSheet(
 ) {
     val colors = LocalExpressiveColors.current
     ModalBottomSheet(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(),
         containerColor = colors.surface,

@@ -279,6 +279,7 @@ fun NowPlayingScreen(
         }
         if (confirmRemoveDownload) {
             AlertDialog(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,
                 onDismissRequest = { confirmRemoveDownload = false },
                 title = { Text("Remove this download?") },
                 text = { Text("$title won't play offline until you download it again.") },
@@ -347,14 +348,15 @@ private fun SleepTimerSheet(
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface) {
+    ModalBottomSheet(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,onDismissRequest = onDismiss, containerColor = com.verza.ui.expressive.LocalExpressiveColors.current.surface) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("Sleep timer", style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
+            SheetTitle("Sleep timer")
             Text(
                 text = if (active && remaining != null) "Pausing in $remaining" else "Fade out and pause after…",
                 style = MaterialTheme.typography.bodyMedium,
@@ -386,12 +388,20 @@ private fun SleepTimerSheet(
     }
 }
 
+/** The heading of a sheet, as More's has it in each design. */
+@Composable
+private fun SheetTitle(text: String) {
+    val colors = MaterialTheme.colorScheme
+    if (com.verza.ui.theme.isGlass()) Text(text.lowercase(), style = com.verza.ui.expressive.GlassSectionTitle, color = colors.onSurface)
+    else Text(text, style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
+}
+
 @Composable
 private fun SleepOption(label: String, tint: Color? = null, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Text(
         text = label,
-        style = MaterialTheme.typography.titleMedium,
+        style = if (com.verza.ui.theme.isGlass()) com.verza.ui.expressive.BodyStrong else MaterialTheme.typography.titleMedium,
         color = tint ?: colors.onSurface,
         modifier = Modifier
             .fillMaxWidth()
@@ -417,14 +427,15 @@ private fun FocusSheet(
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface) {
+    ModalBottomSheet(
+        modifier = com.verza.ui.expressive.TAP_HAPTICS,onDismissRequest = onDismiss, containerColor = com.verza.ui.expressive.LocalExpressiveColors.current.surface) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("Focus session", style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
+            SheetTitle("Focus session")
             Text(
                 text = "The queue refills itself so the music never stops.",
                 style = MaterialTheme.typography.bodyMedium,

@@ -138,9 +138,6 @@ spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
 - **Motion:** pages push in from the edge with the old one sliding a third behind (`PushSpring`,
   critically damped), tabs cross-fade, Now Playing rises over the page and drops back (NavHost
   transitions with `KeepUntilTransitionsFinished`); drag down to close.
-- **Haptics** (`Haptics`, `rememberHaptics`), sparing on purpose: a tick for tab changes, like and
-  the queue toggles; a click for play/pause; a bump when a drag crosses the point where letting go
-  acts (closing Now Playing, swiping to the next song).
 - **Now Playing** (`NowPlayingGlass.kt`) stands on the desktop's flowing cover (`FluidWash.kt`, a
   port of `COVER_FRAG` in the desktop's renderer.js): the cover blurred once into a 256px texture
   (sigma ~8% of it, matching the old 72dp wash), then domain-warped by simplex noise every frame,
@@ -159,14 +156,23 @@ spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
   On a phone upright the cover fills the screen over that wash (`Poster`), fading at the top into it
   and at the foot to near black (`PosterGrade`). The black under the type is measured per cover
   (`typeScrim`, `coverBrightness`): a dark cover keeps its colour, white type still reads on a white
-  one (`verza-shots/mob/_contrast.py`). Pills (Close, Now Playing, Lyrics), then the title in Inter's
+  one (`verza-shots/mob/_contrast.py`). From the top: the line that says it pulls down (a tap closes it too), the title in Inter's
   display cut, with no per-song face, then every artist and the album, each going to its page; under
   that the line with the queue position and the liner notes, which shows the format instead of "VERZA"
-  for a lossless song. At the foot six glyphs, a thin scrubber and a bare transport. No spectrum, no
-  volume slider. The queue opens over the picture as a numbered list. The output is in More. Landscape
-  and tablets have the square cover on the plain wash. Removing a download asks first
-  (`NowPlayingScreen`, for both designs). Lyrics sits on the same wash (`OnCoverWash`), and the NavHost
-  leaves its top unpadded on that route.
+  for a lossless song. At the foot six glyphs (Lyrics, like, add, radio, download, more), a thin scrubber
+  and a bare transport. No spectrum, no volume slider, and the output is in More. Landscape and tablets
+  have the square cover on the plain wash. Removing a download asks first (`NowPlayingScreen`, for both
+  designs). Lyrics sits on the same wash (`OnCoverWash`), and the NavHost leaves its top unpadded on that
+  route.
+  - **The queue is below the player, on one list** (`queueRows`), with its heading just showing at the
+    foot (`QUEUE_PEEK`). The player is the list's first item, a window high less the peek, so the page
+    scrolls as one thing with nothing nested. Up next comes first and what has played after it, each
+    numbered by its place in the queue. Back from the queue returns to the player, and the picture
+    darkens as the list comes up (read in a `graphicsLayer`, so a scroll is a redraw). On a tablet the
+    queue stays beside the player.
+  - **Pull to close is a NestedScrollConnection** (`PullToClose`): it only takes the drag the list had no
+    use for, so it can't start until the player is all in view. A column that doesn't scroll gets the
+    same drag by being in a `verticalScroll` of exactly its own height (tablets).
   - **Where the links come from** (`InnerTube.trackLinks`): the byline runs of the song's line in
     `next`. A video has no album, so it searches songs and takes the same title by one of the same
     artists (`parseSongMatch`); anything looser hands a tribute its album. A video's uploader is a
@@ -175,6 +181,19 @@ spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
 
 ## Both designs
 
+- **Haptics are felt from above, not asked for** (`tapHaptics` in `GlassChrome.kt`, on the root Row of
+  `VerzaNavigation` and each sheet and dialog through `TAP_HAPTICS`, those being windows of their own).
+  It watches in the Main pass, which runs child to parent, so by then a clickable has consumed the lift;
+  empty page and scrolling don't consume one. So nothing has to remember, and a new button is covered.
+  `Haptics` keeps 60ms of memory so a button's own firmer haptic and this one are one feeling. Kinds:
+  `tick` every tap, `click` play and pause and removing from the queue, `detent` notches under a drag,
+  `threshold` a gesture passing the point where letting go acts, and long presses.
+  - **The constants matter.** CLOCK_TICK and CONTEXT_CLICK are no-ops on plenty of phones, and
+    TEXT_HANDLE_MOVE is dropped wherever the text handle's haptic is configured off, which is the
+    default. Use KEYBOARD_TAP, VIRTUAL_KEY, and SEGMENT_TICK on 34+.
+  - **Check it from the system's log, the emulator included:** `adb shell dumpsys vibrator_manager` lists
+    each one as `com.verza ... performHapticFeedback(constant=N)`. `verza-shots/mob/_audit2.py haptics`
+    counts them per interaction.
 - **One corner radius, everywhere** (`VerzaCorner`, 12dp, `CornerShape` in `ui/theme/Shapes.kt`): covers,
   cards, buttons, chips, fields, sheets, dialogs, the dock, widgets. Nothing morphs on press. Something
   smaller than twice it comes out as a pill or a circle by itself, so bars and dots need no exception.

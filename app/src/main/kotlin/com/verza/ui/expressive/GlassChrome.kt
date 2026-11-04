@@ -11,6 +11,13 @@ import android.view.View
 import android.view.RoundedCorner
 import android.view.HapticFeedbackConstants
 import android.os.Build
+import android.os.SystemClock
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -404,20 +411,63 @@ fun PlainIconButton(
 }
 
 /**
- * Touch you can feel, used the way iOS uses it: sparingly, and only where something physical
- * happened. A tick for a change of selection or a toggle, a firmer click for play and pause, and a
- * distinct bump when a drag crosses the point where letting go will act (close, skip). Everything
- * else stays silent, because haptics on every tap stop meaning anything. The system's own haptics
- * setting is honoured by performHapticFeedback.
+ * Touch you can feel. A tap for every press ([tapHaptics] gives them all one), a firmer one for play
+ * and pause, a light notch while dragging over something, and a distinct bump when a drag crosses the
+ * point where letting go will act. The system's own touch-feedback setting is honoured by
+ * performHapticFeedback.
+ *
+ * The constants matter: CLOCK_TICK and CONTEXT_CLICK do nothing at all on plenty of phones, and
+ * VIRTUAL_KEY and KEYBOARD_TAP are the two everything implements.
  */
 class Haptics(private val view: View) {
-    fun tick() { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
-    fun click() { view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK) }
-    fun threshold() {
-        view.performHapticFeedback(
-            if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE
-            else HapticFeedbackConstants.CONTEXT_CLICK,
-        )
+    fun tick() = fire(HapticFeedbackConstants.KEYBOARD_TAP)
+    fun click() = fire(HapticFeedbackConstants.VIRTUAL_KEY)
+    // Not TEXT_HANDLE_MOVE: the system drops it wherever the text handle's haptic is configured off,
+    // which is the default.
+    fun detent() = fire(if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.SEGMENT_TICK else HapticFeedbackConstants.KEYBOARD_TAP, light = true)
+    fun threshold() = fire(
+        if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE
+        else HapticFeedbackConstants.LONG_PRESS,
+    )
+
+    // One press, one feeling: a button's own haptic and tapHaptics' both land on the same lift.
+    private fun fire(kind: Int, light: Boolean = false) {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastFired < 60) return
+        // A notch doesn't hold off what comes after it: the end of a drag lands right behind the last one.
+        if (!light) lastFired = now
+        view.performHapticFeedback(kind)
+    }
+
+    private companion object {
+        var lastFired = 0L
+    }
+}
+
+/**
+ * A tap under this node, if something under it took the tap, is felt. Watching from above rather than
+ * in each button means nothing has to remember to ask, whatever draws it: every clickable consumes
+ * the lift, and empty page and scrolling don't. A dialog or sheet is its own window, so each carries
+ * its own.
+ */
+val TAP_HAPTICS: Modifier get() = Modifier.tapHaptics()
+
+fun Modifier.tapHaptics(): Modifier = composed {
+    val haptics = rememberHaptics()
+    pointerInput(Unit) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Main)
+            var strayed = false
+            while (true) {
+                val change = awaitPointerEvent(PointerEventPass.Main).changes.firstOrNull { it.id == down.id } ?: break
+                if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) strayed = true
+                if (change.changedToUpIgnoreConsumed()) {
+                    val held = change.uptimeMillis - down.uptimeMillis
+                    if (!strayed && change.isConsumed && held < viewConfiguration.longPressTimeoutMillis) haptics.tick()
+                    break
+                }
+            }
+        }
     }
 }
 

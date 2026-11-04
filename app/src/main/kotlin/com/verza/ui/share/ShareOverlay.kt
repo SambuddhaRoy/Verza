@@ -50,12 +50,14 @@ fun ShareCardOverlay(
     var working by remember { mutableStateOf<String?>(null) }
     val baseName = remember(fileName) { fileName.substringBeforeLast('.') }
 
+    // Drawn over the page rather than in a window of its own, so Back has to be told.
+    androidx.activity.compose.BackHandler(onBack = onDismiss)
     Box(modifier = Modifier.fillMaxSize()) {
         // Scrim — tap to dismiss.
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(Color.Black.copy(alpha = 0.78f))
+                .background(Color.Black.copy(alpha = 0.9f))
                 .pointerInput(Unit) { detectTapGestures { onDismiss() } },
         )
         // Content — consumes its own taps so tapping the card doesn't dismiss.
