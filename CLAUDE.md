@@ -186,6 +186,15 @@ spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
 
 ## Both designs
 
+- **Below Android 13, a dependency can call what the phone hasn't got.** Moving NewPipeExtractor to a main
+  commit (1.20.3) brought in `URLDecoder.decode(String, Charset)`, which is API 33: every lookup threw
+  `NoSuchMethodError` and nothing played on Android 12 and below, for six releases, because nothing was
+  ever run below 15. Core library desugaring (`desugar_jdk_libs_nio`) is what covers it. Lint doesn't see into
+  libraries, so run it: `VerzaAndroid11` is the AVD, on an API 30 image. The release build too, since R8 decides
+  what stays. `verza-shots/mob/_a11.py` walks the app there. On API 30 uiautomator reports anything below
+  about y=2072 as bounds (0,0,0,0), the dock included, though touches land: tap by position, and scroll a
+  control higher before looking for it. `wm user-rotation` doesn't exist there; `settings put system
+  accelerometer_rotation 0` does work.
 - **Standby** (`AmbientDisplay.kt`, Now Playing > More): three faces in a pager, the last one remembered.
   The clock's digits are cut out of the cover: `saveLayer` with a `DstIn` paint, then the text. A `DstIn`
   on the text itself only reaches the pixels under its glyphs, so the whole picture stays. Dark covers

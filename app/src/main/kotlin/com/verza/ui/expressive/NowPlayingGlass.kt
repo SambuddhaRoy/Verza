@@ -149,6 +149,7 @@ import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.size.Precision
 import com.verza.player.QueueItem
 import com.verza.ui.sleeve.grain
 import com.verza.ui.sleeve.vignette
@@ -514,7 +515,9 @@ private fun DriftWash(artworkUrl: Any?, motion: Boolean, modifier: Modifier) {
     // blur, a tiny picture stretched is the blur.
     val px = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 160 else 24
     val request = remember(artworkUrl, px) {
-        ImageRequest.Builder(context).data(artworkUrl).size(px).crossfade(700).build()
+        // EXACT: left to itself Coil reuses the large cover it already holds, and below 12 that shows as a
+        // sharp ghost of the picture, there being no blur to hide it.
+        ImageRequest.Builder(context).data(artworkUrl).size(px).precision(Precision.EXACT).crossfade(700).build()
     }
     // With motion off nothing runs at all, rather than an animation from 0 to 0 asking for frames.
     // Read only inside graphicsLayer below, so a frame of drift is a redraw, not a recomposition.

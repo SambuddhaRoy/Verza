@@ -25,8 +25,8 @@ android {
         applicationId = "com.verza"
         minSdk = 26
         targetSdk = 35
-        versionCode = 77
-        versionName = "1.20.8"
+        versionCode = 78
+        versionName = "1.20.9"
     }
 
     signingConfigs {
@@ -68,6 +68,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // NewPipeExtractor calls Java APIs Android only has from 13 (URLDecoder.decode with a Charset, for
+        // one). Without this every stream lookup throws NoSuchMethodError below 13: nothing plays at all.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -81,6 +84,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     implementation(project(":innertube"))
     implementation(project(":player"))
 

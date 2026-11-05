@@ -62,14 +62,16 @@ class PlayPauseTileService : TileService() {
         } else {
             // Nothing queued yet — send the user to the app rather than starting silence.
             if (ctrl.mediaItemCount == 0) {
-                startActivityAndCollapse(
-                    android.app.PendingIntent.getActivity(
-                        this,
-                        0,
-                        packageManager.getLaunchIntentForPackage(packageName),
-                        android.app.PendingIntent.FLAG_IMMUTABLE,
-                    ),
-                )
+                val open = packageManager.getLaunchIntentForPackage(packageName) ?: return
+                // The PendingIntent form only exists from 14, and the Intent form throws from 14.
+                if (android.os.Build.VERSION.SDK_INT >= 34) {
+                    startActivityAndCollapse(
+                        android.app.PendingIntent.getActivity(this, 0, open, android.app.PendingIntent.FLAG_IMMUTABLE),
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    startActivityAndCollapse(open.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
                 return
             }
             ctrl.play()
