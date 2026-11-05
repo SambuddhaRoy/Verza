@@ -85,6 +85,7 @@ coil-compose                        = { group = "io.coil-kt.coil3", name = "coil
 coil-network-okhttp                 = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 
 # ── YouTube extraction ───────────────────────────────────────────────────────
+desugar-jdk-libs-nio                = { group = "com.android.tools", name = "desugar_jdk_libs_nio", version = "2.1.5" }
 newpipe-extractor                   = { group = "com.github.TeamNewPipe", name = "NewPipeExtractor", version.ref = "newpipe" }
 
 # ── Testing ────────────────────────────────────────────────────────────────────
