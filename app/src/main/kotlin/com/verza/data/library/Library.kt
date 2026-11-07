@@ -39,6 +39,26 @@ class Library(db: LibraryDb) {
         if (!song.onPhone) sync.add(SyncRow(op = if (liked) "like" else "unlike", videoId = song.id))
     }
 
+    /** A new playlist, made here and queued to be made on the account too. Its id. */
+    suspend fun createPlaylist(name: String): Long {
+        val id = lists.create(PlaylistRow(name = name))
+        sync.add(SyncRow(op = "create_playlist", playlistId = id, title = name))
+        return id
+    }
+
+    /** [song] at the end of the playlist, here and, once the playlist is on the account, there. */
+    suspend fun addToPlaylist(playlistId: Long, song: Song) {
+        if (songs.get(song.id) == null) songs.put(SongRow(song.id, song.title, song.artist, song.art, song.durationMs))
+        lists.add(PlaylistTrackRow(playlistId, song.id, lists.nextPosition(playlistId)))
+        if (!song.onPhone) sync.add(SyncRow(op = "add_to_playlist", videoId = song.id, playlistId = playlistId, remoteId = lists.get(playlistId)?.remoteId.orEmpty()))
+    }
+
+    /** [song] is saved at [path] (a content:// URI or a file path), and plays from there. */
+    suspend fun downloaded(song: Song, path: String) {
+        val row = songs.get(song.id) ?: SongRow(song.id, song.title, song.artist, song.art, song.durationMs)
+        songs.put(row.copy(downloadPath = path))
+    }
+
     /** The song started playing: it goes to the top of Recent, keeping whatever else it had. */
     suspend fun played(song: Song) {
         val row = songs.get(song.id)

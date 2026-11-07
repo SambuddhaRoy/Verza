@@ -28,6 +28,7 @@ import com.verza.ui.kit.Empty
 import com.verza.ui.kit.ListRow
 import com.verza.ui.kit.LocalDockHeight
 import com.verza.ui.kit.Masthead
+import com.verza.ui.kit.SongMenu
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 
@@ -102,7 +103,7 @@ private fun SongList(songs: List<Song>) {
     val now by player.state.collectAsState()
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
         itemsIndexed(songs, key = { _, s -> s.id }) { i, song ->
-            ListRow(song.title, song.artist, art = song.art?.let { artAt(it, 226) }, playing = song.id == now.song?.id, onClick = { player.play(songs, i) })
+            ListRow(song.title, song.artist, art = song.art?.let { artAt(it, 226) }, playing = song.id == now.song?.id, onClick = { player.play(songs, i) }, trailing = { SongMenu(song) })
         }
     }
 }

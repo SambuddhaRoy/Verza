@@ -57,6 +57,7 @@ import com.verza.playback.NowPlaying
 import com.verza.ui.home.HomePage
 import com.verza.ui.kit.Cover
 import com.verza.ui.kit.LocalDockHeight
+import com.verza.ui.kit.LocalOpen
 import com.verza.ui.library.LibraryPage
 import com.verza.ui.page.PageScreen
 import com.verza.ui.search.SearchPage
@@ -82,7 +83,7 @@ fun Shell() {
     var playerOpen by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(p.canvas)) {
-        CompositionLocalProvider(LocalDockHeight provides dock) {
+        CompositionLocalProvider(LocalDockHeight provides dock, LocalOpen provides open) {
             NavHost(
                 navController = nav,
                 startDestination = "home",
@@ -132,6 +133,13 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
             }
         }
         Progress(now)
+        // While downloads run, one quiet line says how far along they are.
+        val downloads by LocalContext.current.graph.downloads.progress.collectAsState()
+        if (downloads.running) Text(
+            "downloading ${downloads.done + 1} of ${downloads.total}" + (downloads.current?.let { " · $it" } ?: ""),
+            style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 6.dp),
+        )
         Row(
             Modifier.fillMaxWidth().height(TabsHeight).padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
