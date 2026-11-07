@@ -124,6 +124,8 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
         item { Row(Modifier.fillMaxWidth().clip(Corner).clickable { adding = true }.padding(vertical = 12.dp)) { Text("Add a source", style = Type.RowTitle, color = LocalPalette.current.accent) } }
         if (sources.isNotEmpty()) item { Toggle("Use on mobile data", "A lossless song is roughly 30 MB, several times YouTube's", s.sourcesOnMobileData) }
 
+        item { SectionTitle("your library") }
+        item { LibraryFile() }
         item { SectionTitle("listening elsewhere") }
         item { ListenBrainz() }
         item { SectionTitle("search") }
@@ -259,4 +261,67 @@ private fun ListenBrainz() {
         }
         note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
     }
+}
+
+/**
+ * Your library as a file: export it, import one (the old app's backups too), choose where downloads
+ * go, and reset the listening log. The sign-in is never in the file.
+ */
+@Composable
+private fun LibraryFile() {
+    val context = LocalContext.current
+    val graph = context.graph
+    val scope = rememberCoroutineScope()
+    val p = LocalPalette.current
+    var note by remember { mutableStateOf<String?>(null) }
+    var resetting by remember { mutableStateOf(false) }
+    val folder by graph.settings.downloadFolder.flow.collectAsState(initial = "")
+    val export = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            note = runCatching {
+                val text = graph.backup.export()
+                withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(uri)!!.use { it.write(text.toByteArray()) } }
+                "Saved"
+            }.getOrElse { "Couldn't save the file" }
+        }
+    }
+    val import = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            note = runCatching {
+                val text = withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() } }
+                val r = graph.backup.import(text)
+                "Added ${r.playlists} playlists and ${r.plays} listens, from ${r.songs} songs"
+            }.getOrElse { "That isn't a Verza backup" }
+        }
+    }
+    val chooseFolder = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        // Kept across restarts, or the folder is forgotten the next time the phone reboots.
+        context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        scope.launch { graph.settings.downloadFolder.set(uri.toString()) }
+    }
+    @Composable fun Action(title: String, subtitle: String, onClick: () -> Unit) {
+        Row(Modifier.fillMaxWidth().clip(Corner).clickable(onClick = onClick).padding(vertical = 10.dp)) {
+            Column {
+                Text(title, style = Type.RowTitle, color = p.ink)
+                Text(subtitle, style = Type.RowSubtitle, color = p.inkMuted)
+            }
+        }
+    }
+    Column {
+        Action("Export", "Playlists, likes and listening to a file") { export.launch("verza-library.json") }
+        Action("Import", "Merge in a backup, from this app or the old one") { import.launch(arrayOf("application/json", "text/plain", "*/*")) }
+        Action("Save music to", if (folder.isBlank()) "Music/Verza" else (android.net.Uri.parse(folder).lastPathSegment?.substringAfter(':') ?: "A folder you chose")) { chooseFolder.launch(null) }
+        Action("Reset listening stats", "Delete your play history, for Your Sound and the mixes") { resetting = true }
+        note?.let { Text(it, style = Type.RowSubtitle, color = p.accent) }
+    }
+    if (resetting) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { resetting = false },
+        title = { Text("Reset listening stats?") },
+        text = { Text("Your play history goes. Likes, playlists and downloads stay.") },
+        confirmButton = { TextButton(onClick = { resetting = false; scope.launch { graph.db.stats().clearAll(); note = "Listening stats reset" } }) { Text("Reset") } },
+        dismissButton = { TextButton(onClick = { resetting = false }) { Text("Cancel") } },
+    )
 }
