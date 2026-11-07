@@ -102,6 +102,8 @@ class YouTube(private val http: OkHttpClient, private val cookie: () -> String?)
 
     /** The signed-in account's saved playlists, and the artists it follows. */
     suspend fun accountPlaylists(): List<Card> = parsePages(browse("FEmusic_liked_playlists"))
+    /** The account's Liked Music playlist. */
+    suspend fun accountLiked(): List<Song> = parseSongs(browse("VLLM"))
     suspend fun accountArtists(): List<Card> = parsePages(browse("FEmusic_library_corpus_artists"))
 
     /** A song's radio: YouTube's endless mix seeded from it. */
