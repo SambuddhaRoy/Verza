@@ -142,22 +142,22 @@ class Player(
         val f = group.getTrackFormat(i)
         return losslessLabel(f.sampleMimeType, f.pcmEncoding, f.sampleRate, f.containerMimeType)
     }
-
-    /** A song as a queued item. YouTube songs get the placeholder the resolver replaces. */
-    private fun item(song: Song): MediaItem = MediaItem.Builder()
-        .setMediaId(song.id)
-        .setUri(if (song.onPhone) Uri.parse(song.id) else placeholder(song.id, song.title, song.artist, song.durationMs))
-        .setMediaMetadata(
-            MediaMetadata.Builder()
-                .setTitle(song.title)
-                .setArtist(song.artist)
-                .setAlbumTitle(song.album)
-                .setArtworkUri(song.art?.let { Uri.parse(artAt(it, 544)) })
-                .setDurationMs(song.durationMs.takeIf { it > 0 })
-                .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                .setIsBrowsable(false)
-                .setIsPlayable(true)
-                .build(),
-        )
-        .build()
 }
+
+/** A song as a queued item. YouTube songs get the placeholder the resolver replaces. */
+fun item(song: Song): MediaItem = MediaItem.Builder()
+    .setMediaId(song.id)
+    .setUri(if (song.onPhone) Uri.parse(song.id) else placeholder(song.id, song.title, song.artist, song.durationMs))
+    .setMediaMetadata(
+        MediaMetadata.Builder()
+            .setTitle(song.title)
+            .setArtist(song.artist)
+            .setAlbumTitle(song.album)
+            .setArtworkUri(song.art?.let { Uri.parse(artAt(it, 544)) })
+            .setDurationMs(song.durationMs.takeIf { it > 0 })
+            .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .build(),
+    )
+    .build()
