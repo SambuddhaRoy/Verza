@@ -64,6 +64,8 @@
             </intent-filter>
         </service>
         <receiver android:name=".data.InstallResult" android:exported="false" />
+        <!-- Android Auto lists only apps that say they're for it. Media only. -->
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
         <!-- Home-screen widget. Not exported: the only thing that sends it these actions is its
              own PendingIntents, and the transport commands would otherwise be open to any app. -->
         <receiver
