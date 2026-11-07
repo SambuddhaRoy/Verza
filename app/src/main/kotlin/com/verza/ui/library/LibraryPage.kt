@@ -1,0 +1,108 @@
+package com.verza.ui.library
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.verza.data.Song
+import com.verza.data.artAt
+import com.verza.graph
+import com.verza.ui.kit.Empty
+import com.verza.ui.kit.ListRow
+import com.verza.ui.kit.LocalDockHeight
+import com.verza.ui.kit.Masthead
+import com.verza.ui.theme.LocalPalette
+import com.verza.ui.theme.Type
+
+private val Sections = listOf("liked", "recent", "playlists", "downloaded", "on device")
+
+/** The library as its sections in big words, the Zune's main menu; each opens as a page. */
+@Composable
+fun LibraryPage(onOpen: (String) -> Unit) {
+    val library = LocalContext.current.graph.library
+    var open by rememberSaveable { mutableStateOf<String?>(null) }
+    BackHandler(enabled = open != null) { open = null }
+    val p = LocalPalette.current
+
+    when (val section = open) {
+        null -> Column(Modifier.fillMaxSize()) {
+            Masthead("library", "your collection")
+            for (name in Sections) {
+                Text(
+                    name,
+                    style = Type.Masthead.copy(fontSize = 36.sp, lineHeight = 42.sp),
+                    color = p.ink,
+                    modifier = Modifier.fillMaxWidth().clickable { open = name }.padding(horizontal = 20.dp, vertical = 4.dp),
+                )
+            }
+        }
+        "on device" -> Section(section) { OnDevice(onOpen) }
+        "playlists" -> {
+            val lists by library.playlists.collectAsState(initial = null)
+            Section(section) {
+                val l = lists ?: return@Section
+                if (l.isEmpty()) Empty("Make a playlist from any song's menu")
+                else LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
+                    items(l, key = { it.playlist.id }) { pl ->
+                        ListRow(pl.playlist.name, if (pl.count == 1) "1 song" else "${pl.count} songs", art = pl.cover?.let { artAt(it, 226) },
+                            onClick = { onOpen("pl:${pl.playlist.id}") })
+                    }
+                }
+            }
+        }
+        else -> {
+            val songs by when (section) {
+                "liked" -> library.liked
+                "recent" -> library.recent
+                else -> library.downloaded
+            }.collectAsState(initial = null)
+            Section(section) {
+                val s = songs ?: return@Section
+                if (s.isEmpty()) Empty(emptyLine(section)) else SongList(s)
+            }
+        }
+    }
+}
+
+private fun emptyLine(section: String) = when (section) {
+    "liked" -> "Like songs to see them here"
+    "recent" -> "Play something to see it here"
+    else -> "Download songs to listen offline"
+}
+
+@Composable
+private fun Section(title: String, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Masthead(title)
+        content()
+    }
+}
+
+/** Songs that play as a list from the one tapped. */
+@Composable
+private fun SongList(songs: List<Song>) {
+    val player = LocalContext.current.graph.player
+    val now by player.state.collectAsState()
+    LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
+        itemsIndexed(songs, key = { _, s -> s.id }) { i, song ->
+            ListRow(song.title, song.artist, art = song.art?.let { artAt(it, 226) }, playing = song.id == now.song?.id, onClick = { player.play(songs, i) })
+        }
+    }
+}
