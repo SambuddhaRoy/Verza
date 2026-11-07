@@ -38,7 +38,7 @@ import com.verza.ui.kit.SongMenu
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 
-private val Sections = listOf("liked", "recent", "playlists", "downloaded", "on device")
+private val Sections = listOf("liked", "recent", "playlists", "downloaded", "on device", "your sound")
 
 /** The library as its sections in big words, the Zune's main menu; each opens as a page. */
 @Composable
@@ -61,6 +61,7 @@ fun LibraryPage(onOpen: (String) -> Unit) {
             }
         }
         "on device" -> Section(section) { OnDevice(onOpen) }
+        "your sound" -> Section(section) { YourSound() }
         "playlists" -> {
             val lists by library.playlists.collectAsState(initial = null)
             val theirs by account("account-playlists", ListSerializer(Card.serializer())) { it.accountPlaylists() }

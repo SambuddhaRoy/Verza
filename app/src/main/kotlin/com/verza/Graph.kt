@@ -36,10 +36,17 @@ class Graph(val context: Context) {
     }
 
     // The old app's database file, opened as it is (see data/library/Tables.kt).
-    private val db: LibraryDb by lazy { Room.databaseBuilder(context, LibraryDb::class.java, "verza.db").build() }
+    val db: LibraryDb by lazy { Room.databaseBuilder(context, LibraryDb::class.java, "verza.db").build() }
 
     val settings: Settings by lazy { Settings(context) }
     val saved: com.verza.data.Saved by lazy { com.verza.data.Saved(context) }
+    // The mixes on Home: made on the phone from what you play, and from ListenBrainz when connected.
+    private val mixSource by lazy { com.verza.data.mixes.MusicRepository(youtube) }
+    val mixPrefs by lazy { com.verza.data.mixes.PreferencesRepository(context) }
+    val listenBrainz by lazy { com.verza.data.mixes.ListenBrainzRepository(context, http, mixSource) }
+    val mixes by lazy {
+        com.verza.data.mixes.MixesRepository(context, scope, db.stats(), mixSource, com.verza.data.mixes.GenreRepository(context, http), mixPrefs, listenBrainz)
+    }
     val updates: com.verza.data.Updates by lazy { com.verza.data.Updates(context, http) }
     val lyrics: com.verza.data.LyricsSource by lazy { com.verza.data.LyricsSource(http) }
     val artwork: com.verza.data.ArtworkRepository by lazy { com.verza.data.ArtworkRepository(http, context) }

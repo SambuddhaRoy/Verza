@@ -116,6 +116,8 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit) {
         item { Row(Modifier.fillMaxWidth().clip(Corner).clickable { adding = true }.padding(vertical = 12.dp)) { Text("Add a source", style = Type.RowTitle, color = LocalPalette.current.accent) } }
         if (sources.isNotEmpty()) item { Toggle("Use on mobile data", "A lossless song is roughly 30 MB, several times YouTube's", s.sourcesOnMobileData) }
 
+        item { SectionTitle("listening elsewhere") }
+        item { ListenBrainz() }
         item { SectionTitle("search") }
         item { Toggle("Save search history", "Remember recent searches", s.saveSearchHistory) }
         item {
@@ -211,5 +213,42 @@ private fun <T> Choice(title: String, subtitle: String, options: List<Pair<T, St
             Text(subtitle, style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
         }
         Text(options[i].second, style = Type.RowTitle, color = LocalPalette.current.accent)
+    }
+}
+
+/**
+ * A ListenBrainz username adds its weekly mixes to Home. Spotify listening reaches Verza this way:
+ * connect Spotify to ListenBrainz there. Checked before it's kept, and the mixes build in the background.
+ */
+@Composable
+private fun ListenBrainz() {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val user by graph.mixPrefs.listenBrainzUser.flow.collectAsState(initial = "")
+    var typed by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf<String?>(null) }
+    val p = LocalPalette.current
+    if (user.isNotBlank()) Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("ListenBrainz: $user", style = Type.RowTitle, color = p.ink)
+            Text("Its weekly mixes are on Home", style = Type.RowSubtitle, color = p.inkMuted)
+        }
+        TextButton(onClick = { scope.launch { graph.mixPrefs.listenBrainzUser.set(""); graph.mixes.rebuildListenBrainz() } }) { Text("Disconnect") }
+    } else Column(Modifier.padding(vertical = 4.dp)) {
+        Text("A ListenBrainz username brings its weekly mixes to Home, Spotify listening included.", style = Type.Body, color = p.inkMuted)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(typed, { typed = it; note = null }, singleLine = true, placeholder = { Text("Username") }, shape = Corner, modifier = Modifier.weight(1f))
+            TextButton(enabled = typed.isNotBlank(), onClick = {
+                note = "Checking…"
+                scope.launch {
+                    note = when (val c = graph.listenBrainz.check(typed.trim())) {
+                        is com.verza.data.mixes.ListenBrainzRepository.Check.Found -> { graph.mixPrefs.listenBrainzUser.set(typed.trim()); graph.mixes.rebuildListenBrainz(); null }
+                        com.verza.data.mixes.ListenBrainzRepository.Check.NoSuchUser -> "There's no ListenBrainz user by that name"
+                        com.verza.data.mixes.ListenBrainzRepository.Check.Unreachable -> "Couldn't reach ListenBrainz. Try again."
+                    }
+                }
+            }) { Text("Connect") }
+        }
+        note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
     }
 }

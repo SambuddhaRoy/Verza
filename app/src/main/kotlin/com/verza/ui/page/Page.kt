@@ -81,6 +81,11 @@ class PageModel(graph: Graph, id: String) : ViewModel() {
             // YouTube playlist.
             val pages: Flow<PageContent> = when {
                 id.startsWith("local:") -> kotlinx.coroutines.flow.flow { graph.phone.collection(id)?.let { emit(PageContent.OfAlbum(it)) } ?: emit(PageContent.Failed("Couldn't find that on this phone")) }
+                id.startsWith("mix:") -> kotlinx.coroutines.flow.flow {
+                    graph.mixes.getMix(id.removePrefix("mix:"))?.let { m ->
+                        emit(PageContent.OfAlbum(Album(m.title, m.subtitle, m.items.firstOrNull()?.thumbnailUrl, m.items.mapNotNull { it.toCard().song })))
+                    } ?: emit(PageContent.Failed("This mix has been remade; open it again from Home"))
+                }
                 id.startsWith("pl:") -> graph.library.playlist(id.removePrefix("pl:").toLong()).map { PageContent.OfAlbum(it) }
                 id.startsWith("UC") -> graph.saved.load(id, Artist.serializer()) { graph.youtube.artist(id) }.map { PageContent.OfArtist(it) }
                 else -> graph.saved.load(id, Album.serializer()) { graph.youtube.album(id) }.map { PageContent.OfAlbum(it) }
