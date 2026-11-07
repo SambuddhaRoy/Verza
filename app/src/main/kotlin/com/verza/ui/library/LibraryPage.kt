@@ -21,7 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.verza.data.Card
 import com.verza.data.Song
+import androidx.compose.runtime.State
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.flow.catch
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
 import com.verza.data.artAt
 import com.verza.graph
 import com.verza.ui.kit.Empty
@@ -57,20 +63,31 @@ fun LibraryPage(onOpen: (String) -> Unit) {
         "on device" -> Section(section) { OnDevice(onOpen) }
         "playlists" -> {
             val lists by library.playlists.collectAsState(initial = null)
+            val theirs by account("account-playlists", ListSerializer(Card.serializer())) { it.accountPlaylists() }
             Section(section) {
                 val l = lists ?: return@Section
-                if (l.isEmpty()) Empty("Make a playlist from any song's menu")
+                if (l.isEmpty() && theirs.isEmpty()) Empty("Make a playlist from any song's menu")
                 else LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
                     items(l, key = { it.playlist.id }) { pl ->
                         ListRow(pl.playlist.name, if (pl.count == 1) "1 song" else "${pl.count} songs", art = pl.cover?.let { artAt(it, 226) },
                             onClick = { onOpen("pl:${pl.playlist.id}") })
                     }
+                    if (theirs.isNotEmpty()) item { Text("from youtube music", style = Type.Section, color = p.ink, modifier = Modifier.padding(top = 20.dp, bottom = 6.dp)) }
+                    items(theirs, key = { it.page!! }) { c -> ListRow(c.title, c.subtitle, art = c.art?.let { artAt(it, 226) }, onClick = { onOpen(c.page!!) }) }
                 }
+            }
+        }
+        "liked" -> {
+            // Your likes here first, then the account's, each song once.
+            val mine by library.liked.collectAsState(initial = null)
+            val theirs by account("account-liked", ListSerializer(Song.serializer())) { it.accountLiked() }
+            Section(section) {
+                val s = (mine ?: return@Section).let { m -> (m + theirs).distinctBy { it.id } }
+                if (s.isEmpty()) Empty(emptyLine(section)) else SongList(s)
             }
         }
         else -> {
             val songs by when (section) {
-                "liked" -> library.liked
                 "recent" -> library.recent
                 else -> library.downloaded
             }.collectAsState(initial = null)
@@ -79,6 +96,20 @@ fun LibraryPage(onOpen: (String) -> Unit) {
                 if (s.isEmpty()) Empty(emptyLine(section)) else SongList(s)
             }
         }
+    }
+}
+
+/**
+ * What the signed-in account has under [key], from its saved copy and then fresh; empty when signed
+ * out or never fetched.
+ */
+@Composable
+private fun <T> account(key: String, serializer: KSerializer<List<T>>, fetch: suspend (com.verza.data.youtube.YouTube) -> List<T>): State<List<T>> {
+    val graph = LocalContext.current.graph
+    val cookie by graph.account.cookie.collectAsState()
+    return produceState(emptyList(), cookie) {
+        if (cookie.isNullOrBlank()) { value = emptyList(); return@produceState }
+        graph.saved.load(key, serializer) { fetch(graph.youtube) }.catch { }.collect { value = it }
     }
 }
 

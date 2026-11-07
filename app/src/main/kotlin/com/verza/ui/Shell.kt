@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import com.verza.ui.nowplaying.LyricsPage
 import com.verza.ui.nowplaying.NowPlayingPage
 import com.verza.ui.settings.SettingsPage
+import com.verza.ui.signin.SignIn
+import com.verza.ui.signin.Welcome
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -94,7 +96,8 @@ fun Shell() {
                 exitTransition = { fadeOut() },
             ) {
                 composable("home") { HomePage(onOpen = open, onSettings = { nav.navigate("settings") }) }
-                composable("settings") { SettingsPage(onBack = { nav.popBackStack() }) }
+                composable("settings") { SettingsPage(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate("signin") }) }
+                composable("signin") { SignIn(onDone = { nav.popBackStack() }) }
                 composable("search") { SearchPage(onOpen = open) }
                 composable("library") { LibraryPage(onOpen = open) }
                 composable("page/{id}") { entry ->
@@ -102,7 +105,9 @@ fun Shell() {
                 }
             }
         }
-        Dock(nav, now, onOpenPlayer = { playerOpen = true }, Modifier.align(Alignment.BottomCenter))
+        // Signing in is Google's page, whole; the dock would cover its foot.
+        val route = nav.currentBackStackEntryAsState().value?.destination?.route
+        if (route != "signin") Dock(nav, now, onOpenPlayer = { playerOpen = true }, Modifier.align(Alignment.BottomCenter))
         // Now Playing rises over everything from the mini player and drops back.
         AnimatedVisibility(playerOpen && now.song != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
             NowPlayingPage(onClose = { playerOpen = false }, onOpen = open, onLyrics = { lyricsOpen = true })
@@ -110,6 +115,10 @@ fun Shell() {
         AnimatedVisibility(lyricsOpen && now.song != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
             LyricsPage(onClose = { lyricsOpen = false })
         }
+        // The first launch of a new install: a welcome, and signing in if wanted. Read as null until
+        // known, so an existing install never sees it flash past.
+        val onboarded by LocalContext.current.graph.settings.onboarded.flow.collectAsState(initial = null)
+        if (onboarded == false) Welcome(onSignIn = { nav.navigate("signin") })
     }
 }
 

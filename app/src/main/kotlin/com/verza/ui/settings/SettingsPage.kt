@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun SettingsPage(onBack: () -> Unit) {
+fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit) {
     val graph = LocalContext.current.graph
     val s = graph.settings
     val scope = rememberCoroutineScope()
@@ -58,6 +58,7 @@ fun SettingsPage(onBack: () -> Unit) {
     val fade by s.fadeSeconds.flow.collectAsState(initial = 0)
     val sources by graph.sourceList.collectAsState()
     var adding by remember { mutableStateOf(false) }
+    val cookie by graph.account.cookie.collectAsState()
 
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp + LocalDockHeight.current)) {
         item {
@@ -65,6 +66,19 @@ fun SettingsPage(onBack: () -> Unit) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = LocalPalette.current.ink) }
             }
             Text("settings", style = Type.Masthead, color = LocalPalette.current.ink, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
+        }
+        item { SectionTitle("account") }
+        item {
+            // Signed in, your likes and playlists go to YouTube Music and Home is your own.
+            if (cookie.isNullOrBlank()) Row(Modifier.fillMaxWidth().clip(Corner).clickable(onClick = onSignIn).padding(vertical = 12.dp)) {
+                Column {
+                    Text("Sign in to YouTube Music", style = Type.RowTitle, color = LocalPalette.current.accent)
+                    Text("Your likes, playlists and Home from your account", style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
+                }
+            } else Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Signed in to YouTube Music", style = Type.RowTitle, color = LocalPalette.current.ink, modifier = Modifier.weight(1f))
+                TextButton(onClick = { scope.launch { graph.account.set(null) } }) { Text("Sign out") }
+            }
         }
         item { SectionTitle("playback") }
         item {
