@@ -43,6 +43,12 @@ data class NowPlaying(
 )
 
 /**
+ * A sleep timer: pause at [atMs] (elapsedRealtime), the volume falling over the last [fadeMs] first;
+ * or, with no [atMs], at the end of the song playing. The service carries it out.
+ */
+data class Sleep(val atMs: Long?, val fadeMs: Long = 4_000)
+
+/**
  * The screens' handle on the player in [PlaybackService]: one connection for the whole app, made on
  * first use. On the first connection of a launch an empty player gets the saved queue back, paused
  * where it was.
@@ -55,6 +61,15 @@ class Player(
 ) {
     private val _state = MutableStateFlow(NowPlaying())
     val state: StateFlow<NowPlaying> = _state.asStateFlow()
+
+    /** The sleep timer, if one is set. In memory: the service lives in this process. */
+    val sleep = MutableStateFlow<Sleep?>(null)
+
+    /** Sleep in [minutes]; [windDown] fades over the last third of it (one to five minutes). */
+    fun sleepIn(minutes: Int, windDown: Boolean = false) {
+        val ms = minutes * 60_000L
+        sleep.value = Sleep(android.os.SystemClock.elapsedRealtime() + ms, if (windDown) (ms / 3).coerceIn(60_000, 300_000) else 4_000)
+    }
 
     private var controller: MediaController? = null
     private val connecting = Mutex()
@@ -87,8 +102,8 @@ class Player(
 
     private fun act(block: (MediaController) -> Unit) { scope.launch(Dispatchers.Main) { block(ready()) } }
 
-    fun play(songs: List<Song>, index: Int = 0) = act { c ->
-        c.setMediaItems(songs.map(::item), index.coerceIn(0, songs.lastIndex.coerceAtLeast(0)), 0)
+    fun play(songs: List<Song>, index: Int = 0, startMs: Long = 0) = act { c ->
+        c.setMediaItems(songs.map(::item), index.coerceIn(0, songs.lastIndex.coerceAtLeast(0)), startMs)
         c.shuffleModeEnabled = false
         c.prepare(); c.play()
     }
@@ -99,6 +114,16 @@ class Player(
         scope.launch {
             val more = runCatching { radio(song) }.getOrDefault(emptyList()).filter { it.id != song.id }
             act { c -> if (c.currentMediaItem?.mediaId == song.id && c.mediaItemCount == 1) c.addMediaItems(more.map(::item)) }
+        }
+    }
+
+    /** A song known only by its id, from a shared link: its radio, which starts with it. */
+    fun playId(id: String) {
+        scope.launch {
+            val songs = runCatching { radio(Song(id, "", "")) }.getOrDefault(emptyList())
+            val at = songs.indexOfFirst { it.id == id }
+            if (at >= 0) play(songs, at)
+            else kotlinx.coroutines.withContext(Dispatchers.Main) { android.widget.Toast.makeText(context, "Couldn't open that song", android.widget.Toast.LENGTH_SHORT).show() }
         }
     }
 

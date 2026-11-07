@@ -10,6 +10,14 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalContext
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -52,6 +60,23 @@ object Type {
     val RowSubtitle = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 18.sp)
     val Body = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp)
     val Small = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.04.em)
+}
+
+/** The colours in a cover, for [Palette.from]. */
+fun swatchesOf(bitmap: android.graphics.Bitmap): List<Color> =
+    androidx.palette.graphics.Palette.from(bitmap).generate().swatches.map { Color(it.rgb) }
+
+/** The colours of the cover at [url], once it has loaded; none while it loads or with no cover. */
+@Composable
+fun coverSwatches(url: String?): List<Color> {
+    val context = LocalContext.current
+    return produceState(emptyList(), url) {
+        if (url == null) { value = emptyList(); return@produceState }
+        // Small and in software: Palette reads the pixels, and it only needs a few of them.
+        val request = ImageRequest.Builder(context).data(url).size(128).allowHardware(false).build()
+        val bitmap = SingletonImageLoader.get(context).execute(request).image?.toBitmap() ?: return@produceState
+        value = withContext(Dispatchers.Default) { swatchesOf(bitmap) }
+    }.value
 }
 
 /**

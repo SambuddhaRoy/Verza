@@ -78,6 +78,12 @@ import com.verza.data.Song
 import com.verza.data.artAt
 import com.verza.graph
 import com.verza.playback.NowPlaying
+import com.verza.playback.Sleep
+import com.verza.data.Sessions
+import com.verza.ui.kit.MenuItem
+import com.verza.ui.kit.SongMenu
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.verza.ui.kit.ListRow
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
@@ -103,6 +109,10 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
     val song = now.song ?: run { LaunchedEffect(Unit) { onClose() }; return }
     val art = song.art?.let { artAt(it, 1200) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val sleep by player.sleep.collectAsState()
+    var sleepPicker by remember { mutableStateOf(false) }
+    if (sleepPicker) SleepPicker(sleep, onDone = { sleepPicker = false })
     BackHandler(onBack = onClose)
 
     // The artist's and album's pages, for a YouTube song.
@@ -137,6 +147,15 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
                                     Icon(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", tint = Ink)
                                 }
                                 if (!song.onPhone) IconButton(onClick = { player.playWithRadio(song) }) { Icon(Icons.Rounded.Radio, "Radio", tint = Ink) }
+                                androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(inkMuted = Ink)) {
+                                    SongMenu(song) { close ->
+                                        MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
+                                        MenuItem("Share listening session") {
+                                            close()
+                                            Sessions.link(now.queue, now.index, player.position)?.let { shareSession(context, it) }
+                                        }
+                                    }
+                                }
                             }
                             Scrubber(now, onSeek = player::seek)
                             Transport(now)
@@ -154,6 +173,43 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
             }
         }
     }
+}
+
+/** How long a sleep timer has left, "12:04", or "end of song". Ticks while it's on screen. */
+@Composable
+private fun sleepLeft(sleep: Sleep): String {
+    val at = sleep.atMs ?: return "end of song"
+    var now by remember { mutableStateOf(android.os.SystemClock.elapsedRealtime()) }
+    LaunchedEffect(at) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(1_000) } }
+    val s = ((at - now) / 1000).coerceAtLeast(0)
+    return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
+}
+
+@Composable
+private fun SleepPicker(sleep: Sleep?, onDone: () -> Unit) {
+    val player = LocalContext.current.graph.player
+    fun pick(set: () -> Unit) { set(); onDone() }
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text(if (sleep == null) "Sleep timer" else "Sleep timer · ${sleepLeft(sleep)}") },
+        text = {
+            Column {
+                for (m in listOf(15, 30, 45, 60)) MenuItem(if (m == 60) "1 hour" else "$m minutes") { pick { player.sleepIn(m) } }
+                MenuItem("At the end of this song") { pick { player.sleep.value = Sleep(atMs = null) } }
+                MenuItem("Wind down over 30 minutes") { pick { player.sleepIn(30, windDown = true) } }
+            }
+        },
+        confirmButton = { if (sleep != null) TextButton(onClick = { pick { player.sleep.value = null } }) { Text("Turn off") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
+    )
+}
+
+/** Sends a "listen along" link through the system's share sheet. */
+private fun shareSession(context: android.content.Context, link: String) {
+    val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+        .putExtra(android.content.Intent.EXTRA_SUBJECT, "Listen along on Verza")
+        .putExtra(android.content.Intent.EXTRA_TEXT, "Open this in Verza to hear what I'm playing:\n$link")
+    context.startActivity(android.content.Intent.createChooser(send, null).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
 /** Every artist, then the album, each opening its page when there is one. */

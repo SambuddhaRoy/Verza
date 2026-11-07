@@ -36,9 +36,12 @@ import kotlinx.coroutines.launch
 /** Opens a page by id; provided by the shell so any row's menu can go to an artist or album. */
 val LocalOpen = androidx.compose.runtime.staticCompositionLocalOf<(String) -> Unit> { {} }
 
-/** A song's ⋯: play next, add to queue or a playlist, like, download, share, go to its artist or album. */
+/**
+ * A song's ⋯: play next, add to queue or a playlist, like, download, share, go to its artist or album;
+ * then whatever [extra] items the page adds, each given a way to close the menu.
+ */
 @Composable
-fun SongMenu(song: Song) {
+fun SongMenu(song: Song, extra: @Composable (close: () -> Unit) -> Unit = {}) {
     val context = LocalContext.current
     val graph = context.graph
     val open = LocalOpen.current
@@ -49,21 +52,23 @@ fun SongMenu(song: Song) {
     Box {
         IconButton(onClick = { shown = true }) { Icon(Icons.Rounded.MoreVert, "More", tint = LocalPalette.current.inkMuted) }
         DropdownMenu(expanded = shown, onDismissRequest = { shown = false }, shape = Corner) {
-            Item("Play next") { shown = false;  graph.player.playNext(song) }
-            Item("Add to queue") { shown = false;  graph.player.enqueue(listOf(song)) }
-            Item("Add to playlist…") { shown = false;  picking = true }
+            MenuItem("Play next") { shown = false; graph.player.playNext(song) }
+            MenuItem("Add to queue") { shown = false; graph.player.enqueue(listOf(song)) }
+            MenuItem("Add to playlist…") { shown = false; picking = true }
             val isLiked = song.id in liked
-            Item(if (isLiked) "Unlike" else "Like") { shown = false;  graph.like(song, !isLiked) }
+            MenuItem(if (isLiked) "Unlike" else "Like") { shown = false; graph.like(song, !isLiked) }
             if (!song.onPhone) {
-                Item("Download") { shown = false;  graph.downloads.save(listOf(song)) }
-                Item("Share") { shown = false; 
+                MenuItem("Download") { shown = false; graph.downloads.save(listOf(song)) }
+                MenuItem("Share") {
+                    shown = false
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
                         .putExtra(Intent.EXTRA_TEXT, "${song.title} by ${song.artist}\nhttps://music.youtube.com/watch?v=${song.id}")
                     context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
-                Item("Go to artist") { shown = false;  scope.launch { graph.youtube.runCatching { links(song.id, song.title) }.getOrNull()?.first?.firstOrNull()?.let { open(it.page) } } }
-                Item("Go to album") { shown = false;  scope.launch { graph.youtube.runCatching { links(song.id, song.title) }.getOrNull()?.second?.let { open(it.page) } } }
+                MenuItem("Go to artist") { shown = false; scope.launch { graph.youtube.runCatching { links(song.id, song.title) }.getOrNull()?.first?.firstOrNull()?.let { open(it.page) } } }
+                MenuItem("Go to album") { shown = false; scope.launch { graph.youtube.runCatching { links(song.id, song.title) }.getOrNull()?.second?.let { open(it.page) } } }
             }
+            extra { shown = false }
         }
     }
     if (picking) AddToPlaylist(song, onDone = { picking = false })
@@ -101,4 +106,4 @@ fun AddToPlaylist(song: Song, onDone: () -> Unit) {
 }
 
 @Composable
-private fun Item(text: String, onClick: () -> Unit) = DropdownMenuItem(text = { Text(text) }, onClick = onClick)
+fun MenuItem(text: String, onClick: () -> Unit) = DropdownMenuItem(text = { Text(text) }, onClick = onClick)
