@@ -33,6 +33,9 @@ interface SongDao {
 
     @Upsert
     suspend fun put(song: SongRow)
+
+    @Query("SELECT * FROM songs")
+    suspend fun all(): List<SongRow>
 }
 
 /** A playlist with what its row needs: the first song's cover and how many songs. */
@@ -54,6 +57,15 @@ interface PlaylistDao {
 
     @Query("SELECT * FROM playlists WHERE id = :id")
     suspend fun get(id: Long): PlaylistRow?
+
+    @Query("SELECT * FROM playlists ORDER BY createdAt")
+    suspend fun allOnce(): List<PlaylistRow>
+
+    @Query("SELECT songId FROM playlist_tracks WHERE playlistId = :id ORDER BY position")
+    suspend fun songIds(id: Long): List<String>
+
+    @Query("SELECT id FROM playlists WHERE name = :name LIMIT 1")
+    suspend fun idByName(name: String): Long?
 
     @Query("UPDATE playlists SET remoteId = :remoteId WHERE id = :id")
     suspend fun setRemoteId(id: Long, remoteId: String)
