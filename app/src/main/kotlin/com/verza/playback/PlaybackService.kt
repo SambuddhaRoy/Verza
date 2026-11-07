@@ -82,6 +82,13 @@ class PlaybackService : MediaLibraryService() {
         scope.launch { graph.settings.skipSilence.flow.collect { player.skipSilenceEnabled = it } }
         scope.launch { graph.sourceList.collect { resolver.forgetSources() } }
         scope.launch { fade() }
+        // The listener's sound, on whatever audio session the player has now.
+        graph.effects.bind(player.audioSessionId)
+        scope.launch {
+            val s = graph.settings
+            kotlinx.coroutines.flow.combine(s.eqOn.flow, s.eqBands.flow, s.bass.flow, s.loudness.flow) { on, bands, bass, loud -> EqConfig(on, bands, bass, loud) }
+                .collect { graph.effects.apply(it) }
+        }
         scope.launch { while (true) { delay(20_000); saveQueue() } }
     }
 
@@ -93,6 +100,8 @@ class PlaybackService : MediaLibraryService() {
             lookAhead()
             saveQueue()
         }
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) = graph.effects.bind(audioSessionId)
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) { playingSince = SystemClock.elapsedRealtime(); failuresInARow = 0 } else countListen()
@@ -185,6 +194,7 @@ class PlaybackService : MediaLibraryService() {
         saveQueue()
         scope.cancel()
         resolver.close()
+        graph.effects.bind(0)
         session.release()
         player.release()
         super.onDestroy()

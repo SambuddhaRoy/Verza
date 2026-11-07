@@ -9,6 +9,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.verza.ui.nowplaying.LyricsPage
 import com.verza.ui.nowplaying.NowPlayingPage
+import com.verza.ui.settings.EqualizerPage
 import com.verza.ui.settings.SettingsPage
 import com.verza.ui.signin.SignIn
 import com.verza.ui.signin.Welcome
@@ -96,7 +97,8 @@ fun Shell() {
                 exitTransition = { fadeOut() },
             ) {
                 composable("home") { HomePage(onOpen = open, onSettings = { nav.navigate("settings") }) }
-                composable("settings") { SettingsPage(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate("signin") }) }
+                composable("settings") { SettingsPage(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate("signin") }, onEqualizer = { nav.navigate("equalizer") }) }
+                composable("equalizer") { EqualizerPage(onBack = { nav.popBackStack() }) }
                 composable("signin") { SignIn(onDone = { nav.popBackStack() }) }
                 composable("search") { SearchPage(onOpen = open) }
                 composable("library") { LibraryPage(onOpen = open) }

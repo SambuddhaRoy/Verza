@@ -49,6 +49,15 @@ class Settings(private val context: Context) {
 
     val quality = Setting(context, stringPreferencesKey("audio_quality"), Quality.HIGH.name)
 
+    // The sound: equaliser, bass and loudness, kept as the old app kept them.
+    val eqOn = bool("eq_enabled", false)
+    /** Millibels per band, in the device's band order. */
+    val eqBands = JsonSetting(context, "eq_band_levels", ListSerializer(Int.serializer()), emptyList())
+    /** An EqPreset name, or empty for the listener's own curve. */
+    val eqPreset = Setting(context, stringPreferencesKey("eq_preset"), "")
+    val bass = int("bass_strength", 0)
+    val loudness = bool("loudness_enabled", false)
+
     val sources = JsonSetting(context, "addon_sources", ListSerializer(Source.serializer()), emptyList())
     val sourcesOnMobileData = bool("addons_on_mobile_data", false)
 
