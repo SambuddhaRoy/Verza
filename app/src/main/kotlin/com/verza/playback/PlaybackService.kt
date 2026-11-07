@@ -289,7 +289,9 @@ class PlaybackService : MediaLibraryService() {
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
-        ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(LibraryResult.ofItem(folder("root", "Verza"), params))
+        ): ListenableFuture<LibraryResult<MediaItem>> =
+            // The system's media card asks for "recent" to offer picking up where you left off.
+            Futures.immediateFuture(LibraryResult.ofItem(if (params?.isRecent == true) folder("last", "Verza") else folder("root", "Verza"), params))
 
         override fun onGetChildren(
             session: MediaLibrarySession,
@@ -303,6 +305,8 @@ class PlaybackService : MediaLibraryService() {
             val items = when {
                 parentId == "root" -> listOf(folder("recent", "Recently played"), folder("liked", "Liked songs"), folder("downloaded", "Downloaded"), folder("playlists", "Playlists"))
                 parentId == "playlists" -> library.playlists.first().map { folder("pl:${it.playlist.id}", it.playlist.name) }
+                // The song the saved queue stopped on, for the system's media card.
+                parentId == "last" -> graph.settings.savedQueue.get().let { q -> listOfNotNull(q.tracks.getOrNull(q.index)?.toSong()?.let(::item)) }
                 else -> songsIn(parentId).map(::item)
             }
             LibraryResult.ofItemList(ImmutableList.copyOf(items), params)
