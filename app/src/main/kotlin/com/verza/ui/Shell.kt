@@ -86,6 +86,7 @@ fun Shell() {
     val open: (String) -> Unit = { id -> nav.navigate("page/$id") }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var lyricsOpen by rememberSaveable { mutableStateOf(false) }
+    var standbyOpen by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(p.canvas)) {
         CompositionLocalProvider(LocalDockHeight provides dock, LocalOpen provides open) {
@@ -112,11 +113,12 @@ fun Shell() {
         if (route != "signin") Dock(nav, now, onOpenPlayer = { playerOpen = true }, Modifier.align(Alignment.BottomCenter))
         // Now Playing rises over everything from the mini player and drops back.
         AnimatedVisibility(playerOpen && now.song != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
-            NowPlayingPage(onClose = { playerOpen = false }, onOpen = open, onLyrics = { lyricsOpen = true })
+            NowPlayingPage(onClose = { playerOpen = false }, onOpen = open, onLyrics = { lyricsOpen = true }, onStandby = { standbyOpen = true })
         }
         AnimatedVisibility(lyricsOpen && now.song != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
             LyricsPage(onClose = { lyricsOpen = false })
         }
+        if (standbyOpen && now.song != null) com.verza.ui.nowplaying.Standby(onExit = { standbyOpen = false })
         // The first launch of a new install: a welcome, and signing in if wanted. Read as null until
         // known, so an existing install never sees it flash past.
         val onboarded by LocalContext.current.graph.settings.onboarded.flow.collectAsState(initial = null)

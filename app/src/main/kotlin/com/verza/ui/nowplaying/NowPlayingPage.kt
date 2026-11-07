@@ -101,7 +101,7 @@ private val InkFaint = Color.White.copy(alpha = 0.28f)
  * it is, the scrubber and the transport. The queue is below, on the same scrolling page.
  */
 @Composable
-fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -> Unit) {
+fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -> Unit, onStandby: () -> Unit) {
     val graph = LocalContext.current.graph
     val player = graph.player
     val now by player.state.collectAsState()
@@ -150,6 +150,7 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
                                 androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(inkMuted = Ink)) {
                                     SongMenu(song) { close ->
                                         MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
+                                        MenuItem("Standby") { close(); onStandby() }
                                         MenuItem("Share listening session") {
                                             close()
                                             Sessions.link(now.queue, now.index, player.position)?.let { shareSession(context, it) }
