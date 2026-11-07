@@ -85,6 +85,8 @@ class PlaybackService : MediaLibraryService() {
         scope.launch { graph.settings.skipSilence.flow.collect { player.skipSilenceEnabled = it } }
         scope.launch { graph.sourceList.collect { resolver.forgetSources() } }
         scope.launch { fade() }
+        // A timer for the end of the song: the player pauses there itself.
+        scope.launch { graph.player.sleep.collect { player.pauseAtEndOfMediaItems = it != null && it.atMs == null } }
         // The listener's sound, on whatever audio session the player has now.
         graph.effects.bind(player.audioSessionId)
         scope.launch {
@@ -109,6 +111,10 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun onAudioSessionIdChanged(audioSessionId: Int) = graph.effects.bind(audioSessionId)
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) graph.player.sleep.value = null
+        }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) { playingSince = SystemClock.elapsedRealtime(); failuresInARow = 0 } else countListen()
@@ -172,9 +178,10 @@ class PlaybackService : MediaLibraryService() {
     }
 
     /**
-     * Fades the volume into and out of each song, over the listener's setting. Not an overlap of the
-     * two songs, which would need a second player behind the session; it takes the hard cut away.
-     * Fading in is capped at two seconds: a twelve-second ramp at the start of a song is a fault.
+     * The one hand on the volume. Fades into and out of each song, over the listener's setting: not
+     * an overlap of the two songs, which would need a second player behind the session, but it takes
+     * the hard cut away. Fading in is capped at two seconds: a twelve-second ramp at the start of a
+     * song is a fault. And the sleep timer, falling to silence and pausing.
      */
     private suspend fun fade() {
         var window = 0L
@@ -183,16 +190,24 @@ class PlaybackService : MediaLibraryService() {
         var enteredAt = 0L
         while (true) {
             delay(120)
-            if (window == 0L) { if (player.volume != 1f) player.volume = 1f; continue }
+            val now = SystemClock.elapsedRealtime()
             val id = player.currentMediaItem?.mediaId
-            if (id != current) { current = id; enteredAt = SystemClock.elapsedRealtime() }
-            if (id == null || !player.isPlaying) continue
-            val rampIn = minOf(window, 2_000L)
-            val sinceStart = SystemClock.elapsedRealtime() - enteredAt
-            val inGain = if (sinceStart >= rampIn) 1f else sinceStart.toFloat() / rampIn
-            val left = if (player.duration > 0) player.duration - player.currentPosition else Long.MAX_VALUE
-            val outGain = if (left >= window) 1f else left.toFloat() / window
-            player.volume = minOf(inGain, outGain).coerceIn(0f, 1f)
+            if (id != current) { current = id; enteredAt = now }
+            var gain = 1f
+            if (window > 0 && id != null && player.isPlaying) {
+                val rampIn = minOf(window, 2_000L)
+                val inGain = if (now - enteredAt >= rampIn) 1f else (now - enteredAt).toFloat() / rampIn
+                val left = if (player.duration > 0) player.duration - player.currentPosition else Long.MAX_VALUE
+                gain = minOf(inGain, if (left >= window) 1f else left.toFloat() / window)
+            }
+            val sleep = graph.player.sleep.value
+            if (sleep?.atMs != null) {
+                val left = sleep.atMs - now
+                if (left <= 0) { player.pause(); graph.player.sleep.value = null }
+                else gain = minOf(gain, left.toFloat() / sleep.fadeMs)
+            }
+            gain = gain.coerceIn(0f, 1f)
+            if (player.volume != gain) player.volume = gain
         }
     }
 

@@ -10,6 +10,7 @@ import coil3.toBitmap
 import android.content.res.Configuration
 import androidx.compose.ui.graphics.Color
 import com.verza.ui.theme.Palette
+import com.verza.ui.theme.swatchesOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -94,7 +95,7 @@ object NowPlayingWidgetUpdater {
         if (bitmap != null) {
             cachedUrl = url
             cachedCover = bitmap
-            cachedSwatches = androidx.palette.graphics.Palette.from(bitmap).generate().swatches.map { Color(it.rgb) }
+            cachedSwatches = swatchesOf(bitmap)
         }
         return bitmap
     }

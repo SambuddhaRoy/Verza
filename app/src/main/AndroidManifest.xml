@@ -31,6 +31,27 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- A "listen along" link: verza://session/<payload>. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="verza" android:host="session" />
+            </intent-filter>
+            <!-- Share > Verza from YouTube or anywhere: text with a YouTube link in it plays here. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- youtu.be links can open here. Only the short host, so youtube.com browsing isn't taken. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="youtu.be" />
+                <data android:scheme="http" android:host="youtu.be" />
+            </intent-filter>
         </activity>
 
         <service
