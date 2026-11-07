@@ -127,6 +127,12 @@ class Player(
         }
     }
 
+    /** Keeps the song playing and puts [songs] after it, in place of whatever came next. */
+    fun replaceUpcoming(songs: List<Song>) = act { c ->
+        c.removeMediaItems(c.currentMediaItemIndex + 1, c.mediaItemCount)
+        c.addMediaItems(songs.map(::item))
+    }
+
     fun shuffle(songs: List<Song>) = act { c ->
         c.setMediaItems(songs.map(::item)); c.shuffleModeEnabled = true
         c.seekTo(c.currentTimeline.getFirstWindowIndex(true), 0); c.prepare(); c.play()

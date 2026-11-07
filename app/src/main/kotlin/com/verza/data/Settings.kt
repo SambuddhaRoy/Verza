@@ -66,6 +66,8 @@ class Settings(private val context: Context) {
     val saveSearchHistory = bool("save_search_history", true)
     val searchHistory = JsonSetting(context, "search_history", ListSerializer(String.serializer()), emptyList())
 
+    /** What Discovery radio has offered, oldest first. */
+    val discoveryServed = JsonSetting(context, "discovery_served", ListSerializer(String.serializer()), emptyList())
     val savedQueue = JsonSetting(context, "saved_queue", SavedQueue.serializer(), SavedQueue())
     /** A folder the listener chose for downloads (a tree URI), or empty for Music/Verza. */
     val downloadFolder = Setting(context, stringPreferencesKey("download_tree_uri"), "")

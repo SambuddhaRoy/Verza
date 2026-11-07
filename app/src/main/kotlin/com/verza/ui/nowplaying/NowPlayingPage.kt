@@ -150,6 +150,15 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
                                 androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(inkMuted = Ink)) {
                                     SongMenu(song) { close ->
                                         MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
+                                        if (!song.onPhone) MenuItem("Discovery radio") {
+                                            close()
+                                            android.widget.Toast.makeText(context, "Finding music you haven't heard…", android.widget.Toast.LENGTH_SHORT).show()
+                                            scope.launch {
+                                                val found = runCatching { graph.discovery.from(song.id) }.getOrDefault(emptyList())
+                                                if (found.isEmpty()) android.widget.Toast.makeText(context, "Couldn't find anything new for this one", android.widget.Toast.LENGTH_SHORT).show()
+                                                else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
+                                            }
+                                        }
                                         MenuItem("Standby") { close(); onStandby() }
                                         MenuItem("Share listening session") {
                                             close()
