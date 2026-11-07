@@ -15,8 +15,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             // After the first frame: connecting starts the player's service on the main thread, and
-            // done first it held the first frame back. Then any likes still to send to the account.
-            LaunchedEffect(Unit) { withFrameNanos { }; graph.player.connect(); graph.sync.flush() }
+            // done first it held the first frame back. Then any likes still to send to the account, and a look for an update.
+            LaunchedEffect(Unit) { withFrameNanos { }; graph.player.connect(); graph.sync.flush(); graph.updates.check() }
             VerzaTheme(swatches = emptyList()) { Shell() }
         }
     }
