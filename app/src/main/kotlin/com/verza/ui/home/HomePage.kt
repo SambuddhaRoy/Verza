@@ -85,6 +85,7 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
                     IconButton(onClick = onSettings, modifier = Modifier.padding(end = 8.dp)) { Icon(Icons.Rounded.Settings, "Settings", tint = p.inkMuted) }
                 }
             }
+            item { UpdateLine() }
             for (section in shelves) {
                 item(key = "t" + section.title) { SectionTitle(section.title, Modifier.padding(horizontal = 20.dp)) }
                 // Songs read as a list, four of them; albums, playlists and mixes as covers across.
@@ -109,4 +110,27 @@ private fun dateline(): String {
     val now = LocalDateTime.now()
     val part = when (now.hour) { in 5..11 -> "morning"; in 12..16 -> "afternoon"; in 17..21 -> "evening"; else -> "night" }
     return now.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault()).lowercase() + " " + part
+}
+
+/** "Verza 2.0.1 is ready · update", when a newer release is downloaded. */
+@Composable
+private fun UpdateLine() {
+    val context = LocalContext.current
+    val updates = context.graph.updates
+    val ready by updates.ready.collectAsState()
+    val release = ready ?: return
+    androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.Text("Verza ${release.version} is ready", style = com.verza.ui.theme.Type.RowTitle, color = LocalPalette.current.ink, modifier = Modifier.weight(1f))
+        com.verza.ui.kit.Word("update", LocalPalette.current.accent) { install(context, release) }
+    }
+}
+
+/** Installs [release], first sending the listener to allow it if Android doesn't yet. */
+fun install(context: android.content.Context, release: com.verza.data.Release) {
+    val updates = context.graph.updates
+    if (updates.allowed()) updates.install(release)
+    else context.startActivity(
+        android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}"))
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+    )
 }

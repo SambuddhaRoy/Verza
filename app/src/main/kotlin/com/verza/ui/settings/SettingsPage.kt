@@ -123,7 +123,22 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit) {
                 Text("Clear search history", style = Type.RowTitle, color = LocalPalette.current.ink)
             }
         }
-        item { Text("Verza ${BuildConfig.VERSION_NAME}", style = Type.Small, color = LocalPalette.current.inkMuted, modifier = Modifier.padding(top = 24.dp)) }
+        item { SectionTitle("about") }
+        item {
+            val context = LocalContext.current
+            val ready by graph.updates.ready.collectAsState()
+            var checked by remember { mutableStateOf<String?>(null) }
+            Row(Modifier.fillMaxWidth().clip(Corner).clickable {
+                val r = ready
+                if (r != null) com.verza.ui.home.install(context, r)
+                else { checked = "Looking…"; scope.launch { checked = graph.updates.check()?.let { "Verza ${it.version} is downloading" } ?: "Verza is up to date" } }
+            }.padding(vertical = 12.dp)) {
+                Column {
+                    Text(if (ready != null) "Update to ${ready!!.version}" else "Check for updates", style = Type.RowTitle, color = LocalPalette.current.accent)
+                    Text(checked ?: "Verza ${BuildConfig.VERSION_NAME}", style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
+                }
+            }
+        }
     }
     if (adding) AddSource(onDone = { adding = false })
 }
