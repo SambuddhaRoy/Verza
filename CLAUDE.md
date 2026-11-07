@@ -192,6 +192,14 @@ spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
   have to be FLAC and STREAMINFO's length within 10s of the song's, or it's a miss and YouTube plays it.
   The desktop does the same (`flacSeconds` in addons.js). `verza-shots/mob/_preview_check.py` shows it
   against the stand-in server (`FLAC_FILE=preview.flac`).
+- **The next three songs are looked up while this one plays** (`lookAhead` in MusicService, on each
+  track change, new queue and shuffle). A skip used to ask every lossless source in turn and then YouTube
+  while the listener waited. Lookups go through `lookup`, keyed by video id, so a skip onto a song still
+  being looked up joins it rather than starting another; the answer lands in `streamUrlCache` either way.
+  Lookups only, no audio: ExoPlayer buffers the next song itself near the end of this one. With a source
+  taking 3s a search, a skip went from 6.0-6.8s to 1.1-1.5s (`verza-shots/mob/_lookahead.py`, given an
+  APK; it times from the key to playing after buffering, since the session's position only moves on a
+  state change).
 - **Music on the phone** (Library > On device, `LocalMusicRepository`): albums, playlists, then every song.
   A folder is an album when its songs all name one album by one artist (the album artist, else the first
   name before "feat."/","/"&"), and an album over several folders (CD1, CD2) is one. Any other folder is
