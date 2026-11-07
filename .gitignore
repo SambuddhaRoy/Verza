@@ -1,0 +1,17 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+.idea/
+*.iml
+*.apk
+*.aab
+*.log
+*.hprof
+
+# Signing. Never commit these.
+*.jks
+*.keystore
+keystore.properties
+
+.claude/
