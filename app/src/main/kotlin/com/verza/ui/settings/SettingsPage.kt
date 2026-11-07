@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit) {
+fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Unit) {
     val graph = LocalContext.current.graph
     val s = graph.settings
     val scope = rememberCoroutineScope()
@@ -92,6 +92,14 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit) {
             }
         }
         item { Toggle("Skip silence", "Skip silent stretches inside a song", s.skipSilence) }
+        item {
+            Row(Modifier.fillMaxWidth().clip(Corner).clickable(onClick = onEqualizer).padding(vertical = 10.dp)) {
+                Column {
+                    Text("Equaliser", style = Type.RowTitle, color = LocalPalette.current.ink)
+                    Text("Bands, presets, bass and loudness", style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
+                }
+            }
+        }
         item { Toggle("Resume on open", "Open where you left off", s.resumeOnOpen) }
 
         item { SectionTitle("lossless sources") }

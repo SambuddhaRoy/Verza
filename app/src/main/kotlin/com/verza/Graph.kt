@@ -47,6 +47,8 @@ class Graph(val context: Context) {
     val mixes by lazy {
         com.verza.data.mixes.MixesRepository(context, scope, db.stats(), mixSource, com.verza.data.mixes.GenreRepository(context, http), mixPrefs, listenBrainz)
     }
+    /** The equaliser, bass and loudness on the player's output (bound by PlaybackService). */
+    val effects by lazy { com.verza.playback.AudioEffectsController() }
     val updates: com.verza.data.Updates by lazy { com.verza.data.Updates(context, http) }
     val lyrics: com.verza.data.LyricsSource by lazy { com.verza.data.LyricsSource(http) }
     val artwork: com.verza.data.ArtworkRepository by lazy { com.verza.data.ArtworkRepository(http, context) }
