@@ -40,6 +40,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
@@ -252,6 +254,26 @@ class PlaybackService : MediaLibraryService() {
          * Play pressed with nothing queued, from a widget, headphones or the system's media card after
          * the app was closed: the queue saved last time, where it stopped.
          */
+        private var lastFolder: String? = null
+
+        /** A folder's songs: YouTube ones only, since an id from outside can't name a file here. */
+        private suspend fun songsIn(id: String): List<Song> {
+            val library = graph.library
+            val songs = when {
+                id == "recent" -> library.recent.first()
+                id == "liked" -> library.liked.first()
+                id == "downloaded" -> library.downloaded.first()
+                id.startsWith("pl:") -> id.removePrefix("pl:").toLongOrNull()?.let { library.playlist(it).first().songs }.orEmpty()
+                else -> emptyList()
+            }
+            lastFolder = id
+            return songs.filter { !it.onPhone }
+        }
+
+        private fun folder(id: String, title: String) = MediaItem.Builder().setMediaId(id)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setIsBrowsable(true).setIsPlayable(false).setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED).build())
+            .build()
+
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -261,17 +283,13 @@ class PlaybackService : MediaLibraryService() {
             MediaSession.MediaItemsWithStartPosition(saved.tracks.map { item(it.toSong()) }, saved.index.coerceIn(0, saved.tracks.lastIndex), saved.positionMs)
         }
 
+        // What a car (Android Auto) browses: the library, as folders of songs.
+
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
-        ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(
-            LibraryResult.ofItem(
-                MediaItem.Builder().setMediaId("root")
-                    .setMediaMetadata(MediaMetadata.Builder().setIsBrowsable(true).setIsPlayable(false).build()).build(),
-                params,
-            ),
-        )
+        ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(LibraryResult.ofItem(folder("root", "Verza"), params))
 
         override fun onGetChildren(
             session: MediaLibrarySession,
@@ -280,7 +298,37 @@ class PlaybackService : MediaLibraryService() {
             page: Int,
             pageSize: Int,
             params: LibraryParams?,
-        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = Futures.immediateFuture(LibraryResult.ofItemList(ImmutableList.of(), params))
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = scope.future {
+            val library = graph.library
+            val items = when {
+                parentId == "root" -> listOf(folder("recent", "Recently played"), folder("liked", "Liked songs"), folder("downloaded", "Downloaded"), folder("playlists", "Playlists"))
+                parentId == "playlists" -> library.playlists.first().map { folder("pl:${it.playlist.id}", it.playlist.name) }
+                else -> songsIn(parentId).map(::item)
+            }
+            LibraryResult.ofItemList(ImmutableList.copyOf(items), params)
+        }
+
+        /**
+         * A song chosen in a folder plays with the rest of that folder after it, rather than alone.
+         * Only one song arrives from the car, so its folder is found again by id.
+         */
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val one = mediaItems.singleOrNull()?.mediaId
+            val folder = lastFolder
+            if (one == null || folder == null || controller.packageName == packageName) return super.onSetMediaItems(mediaSession, controller, mediaItems, startIndex, startPositionMs)
+            return scope.future {
+                val songs = songsIn(folder)
+                val at = songs.indexOfFirst { it.id == one }
+                if (at < 0) MediaSession.MediaItemsWithStartPosition(onAddMediaItems(mediaSession, controller, mediaItems).await(), startIndex, startPositionMs)
+                else MediaSession.MediaItemsWithStartPosition(songs.map(::item), at, 0)
+            }
+        }
     }
 
     private companion object {
