@@ -51,6 +51,7 @@ import com.verza.ui.kit.Empty
 import com.verza.ui.kit.ListRow
 import com.verza.ui.kit.LocalDockHeight
 import com.verza.ui.kit.SectionTitle
+import com.verza.ui.kit.SongMenu
 import com.verza.ui.kit.Word
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
@@ -112,7 +113,8 @@ fun PageScreen(id: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
 @Composable
 private fun AlbumPage(album: Album) {
     val p = LocalPalette.current
-    val player = LocalContext.current.graph.player
+    val graph = LocalContext.current.graph
+    val player = graph.player
     val now by player.state.collectAsState()
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 56.dp, bottom = 16.dp + LocalDockHeight.current)) {
         item {
@@ -124,6 +126,7 @@ private fun AlbumPage(album: Album) {
                 Row(Modifier.padding(top = 6.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
                     Word("play", p.accent, enabled = album.songs.isNotEmpty()) { player.play(album.songs) }
                     Word("shuffle", enabled = album.songs.isNotEmpty()) { player.shuffle(album.songs) }
+                    if (album.songs.any { !it.onPhone }) Word("download") { graph.downloads.save(album.songs, album.title) }
                     Spacer(Modifier.weight(1f))
                     Text(songsLabel(album.songs), style = Type.Small, color = p.inkMuted)
                 }
@@ -144,6 +147,7 @@ private fun TrackRow(number: Int, song: Song, playing: Boolean, onClick: () -> U
             Text(song.title, style = Type.RowTitle, color = if (playing) p.accent else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(song.artist, style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        SongMenu(song)
     }
 }
 
@@ -164,7 +168,7 @@ private fun ArtistPage(artist: Artist, onOpen: (String) -> Unit) {
             if (section.cards.all { it.song != null }) {
                 val songs = section.cards.mapNotNull { it.song }
                 items(section.cards.take(5), key = { section.title + it.song!!.id }) { card ->
-                    ListRow(card.title, card.subtitle, art = card.art?.let { artAt(it, 226) }, modifier = Modifier.padding(horizontal = 20.dp), onClick = { player.play(songs, songs.indexOf(card.song)) })
+                    ListRow(card.title, card.subtitle, art = card.art?.let { artAt(it, 226) }, modifier = Modifier.padding(horizontal = 20.dp), onClick = { player.play(songs, songs.indexOf(card.song)) }, trailing = { SongMenu(card.song!!) })
                 }
             } else item(key = "r" + section.title) { Shelf(section, onOpen) }
         }

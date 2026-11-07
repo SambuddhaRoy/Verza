@@ -56,6 +56,8 @@ class Settings(private val context: Context) {
     val searchHistory = JsonSetting(context, "search_history", ListSerializer(String.serializer()), emptyList())
 
     val savedQueue = JsonSetting(context, "saved_queue", SavedQueue.serializer(), SavedQueue())
+    /** A folder the listener chose for downloads (a tree URI), or empty for Music/Verza. */
+    val downloadFolder = Setting(context, stringPreferencesKey("download_tree_uri"), "")
 }
 
 /** The queue as it was, so the app reopens where it left off. The old app's format. */

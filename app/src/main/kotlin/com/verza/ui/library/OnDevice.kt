@@ -29,6 +29,7 @@ import com.verza.graph
 import com.verza.ui.kit.Empty
 import com.verza.ui.kit.ListRow
 import com.verza.ui.kit.LocalDockHeight
+import com.verza.ui.kit.SongMenu
 import com.verza.ui.kit.Word
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
@@ -68,7 +69,7 @@ fun OnDevice(onOpen: (String) -> Unit) {
         }
         item(key = "hsongs") { Text("songs", style = Type.Section, color = p.ink, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)) }
         itemsIndexed(lib.songs, key = { _, s -> s.id }) { i, song ->
-            ListRow(song.title, song.artist, art = song.art?.let { artAt(it, 226) }, onClick = { player.play(lib.songs, i) })
+            ListRow(song.title, song.artist, art = song.art?.let { artAt(it, 226) }, onClick = { player.play(lib.songs, i) }, trailing = { SongMenu(song) })
         }
     }
 }

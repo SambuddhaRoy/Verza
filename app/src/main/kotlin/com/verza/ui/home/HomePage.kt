@@ -33,6 +33,7 @@ import com.verza.ui.kit.Empty
 import com.verza.ui.kit.ListRow
 import com.verza.ui.kit.LocalDockHeight
 import com.verza.ui.kit.Masthead
+import com.verza.ui.kit.SongMenu
 import com.verza.ui.kit.SectionTitle
 import com.verza.ui.page.Shelf
 import com.verza.ui.theme.LocalPalette
@@ -91,7 +92,7 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
                     val songs = section.cards.mapNotNull { it.song }
                     items(section.cards.take(4), key = { section.title + it.song!!.id }) { card ->
                         ListRow(card.title, card.subtitle, art = card.art?.let { artAt(it, 226) }, modifier = Modifier.padding(horizontal = 20.dp),
-                            onClick = { graph.player.play(songs, songs.indexOf(card.song)) })
+                            onClick = { graph.player.play(songs, songs.indexOf(card.song)) }, trailing = { SongMenu(card.song!!) })
                     }
                 } else item(key = "r" + section.title) { Shelf(section, onOpen) }
             }

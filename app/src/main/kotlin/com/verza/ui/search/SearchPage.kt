@@ -46,6 +46,7 @@ import com.verza.ui.kit.Empty
 import com.verza.ui.kit.ListRow
 import com.verza.ui.kit.LocalDockHeight
 import com.verza.ui.kit.Masthead
+import com.verza.ui.kit.SongMenu
 import com.verza.ui.theme.Corner
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
@@ -120,6 +121,7 @@ private fun Results(cards: List<Card>, onSong: (com.verza.data.Song) -> Unit, on
                 round = card.page?.startsWith("UC") == true,
                 playing = song != null && song.id == playing.song?.id,
                 onClick = { if (song != null) onSong(song) else card.page?.let(onOpen) },
+                trailing = song?.let { s -> { SongMenu(s) } },
             )
         }
     }
