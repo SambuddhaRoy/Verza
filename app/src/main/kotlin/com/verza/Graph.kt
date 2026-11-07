@@ -40,6 +40,7 @@ class Graph(val context: Context) {
 
     val settings: Settings by lazy { Settings(context) }
     val saved: com.verza.data.Saved by lazy { com.verza.data.Saved(context) }
+    val lyrics: com.verza.data.LyricsSource by lazy { com.verza.data.LyricsSource(http) }
     val artwork: com.verza.data.ArtworkRepository by lazy { com.verza.data.ArtworkRepository(http, context) }
     val phone: com.verza.data.phone.PhoneMusic by lazy { com.verza.data.phone.PhoneMusic(context, library, artwork) }
     val library: Library by lazy { Library(db) }

@@ -7,6 +7,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.verza.ui.nowplaying.LyricsPage
 import com.verza.ui.nowplaying.NowPlayingPage
 import com.verza.ui.settings.SettingsPage
 import androidx.compose.animation.fadeOut
@@ -81,6 +82,7 @@ fun Shell() {
     val dock = TabsHeight + if (now.song != null) PlayerHeight else 0.dp
     val open: (String) -> Unit = { id -> nav.navigate("page/$id") }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
+    var lyricsOpen by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(p.canvas)) {
         CompositionLocalProvider(LocalDockHeight provides dock, LocalOpen provides open) {
@@ -103,7 +105,10 @@ fun Shell() {
         Dock(nav, now, onOpenPlayer = { playerOpen = true }, Modifier.align(Alignment.BottomCenter))
         // Now Playing rises over everything from the mini player and drops back.
         AnimatedVisibility(playerOpen && now.song != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
-            NowPlayingPage(onClose = { playerOpen = false }, onOpen = open)
+            NowPlayingPage(onClose = { playerOpen = false }, onOpen = open, onLyrics = { lyricsOpen = true })
+        }
+        AnimatedVisibility(lyricsOpen && now.song != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
+            LyricsPage(onClose = { lyricsOpen = false })
         }
     }
 }

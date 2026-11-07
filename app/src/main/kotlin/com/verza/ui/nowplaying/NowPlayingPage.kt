@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
@@ -94,7 +95,7 @@ private val InkFaint = Color.White.copy(alpha = 0.28f)
  * it is, the scrubber and the transport. The queue is below, on the same scrolling page.
  */
 @Composable
-fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit) {
+fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -> Unit) {
     val graph = LocalContext.current.graph
     val player = graph.player
     val now by player.state.collectAsState()
@@ -130,6 +131,7 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 now.lossless?.let { LosslessMark(it) }
                                 Spacer(Modifier.weight(1f))
+                                IconButton(onClick = onLyrics) { Icon(Icons.Rounded.Lyrics, "Lyrics", tint = Ink) }
                                 val isLiked = song.id in liked
                                 IconButton(onClick = { graph.like(song, !isLiked) }) {
                                     Icon(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", tint = Ink)
