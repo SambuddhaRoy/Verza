@@ -17,7 +17,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +46,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
@@ -133,7 +136,8 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
     val player = LocalContext.current.graph.player
     val entry by nav.currentBackStackEntryAsState()
     val current = entry?.destination?.route
-    Column(modifier.fillMaxWidth().background(p.canvas.copy(alpha = 0.96f)).navigationBarsPadding()) {
+    // Takes every touch on it: a tap between the tabs went through to the list behind and played a song.
+    Column(modifier.fillMaxWidth().pointerInput(Unit) { detectTapGestures { } }.background(p.canvas.copy(alpha = 0.96f)).navigationBarsPadding()) {
         now.song?.let { song ->
             Row(
                 Modifier.fillMaxWidth().height(PlayerHeight).clickable(onClick = onOpenPlayer).padding(horizontal = 20.dp),
@@ -164,18 +168,19 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
             verticalAlignment = Alignment.CenterVertically,
         ) {
             for (tab in Tabs) {
-                Text(
-                    tab,
-                    style = Type.Section.copy(fontSize = 26.sp),
-                    color = if (tab == current) p.ink else p.inkMuted,
-                    modifier = Modifier.clickable {
+                // The whole height of the row takes the tap, not just the word.
+                Box(
+                    Modifier.fillMaxHeight().clickable {
                         if (tab != current) nav.navigate(tab) {
                             popUpTo(nav.graph.startDestinationId) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
                     },
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(tab, style = Type.Section.copy(fontSize = 26.sp), color = if (tab == current) p.ink else p.inkMuted)
+                }
             }
         }
     }

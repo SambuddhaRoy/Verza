@@ -64,6 +64,14 @@
             </intent-filter>
         </service>
         <receiver android:name=".data.InstallResult" android:exported="false" />
+        <!-- Play on headphones or the system's media card with the app closed starts the service,
+             which picks up the saved queue. Media3 also only offers the system's "resume" card when
+             this is declared. -->
+        <receiver android:name="androidx.media3.session.MediaButtonReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
         <!-- Android Auto lists only apps that say they're for it. Media only. -->
         <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
         <!-- Home-screen widget. Not exported: the only thing that sends it these actions is its
