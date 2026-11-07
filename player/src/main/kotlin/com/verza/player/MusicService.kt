@@ -36,6 +36,9 @@ import com.verza.innertube.InnerTube
 import com.verza.player.BuildConfig
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -50,6 +53,8 @@ import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
 private const val INNERTUBE_SCHEME = "innertube://"
+/** How many songs past this one are looked up while it plays (lookAhead). */
+private const val LOOK_AHEAD = 3
 // Custom session command behind the notification / lock-screen / always-on "Like" heart.
 private const val ACTION_TOGGLE_LIKE = "com.verza.player.TOGGLE_LIKE"
 
@@ -87,6 +92,76 @@ class MusicService : MediaLibraryService() {
     private val addonFailed = java.util.Collections.newSetFromMap(
         java.util.concurrent.ConcurrentHashMap<String, Boolean>()
     )
+
+    /**
+     * Lookups under way, by video id, so a skip onto a song being looked up ahead waits for that one
+     * rather than starting its own. A Deferred outlives the loader that awaited it: a skip away still
+     * leaves the answer in [streamUrlCache] for next time.
+     */
+    private val inflight = java.util.concurrent.ConcurrentHashMap<String, Deferred<CachedStreamUrl?>>()
+    private val lookupScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private fun lookup(videoId: String, hint: Uri): Deferred<CachedStreamUrl?> =
+        inflight.computeIfAbsent(videoId) {
+            lookupScope.async(start = CoroutineStart.LAZY) {
+                try { resolveFresh(videoId, hint) } finally { inflight.remove(videoId) }
+            }
+        }.also { it.start() }
+
+    /**
+     * Where a song's audio is now: the listener's lossless sources first, then YouTube. Cached on the
+     * way out. Null when neither has it.
+     */
+    private suspend fun resolveFresh(videoId: String, hint: Uri): CachedStreamUrl? {
+        // A source the listener added comes before YouTube, when it holds this recording.
+        if (videoId !in addonFailed && addonsUsableNow()) {
+            val found = addons.find(
+                title = hint.getQueryParameter("t").orEmpty(),
+                artist = hint.getQueryParameter("a").orEmpty(),
+                durationMs = hint.getQueryParameter("d")?.toLongOrNull() ?: 0L,
+            )
+            if (found != null) {
+                if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "$videoId from a lossless source")
+                return CachedStreamUrl(found, System.currentTimeMillis(), fromAddon = true).also { streamUrlCache[videoId] = it }
+            }
+        }
+        val stream = InnerTube.resolveAudioStream(videoId) ?: return null
+        if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Resolved $videoId → ${stream.url.take(120)}…")
+        return CachedStreamUrl(stream.url, System.currentTimeMillis()).also { streamUrlCache[videoId] = it }
+    }
+
+    /** Whether the cache holds a URL for this song that the resolver would still hand out. */
+    private fun cachedUsable(videoId: String): Boolean = streamUrlCache[videoId]?.let { c ->
+        System.currentTimeMillis() - c.resolvedAt < (if (c.fromAddon) ADDON_URL_TTL_MS else STREAM_URL_TTL_MS) &&
+            !failedStreamUrls.contains(c.url) && (!c.fromAddon || addonsUsableNow())
+    } ?: false
+
+    /**
+     * Looks up the next few songs in the order they will play, while this one plays. A skip used to
+     * wait on every source in turn, then YouTube; now it finds the answer already there. Lookups only:
+     * no audio is fetched for a song until it plays, and ExoPlayer buffers the next one itself near
+     * the end of this one.
+     */
+    private fun lookAhead() {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) return
+        // Repeat-one would name this song again; the queue after it is what a skip reaches.
+        val repeat = if (player.repeatMode == Player.REPEAT_MODE_ONE) Player.REPEAT_MODE_OFF else player.repeatMode
+        var index = player.currentMediaItemIndex
+        repeat(LOOK_AHEAD) {
+            index = timeline.getNextWindowIndex(index, repeat, player.shuffleModeEnabled)
+            if (index == C.INDEX_UNSET) return
+            val uri = player.getMediaItemAt(index).localConfiguration?.uri ?: return@repeat
+            val raw = uri.toString()
+            if (!raw.startsWith(INNERTUBE_SCHEME)) return@repeat
+            val videoId = raw.removePrefix(INNERTUBE_SCHEME).substringBefore('?')
+            if (cachedUsable(videoId)) return@repeat
+            lookupScope.launch {
+                // A downloaded song plays from its file, with nothing to look up.
+                if (downloadLookup.pathFor(videoId).isNullOrBlank()) runCatching { lookup(videoId, uri).await() }
+            }
+        }
+    }
 
     private fun addonsUsableNow(): Boolean {
         if (PlayerSettings.addons.value.isEmpty()) return false
@@ -160,44 +235,22 @@ class MusicService : MediaLibraryService() {
                 // URL 403 while still looking fresh. Without this, moving from Wi-Fi to mobile data
                 // left a track unplayable until the TTL ran out — and each retry and each seek got
                 // handed the same dead URL.
-                streamUrlCache[videoId]?.let { c ->
-                    val ttl = if (c.fromAddon) ADDON_URL_TTL_MS else STREAM_URL_TTL_MS
-                    if (System.currentTimeMillis() - c.resolvedAt < ttl &&
-                        !failedStreamUrls.contains(c.url) &&
-                        (!c.fromAddon || addonsUsableNow())
-                    ) {
-                        if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Using cached stream URL for $videoId")
-                        return@Resolver dataSpec.withUri(Uri.parse(c.url))
-                    }
-                    streamUrlCache.remove(videoId)
+                if (cachedUsable(videoId)) {
+                    if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Using cached stream URL for $videoId")
+                    return@Resolver dataSpec.withUri(Uri.parse(streamUrlCache.getValue(videoId).url))
                 }
+                streamUrlCache.remove(videoId)
 
-                // A source the listener added comes before YouTube, when it holds this recording.
-                if (videoId !in addonFailed && addonsUsableNow()) {
-                    val hint = dataSpec.uri
-                    val found = addons.find(
-                        title = hint.getQueryParameter("t").orEmpty(),
-                        artist = hint.getQueryParameter("a").orEmpty(),
-                        durationMs = hint.getQueryParameter("d")?.toLongOrNull() ?: 0L,
-                    )
-                    if (found != null) {
-                        if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "$videoId from a lossless source")
-                        streamUrlCache[videoId] = CachedStreamUrl(found, System.currentTimeMillis(), fromAddon = true)
-                        return@Resolver dataSpec.withUri(Uri.parse(found))
-                    }
-                }
-
-                val stream = runBlocking { InnerTube.resolveAudioStream(videoId) }
-                if (stream == null) {
+                // Joins the look-ahead's lookup if one is already running for this song.
+                val found = runBlocking { lookup(videoId, dataSpec.uri).await() }
+                if (found == null) {
                     if (BuildConfig.DEBUG) {
                         Log.e("VerzaPlayback", "No stream for $videoId — ${InnerTube.lastResolveDiagnostic}")
                     }
                     showPlaybackToast(mainHandler, debugDetail = "No stream for $videoId\n${InnerTube.lastResolveDiagnostic}")
                     throw IOException("No playable audio stream for $videoId")
                 }
-                if (BuildConfig.DEBUG) Log.i("VerzaPlayback", "Resolved $videoId → ${stream.url.take(120)}…")
-                streamUrlCache[videoId] = CachedStreamUrl(stream.url, System.currentTimeMillis())
-                dataSpec.withUri(Uri.parse(stream.url))
+                dataSpec.withUri(Uri.parse(found.url))
             } catch (t: Throwable) {
                 // A load the user skipped away from is cancelled by interrupting this loader thread,
                 // so runBlocking throws InterruptedException / CancellationException. That isn't a
@@ -313,7 +366,12 @@ class MusicService : MediaLibraryService() {
                 refreshLikeLayout()
                 embedArtwork(mediaItem)
                 publishNowPlaying()
+                lookAhead()
             }
+
+            // A new queue, or shuffle turned on, changes which songs come next.
+            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) = lookAhead()
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = lookAhead()
 
             override fun onIsPlayingChanged(isPlaying: Boolean) = publishNowPlaying()
         })
@@ -514,6 +572,7 @@ class MusicService : MediaLibraryService() {
 
     override fun onDestroy() {
         serviceScope.cancel()
+        lookupScope.cancel()
         session.release()
         player.release()
         super.onDestroy()
