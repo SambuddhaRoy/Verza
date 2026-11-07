@@ -33,11 +33,14 @@ import com.verza.R
 import com.verza.data.Song
 import com.verza.data.toSaved
 import com.verza.graph
+import com.verza.widget.NowPlayingWidgetUpdater
+import com.verza.widget.WidgetState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
@@ -101,6 +104,10 @@ class PlaybackService : MediaLibraryService() {
             saveQueue()
         }
 
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_MEDIA_METADATA_CHANGED)) widgets()
+        }
+
         override fun onAudioSessionIdChanged(audioSessionId: Int) = graph.effects.bind(audioSessionId)
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -149,6 +156,12 @@ class PlaybackService : MediaLibraryService() {
             player.getMediaItemAt(index).localConfiguration?.uri?.let(next::add) ?: break
         }
         resolver.lookAhead(next)
+    }
+
+    /** The home-screen widgets show what plays; they can't watch the player themselves. */
+    private fun widgets() {
+        val m = player.mediaMetadata
+        NowPlayingWidgetUpdater.publish(this, scope, WidgetState(m.title?.toString().orEmpty(), m.artist?.toString().orEmpty(), m.artworkUri?.toString(), player.isPlaying))
     }
 
     private fun saveQueue() {
@@ -218,6 +231,19 @@ class PlaybackService : MediaLibraryService() {
                 else item.mediaMetadata.let { placeholder(id.takeIf(::isVideoId) ?: "invalid", it.title.toString(), it.artist.toString(), it.durationMs ?: 0) }
                 item.buildUpon().setUri(uri).build()
             }.toMutableList())
+        }
+
+        /**
+         * Play pressed with nothing queued, from a widget, headphones or the system's media card after
+         * the app was closed: the queue saved last time, where it stopped.
+         */
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
+            val saved = graph.settings.savedQueue.get()
+            check(saved.tracks.isNotEmpty()) { "Nothing to resume" }
+            MediaSession.MediaItemsWithStartPosition(saved.tracks.map { item(it.toSong()) }, saved.index.coerceIn(0, saved.tracks.lastIndex), saved.positionMs)
         }
 
         override fun onGetLibraryRoot(

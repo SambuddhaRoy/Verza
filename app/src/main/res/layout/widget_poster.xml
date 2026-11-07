@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Poster, wide (the narrow one is widget_poster_tall): the player in miniature. The cover in an
+     arch, a status tag, a title that grows to fill whatever height the widget is given, a squiggle that goes flat when paused, and the same
+     wide PLAY pill as the app. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_card"
+        android:tint="@color/widget_container" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:padding="14dp">
+
+        <!-- Capped: sized by the picture alone, a square arch as tall as the widget took most of
+             the width and left the controls none. -->
+        <ImageView
+            android:id="@+id/widget_cover"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:adjustViewBounds="true"
+            android:maxWidth="120dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_cover_arch" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <include layout="@layout/widget_poster_info" />
+
+            <include layout="@layout/widget_poster_controls" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

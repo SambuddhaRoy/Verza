@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the widgets look like in the picker and for the moment before the first real update:
+     the dark glass palette with no cover, magenta accent. Once a song plays these are replaced by
+     the palette taken from its cover. -->
+<resources>
+    <color name="widget_container">#FF1F1A1D</color>
+    <color name="widget_on_container">#FFFFFFFF</color>
+    <color name="widget_on_container_muted">#FFA9A9A9</color>
+    <color name="widget_surface">#FF2B2428</color>
+    <color name="widget_on_surface">#FFFFFFFF</color>
+    <color name="widget_accent">#FFFF2E9E</color>
+    <color name="widget_on_accent">#FF2E0019</color>
+    <color name="widget_tertiary">#FFFFFFFF</color>
+    <color name="widget_on_tertiary">#FF000000</color>
+    <!-- The die-cut rim around shapes that float on the wallpaper. Fixed, not from the cover: its job
+         is to separate a shape from whatever wallpaper is behind it. -->
+    <color name="widget_paper">#FFFFF8EC</color>
+</resources>
