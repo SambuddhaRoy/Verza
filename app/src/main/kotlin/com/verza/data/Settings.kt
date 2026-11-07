@@ -46,6 +46,8 @@ class Settings(private val context: Context) {
     val skipSilence = bool("skip_silence", false)
     /** Fade into and out of each song, in seconds; 0 is off. */
     val fadeSeconds = int("crossfade_seconds", 0)
+    /** Which of Standby's faces was last on show. */
+    val standbyFace = int("standby_face", 0)
 
     val quality = Setting(context, stringPreferencesKey("audio_quality"), Quality.HIGH.name)
 
