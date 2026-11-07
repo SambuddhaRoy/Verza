@@ -50,12 +50,20 @@ class ArtworkRepository @Inject constructor(
      * Verifying costs nothing after the fact. Coil caches the bytes, so the AsyncImage that shows
      * this a moment later is reading from the disk cache rather than fetching again.
      */
-    suspend fun resolve(title: String, artist: String): String? {
-        val key = "${artist.trim().lowercase()}|${title.trim().lowercase()}"
-        if (key == "|") return null
+    suspend fun resolve(title: String, artist: String): String? = resolve(title, artist, album = false)
+
+    /**
+     * An album's cover by its name, for music on the phone whose files carry none. Asked of a song,
+     * iTunes hands back whatever single or remix it ranks first: "Get Lucky" got a remix's cover.
+     */
+    suspend fun resolveAlbum(album: String, artist: String): String? = resolve(album, artist, album = true)
+
+    private suspend fun resolve(title: String, artist: String, album: Boolean): String? {
+        val key = (if (album) "album|" else "") + "${artist.trim().lowercase()}|${title.trim().lowercase()}"
+        if (title.isBlank() && artist.isBlank()) return null
         mutex.withLock { if (cache.containsKey(key)) return cache[key] }
 
-        val found = runCatching { fetch(title, artist) }
+        val found = runCatching { fetch(title, artist, album) }
         // A lookup that could not reach iTunes is not the same as iTunes having nothing, and
         // caching the two the same way meant one moment without signal denied a track its real
         // cover for the rest of the process.
@@ -76,12 +84,12 @@ class ArtworkRepository @Inject constructor(
         SingletonImageLoader.get(context).execute(request) is SuccessResult
     }.getOrDefault(false)
 
-    private suspend fun fetch(title: String, artist: String): String? = withContext(Dispatchers.IO) {
+    private suspend fun fetch(title: String, artist: String, album: Boolean): String? = withContext(Dispatchers.IO) {
         val term = listOf(artist, title).filter { it.isNotBlank() }.joinToString(" ")
         if (term.isBlank()) return@withContext null
         val url = "https://itunes.apple.com/search".toHttpUrl().newBuilder()
             .addQueryParameter("term", term)
-            .addQueryParameter("entity", "song")
+            .addQueryParameter("entity", if (album) "album" else "song")
             // Several, not one. iTunes matches loosely, so the top hit for a common title is often
             // a different recording by a different artist; asking for a handful gives the matcher
             // something to choose between rather than something to accept.
@@ -96,7 +104,7 @@ class ArtworkRepository @Inject constructor(
                 val row = element as? JsonObject ?: return@mapNotNull null
                 val art = row["artworkUrl100"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
                 ArtworkCandidate(
-                    trackName = row["trackName"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    trackName = row[if (album) "collectionName" else "trackName"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                     artistName = row["artistName"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                     // iTunes thumbnail URLs encode their size in the path.
                     artworkUrl = art.replace("100x100bb", "600x600bb"),

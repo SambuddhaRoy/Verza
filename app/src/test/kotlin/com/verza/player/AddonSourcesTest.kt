@@ -71,6 +71,9 @@ class AddonSourcesTest {
         assertEquals("FLAC · 16-bit / 44.1 kHz", losslessLabel(MimeTypes.AUDIO_FLAC, C.ENCODING_PCM_16BIT, 44_100))
         assertEquals("ALAC · 48 kHz", losslessLabel(MimeTypes.AUDIO_ALAC, Format_NO_VALUE, 48_000))
         assertNull(losslessLabel(MimeTypes.AUDIO_AAC, C.ENCODING_PCM_16BIT, 44_100))
+        // A WAV on the phone is raw PCM to the player; its container says what it was.
+        assertEquals("WAV · 16-bit / 44.1 kHz", losslessLabel(MimeTypes.AUDIO_RAW, C.ENCODING_PCM_16BIT, 44_100, MimeTypes.AUDIO_WAV))
+        assertEquals("PCM · 24-bit / 48 kHz", losslessLabel(MimeTypes.AUDIO_RAW, C.ENCODING_PCM_24BIT, 48_000))
     }
 
     // ── against a real server ───────────────────────────────────────────────
@@ -94,7 +97,8 @@ class AddonSourcesTest {
                     val path = target.substringBefore('?')
                     val (code, body) = routes[URLDecoder.decode(path, "UTF-8")] ?: (404 to "{}")
                     val type = if (path.endsWith(".flac")) "audio/flac" else "application/json"
-                    val bytes = body.toByteArray()
+                    // Files are bytes: ISO-8859-1 maps each char of the route's string to one byte.
+                    val bytes = if (path.endsWith(".flac")) body.toByteArray(Charsets.ISO_8859_1) else body.toByteArray()
                     it.getOutputStream().apply {
                         write("HTTP/1.1 $code X\r\nContent-Type: $type\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray())
                         write(bytes)
@@ -156,6 +160,43 @@ class AddonSourcesTest {
             routes["/token/stream/a/b"] = 200 to answer
             assertNull(answer, client.find("Paradise", "Coldplay", 279_000L))
         }
+    }
+
+    @Test fun `a preview, or a lossy file named FLAC, is a miss`() {
+        routes["/token/search"] = 200 to paradise
+        listOf("preview.flac" to flacHead(44_100, 30.0), "lossy.flac" to "ID3\u0004 an mp3 by another name").forEach { (name, file) ->
+            routes["/token/stream/a/b"] = 200 to """{"url":"$base/$name"}"""
+            routes["/token/$name"] = 200 to file
+            assertNull(name, client.find("Paradise", "Coldplay", 279_000L))
+        }
+        // A few seconds off is a remaster, not a preview.
+        routes["/token/stream/a/b"] = 200 to """{"url":"$base/whole.flac"}"""
+        routes["/token/whole.flac"] = 200 to flacHead(44_100, 285.0)
+        assertEquals("$base/whole.flac", client.find("Paradise", "Coldplay", 279_000L))
+    }
+
+    @Test fun `a FLAC file's length comes from its first bytes`() {
+        assertEquals(278.0, flacSeconds(flacHead(44_100, 278.0).toByteArray(Charsets.ISO_8859_1))!!, 0.01)
+        assertEquals(30.0, flacSeconds(flacHead(96_000, 30.0).toByteArray(Charsets.ISO_8859_1))!!, 0.01)
+        assertEquals(-1.0, flacSeconds("fLaC".toByteArray())!!, 0.0)
+        assertNull(flacSeconds("ID3 not this".toByteArray()))
+    }
+
+    /** The start of a FLAC file of this rate and length, 16-bit stereo, as a route's body. */
+    private fun flacHead(rate: Int, seconds: Double): String {
+        val b = ByteArray(42)
+        "fLaC".forEachIndexed { i, c -> b[i] = c.code.toByte() }
+        b[7] = 34
+        val samples = (rate * seconds).toLong()
+        b[18] = (rate shr 12).toByte()
+        b[19] = (rate shr 4).toByte()
+        b[20] = (((rate and 0xf) shl 4) or (1 shl 1)).toByte()
+        b[21] = ((15 shl 4) or ((samples shr 32).toInt() and 0xf)).toByte()
+        b[22] = (samples shr 24).toByte()
+        b[23] = (samples shr 16).toByte()
+        b[24] = (samples shr 8).toByte()
+        b[25] = samples.toByte()
+        return String(b, Charsets.ISO_8859_1)
     }
 
     @Test fun `a source cannot name a file on this phone`() {

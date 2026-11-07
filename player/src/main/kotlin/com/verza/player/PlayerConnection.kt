@@ -282,7 +282,7 @@ class PlayerConnection(context: Context) {
         val group = ctrl.currentTracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected } ?: return null
         val index = (0 until group.length).firstOrNull(group::isTrackSelected) ?: return null
         val format = group.getTrackFormat(index)
-        return losslessLabel(format.sampleMimeType, format.pcmEncoding, format.sampleRate)
+        return losslessLabel(format.sampleMimeType, format.pcmEncoding, format.sampleRate, format.containerMimeType)
     }
 
     // ── MediaItem factory ─────────────────────────────────────────────────────

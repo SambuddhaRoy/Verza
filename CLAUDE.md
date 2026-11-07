@@ -186,6 +186,28 @@ spectrum Glass doesn't draw (`spectrumShown` in MainActivity).
 
 ## Both designs
 
+- **A lossless source's answer is checked, not trusted** (`isWholeSong` in `AddonSources.kt`). It used to
+  be enough that the link answered with something other than HTML or JSON, so a source handing back a
+  30-second preview, or an MP3, played it as the song: half a minute, no badge. Now the first 42 bytes
+  have to be FLAC and STREAMINFO's length within 10s of the song's, or it's a miss and YouTube plays it.
+  The desktop does the same (`flacSeconds` in addons.js). `verza-shots/mob/_preview_check.py` shows it
+  against the stand-in server (`FLAC_FILE=preview.flac`).
+- **Music on the phone** (Library > On device, `LocalMusicRepository`): albums, playlists, then every song.
+  A folder is an album when its songs all name one album by one artist (the album artist, else the first
+  name before "feat."/","/"&"), and an album over several folders (CD1, CD2) is one. Any other folder is
+  a playlist by the folder's name; loose songs in a top-level folder (Music/, Download/) or in Music/Verza/
+  are neither. `LocalGroupingTest`. Albums and playlists open on the collection page under a `local:` id.
+  - **MediaStore names an untagged file's album after its folder** and gives it no artist, so an album
+    needs every file to name an artist. It reads no tags from a WAV at all: a file called "Artist - Title"
+    is read that way. Nor, on the emulator, a FLAC's DATE, so the year usually isn't there.
+  - **Songs Verza downloaded are untagged files**, so they take their title, artist, cover and video id
+    from the download's row (matched by MediaStore id, or by the "Artist - Title" name in a chosen folder).
+  - **Covers**: the file's own (`albumart/<albumId>`, checked once per album), else the album's found
+    by name on iTunes (`resolveAlbum`, in the background after the list shows, kept in
+    `files/local-covers.json`), else the song's own lookup. Looked up song by song, Get Lucky wore a
+    remix single's cover. Lyrics are LRCLIB by title and artist, as for any song.
+  - **WAV and AIFF reach the player as raw PCM**; `losslessLabel` names them by container, so they get
+    the mark like FLAC. `verza-shots/mob/_local.py` walks all of it against `mob/local/make.py`'s files.
 - **Below Android 13, a dependency can call what the phone hasn't got.** Moving NewPipeExtractor to a main
   commit (1.20.3) brought in `URLDecoder.decode(String, Charset)`, which is API 33: every lookup threw
   `NoSuchMethodError` and nothing played on Android 12 and below, for six releases, because nothing was

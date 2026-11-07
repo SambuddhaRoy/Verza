@@ -3,6 +3,7 @@ package com.verza.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verza.data.LibraryRepository
+import com.verza.data.LocalLibrary
 import com.verza.data.LocalMusicRepository
 import com.verza.data.MusicRepository
 import com.verza.data.PlaylistRepository
@@ -49,18 +50,17 @@ class LibraryViewModel @Inject constructor(
     }
 
     // ── On-device local music ────────────────────────────────────────────────────
-    /** null = not scanned yet; emptyList = scanned, nothing found; non-empty = the device library. */
-    private val _localSongs = MutableStateFlow<List<MusicItem>?>(null)
-    val localSongs: StateFlow<List<MusicItem>?> = _localSongs.asStateFlow()
+    /** null = not scanned yet; otherwise the device library, as songs, albums and playlists. */
+    val localSongs: StateFlow<LocalLibrary?> = localMusicRepository.localLibrary
     private var localScanning = false
 
     /** Scans on-device music via MediaStore. Caller must hold the audio read permission. */
     fun loadLocalSongs(force: Boolean = false) {
         if (localScanning) return
-        if (_localSongs.value != null && !force) return
+        if (localSongs.value != null && !force) return
         localScanning = true
         viewModelScope.launch {
-            _localSongs.value = localMusicRepository.scan()
+            localMusicRepository.scan()
             localScanning = false
         }
     }

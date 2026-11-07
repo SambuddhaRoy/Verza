@@ -101,7 +101,7 @@ fun CollectionScreen(
                 OutlinedButton(onClick = viewModel::load, shape = com.verza.ui.theme.CornerShape) { Text("Retry") }
             }
             is CollectionUiState.Content ->
-                CollectionContent(s.detail, onPlayTracks, onShuffle, onAddToQueue, onDownloadAll)
+                CollectionContent(s.detail, onPlayTracks, onShuffle, onAddToQueue, onDownloadAll.takeUnless { viewModel.isLocal })
         }
         }
 
@@ -114,7 +114,8 @@ fun CollectionScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     GlassHeaderButton(Icons.Filled.AddToQueue, "Add to queue") { if (detail.tracks.isNotEmpty()) onAddToQueue(detail.tracks) }
-                    GlassHeaderButton(Icons.Filled.Download, "Download") { if (detail.tracks.isNotEmpty()) onDownloadAll(detail.tracks, detail.title) }
+                    // Music already on the phone has nothing to download.
+                    if (!viewModel.isLocal) GlassHeaderButton(Icons.Filled.Download, "Download") { if (detail.tracks.isNotEmpty()) onDownloadAll(detail.tracks, detail.title) }
                 }
             }
         }
@@ -144,7 +145,7 @@ private fun CollectionContent(
     onPlayTracks: (List<MusicItem>, Int) -> Unit,
     onShuffle: (List<MusicItem>) -> Unit,
     onAddToQueue: (List<MusicItem>) -> Unit,
-    onDownloadAll: (List<MusicItem>, String) -> Unit,
+    onDownloadAll: ((List<MusicItem>, String) -> Unit)?,
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
@@ -298,7 +299,7 @@ private fun CollectionContent(
                         icon = Icons.Filled.AddToQueue,
                         contentDescription = "Add to queue",
                     )
-                    SleeveOutlineAction(
+                    if (onDownloadAll != null) SleeveOutlineAction(
                         cover = cover,
                         onClick = { if (tracks.isNotEmpty()) onDownloadAll(tracks, detail.title) },
                         icon = Icons.Filled.Download,

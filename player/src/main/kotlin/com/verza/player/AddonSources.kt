@@ -115,7 +115,7 @@ class AddonClient(http: OkHttpClient) {
         // The answer goes straight to a data source that also opens file:// and content://, so this
         // is what stops a server naming something on the phone.
         if (!isPlayableUrl(resolved, base)) return null
-        return resolved.toString().takeIf { answersWithAudio(it) }
+        return resolved.toString().takeIf { isWholeSong(it, durationMs) }
     }
 
     private fun streamUrl(base: HttpUrl, source: AddonSource, id: String): String? {
@@ -128,13 +128,27 @@ class AddonClient(http: OkHttpClient) {
     }
 
     /**
-     * One small request before the player commits to it. A dead link costs the controller a skip to
-     * the next song, whereas a miss here plays this one from YouTube.
+     * One small request before the player commits to it: the start of the file, which has to be FLAC
+     * and as long as the song. A source can answer with a 30-second preview, or an MP3 under a FLAC name,
+     * and both used to play as if they were the song. A miss here plays the whole song from YouTube,
+     * where a dead link would have cost a skip.
+     *
+     * ponytail: FLAC only, which is what the format's sources serve. ALAC in an MP4 would need its
+     * length dug out of the moov box; add it when a source sends it.
      */
-    private fun answersWithAudio(url: String): Boolean = try {
-        http.newCall(Request.Builder().url(url).header("Range", "bytes=0-1").build()).execute().use { resp ->
-            val type = resp.header("Content-Type").orEmpty().lowercase()
-            resp.isSuccessful && "html" !in type && "json" !in type
+    private fun isWholeSong(url: String, durationMs: Long): Boolean = try {
+        http.newCall(Request.Builder().url(url).header("Range", "bytes=0-41").build()).execute().use { resp ->
+            val body = resp.body
+            if (!resp.isSuccessful || body == null) {
+                false
+            } else {
+                // A server is free to ignore the Range and send the whole file, so only this much is read.
+                val source = body.source()
+                source.request(FLAC_HEAD.toLong())
+                val head = source.buffer.readByteArray(minOf(FLAC_HEAD.toLong(), source.buffer.size))
+                val seconds = flacSeconds(head)
+                seconds != null && (seconds < 0 || durationMs <= 0 || abs(seconds * 1000 - durationMs) <= FILE_SLACK_MS)
+            }
         }
     } catch (e: IOException) {
         if (Thread.currentThread().isInterrupted) throw e
@@ -223,6 +237,9 @@ class AddonClient(http: OkHttpClient) {
 
     private companion object {
         const val CALL_TIMEOUT_MS = 4_000L
+        const val FLAC_HEAD = 42
+        // Wider than a search row's 3s: a remaster's file can run a few seconds off YouTube's cut.
+        const val FILE_SLACK_MS = 10_000L
         const val QUIET_MS = 60_000L
         const val LOSSLESS = "LOSSLESS"
         val LOSSLESS_WORDS = listOf("lossless", "flac", "hi-res", "hires", "hi_res")
@@ -325,14 +342,34 @@ object AddonMatch {
 }
 
 /**
+ * How long a FLAC file is, from its first 42 bytes; null if they aren't the start of one, and -1 if it
+ * doesn't say. STREAMINFO is always the first block: sample rate, then the total number of samples.
+ */
+fun flacSeconds(head: ByteArray): Double? {
+    if (head.size < 4 || String(head, 0, 4, Charsets.ISO_8859_1) != "fLaC") return null
+    if (head.size < 26 || (head[4].toInt() and 0x7f) != 0) return -1.0
+    fun b(i: Int) = head[i].toInt() and 0xff
+    val rate = (b(18) shl 12) or (b(19) shl 4) or (b(20) shr 4)
+    val samples = ((b(21) and 0xf).toLong() shl 32) or (b(22).toLong() shl 24) or (b(23).toLong() shl 16) or
+        (b(24).toLong() shl 8) or b(25).toLong()
+    return if (rate == 0 || samples == 0L) -1.0 else samples.toDouble() / rate
+}
+
+/**
  * The badge for a track, from the format the player actually opened rather than a source's label, or
  * null for anything lossy. A lossy file re-wrapped as FLAC still gets it: that can't be seen from here.
+ * Uncompressed audio (a WAV or AIFF on the phone) arrives as raw PCM, and is named by its container.
  */
 @androidx.annotation.OptIn(UnstableApi::class)
-fun losslessLabel(mimeType: String?, pcmEncoding: Int, sampleRateHz: Int): String? {
+fun losslessLabel(mimeType: String?, pcmEncoding: Int, sampleRateHz: Int, containerMimeType: String? = null): String? {
     val codec = when (mimeType) {
         MimeTypes.AUDIO_FLAC -> "FLAC"
         MimeTypes.AUDIO_ALAC -> "ALAC"
+        MimeTypes.AUDIO_RAW -> when (containerMimeType) {
+            MimeTypes.AUDIO_WAV, "audio/x-wav", "audio/wave" -> "WAV"
+            "audio/aiff", "audio/x-aiff" -> "AIFF"
+            else -> "PCM"
+        }
         else -> return null
     }
     val bits = when (pcmEncoding) {
