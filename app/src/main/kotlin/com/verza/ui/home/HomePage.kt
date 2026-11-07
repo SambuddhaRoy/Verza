@@ -71,10 +71,12 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
     val model: HomeModel = viewModel(factory = viewModelFactory { initializer { HomeModel(graph) } })
     val feed by model.feed.collectAsState()
     val recent by graph.library.recent.collectAsState(initial = emptyList())
+    val mixes by graph.mixes.mixes.collectAsState()
     val p = LocalPalette.current
 
     val shelves = buildList {
         if (recent.isNotEmpty()) add(Section("recently played", recent.take(20).map { Card(it.title, it.artist, it.art, song = it) }))
+        if (mixes.isNotEmpty()) add(Section("made for you", mixes.map { Card(it.title, it.subtitle, it.items.firstOrNull { i -> i.thumbnailUrl != null }?.thumbnailUrl, page = "mix:" + it.id) }))
         addAll(feed.orEmpty().map { it.copy(title = it.title.lowercase()) })
     }
     Box(Modifier.fillMaxSize()) {

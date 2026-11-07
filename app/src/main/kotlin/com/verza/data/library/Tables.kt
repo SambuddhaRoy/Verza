@@ -83,4 +83,5 @@ abstract class LibraryDb : RoomDatabase() {
     abstract fun playlists(): PlaylistDao
     abstract fun plays(): PlayDao
     abstract fun sync(): SyncDao
+    abstract fun stats(): com.verza.data.mixes.PlayEventDao
 }
