@@ -216,14 +216,14 @@ class PlaybackViewModel @Inject constructor(
                 .collect { id ->
                     _currentArtworkOverride.value = null
                     if (id == null) return@collect
-                    // Local tracks already carry their own album art — don't override with an
-                    // iTunes guess (which would be wrong and a needless network call).
-                    if (id.startsWith("content://") || id.startsWith("file://")) return@collect
                     val md = playbackState.value.currentItem?.mediaMetadata ?: return@collect
                     val title = md.title?.toString().orEmpty()
                     val artist = md.artist?.toString().orEmpty()
                     // Warm the lyrics cache in the background so opening the Lyrics screen is instant.
                     viewModelScope.launch { lyricsRepository.prefetch(title, artist, playbackState.value.durationMs) }
+                    // A song on the phone keeps the cover it came with (its own, or its album's found by
+                    // name); only one with none at all is looked up.
+                    if ((id.startsWith("content://") || id.startsWith("file://")) && md.artworkUri != null) return@collect
                     val better = artworkRepository.resolve(title, artist)
                     // Only apply if the track hasn't already moved on while we waited.
                     if (better != null && playbackState.value.currentItem?.mediaId == id) {

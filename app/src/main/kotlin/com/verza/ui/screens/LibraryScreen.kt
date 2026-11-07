@@ -156,10 +156,11 @@ fun LibraryScreen(
                 }
                 LibraryTab.LOCAL -> LocalMusicContent(
                     hasPermission = hasAudioPermission,
-                    songs = localSongs,
+                    library = localSongs,
                     onRequestPermission = { permissionLauncher.launch(audioReadPermission) },
-                    onScan = { viewModel.loadLocalSongs() },
+                    onScan = { viewModel.loadLocalSongs(force = true) },
                     onPlaySongs = onPlaySongs,
+                    onOpenItem = onOpenItem,
                 )
                 LibraryTab.DOWNLOADED ->
                     SongList(
@@ -346,16 +347,18 @@ private fun SongList(
 }
 
 /**
- * The "On device" tab: gates on the audio read permission, then scans MediaStore and lists local
- * tracks. Each row reuses [SongList] so play / like / add-to-playlist all work via the shared menu.
+ * The "On device" tab: gates on the audio read permission, then scans MediaStore and lists what is on
+ * the phone as albums, playlists (folders that aren't one album) and every song. An album or playlist
+ * opens on the collection page, like one from YouTube Music.
  */
 @Composable
 private fun LocalMusicContent(
     hasPermission: Boolean,
-    songs: List<MusicItem>?,
+    library: com.verza.data.LocalLibrary?,
     onRequestPermission: () -> Unit,
     onScan: () -> Unit,
     onPlaySongs: (List<MusicItem>, Int) -> Unit,
+    onOpenItem: (HomeItem) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val ext = LocalVerzaExtendedColors.current
@@ -392,14 +395,58 @@ private fun LocalMusicContent(
         return
     }
 
-    // Permission held — scan once on entry, then render.
+    // Permission held: scan each time the page opens, so music copied on since shows up.
     LaunchedEffect(Unit) { onScan() }
+    val xc = LocalExpressiveColors.current
     when {
-        songs == null -> Box(modifier = Modifier.fillMaxSize().padding(bottom = LocalBottomChrome.current), contentAlignment = Alignment.Center) {
+        library == null -> Box(modifier = Modifier.fillMaxSize().padding(bottom = LocalBottomChrome.current), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = colors.primary)
         }
-        songs.isEmpty() -> CenterHint("No music found on this device", ext.muted)
-        else -> SongList(songs, onPlaySongs, "")
+        library.songs.isEmpty() -> CenterHint("No music found on this device", ext.muted)
+        else -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalBottomChrome.current),
+            verticalArrangement = Arrangement.spacedBy(if (isGlass()) 0.dp else 6.dp),
+        ) {
+            val heading: (String) -> Unit = { label ->
+                item(key = "head-$label") {
+                    Text(
+                        label.head(),
+                        style = MetaLabel,
+                        color = xc.accent,
+                        modifier = Modifier.padding(start = 6.dp, top = 16.dp, bottom = 8.dp),
+                    )
+                }
+            }
+            for ((label, groups) in listOf("ALBUMS" to library.albums, "PLAYLISTS" to library.playlists)) {
+                if (groups.isEmpty()) continue
+                heading(label)
+                items(groups, key = { it.id }) { c ->
+                    LibraryRow(
+                        title = c.title,
+                        subtitle = if (c.isAlbum) c.subtitle else tracksLabel(c.songs.size),
+                        // An album isn't looked up song by song (iTunes gave Get Lucky a remix's cover):
+                        // one without a picture gets its own, found by name, when that lands. A
+                        // playlist wears its first song's.
+                        thumbnailUrl = c.songs.firstNotNullOfOrNull { it.thumbnailUrl }
+                            ?: if (c.isAlbum) null else c.songs.first().let { rememberSongArtwork(it.title, it.artist, null) },
+                        onClick = { onOpenItem(HomeItem(title = c.title, subtitle = c.subtitle, browseId = c.id)) },
+                    )
+                }
+            }
+            heading("SONGS")
+            val songs = library.songs
+            items(items = songs, key = { it.id }) { song ->
+                LibraryRow(
+                    title = song.title,
+                    subtitle = song.artist,
+                    // A cover from the file or its album stands; only a song with neither is looked up.
+                    thumbnailUrl = song.thumbnailUrl ?: rememberSongArtwork(song.title, song.artist, null),
+                    onClick = { onPlaySongs(songs, songs.indexOf(song)) },
+                    trailing = { TrackActionsMenu(item = song) },
+                )
+            }
+        }
     }
 }
 
