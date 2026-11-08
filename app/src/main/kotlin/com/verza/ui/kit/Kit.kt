@@ -158,3 +158,16 @@ fun Empty(text: String, icon: ImageVector = Icons.Rounded.MusicNote) {
  * whatever was underneath, playing a song nobody chose.
  */
 fun Modifier.takesTouches() = pointerInput(Unit) { detectTapGestures { } }
+
+/** Light status-bar icons while this is on screen, for the pages that are dark whatever the system says. */
+@Composable
+fun LightBarIcons() {
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(view) {
+        val window = (view.context as? android.app.Activity)?.window
+        val bars = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
+        val was = bars?.isAppearanceLightStatusBars
+        bars?.isAppearanceLightStatusBars = false
+        onDispose { if (was != null) bars.isAppearanceLightStatusBars = was }
+    }
+}

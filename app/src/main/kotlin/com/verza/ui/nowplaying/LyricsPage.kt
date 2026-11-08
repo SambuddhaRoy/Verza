@@ -55,6 +55,7 @@ fun LyricsPage(onClose: () -> Unit) {
     val now by graph.player.state.collectAsState()
     val song = now.song ?: return
     BackHandler(onBack = onClose)
+    com.verza.ui.kit.LightBarIcons()
     val lyrics by produceState<Lyrics?>(null, song.id) { value = runCatching { graph.lyrics.get(song) }.getOrDefault(Lyrics.None) }
 
     Box(Modifier.fillMaxSize().takesTouches().background(Color.Black)) {

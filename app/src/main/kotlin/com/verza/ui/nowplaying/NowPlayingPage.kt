@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import com.verza.ui.theme.Corner
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -97,9 +101,10 @@ private val InkSoft = Color.White.copy(alpha = 0.72f)
 private val InkFaint = Color.White.copy(alpha = 0.28f)
 
 /**
- * Now Playing: the cover fills the top of the screen over a blurred wash of itself, fading to near
- * black under the type; the title, the artist and album (each opens its page), the Lossless mark when
- * it is, the scrubber and the transport. The queue is below, on the same scrolling page.
+ * Now Playing: the cover as a square on a dimmed blur of itself, and under it the title, the artist
+ * and album (each opens its page), the Lossless mark when it is, the scrubber and the transport. The
+ * cover takes what the rest leaves, so a small phone gets a smaller cover, not controls off the foot of
+ * the screen. The queue is below, on the same scrolling page.
  */
 @Composable
 fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -> Unit, onStandby: () -> Unit) {
@@ -115,6 +120,7 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
     var sleepPicker by remember { mutableStateOf(false) }
     if (sleepPicker) SleepPicker(sleep, onDone = { sleepPicker = false })
     BackHandler(onBack = onClose)
+    com.verza.ui.kit.LightBarIcons()
 
     // The artist's and album's pages, for a YouTube song.
     val links by produceState<Pair<List<Link>, Link?>?>(null, song.id) {
@@ -123,55 +129,54 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
 
     Box(Modifier.fillMaxSize().takesTouches().background(Color.Black)) {
         AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(60.dp), alpha = 0.55f)
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        // White type has to read on a white cover too.
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
+        BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
             val pageHeight = maxHeight
             LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
                 item {
-                    Column(Modifier.fillMaxWidth().height(pageHeight - 40.dp)) {
-                        Box(Modifier.fillMaxWidth().weight(1f)) {
-                            AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                            // Faded into the wash at the top and to near black under the type.
-                            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.45f), 0.25f to Color.Transparent, 0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.85f))))
-                            IconButton(onClick = onClose, modifier = Modifier.padding(top = 36.dp, start = 8.dp)) {
-                                Icon(Icons.Rounded.KeyboardArrowDown, "Close", tint = Ink, modifier = Modifier.size(32.dp))
-                            }
+                    Column(Modifier.fillMaxWidth().height(pageHeight - 40.dp).padding(horizontal = 24.dp)) {
+                        IconButton(onClick = onClose, modifier = Modifier.offset(x = (-12).dp)) {
+                            Icon(Icons.Rounded.KeyboardArrowDown, "Close", tint = Ink, modifier = Modifier.size(32.dp))
                         }
-                        Column(Modifier.background(Color.Black.copy(alpha = 0.85f)).padding(horizontal = 24.dp)) {
-                            Text(song.title, style = Type.Title.copy(fontSize = 34.sp, lineHeight = 39.sp), color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Names(song, links, onOpen = { onClose(); onOpen(it) })
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                now.lossless?.let { LosslessMark(it) }
-                                Spacer(Modifier.weight(1f))
-                                IconButton(onClick = onLyrics) { Icon(Icons.Rounded.Lyrics, "Lyrics", tint = Ink) }
-                                val isLiked = song.id in liked
-                                IconButton(onClick = { graph.like(song, !isLiked) }) {
-                                    Icon(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", tint = Ink)
-                                }
-                                if (!song.onPhone) IconButton(onClick = { player.playWithRadio(song) }) { Icon(Icons.Rounded.Radio, "Radio", tint = Ink) }
-                                androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(inkMuted = Ink)) {
-                                    SongMenu(song) { close ->
-                                        MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
-                                        if (!song.onPhone) MenuItem("Discovery radio") {
-                                            close()
-                                            android.widget.Toast.makeText(context, "Finding music you haven't heard…", android.widget.Toast.LENGTH_SHORT).show()
-                                            scope.launch {
-                                                val found = runCatching { graph.discovery.from(song.id) }.getOrDefault(emptyList())
-                                                if (found.isEmpty()) android.widget.Toast.makeText(context, "Couldn't find anything new for this one", android.widget.Toast.LENGTH_SHORT).show()
-                                                else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
-                                            }
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true).clip(Corner))
+                        }
+                        Spacer(Modifier.height(20.dp))
+                        Text(song.title, style = Type.Title.copy(fontSize = 34.sp, lineHeight = 39.sp), color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Names(song, links, onOpen = { onClose(); onOpen(it) })
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            now.lossless?.let { LosslessMark(it) }
+                            Spacer(Modifier.weight(1f))
+                            IconButton(onClick = onLyrics) { Icon(Icons.Rounded.Lyrics, "Lyrics", tint = Ink) }
+                            val isLiked = song.id in liked
+                            IconButton(onClick = { graph.like(song, !isLiked) }) {
+                                Icon(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", tint = Ink)
+                            }
+                            if (!song.onPhone) IconButton(onClick = { player.playWithRadio(song) }) { Icon(Icons.Rounded.Radio, "Radio", tint = Ink) }
+                            androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(inkMuted = Ink)) {
+                                SongMenu(song) { close ->
+                                    MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
+                                    if (!song.onPhone) MenuItem("Discovery radio") {
+                                        close()
+                                        android.widget.Toast.makeText(context, "Finding music you haven't heard…", android.widget.Toast.LENGTH_SHORT).show()
+                                        scope.launch {
+                                            val found = runCatching { graph.discovery.from(song.id) }.getOrDefault(emptyList())
+                                            if (found.isEmpty()) android.widget.Toast.makeText(context, "Couldn't find anything new for this one", android.widget.Toast.LENGTH_SHORT).show()
+                                            else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
                                         }
-                                        MenuItem("Standby") { close(); onStandby() }
-                                        MenuItem("Share listening session") {
-                                            close()
-                                            Sessions.link(now.queue, now.index, player.position)?.let { shareSession(context, it) }
-                                        }
+                                    }
+                                    MenuItem("Standby") { close(); onStandby() }
+                                    MenuItem("Share listening session") {
+                                        close()
+                                        Sessions.link(now.queue, now.index, player.position)?.let { shareSession(context, it) }
                                     }
                                 }
                             }
-                            Scrubber(now, onSeek = player::seek)
-                            Transport(now)
-                            Spacer(Modifier.navigationBarsPadding().height(8.dp))
                         }
+                        Scrubber(now, onSeek = player::seek)
+                        Transport(now)
+                        Spacer(Modifier.navigationBarsPadding().height(8.dp))
                     }
                 }
                 item { Text("up next", style = Type.Section, color = Ink, modifier = Modifier.padding(start = 24.dp, top = 12.dp, bottom = 8.dp)) }
