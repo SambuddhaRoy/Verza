@@ -85,18 +85,6 @@ class YouTube(private val http: OkHttpClient, private val cookie: () -> String?)
 
     private suspend fun browse(id: String) = post("browse") { put("browseId", id) }
 
-    /**
-     * Home: YouTube Music's own home, then Explore and Charts, fetched together. Mood shelves ("Sleep
-     * right now", "Feeling…") are dropped as the promotions they are.
-     */
-    suspend fun home(): List<Section> = coroutineScope {
-        listOf("FEmusic_home", "FEmusic_explore", "FEmusic_charts")
-            .map { id -> async { runCatching { parseSections(browse(id)) }.getOrDefault(emptyList()) } }
-            .flatMap { it.await() }
-            .filterNot { s -> PROMO.any { it.containsMatchIn(s.title) } }
-            .distinctBy { it.title }
-    }
-
     suspend fun album(id: String): Album = parseAlbum(browse(id))
     suspend fun artist(id: String): Artist = parseArtist(browse(id))
 
@@ -145,7 +133,6 @@ class YouTube(private val http: OkHttpClient, private val cookie: () -> String?)
         const val KEY = "AIzaSyC9XL3ZjWddXya6X74dJoCTL-KKVH2hiOg"
         const val VERSION = "1.20240101.01.00"
         const val AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        val PROMO = listOf(Regex("""\bright now\b""", RegexOption.IGNORE_CASE), Regex("""\bfeeling\b""", RegexOption.IGNORE_CASE), Regex("""\bget you started\b""", RegexOption.IGNORE_CASE))
 
         /** Google's cookie auth: SAPISIDHASH of the time, the SAPISID cookie and the origin. */
         fun sapisidHash(cookie: String): String? {

@@ -28,6 +28,7 @@ import com.verza.Graph
 import com.verza.data.Card
 import com.verza.data.Section
 import com.verza.data.artAt
+import com.verza.data.mixes.HomeShelves
 import com.verza.graph
 import com.verza.ui.kit.Empty
 import com.verza.ui.kit.ListRow
@@ -37,6 +38,12 @@ import com.verza.ui.kit.SongMenu
 import com.verza.ui.kit.SectionTitle
 import com.verza.ui.page.Shelf
 import com.verza.ui.theme.LocalPalette
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,37 +54,67 @@ import java.time.LocalDateTime
 import java.time.format.TextStyle
 import java.util.Locale
 
-/** The feed: null while there's nothing to show yet, empty when the network failed with no saved copy. */
+/**
+ * Home's shelves that come from the play log: [local] at once (null until read), and the "because you
+ * listened to" radios, from their last saved copy and then refreshed.
+ */
 class HomeModel(graph: Graph) : ViewModel() {
-    private val _feed = MutableStateFlow<List<Section>?>(null)
-    val feed: StateFlow<List<Section>?> = _feed.asStateFlow()
+    private val _local = MutableStateFlow<HomeShelves.Shelves?>(null)
+    val local: StateFlow<HomeShelves.Shelves?> = _local.asStateFlow()
+    private val _because = MutableStateFlow<List<Section>>(emptyList())
+    val because: StateFlow<List<Section>> = _because.asStateFlow()
 
     init {
         viewModelScope.launch {
-            graph.saved.load("home", ListSerializer(Section.serializer())) { graph.youtube.home() }
-                .catch { emit(emptyList()) }
-                .collect { _feed.value = it }
+            val shelves = withContext(Dispatchers.IO) { HomeShelves.from(graph.db.stats().playsWithSongs(), System.currentTimeMillis()) }
+            _local.value = shelves
+            graph.saved.load("because", ListSerializer(Section.serializer())) {
+                val radios = coroutineScope {
+                    shelves.seeds.map { seed ->
+                        async {
+                            runCatching {
+                                val songs = graph.youtube.radio(seed.songId).filter { it.id != seed.songId }.take(20)
+                                Section("because you listened to ${seed.artist}", songs.map { Card(it.title, it.artist, it.art, song = it) })
+                            }.getOrNull()
+                        }
+                    }.awaitAll()
+                }
+                // Every lookup failed: offline. Keep the saved copy rather than emptying the shelves.
+                if (shelves.seeds.isNotEmpty() && radios.all { it == null }) error("offline")
+                radios.filterNotNull().filter { it.cards.size >= HomeShelves.MIN_SONGS }
+            }.catch { }.collect { _because.value = it }
         }
     }
 }
 
 /**
- * Home: what you played last, then YouTube Music's shelves. Drawn from the last saved feed at once and
- * refreshed behind it; the old Home waited on three network calls every launch (6s to its first shelf).
+ * Home: everything on it comes from what you play. What you played last, the mixes made from your
+ * listening, what you have on repeat, the radios of the artists you've played most lately, your liked
+ * songs, and favourites you haven't played in a while. YouTube's own home feed isn't used: signed out,
+ * and for most accounts signed in, it's charts and trending.
  */
 @Composable
 fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
     val graph = LocalContext.current.graph
     val model: HomeModel = viewModel(factory = viewModelFactory { initializer { HomeModel(graph) } })
-    val feed by model.feed.collectAsState()
+    val local by model.local.collectAsState()
+    val because by model.because.collectAsState()
     val recent by graph.library.recent.collectAsState(initial = emptyList())
+    val liked by graph.library.liked.collectAsState(initial = emptyList())
     val mixes by graph.mixes.mixes.collectAsState()
     val p = LocalPalette.current
+    // A different handful of liked songs each day.
+    val likedToday = remember(liked) { liked.shuffled(kotlin.random.Random(java.time.LocalDate.now().toEpochDay())).take(20) }
 
+    fun songs(title: String, list: List<com.verza.data.Song>) = Section(title, list.map { Card(it.title, it.artist, it.art, song = it) })
     val shelves = buildList {
-        if (recent.isNotEmpty()) add(Section("recently played", recent.take(20).map { Card(it.title, it.artist, it.art, song = it) }))
+        if (recent.isNotEmpty()) add(songs("recently played", recent.take(20)))
         if (mixes.isNotEmpty()) add(Section("made for you", mixes.map { Card(it.title, it.subtitle, it.items.firstOrNull { i -> i.thumbnailUrl != null }?.thumbnailUrl, page = "mix:" + it.id) }))
-        addAll(feed.orEmpty().map { it.copy(title = it.title.lowercase()) })
+        local?.onRepeat?.takeIf { it.isNotEmpty() }?.let { add(songs("on repeat", it)) }
+        because.getOrNull(0)?.let(::add)
+        if (liked.size >= 8) add(songs("from your liked songs", likedToday))
+        because.drop(1).forEach(::add)
+        local?.forgotten?.takeIf { it.isNotEmpty() }?.let { add(songs("forgotten favourites", it)) }
     }
     Box(Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(bottom = 16.dp + LocalDockHeight.current)) {
@@ -101,8 +138,8 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
             }
         }
         when {
-            feed == null && recent.isEmpty() -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = p.accent)
-            feed?.isEmpty() == true && recent.isEmpty() -> Empty("You're offline. Downloaded songs still play.")
+            local == null && recent.isEmpty() -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = p.accent)
+            shelves.isEmpty() -> Empty("Play some music and Home fills up with songs picked from what you listen to.")
         }
     }
 }

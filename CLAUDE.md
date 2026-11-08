@@ -46,6 +46,9 @@ The old app's storage is read as it is, so an update loses nothing and needs no 
   it. The old Home waited on six network calls each launch: 6.15s median to its first shelf.
 - **A song's YouTube Music cover is the right one** (lh*/yt* on googleusercontent/ggpht), fetched at the
   size drawn. Only a video's frame (i.ytimg.com) is looked up elsewhere.
+- **Home is only what you listen to** (`data/mixes/HomeShelves.kt`, `ui/home/HomePage.kt`). YouTube's home,
+  explore and charts feeds were dropped in 2.0.1: signed out, and for most accounts signed in, they are
+  charts and trending. Don't bring them back.
 - **Look ahead.** The next three songs' lookups run while one plays; a skip finds them done.
 
 ## Baseline (old app 1.20.11, emulator, median of 5)
