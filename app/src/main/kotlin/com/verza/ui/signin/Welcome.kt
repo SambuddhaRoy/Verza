@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.verza.ui.kit.takesTouches
 import com.verza.graph
 import com.verza.ui.kit.Word
 import com.verza.ui.theme.LocalPalette
@@ -28,7 +29,7 @@ fun Welcome(onSignIn: () -> Unit) {
     val p = LocalPalette.current
     val done = { scope.launch { graph.settings.onboarded.set(true) } }
     Column(
-        Modifier.fillMaxSize().background(p.canvas).padding(horizontal = 28.dp).navigationBarsPadding(),
+        Modifier.fillMaxSize().takesTouches().background(p.canvas).padding(horizontal = 28.dp).navigationBarsPadding(),
         verticalArrangement = Arrangement.Center,
     ) {
         Text("verza", style = Type.Masthead.copy(fontSize = 72.sp, lineHeight = 76.sp), color = p.ink)

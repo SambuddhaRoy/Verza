@@ -7,6 +7,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.verza.ui.kit.takesTouches
 import com.verza.ui.nowplaying.LyricsPage
 import com.verza.ui.nowplaying.NowPlayingPage
 import com.verza.ui.settings.EqualizerPage
@@ -17,7 +18,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
@@ -46,7 +46,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
@@ -134,10 +133,10 @@ fun Shell() {
 private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Unit, modifier: Modifier) {
     val p = LocalPalette.current
     val player = LocalContext.current.graph.player
-    val entry by nav.currentBackStackEntryAsState()
-    val current = entry?.destination?.route
-    // Takes every touch on it: a tap between the tabs went through to the list behind and played a song.
-    Column(modifier.fillMaxWidth().pointerInput(Unit) { detectTapGestures { } }.background(p.canvas.copy(alpha = 0.96f)).navigationBarsPadding()) {
+    // The tab a page was opened from stays lit while it's showing.
+    val stack by nav.currentBackStack.collectAsState()
+    val current = stack.lastOrNull { it.destination.route in Tabs }?.destination?.route
+    Column(modifier.fillMaxWidth().takesTouches().background(p.canvas.copy(alpha = 0.96f)).navigationBarsPadding()) {
         now.song?.let { song ->
             Row(
                 Modifier.fillMaxWidth().height(PlayerHeight).clickable(onClick = onOpenPlayer).padding(horizontal = 20.dp),
@@ -171,7 +170,9 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
                 // The whole height of the row takes the tap, not just the word.
                 Box(
                     Modifier.fillMaxHeight().clickable {
-                        if (tab != current) nav.navigate(tab) {
+                        // The tab you're in takes you back to its top; another brings back where you were in it.
+                        if (tab == current) nav.popBackStack(tab, inclusive = false)
+                        else nav.navigate(tab) {
                             popUpTo(nav.graph.startDestinationId) { saveState = true }
                             launchSingleTop = true
                             restoreState = true

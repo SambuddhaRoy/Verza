@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.REPEAT_MODE_ONE
 import coil3.compose.AsyncImage
+import com.verza.ui.kit.takesTouches
 import com.verza.data.Link
 import com.verza.data.Song
 import com.verza.data.artAt
@@ -120,7 +121,7 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
         value = if (song.onPhone) null else runCatching { graph.youtube.links(song.id, song.title) }.getOrNull()
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().takesTouches().background(Color.Black)) {
         AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(60.dp), alpha = 0.55f)
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val pageHeight = maxHeight
