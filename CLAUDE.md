@@ -55,20 +55,30 @@ The old app's storage is read as it is, so an update loses nothing and needs no 
 
 ## Where it stands
 
-Done and checked on the emulator (`verza-shots/mob/_carryover.py`, `_rw_play.py`, `_rw_more.py`):
-the old library opens as it is; search; playback with the radio after a searched song; look-ahead
-(a skip 1.9s); the queue kept across launches; album, playlist and artist pages from a saved copy;
-Home from a saved copy; Now Playing (Poster); Library (liked, recent, playlists, downloaded, on
-device); lossless sources added in Settings, playing lossless; likes sent to the account (`Sync`).
+Everything the old app did is here except the visualiser and what rode on it (haptics on the beat,
+the wash pulsing with the bass) and the moving wash behind Now Playing, which is a still blur of the
+cover. The visualiser needs the microphone permission (`RECORD_AUDIO`), which the rewrite doesn't ask
+for. New: Android Auto lists the library, and Play on headphones or the system's media card picks up
+the saved queue with the app closed.
 
-Still to port: lyrics, Standby, equaliser, visualiser and haptics; downloads; making playlists and
-the song menu (add to playlist, play next, download); sign-in, onboarding, backups, ListenBrainz,
-mixes, Your Sound, shared sessions; updates (through PackageInstaller sessions); widgets, the tile,
-Android Auto; the flowing wash; Android 11; and the cold start, still about 90ms behind (below).
+Checked on the emulator, scripts in `verza-shots/mob/`:
 
-Measured (same script and emulator, quiet, median of 5): cold start old 464ms, new 552ms; Home's
-first shelf old 4.47s, new 3.54s, but ~2.4s of each is uiautomator's own dump, and the new Home is
-already drawn in the first dump; search old 2.84s, new 2.77s.
+| Script | What |
+|---|---|
+| `_carryover.py old.apk new.apk` | an old install's like, history and playlist survive the update (also on `VerzaAndroid11`) |
+| `_rw_play.py new.apk` | search, play, radio, skip, pause, queue kept across launches (also on Android 11) |
+| `_rw_more.py new.apk` | a lossless source (PC server on 8790, adb reverse), album page, Now Playing, on device |
+| `_wplace.py`, `_rw_widget.py`, `_w5.py`, `_w6.py` | place a widget; it follows playback; Play with the process gone resumes; the tile |
+| `_rw_links.py`, `_rw_sleep2.py`, `_rw_standby.py`, `_rw_disc.py`, `_rw_tabs.py` | links in, the menu, sleep timer, Standby, Discovery, tabs |
+| `_baseline.py <apk> com.verza/.MainActivity` | timings |
+
+Timings (same emulator, nothing else running, median of 5), old 1.20.11 against the rewrite: cold start
+519ms / 524ms (the old one ranged 414-650ms), search 2.83s / 2.70s, Home's first shelf 4.13s / 3.29s.
+~2.4s of each Home and search figure is uiautomator's own dump. The APK is 5.0MB, the old one 7.4MB.
+
+Not checked anywhere: Android Auto in a car or the head-unit emulator (not installed here).
+
+## Gotchas found while porting
 
 - **Http to the phone itself needs `network_security_config`**: without it Android refuses
   `http://localhost`, and adding a source served from the phone (or an adb-reversed one in tests)
@@ -78,17 +88,18 @@ already drawn in the first dump; search old 2.84s, new 2.77s.
   replaces a controller that isn't `isConnected`.
 - **Don't connect the player before the first frame**: it starts the service on the main thread and
   held the first frame back. `MainActivity` connects after one.
-
-## Porting order
-
-Each step builds, runs, and is checked on the emulator against the old app before the next.
-
-1. Shell: theme, dock, pages, reading the old library and settings (checked against a real old install).
-2. Playback: service, resolver (download, cache, lossless sources, YouTube), look-ahead, notification.
-3. Search, album and artist pages, Now Playing, mini player.
-4. Home from cache, mixes.
-5. Library: likes, history, playlists, downloads, on device, sources.
-6. Lyrics, Standby, equaliser, visualiser, haptics.
-7. Settings, onboarding, backups, ListenBrainz, Your Sound, shared sessions, updates.
-8. Widgets, quick-settings tile, Android Auto.
-9. Parity pass and timing against the baseline, then release as 2.0.0.
+- **Anything drawn over the pages needs `takesTouches()`** (`ui/kit/Kit.kt`). A background lets taps
+  through: a tap between the tabs, or anywhere on the first-launch welcome, played a song from the
+  page underneath. Tests that tapped rows behind the dock passed for the same wrong reason.
+- **The widget and tile classes keep their old names** (`com.verza.widget.*Widget`,
+  `com.verza.tile.PlayPauseTileService`). A renamed provider and every widget on a home screen
+  disappears on update.
+- **Resuming with the app closed needs `MediaButtonReceiver` in the manifest** as well as
+  `onPlaybackResumption`. Without it Media3 refuses the system ("No root for client
+  com.android.systemui") and headphone Play does nothing. A widget's Play holds its controller until
+  playback starts, or the service stops before the queue has loaded.
+- **A force-stop greys out an app's widgets** until it runs again; test "app closed" with `am kill`.
+- **On Android 11, uiautomator reports the dock's tabs with no size** (the old app's too).
+  `m.py`'s `tab()` falls back to where they're drawn.
+- `adb emu rotate` in the Standby test can leave the emulator's user rotation locked sideways; reset
+  with `cmd window user-rotation lock 0`.
