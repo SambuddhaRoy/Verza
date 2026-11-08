@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.verza.ui.kit.takesTouches
 import com.verza.data.Lyrics
 import com.verza.data.artAt
 import com.verza.graph
@@ -56,7 +57,7 @@ fun LyricsPage(onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val lyrics by produceState<Lyrics?>(null, song.id) { value = runCatching { graph.lyrics.get(song) }.getOrDefault(Lyrics.None) }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().takesTouches().background(Color.Black)) {
         AsyncImage(song.art?.let { artAt(it, 544) }, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(60.dp), alpha = 0.5f)
         when (val l = lyrics) {
             null -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)

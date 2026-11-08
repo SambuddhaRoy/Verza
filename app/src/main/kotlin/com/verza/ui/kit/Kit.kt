@@ -26,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -149,3 +151,10 @@ fun Empty(text: String, icon: ImageVector = Icons.Rounded.MusicNote) {
         }
     }
 }
+
+/**
+ * For anything drawn over the pages (the dock, Now Playing, Lyrics, the welcome): takes the taps that
+ * land on it. A background alone lets them through, and a tap on an empty part of the layer pressed
+ * whatever was underneath, playing a song nobody chose.
+ */
+fun Modifier.takesTouches() = pointerInput(Unit) { detectTapGestures { } }
