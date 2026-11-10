@@ -71,6 +71,8 @@ class Settings(private val context: Context) {
     val savedQueue = JsonSetting(context, "saved_queue", SavedQueue.serializer(), SavedQueue())
     /** A folder the listener chose for downloads (a tree URI), or empty for Music/Verza. */
     val downloadFolder = Setting(context, stringPreferencesKey("download_tree_uri"), "")
+    /** The Soulseek account downloads come from first, or empty. The password is in filesDir/soulseek. */
+    val soulseekUser = Setting(context, stringPreferencesKey("soulseek_user"), "")
 }
 
 /** The queue as it was, so the app reopens where it left off. The old app's format. */

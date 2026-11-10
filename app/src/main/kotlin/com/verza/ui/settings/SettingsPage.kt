@@ -46,6 +46,7 @@ import com.verza.ui.theme.Corner
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -123,6 +124,9 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
         }
         item { Row(Modifier.fillMaxWidth().clip(Corner).clickable { adding = true }.padding(vertical = 12.dp)) { Text("Add a source", style = Type.RowTitle, color = LocalPalette.current.accent) } }
         if (sources.isNotEmpty()) item { Toggle("Use on mobile data", "A lossless song is roughly 30 MB, several times YouTube's", s.sourcesOnMobileData) }
+
+        item { SectionTitle("lossless downloads") }
+        item { Soulseek() }
 
         item { SectionTitle("your library") }
         item { LibraryFile() }
@@ -258,6 +262,74 @@ private fun ListenBrainz() {
                     }
                 }
             }) { Text("Connect") }
+        }
+        note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
+    }
+}
+
+/**
+ * Soulseek, a network of people sharing their music folders. Signed in, a download is a FLAC from
+ * someone sharing the song, and YouTube's stream when nobody does. There's no sign-up: the server
+ * registers a name the first time anyone signs in with it.
+ */
+@Composable
+private fun Soulseek() {
+    val context = LocalContext.current
+    val graph = context.graph
+    val scope = rememberCoroutineScope()
+    val p = LocalPalette.current
+    val user by graph.settings.soulseekUser.flow.collectAsState(initial = "")
+    val status by com.verza.data.downloads.Soulseek.status.collectAsState()
+    var name by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    if (user.isNotBlank()) Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("Soulseek: $user", style = Type.RowTitle, color = p.ink)
+            Text(
+                when {
+                    status.online -> "Connected. Downloads are FLAC when someone shares the song"
+                    status.error != null -> status.error.orEmpty()
+                    status.state == "connecting" -> "Connecting"
+                    else -> "Downloads are FLAC when someone shares the song"
+                },
+                style = Type.RowSubtitle, color = p.inkMuted,
+            )
+        }
+        TextButton(onClick = {
+            com.verza.data.downloads.Soulseek.logout(context)
+            scope.launch { graph.settings.soulseekUser.set("") }
+        }) { Text("Sign out") }
+    } else Column(Modifier.padding(vertical = 4.dp)) {
+        Text(
+            "Signed in to Soulseek, downloads are FLAC from people sharing the song, and YouTube's when nobody is. " +
+                "A name nobody has taken is yours the first time you sign in with it.",
+            style = Type.Body, color = p.inkMuted,
+        )
+        OutlinedTextField(name, { name = it; note = null }, singleLine = true, enabled = !busy, placeholder = { Text("Username") },
+            shape = Corner, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            OutlinedTextField(password, { password = it; note = null }, singleLine = true, enabled = !busy, placeholder = { Text("Password") },
+                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), shape = Corner, modifier = Modifier.weight(1f))
+            TextButton(enabled = !busy && name.isNotBlank() && password.isNotEmpty(), onClick = {
+                busy = true
+                note = "Signing in…"
+                val typed = name.trim()
+                com.verza.data.downloads.Soulseek.login(context, typed, password)
+                scope.launch {
+                    val answer = kotlinx.coroutines.withTimeoutOrNull(30_000) {
+                        com.verza.data.downloads.Soulseek.status.first { it.online || it.error != null }
+                    }
+                    note = when {
+                        answer?.online == true -> { graph.settings.soulseekUser.set(typed); null }
+                        answer?.error != null -> answer.error
+                        else -> "Couldn't reach Soulseek. Try again."
+                    }
+                    busy = false
+                }
+            }) { Text("Sign in") }
         }
         note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
     }
