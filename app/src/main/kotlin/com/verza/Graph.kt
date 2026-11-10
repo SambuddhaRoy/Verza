@@ -71,7 +71,7 @@ class Graph(val context: Context) {
     val streams: Streams by lazy { Streams(http) { quality.value } }
     val sources: Sources by lazy { Sources(http) { sourceList.value } }
     val downloads: com.verza.data.downloads.Downloads by lazy {
-        com.verza.data.downloads.Downloads(context, com.verza.data.downloads.DownloadStore(context), streams, http, library, settings, scope)
+        com.verza.data.downloads.Downloads(context, com.verza.data.downloads.DownloadStore(context), streams, youtube, http, library, settings, scope)
     }
     /** Likes or unlikes a song, and sends it to the account straight away when it can. */
     fun like(song: com.verza.data.Song, liked: Boolean) {
