@@ -31,3 +31,6 @@
 -keep class androidx.media3.** { *; }
 -keep interface androidx.media3.** { *; }
 -dontwarn androidx.media3.**
+
+# Soulseek: bridge.py calls the listener's onEvent by name through Chaquopy
+-keep class com.verza.data.downloads.Soulseek$Listener { *; }

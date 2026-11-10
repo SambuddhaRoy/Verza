@@ -240,6 +240,7 @@ object DownloadNaming {
      * playable and isn't.
      */
     fun containerFor(mimeType: String): Pair<String, String> = when {
+        mimeType.contains("flac", true) -> "flac" to "audio/flac"
         mimeType.contains("mp4", true) || mimeType.contains("aac", true) -> "m4a" to "audio/mp4"
         mimeType.contains("opus", true) -> "opus" to "audio/opus"
         mimeType.contains("webm", true) -> "webm" to "audio/webm"

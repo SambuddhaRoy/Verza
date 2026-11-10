@@ -40,6 +40,41 @@ The old app's storage is read as it is, so an update loses nothing and needs no 
   handle on it.
 - `ui/` one package per page, plus `theme` and the shared pieces in `ui/kit`.
 
+## Lossless downloads from Soulseek (2.1.0)
+
+Signed in to Soulseek (Settings > lossless downloads), a download is a FLAC from someone sharing the
+song, and YouTube's stream only when nobody does or every copy stalls (`data/downloads/Downloads.kt`,
+`saveFlac`).
+- **The Nicotine+ core runs inside the app**: pynicotine 3.3.11, unmodified, in `src/main/python`, on
+  Chaquopy's Python 3.11 (the newest with a 32-bit build; 3.12+ would drop armeabi-v7a phones).
+  `bridge.py` drives it headless; `tagger.py` (with vendored mutagen) fills in missing tags and embeds a
+  cover from MusicBrainz and the Cover Art Archive, with the song's title, artist and album as hints.
+  Both are copies from Nicotine+ for Android (`C:\Users\Sambu\NicotineAndroid`); keep `tagger.py` the same in both.
+- `Soulseek.kt` starts the core on first use (never at launch), searches for ~8s, and tries the best
+  three files `SoulseekMatch` picks: same title, no live/remix/edit unless the title says so, length
+  within 3s, then free slot, short queue, CD quality over hi-res, speed. A file that stalls 60s is
+  skipped, and the result must be a real FLAC within 10s of the song (`flacSeconds`). `SoulseekMatchTest`.
+- The core can't restart inside a process: it's disconnected, never quit. A kick by the same account
+  signing in elsewhere is reconnected on the next download, not before.
+- The password lives in the core's config, `filesDir/soulseek/config/config` (backups are off); the
+  DataStore only has the name (`soulseek_user`). Files download to app-specific storage and are moved
+  into the library like any download.
+- `DownloadService` (dataSync) keeps the process in the foreground while anything downloads. It's
+  stopped with an intent, never `stopService`, which crashes if it lands before `startForeground`.
+- **`org.gradle.parallel=false`**: in parallel, KSP reads Chaquopy's file dependency from another
+  thread and fails with "Current thread does not hold the state lock".
+- No local Python 3.11, so the build ships `.py` source and Python compiles it on the phone the first
+  time the core starts. Install Python 3.11 on the build machine and Chaquopy precompiles it.
+- The APK went from 5.0MB to 53.7MB: Python and its native modules for three ABIs.
+- **Testing without an account** (never sign in to the real network from a test): `tools/fake_server.py
+  song.flac` in NicotineAndroid is a fake server and peer that offers and sends that file for any search;
+  make it as long as the song (`ffmpeg -f lavfi -i sine=duration=262 -ac 2 song.flac`). Point the app at it
+  with `server = ('10.0.2.2', 2242)` under `[server]` in `files/soulseek/config/config`, written through
+  `run-as com.verza sh -c 'mkdir -p files/soulseek/config && cat > files/soulseek/config/config'`.
+  `tools/verza_bridge_test.py` runs this bridge against it on the desktop.
+  Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
+  copy refused and YouTube used instead, the service up during a download and gone after.
+
 ## Performance rules
 
 - **Paint from disk, then refresh.** Every page shows its last saved copy at once and updates behind

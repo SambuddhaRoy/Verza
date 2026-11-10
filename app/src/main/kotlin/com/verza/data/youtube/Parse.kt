@@ -28,6 +28,8 @@ internal fun parseSongRow(row: JsonObject): Song? {
         id = id,
         title = title,
         artist = parts.firstOrNull { !it.isDuration() } ?: "Unknown artist",
+        // The run linking to an album page; a video's row has none. A download's tags need it.
+        album = bylineLinks(columns.getOrNull(1)?.findFirst("runs")?.array.orEmpty()).second?.name,
         art = row.thumbnail(),
         durationMs = parts.lastOrNull { it.isDuration() }.durationMs(),
     )

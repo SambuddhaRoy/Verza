@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.chaquopy)
 }
 
 // Release signing comes from keystore.properties at the root, which is never committed. Without it
@@ -22,8 +23,11 @@ android {
         applicationId = "com.verza"
         minSdk = 26
         targetSdk = 35
-        versionCode = 101
-        versionName = "2.0.1"
+        versionCode = 102
+        versionName = "2.1.0"
+        // Chaquopy ships Python per ABI. 3.11 is the newest with a 32-bit build; 3.12+ would drop
+        // armeabi-v7a phones, which ran Verza before since it had no native code.
+        ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64") }
     }
 
     signingConfigs {
@@ -63,6 +67,9 @@ android {
 }
 
 ksp { arg("room.generateKotlin", "true") }
+
+// The Nicotine+ core (src/main/python) for Soulseek downloads, data/downloads/Soulseek.kt
+chaquopy { defaultConfig { version = "3.11" } }
 
 dependencies {
     coreLibraryDesugaring(libs.desugar)

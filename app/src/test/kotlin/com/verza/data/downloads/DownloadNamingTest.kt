@@ -58,6 +58,7 @@ class DownloadNamingTest {
         assertEquals("opus" to "audio/opus", DownloadNaming.containerFor("audio/opus"))
         assertEquals("webm" to "audio/webm", DownloadNaming.containerFor("audio/webm"))
         assertEquals("mp3" to "audio/mpeg", DownloadNaming.containerFor("audio/mpeg"))
+        assertEquals("flac" to "audio/flac", DownloadNaming.containerFor("audio/flac"))
         // An unknown mime is treated as the one container YouTube reliably serves.
         assertEquals("m4a" to "audio/mp4", DownloadNaming.containerFor("application/octet-stream"))
     }
