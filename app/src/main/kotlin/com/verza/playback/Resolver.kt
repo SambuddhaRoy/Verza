@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import com.verza.Graph
+import com.verza.data.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -14,7 +15,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.io.File
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.util.concurrent.ConcurrentHashMap
@@ -28,7 +28,8 @@ fun placeholder(id: String, title: String, artist: String, durationMs: Long): Ur
     Uri.parse("$SCHEME$id?t=${Uri.encode(title)}&a=${Uri.encode(artist)}&d=$durationMs")
 
 /**
- * Where a song plays from, decided as the player opens it: a download first, then a URL looked up
+ * Where a song plays from, decided as the player opens it: a copy on the phone first (its download,
+ * or a download or file of the same song under another id), then a URL looked up
  * recently, then the listener's lossless sources, then YouTube. Lookups are shared by song, so a
  * skip onto a song the look-ahead is still finding joins that lookup, and the answer is kept for
  * every later open (each seek opens the source again).
@@ -51,9 +52,7 @@ class Resolver(private val graph: Graph) : ResolvingDataSource.Resolver {
         if (!raw.startsWith(SCHEME)) return spec
         val id = raw.removePrefix(SCHEME).substringBefore('?')
         try {
-            runBlocking { graph.library.downloadPath(id) }?.let { path ->
-                if (path.startsWith("content://") || File(path).exists()) return spec.withUri(Uri.parse(path))
-            }
+            runBlocking { graph.phone.copyOf(song(id, spec.uri)) }?.let { return spec.withUri(Uri.parse(it)) }
             usable(id)?.let { return spec.withUri(Uri.parse(it.url)) }
             val hit = runBlocking { lookup(id, spec.uri).await() } ?: throw IOException("Nothing to play for $id")
             return spec.withUri(Uri.parse(hit.url))
@@ -72,7 +71,7 @@ class Resolver(private val graph: Graph) : ResolvingDataSource.Resolver {
             if (!raw.startsWith(SCHEME)) continue
             val id = raw.removePrefix(SCHEME).substringBefore('?')
             if (usable(id) != null) continue
-            scope.launch { if (graph.library.downloadPath(id) == null) runCatching { lookup(id, uri).await() } }
+            scope.launch { if (graph.phone.copyOf(song(id, uri)) == null) runCatching { lookup(id, uri).await() } }
         }
     }
 
@@ -104,6 +103,12 @@ class Resolver(private val graph: Graph) : ResolvingDataSource.Resolver {
                 try { fresh(id, hint)?.also { found[id] = it } } finally { inflight.remove(id) }
             }
         }.also { it.start() }
+
+    /** The song a placeholder names, enough to know it by. */
+    private fun song(id: String, hint: Uri) = Song(
+        id, hint.getQueryParameter("t").orEmpty(), hint.getQueryParameter("a").orEmpty(),
+        durationMs = hint.getQueryParameter("d")?.toLongOrNull() ?: 0,
+    )
 
     private fun fresh(id: String, hint: Uri): Found? {
         if (id !in sourceFailed && sourcesAllowed()) {

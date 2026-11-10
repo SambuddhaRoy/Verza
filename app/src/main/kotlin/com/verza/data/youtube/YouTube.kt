@@ -94,6 +94,24 @@ class YouTube(private val http: OkHttpClient, private val cookie: () -> String?)
     suspend fun accountLiked(): List<Song> = parseSongs(browse("VLLM"))
     suspend fun accountArtists(): List<Card> = parsePages(browse("FEmusic_library_corpus_artists"))
 
+    private val twins = java.util.concurrent.ConcurrentHashMap<String, Song>()
+
+    /**
+     * A file on the phone as a song on YouTube Music, for its radio, artist and album: the same title
+     * by the same artist and of the same length, among the first few search results. Null when none is.
+     */
+    suspend fun twin(song: Song): Song? {
+        if (!song.onPhone) return song
+        twins[song.id]?.let { return it }
+        val found = searchSongs("${song.title} ${song.artist}").take(5)
+        val hit = found.firstOrNull { com.verza.data.SameSong.same(it, song) }
+            // A file with no artist in it still has its title
+            ?: found.firstOrNull { song.artist == "Unknown artist" && com.verza.data.SameSong.title(it.title) == com.verza.data.SameSong.title(song.title) }
+            ?: return null
+        twins[song.id] = hit
+        return hit
+    }
+
     /** A song's radio: YouTube's endless mix seeded from it. */
     suspend fun radio(videoId: String): List<Song> =
         parseQueue(post("next") { put("videoId", videoId); put("playlistId", "RDAMVM$videoId"); put("isAudioOnly", true) })

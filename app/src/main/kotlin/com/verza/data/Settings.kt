@@ -75,6 +75,10 @@ class Settings(private val context: Context) {
     val soulseekUser = Setting(context, stringPreferencesKey("soulseek_user"), "")
     /** Downloads as FLAC from Soulseek (when signed in) rather than YouTube's smaller AAC. */
     val losslessDownloads = bool("lossless_downloads", false)
+    /** Downloads from before Artist/Album folders have been moved into them (Downloads.sortEarlier). */
+    val downloadsSorted = bool("downloads_sorted", false)
+    /** The downloads and phone-music steps of the welcome were shown; an update shows them once too. */
+    val musicSetUp = bool("music_set_up", false)
 }
 
 /** The queue as it was, so the app reopens where it left off. The old app's format. */

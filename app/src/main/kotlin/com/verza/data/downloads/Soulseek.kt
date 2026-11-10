@@ -2,8 +2,6 @@ package com.verza.data.downloads
 
 import android.content.Context
 import com.chaquo.python.PyObject
-import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
 import com.verza.BuildConfig
 import com.verza.data.sources.flacSeconds
 import kotlinx.coroutines.CoroutineStart
@@ -67,8 +65,7 @@ object Soulseek {
         // App-specific external storage: no permission needed. Finished files are moved into the library.
         downloadRoot = File(app.getExternalFilesDir(null) ?: app.filesDir, "soulseek")
         thread(name = "soulseek", isDaemon = true) {
-            if (!Python.isStarted()) Python.start(AndroidPlatform(app))
-            val module = Python.getInstance().getModule("bridge")
+            val module = Tags.python(app).getModule("bridge")
             bridge = module
             ready.countDown()
             module.callAttr(

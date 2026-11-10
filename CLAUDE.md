@@ -42,6 +42,7 @@ The old app's storage is read as it is, so an update loses nothing and needs no 
 
 ## Lossless downloads from Soulseek (2.1.0)
 
+The welcome asks (after the YouTube sign-in, and once on an update from before: `music_set_up`), and
 Settings > downloads offers **Regular** (YouTube's AAC, ~4MB) or **Lossless (FLAC)** (`lossless_downloads`,
 off by default, turned on by signing in to Soulseek). With Lossless and an account, a download is a FLAC
 from someone sharing the song, and YouTube's stream only when nobody does or every copy stalls
@@ -58,6 +59,16 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
 - **A search row is often just "Coldplay"**: no album and no length. Without the length `SoulseekMatch`
   accepts any file, a preview included, and without the album the tagger finds no release and no cover.
   `YouTube.complete` fills both from `next` first, and with the length still unknown it's a regular download.
+- **Every download lands in the cache first** (`cacheDir/downloading`, cleared at start), is tagged
+  (`Tags.kt`: tagger.py with Verza's title/artist/album as hints, MusicBrainz for the rest, YouTube Music's
+  cover when the Cover Art Archive has none), then copied to `Music/Verza/<album artist>/<album>/Artist -
+  Title.ext`, the folder named from the file's own tags so the phone's grouping (`PhoneGrouping`) reads it
+  back as that album. The music folder only ever holds whole, tagged songs. MusicBrainz's title and album
+  win over YouTube's where it has the song (the tagger fills empty tags only, and a new download has none).
+- **Downloads from before the folders are moved once** (`Downloads.sortEarlier`, `downloads_sorted`):
+  copied out, tagged, placed, then the old file deleted, and its folder once empty. A MediaStore file an
+  earlier install saved can't be deleted, so the new copy is dropped instead and the song stays where it was.
+  It runs through the download queue, so the dock says "sorting your downloads" and the service keeps it alive.
 - **Regular downloads go in 4MB `Range` pieces** (`CHUNK`). One request for the whole file was sent at
   about the song's own speed: 167s for a 4-minute song on the emulator, ~15s in pieces.
 - The core can't restart inside a process: it's disconnected, never quit. A kick by the same account
@@ -81,6 +92,22 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   `tools/verza_bridge_test.py` runs this bridge against it on the desktop.
   Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
   copy refused and YouTube used instead, the service up during a download and gone after.
+
+## A song on the phone is a song (local files and downloads)
+
+- **Where a song plays from is decided by `PhoneMusic.copyOf`** (Resolver, before any lookup): its own
+  download, a download of the same song under another id (a song's video and album track are two ids), or a
+  file in the last scan of the phone's music, matched by `SameSong` (title and first artist, normalised;
+  lengths within 3s when both are known, so a live take or the video's longer cut isn't taken for it). So a
+  radio, playlist or mix plays a song you have from its file, and a FLAC plays as Lossless. The phone's
+  music is scanned after the first frame when the permission is held, so this works without opening On device.
+- **A file on the phone borrows its YouTube song** (`YouTube.twin`: same title, artist and length among the
+  first five search results, kept for the process) for its radio, Discovery radio, artist, album and Share.
+  Without one those say so; play, queue, like and playlists never needed one.
+- Checked on the emulator: an update from 2.1.0 sorted 11 downloads into Coldplay/Parachutes with MusicBrainz
+  track numbers and removed the old folder; a YouTube "The Scientist" played the phone's FLAC (and a cover
+  by someone else didn't); a radio from that file; a downloaded song from a radio with the network off; a
+  phone file in a playlist; a lossless download (27s) and a wrong-length one falling back to regular.
 
 ## Performance rules
 

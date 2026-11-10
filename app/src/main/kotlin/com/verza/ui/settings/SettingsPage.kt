@@ -276,7 +276,7 @@ private fun ListenBrainz() {
  * ten times the size and only worth it on gear that can tell. Each says what it costs.
  */
 @Composable
-private fun DownloadKind() {
+internal fun DownloadKind() {
     val graph = LocalContext.current.graph
     val scope = rememberCoroutineScope()
     val p = LocalPalette.current
@@ -318,7 +318,7 @@ private fun DownloadKind() {
  * registers a name the first time anyone signs in with it.
  */
 @Composable
-private fun Soulseek() {
+internal fun Soulseek() {
     val context = LocalContext.current
     val graph = context.graph
     val scope = rememberCoroutineScope()

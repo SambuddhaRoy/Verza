@@ -121,10 +121,13 @@ fun Shell() {
             LyricsPage(onClose = { lyricsOpen = false })
         }
         if (standbyOpen && now.song != null) com.verza.ui.nowplaying.Standby(onExit = { standbyOpen = false })
-        // The first launch of a new install: a welcome, and signing in if wanted. Read as null until
-        // known, so an existing install never sees it flash past.
-        val onboarded by LocalContext.current.graph.settings.onboarded.flow.collectAsState(initial = null)
-        if (onboarded == false) Welcome(onSignIn = { nav.navigate("signin") })
+        // The first launch of a new install: a welcome, signing in if wanted, then downloads and the
+        // phone's music; an update from before those were asked about gets just those two, once. Read
+        // as null until known, so an install that has seen it all never sees it flash past.
+        val settings = LocalContext.current.graph.settings
+        val onboarded by settings.onboarded.flow.collectAsState(initial = null)
+        val musicSetUp by settings.musicSetUp.flow.collectAsState(initial = null)
+        if ((onboarded == false || musicSetUp == false) && route != "signin") Welcome(account = onboarded == false, onSignIn = { nav.navigate("signin") })
     }
 }
 
@@ -157,7 +160,7 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
         // While downloads run, one quiet line says how far along they are.
         val downloads by LocalContext.current.graph.downloads.progress.collectAsState()
         if (downloads.running) Text(
-            "downloading ${downloads.done + 1} of ${downloads.total}" + (downloads.current?.let { " · $it" } ?: ""),
+            (if (downloads.sorting) "sorting your downloads " else "downloading ") + "${downloads.done + 1} of ${downloads.total}" + (downloads.current?.let { " · $it" } ?: ""),
             style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 6.dp),
         )

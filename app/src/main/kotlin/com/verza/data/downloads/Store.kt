@@ -45,8 +45,8 @@ class DownloadStore(
     )
 
     /**
-     * Reserve a file called [name] (extension included), in [collection]'s own folder when it came
-     * from a playlist or album so that stays one thing on disk.
+     * Reserve a file called [name] (extension included) in [folders] under the root: the album
+     * artist's folder, then the album's ([DownloadNaming.folders]).
      *
      * Three destinations, in order: the folder the listener chose; otherwise the shared Music
      * folder via MediaStore, which needs no permission and puts the files where every other music
@@ -57,15 +57,14 @@ class DownloadStore(
      * interrupted download is cleaned up by discard() instead. The MediaStore path gets this for
      * free through IS_PENDING, which hides the file until it is complete.
      */
-    fun create(treeUri: String?, name: String, mime: String, collection: String = ""): Target {
-        val folder = DownloadNaming.folder(collection)
+    fun create(treeUri: String?, name: String, mime: String, folders: List<String> = emptyList()): Target {
         if (!treeUri.isNullOrBlank()) {
-            runCatching { createInTree(Uri.parse(treeUri), name, mime, folder) }.getOrNull()?.let { return it }
+            runCatching { createInTree(Uri.parse(treeUri), name, mime, folders) }.getOrNull()?.let { return it }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            runCatching { createInMediaStore(name, mime, folder) }.getOrNull()?.let { return it }
+            runCatching { createInMediaStore(name, mime, folders) }.getOrNull()?.let { return it }
         }
-        return createPrivate(name, folder)
+        return createPrivate(name, folders)
     }
 
     /**
@@ -73,13 +72,9 @@ class DownloadStore(
      * for a file this app inserts, and the result is indexed, so it shows up in every other player
      * on the phone without a rescan.
      */
-    private fun createInMediaStore(name: String, mime: String, folder: String): Target? {
+    private fun createInMediaStore(name: String, mime: String, folders: List<String>): Target? {
         val resolver = context.contentResolver
-        val relative = listOfNotNull(
-            Environment.DIRECTORY_MUSIC,
-            ROOT_FOLDER,
-            folder.ifBlank { null },
-        ).joinToString("/") + "/"
+        val relative = (listOf(Environment.DIRECTORY_MUSIC, ROOT_FOLDER) + folders).joinToString("/") + "/"
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, name)
             put(MediaStore.Audio.Media.MIME_TYPE, mime)
@@ -98,10 +93,10 @@ class DownloadStore(
         )
     }
 
-    private fun createInTree(tree: Uri, name: String, mime: String, folder: String): Target? {
+    private fun createInTree(tree: Uri, name: String, mime: String, folders: List<String>): Target? {
         val resolver = context.contentResolver
         val root = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
-        val parent = if (folder.isBlank()) root else (findOrCreateDir(tree, root, folder) ?: root)
+        val parent = folders.fold(root) { dir, f -> findOrCreateDir(tree, dir, f) ?: error("couldn't make $f") }
         // Providers resolve their own collisions here, appending "(1)" and so on, so two different
         // recordings of the same song never overwrite each other.
         val doc = DocumentsContract.createDocument(resolver, parent, mime, name) ?: return null
@@ -142,9 +137,8 @@ class DownloadStore(
         return DocumentsContract.createDocument(resolver, parent, DocumentsContract.Document.MIME_TYPE_DIR, name)
     }
 
-    private fun createPrivate(name: String, folder: String = ""): Target {
-        val base = File(context.getExternalFilesDir(null), "downloads")
-        val dir = (if (folder.isBlank()) base else File(base, folder)).apply { mkdirs() }
+    private fun createPrivate(name: String, folders: List<String>): Target {
+        val dir = File(File(context.getExternalFilesDir(null), "downloads"), folders.joinToString("/")).apply { mkdirs() }
         val file = uniqueFile(dir, name)
         return Target(
             location = file.absolutePath,
@@ -153,16 +147,37 @@ class DownloadStore(
         )
     }
 
-    /** Delete whatever [location] points at, whether it is a content Uri or a path. */
-    fun delete(location: String) {
-        runCatching {
-            if (location.startsWith("content://")) {
-                DocumentsContract.deleteDocument(context.contentResolver, Uri.parse(location))
-            } else {
-                File(location).delete()
+    /**
+     * Delete whatever [location] points at: a MediaStore item, a document in the chosen folder, or a
+     * path. False when it couldn't be, as with a MediaStore file an earlier install of the app saved.
+     */
+    fun delete(location: String): Boolean = runCatching {
+        val uri = Uri.parse(location)
+        when {
+            uri.authority == MediaStore.AUTHORITY -> {
+                @Suppress("DEPRECATION")
+                val path = context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)
+                    ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+                (context.contentResolver.delete(uri, null, null) > 0).also { gone ->
+                    // Its folder too, once nothing is left in it (a playlist's, from before Artist/Album folders)
+                    if (gone) path?.let { runCatching { File(it).parentFile?.takeIf { d -> d.list()?.isEmpty() == true }?.delete() } }
+                }
             }
+            location.startsWith("content://") -> DocumentsContract.deleteDocument(context.contentResolver, uri)
+            else -> File(location).delete()
         }
-    }
+    }.getOrDefault(false)
+
+    /** The file name at [location], or null when nothing is there any more. */
+    fun nameOf(location: String): String? = runCatching {
+        if (!location.startsWith("content://")) return@runCatching File(location).takeIf { it.exists() }?.name
+        context.contentResolver.query(Uri.parse(location), arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    }.getOrNull()
+
+    fun read(location: String): java.io.InputStream =
+        if (location.startsWith("content://")) context.contentResolver.openInputStream(Uri.parse(location)) ?: error("can't read $location")
+        else File(location).inputStream()
 
     /**
      * A readable name for a chosen folder: a tree Uri of "primary:Music/Verza" reads back as
@@ -207,9 +222,16 @@ object DownloadNaming {
     private const val MAX = 120
 
     /**
-     * A folder name for a playlist or album, or "" when there is nothing usable. Empty means the
-     * track goes straight into the root folder, which is what a single downloaded song should do.
+     * Where a song goes under the root: its album artist's folder, then its album's, as music is laid
+     * out on any computer and as the phone's own grouping reads it back (PhoneGrouping). A song with
+     * no album sits in its artist's folder; one with no artist either, in the root.
      */
+    fun folders(albumArtist: String?, album: String?): List<String> {
+        val artist = folder(albumArtist?.let { com.verza.data.SameSong.mainArtist(it) })
+        return if (artist.isEmpty()) emptyList() else listOf(artist) + listOfNotNull(folder(album).ifEmpty { null })
+    }
+
+    /** A folder name, or "" when there is nothing usable in [collection]. */
     fun folder(collection: String?): String {
         val raw = collection.orEmpty().trim()
         if (raw.isEmpty()) return ""
@@ -244,7 +266,7 @@ object DownloadNaming {
         mimeType.contains("mp4", true) || mimeType.contains("aac", true) -> "m4a" to "audio/mp4"
         mimeType.contains("opus", true) -> "opus" to "audio/opus"
         mimeType.contains("webm", true) -> "webm" to "audio/webm"
-        mimeType.contains("mpeg", true) -> "mp3" to "audio/mpeg"
+        mimeType.contains("mpeg", true) || mimeType.equals("mp3", true) -> "mp3" to "audio/mpeg"
         else -> "m4a" to "audio/mp4"
     }
 

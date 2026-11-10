@@ -22,6 +22,7 @@ import com.verza.data.videoIdIn
 import com.verza.ui.Shell
 import com.verza.ui.theme.VerzaTheme
 import com.verza.ui.theme.coverSwatches
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     /** A "listen along" link waiting for a yes. */
@@ -36,7 +37,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             // After the first frame: connecting starts the player's service on the main thread, and
             // done first it held the first frame back. Then any likes still to send to the account, and a look for an update.
-            LaunchedEffect(Unit) { withFrameNanos { }; graph.player.connect(); graph.sync.flush(); graph.updates.check() }
+            // The phone's music is read so a song it has plays from its file, wherever it's queued from.
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+                graph.player.connect()
+                if (graph.phone.allowed()) graph.scope.launch { runCatching { graph.phone.scan() } }
+                graph.downloads.sortEarlier()
+                graph.sync.flush(); graph.updates.check()
+            }
             val playing by graph.player.state.collectAsState()
             VerzaTheme(swatches = coverSwatches(playing.song?.art)) {
                 Shell()

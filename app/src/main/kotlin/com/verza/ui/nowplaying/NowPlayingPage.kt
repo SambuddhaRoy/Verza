@@ -122,9 +122,9 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
     BackHandler(onBack = onClose)
     com.verza.ui.kit.LightBarIcons()
 
-    // The artist's and album's pages, for a YouTube song.
+    // The artist's and album's pages; a file on the phone's are its song's on YouTube Music.
     val links by produceState<Pair<List<Link>, Link?>?>(null, song.id) {
-        value = if (song.onPhone) null else runCatching { graph.youtube.links(song.id, song.title) }.getOrNull()
+        value = runCatching { graph.youtube.twin(song)?.let { graph.youtube.links(it.id, it.title) } }.getOrNull()
     }
 
     Box(Modifier.fillMaxSize().takesTouches().background(Color.Black)) {
@@ -153,15 +153,15 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
                             IconButton(onClick = { graph.like(song, !isLiked) }) {
                                 Icon(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", tint = Ink)
                             }
-                            if (!song.onPhone) IconButton(onClick = { player.playWithRadio(song) }) { Icon(Icons.Rounded.Radio, "Radio", tint = Ink) }
+                            IconButton(onClick = { player.playWithRadio(song) }) { Icon(Icons.Rounded.Radio, "Radio", tint = Ink) }
                             androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(inkMuted = Ink)) {
                                 SongMenu(song) { close ->
                                     MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
-                                    if (!song.onPhone) MenuItem("Discovery radio") {
+                                    MenuItem("Discovery radio") {
                                         close()
                                         android.widget.Toast.makeText(context, "Finding music you haven't heard…", android.widget.Toast.LENGTH_SHORT).show()
                                         scope.launch {
-                                            val found = runCatching { graph.discovery.from(song.id) }.getOrDefault(emptyList())
+                                            val found = runCatching { graph.youtube.twin(song)?.let { graph.discovery.from(it.id) } }.getOrNull().orEmpty()
                                             if (found.isEmpty()) android.widget.Toast.makeText(context, "Couldn't find anything new for this one", android.widget.Toast.LENGTH_SHORT).show()
                                             else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
                                         }

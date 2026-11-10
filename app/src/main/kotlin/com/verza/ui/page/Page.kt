@@ -131,7 +131,7 @@ private fun AlbumPage(album: Album) {
                 Row(Modifier.padding(top = 6.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
                     Word("play", p.accent, enabled = album.songs.isNotEmpty()) { player.play(album.songs) }
                     Word("shuffle", enabled = album.songs.isNotEmpty()) { player.shuffle(album.songs) }
-                    if (album.songs.any { !it.onPhone }) Word("download") { graph.downloads.save(album.songs, album.title) }
+                    if (album.songs.any { !it.onPhone }) Word("download") { graph.downloads.save(album.songs) }
                     Spacer(Modifier.weight(1f))
                     Text(songsLabel(album.songs), style = Type.Small, color = p.inkMuted)
                 }

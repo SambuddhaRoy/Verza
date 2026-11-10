@@ -90,4 +90,14 @@ class DownloadNamingTest {
         // A name that sanitises away entirely must not become the "track" placeholder.
         assertEquals("", DownloadNaming.folder("???"))
     }
+
+    @Test
+    fun `a song goes in its album artist's folder, then its album's`() {
+        assertEquals(listOf("Coldplay", "Parachutes"), DownloadNaming.folders("Coldplay", "Parachutes"))
+        // Featured artists don't make a folder of their own
+        assertEquals(listOf("Coldplay", "Mylo Xyloto"), DownloadNaming.folders("Coldplay & Rihanna", "Mylo Xyloto"))
+        assertEquals(listOf("ACDC", "Back in Black"), DownloadNaming.folders("AC/DC", "Back in Black"))
+        assertEquals(listOf("Coldplay"), DownloadNaming.folders("Coldplay", null))
+        assertEquals(emptyList<String>(), DownloadNaming.folders("", "Parachutes"))
+    }
 }
