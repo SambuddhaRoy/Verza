@@ -14,7 +14,10 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -125,7 +128,8 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
         item { Row(Modifier.fillMaxWidth().clip(Corner).clickable { adding = true }.padding(vertical = 12.dp)) { Text("Add a source", style = Type.RowTitle, color = LocalPalette.current.accent) } }
         if (sources.isNotEmpty()) item { Toggle("Use on mobile data", "A lossless song is roughly 30 MB, several times YouTube's", s.sourcesOnMobileData) }
 
-        item { SectionTitle("lossless downloads") }
+        item { SectionTitle("downloads") }
+        item { DownloadKind() }
         item { Soulseek() }
 
         item { SectionTitle("your library") }
@@ -268,7 +272,48 @@ private fun ListenBrainz() {
 }
 
 /**
- * Soulseek, a network of people sharing their music folders. Signed in, a download is a FLAC from
+ * Which file a download is: YouTube's AAC, small and always there, or a FLAC from Soulseek, five to
+ * ten times the size and only worth it on gear that can tell. Each says what it costs.
+ */
+@Composable
+private fun DownloadKind() {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val p = LocalPalette.current
+    val lossless by graph.settings.losslessDownloads.flow.collectAsState(initial = false)
+    val user by graph.settings.soulseekUser.flow.collectAsState(initial = "")
+    @Composable
+    fun Option(value: Boolean, title: String, about: String) {
+        Row(
+            Modifier.fillMaxWidth().clip(Corner)
+                .selectable(selected = lossless == value, role = Role.RadioButton) { scope.launch { graph.settings.losslessDownloads.set(value) } }
+                .padding(vertical = 8.dp),
+        ) {
+            RadioButton(selected = lossless == value, onClick = null, modifier = Modifier.padding(top = 2.dp, end = 12.dp))
+            Column {
+                Text(title, style = Type.RowTitle, color = p.ink)
+                Text(about, style = Type.RowSubtitle, color = p.inkMuted)
+            }
+        }
+    }
+    Column(Modifier.selectableGroup()) {
+        Option(
+            false, "Regular",
+            "About 4 MB a song. YouTube's own audio, so every song downloads, in seconds, and thousands fit on " +
+                "your phone. On the phone's speaker or Bluetooth headphones it sounds the same as lossless.",
+        )
+        Option(
+            true, "Lossless (FLAC)",
+            "About 30 MB a song: CD quality, exactly what's on the record. Worth it on wired headphones or a " +
+                "DAC. Slower, because each song comes from someone on Soulseek and can wait in their queue, and a " +
+                "song nobody shares downloads as regular instead." +
+                if (user.isBlank()) " Needs a Soulseek account: sign in below." else "",
+        )
+    }
+}
+
+/**
+ * Soulseek, a network of people sharing their music folders. Signed in, with Lossless chosen above, a download is a FLAC from
  * someone sharing the song, and YouTube's stream when nobody does. There's no sign-up: the server
  * registers a name the first time anyone signs in with it.
  */
@@ -289,10 +334,10 @@ private fun Soulseek() {
             Text("Soulseek: $user", style = Type.RowTitle, color = p.ink)
             Text(
                 when {
-                    status.online -> "Connected. Downloads are FLAC when someone shares the song"
+                    status.online -> "Connected"
                     status.error != null -> status.error.orEmpty()
                     status.state == "connecting" -> "Connecting"
-                    else -> "Downloads are FLAC when someone shares the song"
+                    else -> "Connects when a lossless download starts"
                 },
                 style = Type.RowSubtitle, color = p.inkMuted,
             )
@@ -303,7 +348,7 @@ private fun Soulseek() {
         }) { Text("Sign out") }
     } else Column(Modifier.padding(vertical = 4.dp)) {
         Text(
-            "Signed in to Soulseek, downloads are FLAC from people sharing the song, and YouTube's when nobody is. " +
+            "Lossless songs come from Soulseek, a network of people sharing their music. " +
                 "A name nobody has taken is yours the first time you sign in with it.",
             style = Type.Body, color = p.inkMuted,
         )
@@ -323,7 +368,8 @@ private fun Soulseek() {
                         com.verza.data.downloads.Soulseek.status.first { it.online || it.error != null }
                     }
                     note = when {
-                        answer?.online == true -> { graph.settings.soulseekUser.set(typed); null }
+                        // Signing in is asking for lossless; Regular is one tap above to go back
+                        answer?.online == true -> { graph.settings.soulseekUser.set(typed); graph.settings.losslessDownloads.set(true); null }
                         answer?.error != null -> answer.error
                         else -> "Couldn't reach Soulseek. Try again."
                     }

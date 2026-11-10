@@ -42,9 +42,10 @@ The old app's storage is read as it is, so an update loses nothing and needs no 
 
 ## Lossless downloads from Soulseek (2.1.0)
 
-Signed in to Soulseek (Settings > lossless downloads), a download is a FLAC from someone sharing the
-song, and YouTube's stream only when nobody does or every copy stalls (`data/downloads/Downloads.kt`,
-`saveFlac`).
+Settings > downloads offers **Regular** (YouTube's AAC, ~4MB) or **Lossless (FLAC)** (`lossless_downloads`,
+off by default, turned on by signing in to Soulseek). With Lossless and an account, a download is a FLAC
+from someone sharing the song, and YouTube's stream only when nobody does or every copy stalls
+(`data/downloads/Downloads.kt`, `saveFlac`).
 - **The Nicotine+ core runs inside the app**: pynicotine 3.3.11, unmodified, in `src/main/python`, on
   Chaquopy's Python 3.11 (the newest with a 32-bit build; 3.12+ would drop armeabi-v7a phones).
   `bridge.py` drives it headless; `tagger.py` (with vendored mutagen) fills in missing tags and embeds a
@@ -54,6 +55,11 @@ song, and YouTube's stream only when nobody does or every copy stalls (`data/dow
   three files `SoulseekMatch` picks: same title, no live/remix/edit unless the title says so, length
   within 3s, then free slot, short queue, CD quality over hi-res, speed. A file that stalls 60s is
   skipped, and the result must be a real FLAC within 10s of the song (`flacSeconds`). `SoulseekMatchTest`.
+- **A search row is often just "Coldplay"**: no album and no length. Without the length `SoulseekMatch`
+  accepts any file, a preview included, and without the album the tagger finds no release and no cover.
+  `YouTube.complete` fills both from `next` first, and with the length still unknown it's a regular download.
+- **Regular downloads go in 4MB `Range` pieces** (`CHUNK`). One request for the whole file was sent at
+  about the song's own speed: 167s for a 4-minute song on the emulator, ~15s in pieces.
 - The core can't restart inside a process: it's disconnected, never quit. A kick by the same account
   signing in elsewhere is reconnected on the next download, not before.
 - The password lives in the core's config, `filesDir/soulseek/config/config` (backups are off); the
@@ -70,7 +76,8 @@ song, and YouTube's stream only when nobody does or every copy stalls (`data/dow
   song.flac` in NicotineAndroid is a fake server and peer that offers and sends that file for any search;
   make it as long as the song (`ffmpeg -f lavfi -i sine=duration=262 -ac 2 song.flac`). Point the app at it
   with `server = ('10.0.2.2', 2242)` under `[server]` in `files/soulseek/config/config`, written through
-  `run-as com.verza sh -c 'mkdir -p files/soulseek/config && cat > files/soulseek/config/config'`.
+  `run-as` on a debug build. The release APK isn't debuggable: `adb root` on the emulator, copy the file into
+  `/data/data/com.verza/files/soulseek/config/`, then `chown` it to the app's uid and `chcon` it to the context of `files/`.
   `tools/verza_bridge_test.py` runs this bridge against it on the desktop.
   Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
   copy refused and YouTube used instead, the service up during a download and gone after.

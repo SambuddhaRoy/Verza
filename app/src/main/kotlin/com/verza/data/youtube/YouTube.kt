@@ -102,8 +102,25 @@ class YouTube(private val http: OkHttpClient, private val cookie: () -> String?)
      * A song's artists and album, for going to their pages. A video has no album, so its song is
      * searched for and the same title by one of the same artists lends its album.
      */
-    suspend fun links(videoId: String, title: String): Pair<List<Link>, Link?>? {
-        val (artists, album) = parseLinks(post("next") { put("videoId", videoId); put("isAudioOnly", true) }, videoId) ?: return null
+    suspend fun links(videoId: String, title: String): Pair<List<Link>, Link?>? =
+        linksIn(post("next") { put("videoId", videoId); put("isAudioOnly", true) }, videoId, title)
+
+    /**
+     * The song with its album and length filled in, when the row it came from left them out: a search
+     * result is often just "Coldplay". A lossless download needs both, the length to tell the song from
+     * a preview or another edit, and the album to find its tags and cover.
+     */
+    suspend fun complete(song: Song): Song {
+        if (song.album != null && song.durationMs > 0) return song
+        val response = post("next") { put("videoId", song.id); put("isAudioOnly", true) }
+        return song.copy(
+            album = song.album ?: linksIn(response, song.id, song.title)?.second?.name,
+            durationMs = song.durationMs.takeIf { it > 0 } ?: parseQueue(response).firstOrNull { it.id == song.id }?.durationMs ?: 0,
+        )
+    }
+
+    private suspend fun linksIn(response: JsonElement, videoId: String, title: String): Pair<List<Link>, Link?>? {
+        val (artists, album) = parseLinks(response, videoId) ?: return null
         if (album != null || artists.isEmpty()) return artists to album
         val found = runCatching {
             parseAlbumOf(post("search") { put("query", "$title ${artists.first().name}"); put("params", Filter.SONGS.params) }, title, artists.map { it.name })
