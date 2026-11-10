@@ -37,7 +37,8 @@ import kotlinx.coroutines.launch
 val LocalOpen = androidx.compose.runtime.staticCompositionLocalOf<(String) -> Unit> { {} }
 
 /**
- * A song's ⋯: play next, add to queue or a playlist, like, download, share, go to its artist or album;
+ * A song's ⋯: play next, add to queue or a playlist, like, its radio, download, share, go to its artist
+ * or album (a file on the phone's are its song's on YouTube Music);
  * then whatever [extra] items the page adds, each given a way to close the menu.
  */
 @Composable
@@ -57,17 +58,26 @@ fun SongMenu(song: Song, extra: @Composable (close: () -> Unit) -> Unit = {}) {
             MenuItem("Add to playlist…") { shown = false; picking = true }
             val isLiked = song.id in liked
             MenuItem(if (isLiked) "Unlike" else "Like") { shown = false; graph.like(song, !isLiked) }
-            if (!song.onPhone) {
-                MenuItem("Download") { shown = false; graph.downloads.save(listOf(song)) }
-                MenuItem("Share") {
-                    shown = false
+            MenuItem("Start radio") { shown = false; graph.player.playWithRadio(song) }
+            if (!song.onPhone) MenuItem("Download") { shown = false; graph.downloads.save(listOf(song)) }
+            // A file on the phone shares, and goes to, its song on YouTube Music.
+            fun onYouTube(then: suspend (Song) -> Unit) {
+                shown = false
+                scope.launch {
+                    val yt = graph.youtube.runCatching { twin(song) }.getOrNull()
+                    if (yt == null) android.widget.Toast.makeText(context, "Couldn't find this song on YouTube Music", android.widget.Toast.LENGTH_SHORT).show()
+                    else then(yt)
+                }
+            }
+            MenuItem("Share") {
+                onYouTube { yt ->
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(Intent.EXTRA_TEXT, "${song.title} by ${song.artist}\nhttps://music.youtube.com/watch?v=${song.id}")
+                        .putExtra(Intent.EXTRA_TEXT, "${yt.title} by ${yt.artist}\nhttps://music.youtube.com/watch?v=${yt.id}")
                     context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
-                MenuItem("Go to artist") { shown = false; scope.launch { graph.youtube.runCatching { links(song.id, song.title) }.getOrNull()?.first?.firstOrNull()?.let { open(it.page) } } }
-                MenuItem("Go to album") { shown = false; scope.launch { graph.youtube.runCatching { links(song.id, song.title) }.getOrNull()?.second?.let { open(it.page) } } }
             }
+            MenuItem("Go to artist") { onYouTube { yt -> graph.youtube.runCatching { links(yt.id, yt.title) }.getOrNull()?.first?.firstOrNull()?.let { open(it.page) } } }
+            MenuItem("Go to album") { onYouTube { yt -> graph.youtube.runCatching { links(yt.id, yt.title) }.getOrNull()?.second?.let { open(it.page) } } }
             extra { shown = false }
         }
     }

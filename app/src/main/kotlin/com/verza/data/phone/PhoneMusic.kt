@@ -7,6 +7,7 @@ import android.os.Build
 import android.provider.MediaStore
 import com.verza.data.Album
 import com.verza.data.ArtworkRepository
+import com.verza.data.SameSong
 import com.verza.data.Song
 import com.verza.data.library.Library
 import kotlinx.coroutines.CoroutineScope
@@ -90,6 +91,28 @@ class PhoneMusic(
         runCatching { Json.decodeFromString<Map<String, String>>(coverFile.readText()) }.getOrDefault(emptyMap()).toMutableMap()
     }
 
+    /** Whether Verza may read the music on the phone. */
+    fun allowed(): Boolean = androidx.core.content.ContextCompat.checkSelfPermission(context, PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Where the phone already has [song]: its download, a download of the same song under another id
+     * (a song's video and its album track are two ids), or a file of it. Null when it has none, and
+     * the song streams.
+     */
+    suspend fun copyOf(song: Song): String? {
+        fun there(path: String?) = path?.takeIf { it.startsWith("content://") || File(it).exists() }
+        there(saved.downloadPath(song.id))?.let { return it }
+        if (song.title.isBlank()) return null
+        saved.downloadRows().firstOrNull { it.downloadPath != null && SameSong.same(it.toSong(), song) }?.let { there(it.downloadPath) }?.let { return it }
+        val lib = _library.value ?: return null
+        val byKey = index?.takeIf { it.first === lib }?.second
+            ?: lib.songs.filter { it.onPhone }.groupBy { SameSong.key(it.title, it.artist) }.also { index = lib to it }
+        return byKey[SameSong.key(song.title, song.artist)]?.firstOrNull { SameSong.same(it, song) }?.id
+    }
+
+    /** The last scan's phone files by [SameSong.key], built on first use after each scan. */
+    @Volatile private var index: Pair<PhoneLibrary, Map<String, List<Song>>>? = null
+
     suspend fun collection(id: String): Album? {
         val lib = _library.value ?: scan()
         val c = (lib.albums + lib.playlists).firstOrNull { it.id == id } ?: return null
@@ -165,7 +188,7 @@ class PhoneMusic(
                         folder = folder,
                         fileName = fileName,
                         album = item.album,
-                        albumArtist = if (saved == null) str(ALBUM_ARTIST) else null,
+                        albumArtist = str(ALBUM_ARTIST),
                         track = int(MediaStore.Audio.Media.TRACK),
                         year = int(MediaStore.Audio.Media.YEAR).takeIf { it > 0 },
                         tagged = artist != null,
@@ -220,14 +243,17 @@ class PhoneMusic(
         context.contentResolver.openFileDescriptor(ContentUris.withAppendedId(albumArtBase, albumId), "r")?.use { true } ?: false
     }.getOrDefault(false)
 
-    private companion object {
+    companion object {
+        /** Reading the phone's music: one permission, named differently from Android 13. */
+        val PERMISSION = if (Build.VERSION.SDK_INT >= 33) android.Manifest.permission.READ_MEDIA_AUDIO else android.Manifest.permission.READ_EXTERNAL_STORAGE
+
         /** MediaStore.Audio.Media.ALBUM_ARTIST, which is API 30. */
-        const val ALBUM_ARTIST = "album_artist"
+        private const val ALBUM_ARTIST = "album_artist"
         /** " (1)", which a folder adds to a second file of the same name. */
-        val COPY_SUFFIX = Regex("""\s\(\d+\)$""")
+        private val COPY_SUFFIX = Regex("""\s\(\d+\)$""")
 
         /** "/storage/emulated/0/Music/x/a.flac" to "Music/x/", for phones before RELATIVE_PATH. */
-        fun relativeFolder(path: String?): String {
+        private fun relativeFolder(path: String?): String {
             val dir = path?.substringBeforeLast('/', "") ?: return ""
             return dir.replace(Regex("^/storage/(emulated/\\d+|[^/]+)/?"), "").let { if (it.isEmpty()) "" else "$it/" }
         }

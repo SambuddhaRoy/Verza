@@ -1,8 +1,6 @@
 package com.verza.ui.library
 
-import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,7 +32,7 @@ import com.verza.ui.kit.Word
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 
-private val readAudio = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
+private val readAudio = com.verza.data.phone.PhoneMusic.PERMISSION
 
 /**
  * The music on the phone: albums (a folder of one album by one artist), playlists (any other folder),

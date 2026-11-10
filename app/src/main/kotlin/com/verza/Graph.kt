@@ -78,5 +78,10 @@ class Graph(val context: Context) {
         scope.launch { library.setLiked(song, liked); sync.flush() }
     }
 
-    val player: com.verza.playback.Player by lazy { com.verza.playback.Player(context, settings, scope) { youtube.radio(it.id) } }
+    /** A song's radio; a file on the phone gets its YouTube twin's, without the twin itself. */
+    val player: com.verza.playback.Player by lazy {
+        com.verza.playback.Player(context, settings, scope) { s ->
+            youtube.twin(s)?.let { seed -> youtube.radio(seed.id).filter { !s.onPhone || it.id != seed.id } }.orEmpty()
+        }
+    }
 }
