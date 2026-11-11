@@ -111,7 +111,7 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
     val graph = LocalContext.current.graph
     val player = graph.player
     val now by player.state.collectAsState()
-    val liked by graph.library.likedIds.collectAsState(initial = emptySet())
+    val liked by graph.library.likedIds.collectAsState()
     val song = now.song ?: run { LaunchedEffect(Unit) { onClose() }; return }
     val art = song.art?.let { artAt(it, 1200) }
     val scope = rememberCoroutineScope()

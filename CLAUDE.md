@@ -80,8 +80,10 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   stopped with an intent, never `stopService`, which crashes if it lands before `startForeground`.
 - **`org.gradle.parallel=false`**: in parallel, KSP reads Chaquopy's file dependency from another
   thread and fails with "Current thread does not hold the state lock".
-- No local Python 3.11, so the build ships `.py` source and Python compiles it on the phone the first
-  time the core starts. Install Python 3.11 on the build machine and Chaquopy precompiles it.
+- **`buildPython=` in `local.properties`** names a Python 3.11 (here uv's,
+  `%APPDATA%\uv\python\cpython-3.11.15-windows-x86_64-none\python.exe`; `py -3.11` doesn't find it), and
+  Chaquopy compiles the app's Python at build time: `app.imy` holds `.pyc` only. Without it the build still
+  works, ships `.py`, and each phone compiles them the first time Soulseek starts.
 - The APK went from 5.0MB to 53.7MB: Python and its native modules for three ABIs.
 - **Testing without an account** (never sign in to the real network from a test): `tools/fake_server.py
   song.flac` in NicotineAndroid is a fake server and peer that offers and sends that file for any search;
@@ -104,6 +106,16 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
 - **A file on the phone borrows its YouTube song** (`YouTube.twin`: same title, artist and length among the
   first five search results, kept for the process) for its radio, Discovery radio, artist, album and Share.
   Without one those say so; play, queue, like and playlists never needed one.
+- **Removing a download** (a song's menu) deletes the file, its album and artist folders once empty, and
+  the row's path, so the song streams again. A file an earlier install saved can't be deleted by this one
+  (MediaStore ownership), and the menu says so rather than forgetting a file that's still there.
+- **A playlist made in Verza** is renamed or deleted from the ⋯ over its page, and a song taken out from
+  that song's menu there. Each is queued for the account like a like (`Sync`): removal looks up the
+  entry's `playlistSetVideoId` first, since YouTube removes entries, not songs. Deleting a playlist that
+  never reached the account drops its queued ops instead. **Not checked against a real account.**
+- `Library.likedIds` / `downloadedIds` are shared `StateFlow`s: every row's menu reads them, and as
+  `Flow`s each row ran its own Room query on every change to `songs`. `copyOf` indexes downloads by
+  `SameSong.key` (rebuilt when `downloadedIds` changes) instead of reading every row on each open.
 - Checked on the emulator: an update from 2.1.0 sorted 11 downloads into Coldplay/Parachutes with MusicBrainz
   track numbers and removed the old folder; a YouTube "The Scientist" played the phone's FLAC (and a cover
   by someone else didn't); a radio from that file; a downloaded song from a radio with the network off; a

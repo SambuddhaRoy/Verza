@@ -159,8 +159,8 @@ class DownloadStore(
                 val path = context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)
                     ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
                 (context.contentResolver.delete(uri, null, null) > 0).also { gone ->
-                    // Its folder too, once nothing is left in it (a playlist's, from before Artist/Album folders)
-                    if (gone) path?.let { runCatching { File(it).parentFile?.takeIf { d -> d.list()?.isEmpty() == true }?.delete() } }
+                    // Its album's and artist's folders too, once nothing is left in them
+                    if (gone) path?.let { runCatching { generateSequence(File(it).parentFile) { d -> d.parentFile }.take(2).takeWhile { d -> d.name != "Verza" && d.delete() }.count() } }
                 }
             }
             location.startsWith("content://") -> DocumentsContract.deleteDocument(context.contentResolver, uri)

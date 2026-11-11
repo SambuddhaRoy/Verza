@@ -54,7 +54,7 @@ class Graph(val context: Context) {
     val lyrics: com.verza.data.LyricsSource by lazy { com.verza.data.LyricsSource(http) }
     val artwork: com.verza.data.ArtworkRepository by lazy { com.verza.data.ArtworkRepository(http, context) }
     val phone: com.verza.data.phone.PhoneMusic by lazy { com.verza.data.phone.PhoneMusic(context, library, artwork) }
-    val library: Library by lazy { Library(db) }
+    val library: Library by lazy { Library(db, scope) }
     val backup by lazy { com.verza.data.library.Backup(db) }
     val sync: com.verza.data.library.Sync by lazy { com.verza.data.library.Sync(db, youtube, account) }
     val account: Account by lazy { Account(context, scope) }

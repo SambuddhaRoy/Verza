@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 val LocalOpen = androidx.compose.runtime.staticCompositionLocalOf<(String) -> Unit> { {} }
 
 /**
- * A song's ⋯: play next, add to queue or a playlist, like, its radio, download, share, go to its artist
+ * A song's ⋯: play next, add to queue or a playlist, like, its radio, download or remove it, share, go to its artist
  * or album (a file on the phone's are its song's on YouTube Music);
  * then whatever [extra] items the page adds, each given a way to close the menu.
  */
@@ -47,7 +47,8 @@ fun SongMenu(song: Song, extra: @Composable (close: () -> Unit) -> Unit = {}) {
     val graph = context.graph
     val open = LocalOpen.current
     val scope = rememberCoroutineScope()
-    val liked by graph.library.likedIds.collectAsState(initial = emptySet())
+    val liked by graph.library.likedIds.collectAsState()
+    val downloaded by graph.library.downloadedIds.collectAsState()
     var shown by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     Box {
@@ -59,13 +60,19 @@ fun SongMenu(song: Song, extra: @Composable (close: () -> Unit) -> Unit = {}) {
             val isLiked = song.id in liked
             MenuItem(if (isLiked) "Unlike" else "Like") { shown = false; graph.like(song, !isLiked) }
             MenuItem("Start radio") { shown = false; graph.player.playWithRadio(song) }
-            if (!song.onPhone) MenuItem("Download") { shown = false; graph.downloads.save(listOf(song)) }
+            if (song.id in downloaded) MenuItem("Remove download") {
+                shown = false
+                graph.scope.launch {
+                    if (graph.downloads.remove(song)) { if (graph.phone.allowed()) runCatching { graph.phone.scan() } }
+                    else launch(kotlinx.coroutines.Dispatchers.Main) { toast(context, "An earlier install saved this file, so only the Files app can delete it") }
+                }
+            } else if (!song.onPhone) MenuItem("Download") { shown = false; graph.downloads.save(listOf(song)) }
             // A file on the phone shares, and goes to, its song on YouTube Music.
             fun onYouTube(then: suspend (Song) -> Unit) {
                 shown = false
                 scope.launch {
                     val yt = graph.youtube.runCatching { twin(song) }.getOrNull()
-                    if (yt == null) android.widget.Toast.makeText(context, "Couldn't find this song on YouTube Music", android.widget.Toast.LENGTH_SHORT).show()
+                    if (yt == null) toast(context, "Couldn't find this song on YouTube Music")
                     else then(yt)
                 }
             }
@@ -114,6 +121,8 @@ fun AddToPlaylist(song: Song, onDone: () -> Unit) {
         dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
 }
+
+fun toast(context: android.content.Context, text: String) = android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT).show()
 
 @Composable
 fun MenuItem(text: String, onClick: () -> Unit) = DropdownMenuItem(text = { Text(text) }, onClick = onClick)

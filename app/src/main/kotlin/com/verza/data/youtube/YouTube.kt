@@ -155,11 +155,32 @@ class YouTube(private val http: OkHttpClient, private val cookie: () -> String?)
         (post("playlist/create") { put("title", title); put("privacyStatus", "PRIVATE") } as? JsonObject)
             ?.get("playlistId")?.jsonPrimitive?.contentOrNull
 
-    /** Whether YouTube accepted it: an edit that says it worked when it didn't is worse than none. */
     suspend fun addToPlaylist(playlistId: String, videoId: String): Boolean =
+        editPlaylist(playlistId) { put("action", "ACTION_ADD_VIDEO"); put("addedVideoId", videoId) }
+
+    suspend fun renamePlaylist(playlistId: String, name: String): Boolean =
+        editPlaylist(playlistId) { put("action", "ACTION_SET_PLAYLIST_NAME"); put("playlistName", name) }
+
+    /**
+     * YouTube removes an entry of the playlist, not a song, so its entry is looked up first. A song
+     * that isn't there is already out.
+     * ponytail: only the playlist's first page is read (about 100 songs); follow its continuation if
+     * longer playlists need it.
+     */
+    suspend fun removeFromPlaylist(playlistId: String, videoId: String): Boolean {
+        val entry = browse("VL" + playlistId.removePrefix("VL")).findAll("playlistItemData")
+            .firstOrNull { it.child("videoId").string == videoId }?.child("playlistSetVideoId").string ?: return true
+        return editPlaylist(playlistId) { put("action", "ACTION_REMOVE_VIDEO"); put("setVideoId", entry); put("removedVideoId", videoId) }
+    }
+
+    /** Throws when YouTube refuses, so the deletion is tried again. */
+    suspend fun deletePlaylist(playlistId: String): Boolean { post("playlist/delete") { put("playlistId", playlistId.removePrefix("VL")) }; return true }
+
+    /** Whether YouTube accepted it: an edit that says it worked when it didn't is worse than none. */
+    private suspend fun editPlaylist(playlistId: String, action: JsonObjectBuilder.() -> Unit): Boolean =
         (post("browse/edit_playlist") {
             put("playlistId", playlistId.removePrefix("VL"))
-            putJsonArray("actions") { add(buildJsonObject { put("action", "ACTION_ADD_VIDEO"); put("addedVideoId", videoId) }) }
+            putJsonArray("actions") { add(buildJsonObject(action)) }
         } as? JsonObject)?.get("status")?.jsonPrimitive?.contentOrNull == "STATUS_SUCCEEDED"
 
     private companion object {

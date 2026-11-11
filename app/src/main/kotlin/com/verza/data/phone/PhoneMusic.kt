@@ -103,15 +103,22 @@ class PhoneMusic(
         fun there(path: String?) = path?.takeIf { it.startsWith("content://") || File(it).exists() }
         there(saved.downloadPath(song.id))?.let { return it }
         if (song.title.isBlank()) return null
-        saved.downloadRows().firstOrNull { it.downloadPath != null && SameSong.same(it.toSong(), song) }?.let { there(it.downloadPath) }?.let { return it }
+        val key = SameSong.key(song.title, song.artist)
+        // Every seek opens the song again, so these are indexed rather than compared one by one
+        val ids = saved.downloadedIds.value
+        val downloads = downloadIndex?.takeIf { it.first === ids }?.second
+            ?: saved.downloadRows().map { it.toSong() }.groupBy { SameSong.key(it.title, it.artist) }.also { downloadIndex = ids to it }
+        downloads[key]?.firstOrNull { SameSong.same(it, song) }?.let { there(saved.downloadPath(it.id)) }?.let { return it }
         val lib = _library.value ?: return null
-        val byKey = index?.takeIf { it.first === lib }?.second
+        val files = index?.takeIf { it.first === lib }?.second
             ?: lib.songs.filter { it.onPhone }.groupBy { SameSong.key(it.title, it.artist) }.also { index = lib to it }
-        return byKey[SameSong.key(song.title, song.artist)]?.firstOrNull { SameSong.same(it, song) }?.id
+        return files[key]?.firstOrNull { SameSong.same(it, song) }?.id
     }
 
     /** The last scan's phone files by [SameSong.key], built on first use after each scan. */
     @Volatile private var index: Pair<PhoneLibrary, Map<String, List<Song>>>? = null
+    /** Downloaded songs by [SameSong.key], rebuilt when what's downloaded changes. */
+    @Volatile private var downloadIndex: Pair<Set<String>, Map<String, List<Song>>>? = null
 
     suspend fun collection(id: String): Album? {
         val lib = _library.value ?: scan()

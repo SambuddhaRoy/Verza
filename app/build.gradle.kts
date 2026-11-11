@@ -69,7 +69,11 @@ android {
 ksp { arg("room.generateKotlin", "true") }
 
 // The Nicotine+ core (src/main/python) for Soulseek downloads, data/downloads/Soulseek.kt
-chaquopy { defaultConfig { version = "3.11" } }
+// A Python 3.11 here (`buildPython=` in local.properties) compiles the .py files at build time; without one
+// they ship as source and each phone compiles them the first time Soulseek starts.
+val localPython = Properties().apply { rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) } }
+    .getProperty("buildPython")
+chaquopy { defaultConfig { version = "3.11"; localPython?.let { buildPython(it) } } }
 
 dependencies {
     coreLibraryDesugaring(libs.desugar)

@@ -65,7 +65,12 @@ fun OnDevice(onOpen: (String) -> Unit) {
                     art = c.songs.firstNotNullOfOrNull { it.art }?.let { artAt(it, 226) }, onClick = { onOpen(c.id) })
             }
         }
-        item(key = "hsongs") { Text("songs", style = Type.Section, color = p.ink, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)) }
+        item(key = "hsongs") {
+            androidx.compose.foundation.layout.Row(Modifier.padding(top = 16.dp, bottom = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("songs", style = Type.Section, color = p.ink, modifier = Modifier.weight(1f))
+                Word("shuffle") { player.shuffle(lib.songs) }
+            }
+        }
         itemsIndexed(lib.songs, key = { _, s -> s.id }) { i, song ->
             ListRow(song.title, song.artist, art = song.art?.let { artAt(it, 226) }, onClick = { player.play(lib.songs, i) }, trailing = { SongMenu(song) })
         }
