@@ -122,6 +122,17 @@ class Downloads(
         }
     }
 
+    /**
+     * Deletes [song]'s file and forgets it, so it streams again. False when the file is there and can't
+     * be deleted: one an earlier install saved, which Android lets only that install delete.
+     */
+    suspend fun remove(song: Song): Boolean {
+        val path = library.downloadPath(song.id) ?: return true
+        val gone = store.delete(path) || store.nameOf(path) == null
+        if (gone) library.forgetDownload(song.id)
+        return gone
+    }
+
     private suspend fun save(given: Song): Boolean {
         if (library.downloadPath(given.id) != null) return true
         // A search row is often just "Coldplay": the album decides the folder and finds the tags, and a

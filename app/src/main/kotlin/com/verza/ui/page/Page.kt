@@ -27,6 +27,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import com.verza.ui.kit.MenuItem
+import com.verza.ui.theme.Corner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -107,20 +118,60 @@ fun PageScreen(id: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
         when (val c = content) {
             null -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = p.accent)
             is PageContent.Failed -> Empty(c.message)
-            is PageContent.OfAlbum -> AlbumPage(c.album)
+            is PageContent.OfAlbum -> AlbumPage(c.album, playlist = id.removePrefix("pl:").takeIf { id.startsWith("pl:") }?.toLongOrNull())
             is PageContent.OfArtist -> ArtistPage(c.artist, onOpen)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(8.dp)) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = p.ink) }
+        if (id.startsWith("pl:")) (content as? PageContent.OfAlbum)?.let { c ->
+            PlaylistMenu(id.removePrefix("pl:").toLong(), c.album.title, onDeleted = onBack, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
+        }
+    }
+}
+
+/** A playlist made in Verza: renamed or deleted from the ⋯ over its top corner. */
+@Composable
+private fun PlaylistMenu(id: Long, name: String, onDeleted: () -> Unit, modifier: Modifier) {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    var shown by remember { mutableStateOf(false) }
+    var asking by remember { mutableStateOf<String?>(null) }   // "rename" or "delete"
+    Box(modifier) {
+        IconButton(onClick = { shown = true }) { Icon(Icons.Rounded.MoreVert, "More", tint = LocalPalette.current.ink) }
+        DropdownMenu(expanded = shown, onDismissRequest = { shown = false }, shape = Corner) {
+            MenuItem("Rename") { shown = false; asking = "rename" }
+            MenuItem("Delete playlist") { shown = false; asking = "delete" }
+        }
+    }
+    val done = { asking = null }
+    when (asking) {
+        "rename" -> {
+            var text by remember { mutableStateOf(name) }
+            AlertDialog(
+                onDismissRequest = done,
+                title = { Text("Rename playlist") },
+                text = { OutlinedTextField(text, { text = it }, singleLine = true, shape = Corner) },
+                confirmButton = { TextButton(enabled = text.isNotBlank() && text.trim() != name, onClick = { scope.launch { graph.library.renamePlaylist(id, text.trim()); graph.sync.flush() }; done() }) { Text("Rename") } },
+                dismissButton = { TextButton(onClick = done) { Text("Cancel") } },
+            )
+        }
+        "delete" -> AlertDialog(
+            onDismissRequest = done,
+            title = { Text("Delete \"$name\"?") },
+            text = { Text("The songs stay in your library; only the playlist goes, here and on YouTube Music.") },
+            confirmButton = { TextButton(onClick = { done(); onDeleted(); graph.scope.launch { graph.library.deletePlaylist(id); graph.sync.flush() } }) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = done) { Text("Cancel") } },
+        )
     }
 }
 
 /** The cover, the name, then play and shuffle as words, then the songs in order. */
 @Composable
-private fun AlbumPage(album: Album) {
+private fun AlbumPage(album: Album, playlist: Long?) {
     val p = LocalPalette.current
     val graph = LocalContext.current.graph
     val player = graph.player
     val now by player.state.collectAsState()
+    val downloaded by graph.library.downloadedIds.collectAsState()
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 56.dp, bottom = 16.dp + LocalDockHeight.current)) {
         item {
             Column(Modifier.widthIn(max = 420.dp)) {
@@ -131,20 +182,20 @@ private fun AlbumPage(album: Album) {
                 Row(Modifier.padding(top = 6.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
                     Word("play", p.accent, enabled = album.songs.isNotEmpty()) { player.play(album.songs) }
                     Word("shuffle", enabled = album.songs.isNotEmpty()) { player.shuffle(album.songs) }
-                    if (album.songs.any { !it.onPhone }) Word("download") { graph.downloads.save(album.songs) }
+                    if (album.songs.any { !it.onPhone && it.id !in downloaded }) Word("download") { graph.downloads.save(album.songs) }
                     Spacer(Modifier.weight(1f))
                     Text(songsLabel(album.songs), style = Type.Small, color = p.inkMuted)
                 }
             }
         }
         itemsIndexed(album.songs, key = { i, s -> "$i${s.id}" }) { i, song ->
-            TrackRow(i + 1, song, playing = song.id == now.song?.id) { player.play(album.songs, i) }
+            TrackRow(i + 1, song, playing = song.id == now.song?.id, playlist = playlist) { player.play(album.songs, i) }
         }
     }
 }
 
 @Composable
-private fun TrackRow(number: Int, song: Song, playing: Boolean, onClick: () -> Unit) {
+private fun TrackRow(number: Int, song: Song, playing: Boolean, playlist: Long?, onClick: () -> Unit) {
     val p = LocalPalette.current
     Row(Modifier.fillMaxWidth().clip(com.verza.ui.theme.Corner).clickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("$number", style = Type.RowSubtitle, color = p.inkMuted, modifier = Modifier.width(32.dp))
@@ -152,7 +203,12 @@ private fun TrackRow(number: Int, song: Song, playing: Boolean, onClick: () -> U
             Text(song.title, style = Type.RowTitle, color = if (playing) p.accent else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(song.artist, style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        SongMenu(song)
+        val graph = LocalContext.current.graph
+        SongMenu(song) { close ->
+            if (playlist != null) MenuItem("Remove from this playlist") {
+                close(); graph.scope.launch { graph.library.removeFromPlaylist(playlist, song.id); graph.sync.flush() }
+            }
+        }
     }
 }
 

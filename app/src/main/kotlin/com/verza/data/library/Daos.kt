@@ -31,6 +31,12 @@ interface SongDao {
     @Query("SELECT downloadPath FROM songs WHERE id = :id")
     suspend fun downloadPath(id: String): String?
 
+    @Query("SELECT id FROM songs WHERE downloadPath IS NOT NULL")
+    fun downloadedIds(): Flow<List<String>>
+
+    @Query("UPDATE songs SET downloadPath = NULL WHERE id = :id")
+    suspend fun forgetDownload(id: String)
+
     @Upsert
     suspend fun put(song: SongRow)
 
@@ -58,6 +64,9 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists WHERE id = :id")
     suspend fun get(id: Long): PlaylistRow?
 
+    @Query("SELECT name FROM playlists WHERE id = :id")
+    fun name(id: Long): Flow<String?>
+
     @Query("SELECT * FROM playlists ORDER BY createdAt")
     suspend fun allOnce(): List<PlaylistRow>
 
@@ -81,6 +90,19 @@ interface PlaylistDao {
 
     @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM playlist_tracks WHERE playlistId = :id")
     suspend fun nextPosition(id: Long): Int
+
+    @Query("DELETE FROM playlist_tracks WHERE playlistId = :id AND songId = :songId")
+    suspend fun remove(id: Long, songId: String)
+
+    @Query("UPDATE playlists SET name = :name WHERE id = :id")
+    suspend fun rename(id: Long, name: String)
+
+    // Its songs by hand: the foreign key's cascade only runs where SQLite enforces foreign keys
+    @Query("DELETE FROM playlist_tracks WHERE playlistId = :id")
+    suspend fun clear(id: Long)
+
+    @Query("DELETE FROM playlists WHERE id = :id")
+    suspend fun delete(id: Long)
 }
 
 @Dao
@@ -105,6 +127,10 @@ interface SyncDao {
 
     @Query("DELETE FROM sync_ops WHERE attempts >= :max")
     suspend fun dropExhausted(max: Int)
+
+    /** Whatever was still waiting to be sent for a playlist that's been deleted. */
+    @Query("DELETE FROM sync_ops WHERE playlistId = :playlistId")
+    suspend fun dropFor(playlistId: Long)
 
     /** Once a playlist exists on the account, every song queued for it can be sent. */
     @Query("UPDATE sync_ops SET remoteId = :remoteId WHERE playlistId = :playlistId")

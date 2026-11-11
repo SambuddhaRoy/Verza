@@ -2,7 +2,12 @@ package com.verza.ui.library
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.Alignment
+import com.verza.ui.kit.Word
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -128,12 +133,21 @@ private fun Section(title: String, content: @Composable () -> Unit) {
     }
 }
 
-/** Songs that play as a list from the one tapped. */
+/** Songs that play as a list from the one tapped, or all of them, in order or shuffled. */
 @Composable
 private fun SongList(songs: List<Song>) {
     val player = LocalContext.current.graph.player
     val now by player.state.collectAsState()
+    val p = LocalPalette.current
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                Word("play", p.accent) { player.play(songs) }
+                Word("shuffle") { player.shuffle(songs) }
+                Spacer(Modifier.weight(1f))
+                Text(if (songs.size == 1) "1 song" else "${songs.size} songs", style = Type.Small, color = p.inkMuted)
+            }
+        }
         itemsIndexed(songs, key = { _, s -> s.id }) { i, song ->
             ListRow(song.title, song.artist, art = song.art?.let { artAt(it, 226) }, playing = song.id == now.song?.id, onClick = { player.play(songs, i) }, trailing = { SongMenu(song) })
         }
