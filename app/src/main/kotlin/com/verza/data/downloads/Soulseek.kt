@@ -1,6 +1,7 @@
 package com.verza.data.downloads
 
 import android.content.Context
+import android.util.Log
 import com.chaquo.python.PyObject
 import com.verza.BuildConfig
 import com.verza.data.sources.flacSeconds
@@ -53,6 +54,7 @@ object Soulseek {
 
     private var bridge: PyObject? = null
     private var started = false
+    @Volatile private var stopped = false   // the core's loop ended; Python can't start it again in this process
     private val ready = CountDownLatch(1)
     private val commands = Executors.newSingleThreadExecutor()
     private lateinit var downloadRoot: File
@@ -64,14 +66,30 @@ object Soulseek {
         val app = context.applicationContext
         // App-specific external storage: no permission needed. Finished files are moved into the library.
         downloadRoot = File(app.getExternalFilesDir(null) ?: app.filesDir, "soulseek")
+        val dataDir = File(app.filesDir, "soulseek")
+        // Every transfer is Verza's own and removed when its download ends, so any the core saved is one
+        // an app that was closed mid-download left behind. The core would retry them at start, into
+        // folders nobody is waiting on any more.
+        File(dataDir, "downloads.json").delete()
+        File(dataDir, "downloads.json.old").delete()
+        downloadRoot.deleteRecursively()
         thread(name = "soulseek", isDaemon = true) {
             val module = Tags.python(app).getModule("bridge")
             bridge = module
             ready.countDown()
-            module.callAttr(
-                "run", Listener(), File(app.filesDir, "soulseek").path, downloadRoot.path,
-                "Verza/${BuildConfig.VERSION_NAME} ( https://github.com/SambuddhaRoy/Verza )",
-            )
+            try {
+                module.callAttr(
+                    "run", Listener(), dataDir.path, downloadRoot.path,
+                    "Verza/${BuildConfig.VERSION_NAME} ( https://github.com/SambuddhaRoy/Verza )",
+                )
+            } catch (e: Throwable) {
+                Log.e("Soulseek", "core stopped", e)
+            } finally {
+                // pynicotine quits on any error in a callback. Say so, rather than seeming signed in
+                // while every search goes nowhere (the desktop's 1.11.0 did that for hours).
+                stopped = true
+                _status.value = Status("offline", _status.value.user, "Soulseek stopped. Close and reopen Verza to sign in again.")
+            }
         }
     }
 
@@ -96,6 +114,7 @@ object Soulseek {
         context: Context, artist: String, title: String, album: String?, durationMs: Long, onProgress: (Float) -> Unit,
     ): File? {
         start(context)
+        if (stopped) return null
         // Kicked by a sign-in elsewhere, or a dropped network: a download is the user asking to be back
         status.value.let { if (it.error != null) { _status.value = Status("connecting", it.user); cmd("reconnect") } }
         val connected = withTimeoutOrNull(20_000) { status.first { it.online || it.error != null } }
@@ -148,7 +167,23 @@ object Soulseek {
             val ok = done.isCompleted
             done.cancel()
             cmd("remove", "user" to hit.user, "path" to hit.path)   // also clears a finished one from the core's list
-            if (!ok) folder.deleteRecursively()
+            if (!ok) {
+                folder.deleteRecursively()
+                dropPartial(hit.path)
+            }
+        }
+    }
+
+    /**
+     * The core keeps what it got of a stopped transfer, as .incomplete/INCOMPLETE<hash><name>, to resume
+     * it. Verza never resumes one, so it goes, once the core has let go of it.
+     */
+    private fun dropPartial(remotePath: String) {
+        val name = remotePath.substringAfterLast('\\')
+        thread(isDaemon = true) {
+            Thread.sleep(2_000)
+            File(downloadRoot, ".incomplete").listFiles { f -> f.name.startsWith("INCOMPLETE") && f.name.endsWith(name) }
+                ?.forEach { it.delete() }
         }
     }
 

@@ -7,8 +7,26 @@ import org.junit.Test
 class SoulseekMatchTest {
 
     private fun hit(path: String, secs: Int = 369, slots: Boolean = true, queue: Int = 0, speed: Long = 1_000_000,
-                    rate: Int = 44_100, bits: Int = 16) =
-        Hit("u", path, 40_000_000, slots, speed, queue, secs, rate, bits)
+                    rate: Int = 44_100, bits: Int = 16, size: Long = 40_000_000) =
+        Hit("u", path, size, slots, speed, queue, secs, rate, bits)
+
+    @Test
+    fun aFlacMadeFromAnMp3IsNeverTried() {
+        // The real case: Introduction (instructions), 117s, 247kbps against honest copies at 574-671kbps
+        fun intro(user: String, kbps: Int) =
+            hit("Music\\XXXTENTACION\\01 Introduction (instructions).flac", secs = 117, size = kbps * 1000L * 117 / 8).copy(user = user)
+        val all = listOf(intro("fake", 247), intro("a", 650), intro("b", 574), intro("c", 671), intro("d", 589))
+        assertEquals(listOf("a", "b", "c", "d"), SoulseekMatch.rank(all, "Introduction (instructions)", 118_000).map { it.user }.sorted())
+        // Too few copies to judge by: let through
+        assertEquals(2, SoulseekMatch.rank(listOf(intro("fake", 247), intro("a", 650)), "Introduction (instructions)", 118_000).size)
+    }
+
+    @Test
+    fun aTitleOfSymbolsMatchesOnItsSymbols() {
+        val cash = hit("Music\\XXXTENTACION\\? (2018)\\14 - $$$.flac", secs = 131)
+        val hope = hit("Music\\XXXTENTACION\\? (2018)\\13 - Hope.flac", secs = 131)
+        assertEquals(listOf(cash), SoulseekMatch.rank(listOf(hope, cash), "$$$", 131_000))
+    }
 
     @Test
     fun queryDropsFeaturesAndBrackets() {
