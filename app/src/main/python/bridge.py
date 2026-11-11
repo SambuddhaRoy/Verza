@@ -14,6 +14,13 @@ state = {"connecting": False, "status": None, "error": None, "leaving": False}
 searches = {}  # core search token -> Kotlin search id
 hints = {}  # download folder -> tags Verza already knows
 MAX_RESULTS = 500
+# ponytail: shares and uploads stay on because the core needs them to answer peers; nothing is shared.
+# buddies too: shares and uploads look every peer up in the buddy list (empty here) when it browses us
+# or asks for a file, and without it that raised, which stopped the whole core.
+COMPONENTS = {
+    "error_handler", "portmapper", "network_thread", "shares", "users", "notifications",
+    "network_filter", "statistics", "search", "downloads", "uploads", "buddies", "pluginhandler"
+}
 
 
 def emit(name, payload=None):
@@ -40,11 +47,7 @@ def run(kotlin_listener, data_dir, download_dir, user_agent):
     _patch_scanner(Shares)
     _patch_downloaded(Downloads)
 
-    # ponytail: shares and uploads stay on because the core needs them to answer peers; nothing is shared.
-    core.init_components(enabled_components={
-        "error_handler", "portmapper", "network_thread", "shares", "users", "notifications",
-        "network_filter", "statistics", "search", "downloads", "uploads", "pluginhandler"
-    })
+    core.init_components(enabled_components=COMPONENTS)
 
     transfers = config.sections["transfers"]
     transfers["downloaddir"] = download_dir
