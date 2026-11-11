@@ -56,6 +56,18 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   three files `SoulseekMatch` picks: same title, no live/remix/edit unless the title says so, length
   within 3s, then free slot, short queue, CD quality over hi-res, speed. A file that stalls 60s is
   skipped, and the result must be a real FLAC within 10s of the song (`flacSeconds`). `SoulseekMatchTest`.
+- **Fake FLACs and symbol titles** (found on the desktop, November 2026). A FLAC made from an MP3 is
+  *smaller* than the real one, its top end already gone: "Introduction (instructions)" came in at
+  247kbps where every honest CD copy was 575-670. `dropFakes` drops a file under 70% of the median kbps
+  of the song's other copies in the same format (three or more to judge by). A title of symbols alone
+  ("$$$") matches on its symbols; it had no words, so it always came from YouTube. The desktop also
+  ranks hi-res first now; the phone keeps CD first for its size.
+- **pynicotine stops on any exception in a callback**, and 2.1.0's core left out the `buddies` component
+  that shares and uploads look every peer up in: the first peer to browse us stopped it. Fixed in
+  bridge.py, and if the loop ever ends again `Soulseek.kt` says so in the status (Python can't restart
+  it in the same process) instead of searching into nothing. **It also saves its transfer list**
+  (`files/soulseek/downloads.json`) and retries it at start, into folders nobody waits on; `start`
+  deletes it and the download folder first, and a stopped transfer's `.incomplete` partial is deleted.
 - **A search row is often just "Coldplay"**: no album and no length. Without the length `SoulseekMatch`
   accepts any file, a preview included, and without the album the tagger finds no release and no cover.
   `YouTube.complete` fills both from `next` first, and with the length still unknown it's a regular download.
