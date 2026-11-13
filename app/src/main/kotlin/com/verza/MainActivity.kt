@@ -53,6 +53,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Computers with Verza Connect are watched while the app is on screen, and not a moment longer.
+    override fun onStart() { super.onStart(); graph.connect.start() }
+    override fun onStop() { graph.connect.stop(); super.onStop() }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         take(intent)

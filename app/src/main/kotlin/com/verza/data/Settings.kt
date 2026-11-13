@@ -79,6 +79,8 @@ class Settings(private val context: Context) {
     val downloadsSorted = bool("downloads_sorted", false)
     /** The downloads and phone-music steps of the welcome were shown; an update shows them once too. */
     val musicSetUp = bool("music_set_up", false)
+    /** This phone, as computers with Verza Connect know it. */
+    val connectId = Setting(context, stringPreferencesKey("connect_id"), "")
 }
 
 /** The queue as it was, so the app reopens where it left off. The old app's format. */

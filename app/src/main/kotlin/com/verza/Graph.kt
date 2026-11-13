@@ -78,6 +78,9 @@ class Graph(val context: Context) {
         scope.launch { library.setLiked(song, liked); sync.flush() }
     }
 
+    /** Verza on a computer: what it plays, shown and controlled here (data/Connect.kt). */
+    val connect: com.verza.data.Connect by lazy { com.verza.data.Connect(context, settings, scope, player) }
+
     /** A song's radio; a file on the phone gets its YouTube twin's, without the twin itself. */
     val player: com.verza.playback.Player by lazy {
         com.verza.playback.Player(context, settings, scope) { s ->

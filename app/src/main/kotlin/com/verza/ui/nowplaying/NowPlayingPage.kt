@@ -119,6 +119,8 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
     val sleep by player.sleep.collectAsState()
     var sleepPicker by remember { mutableStateOf(false) }
     if (sleepPicker) SleepPicker(sleep, onDone = { sleepPicker = false })
+    var devices by remember { mutableStateOf(false) }
+    if (devices) com.verza.ui.kit.DevicesDialog(onDone = { devices = false })
     BackHandler(onBack = onClose)
     com.verza.ui.kit.LightBarIcons()
 
@@ -167,6 +169,7 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
                                         }
                                     }
                                     MenuItem("Standby") { close(); onStandby() }
+                                    MenuItem("Devices") { close(); devices = true }
                                     MenuItem("Share listening session") {
                                         close()
                                         Sessions.link(now.queue, now.index, player.position)?.let { shareSession(context, it) }

@@ -14,10 +14,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -129,8 +126,10 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
         if (sources.isNotEmpty()) item { Toggle("Use on mobile data", "A lossless song is roughly 30 MB, several times YouTube's", s.sourcesOnMobileData) }
 
         item { SectionTitle("downloads") }
-        item { DownloadKind() }
-        item { Soulseek() }
+        item { Lossless() }
+
+        item { SectionTitle("devices") }
+        item { com.verza.ui.kit.Devices() }
 
         item { SectionTitle("your library") }
         item { LibraryFile() }
@@ -272,114 +271,113 @@ private fun ListenBrainz() {
 }
 
 /**
- * Which file a download is: YouTube's AAC, small and always there, or a FLAC from Soulseek, five to
- * ten times the size and only worth it on gear that can tell. Each says what it costs.
+ * Lossless downloads, as one switch. A lossless song is a FLAC from Soulseek, a network of people
+ * sharing their music, which needs an account, and an account there is nothing but a name nobody has
+ * taken: the server registers it the first time anyone signs in with it. So turning the switch on
+ * makes one, and nobody has to learn what Soulseek is to get a FLAC. Someone with an account can use
+ * theirs. The password lives in the core's own config, never in settings.
  */
 @Composable
-internal fun DownloadKind() {
-    val graph = LocalContext.current.graph
-    val scope = rememberCoroutineScope()
-    val p = LocalPalette.current
-    val lossless by graph.settings.losslessDownloads.flow.collectAsState(initial = false)
-    val user by graph.settings.soulseekUser.flow.collectAsState(initial = "")
-    @Composable
-    fun Option(value: Boolean, title: String, about: String) {
-        Row(
-            Modifier.fillMaxWidth().clip(Corner)
-                .selectable(selected = lossless == value, role = Role.RadioButton) { scope.launch { graph.settings.losslessDownloads.set(value) } }
-                .padding(vertical = 8.dp),
-        ) {
-            RadioButton(selected = lossless == value, onClick = null, modifier = Modifier.padding(top = 2.dp, end = 12.dp))
-            Column {
-                Text(title, style = Type.RowTitle, color = p.ink)
-                Text(about, style = Type.RowSubtitle, color = p.inkMuted)
-            }
-        }
-    }
-    Column(Modifier.selectableGroup()) {
-        Option(
-            false, "Regular",
-            "About 4 MB a song. YouTube's own audio, so every song downloads, in seconds, and thousands fit on " +
-                "your phone. On the phone's speaker or Bluetooth headphones it sounds the same as lossless.",
-        )
-        Option(
-            true, "Lossless (FLAC)",
-            "About 30 MB a song: CD quality, exactly what's on the record. Worth it on wired headphones or a " +
-                "DAC. Slower, because each song comes from someone on Soulseek and can wait in their queue, and a " +
-                "song nobody shares downloads as regular instead." +
-                if (user.isBlank()) " Needs a Soulseek account: sign in below." else "",
-        )
-    }
-}
-
-/**
- * Soulseek, a network of people sharing their music folders. Signed in, with Lossless chosen above, a download is a FLAC from
- * someone sharing the song, and YouTube's stream when nobody does. There's no sign-up: the server
- * registers a name the first time anyone signs in with it.
- */
-@Composable
-internal fun Soulseek() {
+internal fun Lossless() {
     val context = LocalContext.current
     val graph = context.graph
     val scope = rememberCoroutineScope()
     val p = LocalPalette.current
+    val lossless by graph.settings.losslessDownloads.flow.collectAsState(initial = false)
     val user by graph.settings.soulseekUser.flow.collectAsState(initial = "")
     val status by com.verza.data.downloads.Soulseek.status.collectAsState()
     var name by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var note by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    if (user.isNotBlank()) Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text("Soulseek: $user", style = Type.RowTitle, color = p.ink)
-            Text(
-                when {
-                    status.online -> "Connected"
-                    status.error != null -> status.error.orEmpty()
-                    status.state == "connecting" -> "Connecting"
-                    else -> "Connects when a lossless download starts"
-                },
-                style = Type.RowSubtitle, color = p.inkMuted,
-            )
+    var own by remember { mutableStateOf(false) }
+
+    /** Signs in as [who]; true when it worked. [made] is an account Verza is making, not the listener's own. */
+    suspend fun signIn(who: String, pass: String, made: Boolean): Boolean {
+        busy = true
+        note = "Setting up…"
+        com.verza.data.downloads.Soulseek.login(context, who, pass)
+        val answer = kotlinx.coroutines.withTimeoutOrNull(30_000) {
+            com.verza.data.downloads.Soulseek.status.first { it.online || it.error != null }
         }
-        TextButton(onClick = {
-            com.verza.data.downloads.Soulseek.logout(context)
-            scope.launch { graph.settings.soulseekUser.set("") }
-        }) { Text("Sign out") }
-    } else Column(Modifier.padding(vertical = 4.dp)) {
-        Text(
-            "Lossless songs come from Soulseek, a network of people sharing their music. " +
-                "A name nobody has taken is yours the first time you sign in with it.",
-            style = Type.Body, color = p.inkMuted,
-        )
-        OutlinedTextField(name, { name = it; note = null }, singleLine = true, enabled = !busy, placeholder = { Text("Username") },
-            shape = Corner, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            OutlinedTextField(password, { password = it; note = null }, singleLine = true, enabled = !busy, placeholder = { Text("Password") },
-                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), shape = Corner, modifier = Modifier.weight(1f))
-            TextButton(enabled = !busy && name.isNotBlank() && password.isNotEmpty(), onClick = {
-                busy = true
-                note = "Signing in…"
-                val typed = name.trim()
-                com.verza.data.downloads.Soulseek.login(context, typed, password)
+        busy = false
+        if (answer?.online != true) {
+            if (!made) note = answer?.error ?: "Couldn't reach Soulseek. Try again."
+            return false
+        }
+        graph.settings.soulseekUser.set(who)
+        graph.settings.losslessDownloads.set(true)
+        own = false
+        note = if (made) "Lossless is on. Songs come from Soulseek, a network of people sharing their music, and Verza made you an account there." else null
+        return true
+    }
+
+    Column {
+        Row(
+            Modifier.fillMaxWidth().clip(Corner).clickable(enabled = !busy) {
                 scope.launch {
-                    val answer = kotlinx.coroutines.withTimeoutOrNull(30_000) {
-                        com.verza.data.downloads.Soulseek.status.first { it.online || it.error != null }
+                    when {
+                        lossless -> { graph.settings.losslessDownloads.set(false); note = null }
+                        user.isNotBlank() -> graph.settings.losslessDownloads.set(true)
+                        // A made name can be taken already; a second one almost never is.
+                        !signIn(madeName(), randomText(20), true) && !signIn(madeName(), randomText(20), true) ->
+                            note = "Couldn't reach Soulseek. Check your connection and try again."
                     }
-                    note = when {
-                        // Signing in is asking for lossless; Regular is one tap above to go back
-                        answer?.online == true -> { graph.settings.soulseekUser.set(typed); graph.settings.losslessDownloads.set(true); null }
-                        answer?.error != null -> answer.error
-                        else -> "Couldn't reach Soulseek. Try again."
-                    }
-                    busy = false
                 }
-            }) { Text("Sign in") }
+            }.semantics(mergeDescendants = true) { role = Role.Switch; stateDescription = if (lossless) "On" else "Off" }.padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text("Download in lossless", style = Type.RowTitle, color = p.ink)
+                Text(
+                    "FLAC, exactly what's on the record: about 30 MB a song, where a regular download is 4. Worth it on wired " +
+                        "headphones or a DAC. A song nobody shares downloads as regular instead.",
+                    style = Type.RowSubtitle, color = p.inkMuted,
+                )
+            }
+            Switch(checked = lossless, onCheckedChange = null, enabled = !busy)
         }
-        note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
+        note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted, modifier = Modifier.padding(bottom = 4.dp)) }
+        if (user.isNotBlank()) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Soulseek account: $user", style = Type.RowSubtitle, color = p.ink)
+                Text(
+                    when {
+                        status.online -> "Connected"
+                        status.error != null -> status.error.orEmpty()
+                        status.state == "connecting" -> "Connecting"
+                        else -> "Connects when a lossless download starts"
+                    },
+                    style = Type.RowSubtitle, color = p.inkMuted,
+                )
+            }
+            TextButton(onClick = { own = !own }) { Text("Use my own") }
+            TextButton(onClick = {
+                com.verza.data.downloads.Soulseek.logout(context)
+                scope.launch { graph.settings.soulseekUser.set(""); graph.settings.losslessDownloads.set(false) }
+            }) { Text("Sign out") }
+        } else TextButton(onClick = { own = !own }, modifier = Modifier.padding(start = 0.dp)) { Text("I have a Soulseek account") }
+        if (own) {
+            OutlinedTextField(name, { name = it; note = null }, singleLine = true, enabled = !busy, placeholder = { Text("Soulseek username") },
+                shape = Corner, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                OutlinedTextField(password, { password = it; note = null }, singleLine = true, enabled = !busy, placeholder = { Text("Password") },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), shape = Corner, modifier = Modifier.weight(1f))
+                TextButton(enabled = !busy && name.isNotBlank() && password.isNotEmpty(), onClick = {
+                    scope.launch { if (signIn(name.trim(), password, false)) password = "" }
+                }) { Text("Sign in") }
+            }
+        }
     }
 }
+
+private val NameWords = listOf("amber", "birch", "cedar", "delta", "ember", "fjord", "grove", "heron", "indigo", "juniper", "kestrel", "linden",
+    "maple", "north", "onyx", "pine", "quartz", "river", "sable", "tidal", "umber", "violet", "willow", "zephyr")
+private val random = java.security.SecureRandom()
+private fun randomText(n: Int) = (1..n).map { "abcdefghijklmnopqrstuvwxyz0123456789"[random.nextInt(36)] }.joinToString("")
+/** A name nobody is likely to have: two words and four characters. */
+private fun madeName() = NameWords[random.nextInt(NameWords.size)] + "_" + NameWords[random.nextInt(NameWords.size)] + "_" + randomText(4)
 
 /**
  * Your library as a file: export it, import one (the old app's backups too), choose where downloads
