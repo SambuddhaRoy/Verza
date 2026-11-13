@@ -31,18 +31,23 @@ object Sessions {
      * phone), and so is anything personal. Null when nothing is left to share.
      */
     fun link(songs: List<Song>, index: Int, positionMs: Long): String? {
+        val session = session(songs, index, positionMs) ?: return null
+        val out = ByteArrayOutputStream()
+        GZIPOutputStream(out).use { it.write(json.encodeToString(SharedSession.serializer(), session).toByteArray()) }
+        return PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(out.toByteArray())
+    }
+
+    /** [songs] from [index] at [positionMs] as a session, for a link or for a computer (Connect). Null when nothing is left to share. */
+    fun session(songs: List<Song>, index: Int, positionMs: Long): SharedSession? {
         val kept = songs.withIndex().filter { isVideoId(it.value.id) }
         if (kept.isEmpty()) return null
         // The song playing, or the nearest kept one before it.
         val at = (kept.indexOfLast { it.index <= index }).coerceAtLeast(0).coerceAtMost(MAX_TRACKS - 1)
-        val session = SharedSession(
+        return SharedSession(
             index = at,
             positionMs = if (kept.getOrNull(at)?.index == index) positionMs else 0,
             tracks = kept.take(MAX_TRACKS).map { (_, s) -> SharedTrack(s.id, s.title, s.artist, s.art) },
         )
-        val out = ByteArrayOutputStream()
-        GZIPOutputStream(out).use { it.write(json.encodeToString(SharedSession.serializer(), session).toByteArray()) }
-        return PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(out.toByteArray())
     }
 
     /**

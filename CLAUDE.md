@@ -1,7 +1,7 @@
 # Verza (Android), the rewrite
 
 The phone app rebuilt from scratch on branch `rewrite` of `SambuddhaRoy/Verza`, beside the old app on
-`main`, which keeps shipping 1.20.x until this one matches it. Glass is the only design. Same package
+`main`, which keeps shipping 1.20.x until this one matches it. The design is the Zune-like one in `ui/theme`; Verza Next on the desktop copies it. Same package
 (`com.verza`) and signing key, so it installs over the old app as an update and reads its library.
 
 ## Build
@@ -106,6 +106,23 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   `tools/verza_bridge_test.py` runs this bridge against it on the desktop.
   Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
   copy refused and YouTube used instead, the service up during a download and gone after.
+
+## Verza Connect and one-switch lossless (November 2026, unreleased)
+
+- **`data/Connect.kt`, `ui/kit/Devices.kt`**: Verza Next on a computer shows here what it's playing,
+  takes play, pause and skip from here, and a queue is handed over either way ("play here", "play
+  there"). Settings > devices, and Devices in Now Playing's menu. The other end and the protocol are
+  `src/main/connect.js` in the desktop repo; its CLAUDE.md has the detail.
+- **Plain sockets, not OkHttp**: it's http to an address on the local network, which
+  `network_security_config` refuses for every HTTP client and should go on refusing.
+- Computers are watched only between `onStart` and `onStop`. A blocked socket read ignores
+  cancellation, so the watcher's socket is closed when its coroutine ends.
+- A computer is found by its UDP broadcast (port 47127, with a multicast lock) or added by address.
+  **Broadcasts don't reach an emulator**, so discovery is unchecked; the rest was checked on
+  `VerzaFresh` against the desktop build (`verza-shots/mob/_connect.py`).
+- **Lossless is one switch** (`Lossless()` in SettingsPage.kt, used by the welcome too): with no
+  Soulseek account, turning it on makes one with a random name and password. Compiles and draws;
+  **the sign-in it makes was not run**, against the fake server or the real one.
 
 ## A song on the phone is a song (local files and downloads)
 

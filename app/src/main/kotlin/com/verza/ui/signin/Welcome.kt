@@ -29,8 +29,7 @@ import com.verza.data.phone.PhoneMusic
 import com.verza.graph
 import com.verza.ui.kit.Word
 import com.verza.ui.kit.takesTouches
-import com.verza.ui.settings.DownloadKind
-import com.verza.ui.settings.Soulseek
+import com.verza.ui.settings.Lossless
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 import kotlinx.coroutines.launch
@@ -77,10 +76,8 @@ fun Welcome(account: Boolean, onSignIn: () -> Unit) {
                 }
             }
             1 -> {
-                val lossless by graph.settings.losslessDownloads.flow.collectAsState(initial = false)
-                Heading("downloads", "Any song, album or playlist can be saved to play with no connection. Pick what a download is; Settings can change it later.")
-                DownloadKind()
-                if (lossless) Soulseek()
+                Heading("downloads", "Any song, album or playlist can be saved to play with no connection. Settings can change this later.")
+                Lossless()
                 Words {
                     Word("next", p.accent) { if (graph.phone.allowed()) finish() else step = 2 }
                 }
