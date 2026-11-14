@@ -107,6 +107,12 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
   copy refused and YouTube used instead, the service up during a download and gone after.
 
+## Your Sound is a tab (after 2.2.0)
+
+The dock's words are home, search, library and your sound (route `sound`), as on the desktop; it was a
+Library section. Four words overflow a narrow phone, so the row scrolls sideways. Checked by
+`verza-shots/mob/_sound_tab.py`.
+
 ## Verza Connect and one-switch lossless (2.2.0)
 
 - **`data/Connect.kt`, `ui/kit/Devices.kt`**: Verza Next on a computer shows here what it's playing,
