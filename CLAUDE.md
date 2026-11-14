@@ -107,7 +107,7 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
   copy refused and YouTube used instead, the service up during a download and gone after.
 
-## Verza Connect and one-switch lossless (November 2026, unreleased)
+## Verza Connect and one-switch lossless (2.2.0)
 
 - **`data/Connect.kt`, `ui/kit/Devices.kt`**: Verza Next on a computer shows here what it's playing,
   takes play, pause and skip from here, and a queue is handed over either way ("play here", "play
@@ -121,8 +121,10 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   **Broadcasts don't reach an emulator**, so discovery is unchecked; the rest was checked on
   `VerzaFresh` against the desktop build (`verza-shots/mob/_connect.py`).
 - **Lossless is one switch** (`Lossless()` in SettingsPage.kt, used by the welcome too): with no
-  Soulseek account, turning it on makes one with a random name and password. Compiles and draws;
-  **the sign-in it makes was not run**, against the fake server or the real one.
+  Soulseek account, turning it on makes one with a random name and password. Checked against the fake server
+  (`verza-shots/mob/_lossless_switch.py`); never against the real network.
+- The `_rw_*.py` scripts tap "not now" once and so stop at the welcome's downloads step on a fresh
+  install; walk the welcome first, and run them without an APK argument.
 
 ## A song on the phone is a song (local files and downloads)
 
