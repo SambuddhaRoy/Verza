@@ -72,7 +72,7 @@ fun YourSound() {
         if (songs.isNotEmpty()) item { SectionTitle("top songs") }
         items(songs, key = { "s" + it.id }) { s ->
             val song = Song(s.id, s.title, s.artist, art = s.thumbnailUrl)
-            ListRow(s.title, "${s.artist} · ${s.plays} plays", art = s.thumbnailUrl?.let { artAt(it, 226) }, onClick = { graph.player.play(listOf(song)) })
+            ListRow(s.title, "${s.artist} · ${s.plays} " + (if (s.plays == 1) "play" else "plays"), art = s.thumbnailUrl?.let { artAt(it, 226) }, onClick = { graph.player.play(listOf(song)) })
         }
         if (artists.isNotEmpty()) item { SectionTitle("top artists") }
         items(artists, key = { "a" + it.artist }) { a ->

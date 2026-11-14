@@ -17,6 +17,8 @@ import com.verza.ui.signin.Welcome
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -71,8 +73,8 @@ import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 import kotlinx.coroutines.delay
 
-/** The pages the dock switches between, in its order. */
-private val Tabs = listOf("home", "search", "library")
+/** The pages the dock switches between, in its order: route to the word shown. Your Sound is one, as on the desktop. */
+private val Tabs = linkedMapOf("home" to "home", "search" to "search", "library" to "library", "sound" to "your sound")
 
 private val TabsHeight = 56.dp
 private val PlayerHeight = 64.dp
@@ -105,6 +107,12 @@ fun Shell() {
                 composable("signin") { SignIn(onDone = { nav.popBackStack() }) }
                 composable("search") { SearchPage(onOpen = open) }
                 composable("library") { LibraryPage(onOpen = open) }
+                composable("sound") {
+                    Column(Modifier.fillMaxSize()) {
+                        com.verza.ui.kit.Masthead("your sound", "your listening")
+                        com.verza.ui.library.YourSound()
+                    }
+                }
                 composable("page/{id}") { entry ->
                     PageScreen(entry.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() }, onOpen = open)
                 }
@@ -138,7 +146,7 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
     val player = LocalContext.current.graph.player
     // The tab a page was opened from stays lit while it's showing.
     val stack by nav.currentBackStack.collectAsState()
-    val current = stack.lastOrNull { it.destination.route in Tabs }?.destination?.route
+    val current = stack.lastOrNull { it.destination.route in Tabs.keys }?.destination?.route
     Column(modifier.fillMaxWidth().takesTouches().background(p.canvas.copy(alpha = 0.96f)).navigationBarsPadding()) {
         now.song?.let { song ->
             Row(
@@ -165,11 +173,11 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 6.dp),
         )
         Row(
-            Modifier.fillMaxWidth().height(TabsHeight).padding(horizontal = 20.dp),
+            Modifier.fillMaxWidth().height(TabsHeight).horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            for (tab in Tabs) {
+            for ((tab, word) in Tabs) {
                 // The whole height of the row takes the tap, not just the word.
                 Box(
                     Modifier.fillMaxHeight().clickable {
@@ -183,7 +191,7 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
                     },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(tab, style = Type.Section.copy(fontSize = 26.sp), color = if (tab == current) p.ink else p.inkMuted)
+                    Text(word, style = Type.Section.copy(fontSize = 26.sp), color = if (tab == current) p.ink else p.inkMuted)
                 }
             }
         }
