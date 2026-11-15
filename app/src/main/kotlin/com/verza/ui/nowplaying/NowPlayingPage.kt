@@ -110,7 +110,7 @@ private val InkFaint: Color @Composable get() = LocalPalette.current.ink.copy(al
  * the screen. The queue is below, on the same scrolling page.
  */
 @Composable
-fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -> Unit, onStandby: () -> Unit) {
+fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -> Unit, onStandby: () -> Unit) {
     val graph = LocalContext.current.graph
     val player = graph.player
     val now by player.state.collectAsState()
@@ -128,9 +128,7 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
     val p = LocalPalette.current
     if (p.dark) com.verza.ui.kit.LightBarIcons()
     val visualizer by graph.settings.visualizer.flow.collectAsState(initial = true)
-    val target = flickTarget()
-    val (flick, sendByFlick) = rememberFlick(target)
-    ListenForFlick(target.takeIf { now.playing }, sendByFlick)
+    val target = flick.sendTo
 
     // The artist's and album's pages; a file on the phone's are its song's on YouTube Music.
     val links by produceState<Pair<List<Link>, Link?>?>(null, song.id) {
@@ -152,8 +150,9 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
                             val side = minOf(maxWidth, maxHeight) * (if (visualizer) 0.8f else 1f)
                             var swell by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
                             if (visualizer && flick.fly.value == 0f) CoverVisualizer(side, p.accent, now.playing, onBass = { swell = it })
-                            // A flick toward the computer sends the cover flying off the top, and the music with it.
-                            FlyingCover(art, side, swell, flick.fly.value, flick.gone)
+                            // A flick toward the computer sends the cover flying off the top, and the music with it;
+                            // one back toward you brings the computer's down from there.
+                            FlyingCover(art, side, swell, flick.fly.value, flick.label)
                         }
                         Spacer(Modifier.height(20.dp))
                         Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Title.copy(fontSize = 34.sp, lineHeight = 39.sp), color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -192,8 +191,8 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
                         Scrubber(now, onSeek = player::seek)
                         Transport(now)
                         // Said once there's somewhere to flick to: the gesture can't be seen otherwise.
-                        if (target != null && now.playing) Text("flick toward ${target.name} to play there", style = Type.Small, color = InkSoft,
-                            modifier = Modifier.fillMaxWidth().clickable(onClick = sendByFlick).padding(vertical = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        if (target != null) Text("flick toward ${target.name} to play there", style = Type.Small, color = InkSoft,
+                            modifier = Modifier.fillMaxWidth().clickable(onClick = flick.send).padding(vertical = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         Spacer(Modifier.navigationBarsPadding().height(8.dp))
                     }
                 }
