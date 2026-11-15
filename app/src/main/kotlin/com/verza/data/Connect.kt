@@ -186,10 +186,11 @@ class Connect(private val context: Context, private val settings: Settings, priv
     }
 
     /** Takes what [computer] is playing, from where it is, and stops it there. */
-    fun playHere(computer: Computer): Boolean {
+    fun playHere(computer: Computer, via: String? = null): Boolean {
         val there = _playing.value[computer.id] ?: return false
         if (!take(there.queue, there.index, there.position())) return false
-        tell(computer, "pause")
+        // "flick": the computer sends its cover off toward the listener as it stops.
+        send(computer, buildJsonObject { put("action", "pause"); if (via != null) put("via", via) })
         return true
     }
 

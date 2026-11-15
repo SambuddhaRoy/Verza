@@ -122,8 +122,10 @@ fun Shell() {
         val route = nav.currentBackStackEntryAsState().value?.destination?.route
         if (route != "signin") Dock(nav, now, onOpenPlayer = { playerOpen = true }, Modifier.align(Alignment.BottomCenter))
         // Now Playing rises over everything from the mini player and drops back.
+        // Flicks work from anywhere in the app: bringing the computer's music here needs nothing playing.
+        val flick = com.verza.ui.nowplaying.FlickHandoff(playerOpen, openPlayer = { lyricsOpen = false; standbyOpen = false; playerOpen = true })
         AnimatedVisibility(playerOpen && now.song != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
-            NowPlayingPage(onClose = { playerOpen = false }, onOpen = open, onLyrics = { lyricsOpen = true }, onStandby = { standbyOpen = true })
+            NowPlayingPage(flick, onClose = { playerOpen = false }, onOpen = open, onLyrics = { lyricsOpen = true }, onStandby = { standbyOpen = true })
         }
         AnimatedVisibility(lyricsOpen && now.song != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
             LyricsPage(onClose = { lyricsOpen = false })
