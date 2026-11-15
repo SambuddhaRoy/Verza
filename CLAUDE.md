@@ -107,7 +107,7 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
   copy refused and YouTube used instead, the service up during a download and gone after.
 
-## Flicks to and from the computer (branch `flick`, unreleased: needs a real phone)
+## Flicks to and from the computer (2.4.0, with Verza Next 1.14.0)
 
 `FlickHandoff` (`ui/nowplaying/FlickAway.kt`) listens from the Shell, so it works on any page, with a
 paired computer in reach and setting `flick` on:
@@ -136,6 +136,14 @@ paired computer in reach and setting `flick` on:
   desktop test build (paired by `_pair.py`, which finds Connect's port: the installed app often has
   47126) and `zarrive.mjs` pictures the computer's half. `_flick2.py` runs a take, a take that asks
   and keeps this phone's, and a send that the computer asks about.
+
+## The tour after an update (2.4.0)
+
+`ui/signin/Tour.kt`: what an update brought, a step at a time, each with an animated drawing of the
+phone and the computer (a Canvas over one infinite transition). The Shell shows it once to an install
+that was updated (`firstInstallTime != lastUpdateTime`), after the welcome if that's showing, and a new
+install marks it seen. `tourSeen` holds the last `TOUR` seen: for the next release worth a tour, bump
+`TOUR` and rewrite the steps. `verza-shots/mob/_tour.py` installs over the previous APK and pictures it.
 
 ## The desktop's audit, carried over (2.3.0)
 
