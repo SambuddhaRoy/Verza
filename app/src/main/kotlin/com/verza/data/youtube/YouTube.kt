@@ -4,11 +4,8 @@ import com.verza.data.Album
 import com.verza.data.Artist
 import com.verza.data.Card
 import com.verza.data.Link
-import com.verza.data.Section
 import com.verza.data.Song
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -79,9 +76,6 @@ class YouTube(private val http: OkHttpClient, private val cookie: () -> String?)
 
     suspend fun searchSongs(query: String): List<Song> =
         parseSongs(post("search") { put("query", query); put("params", Filter.SONGS.params) })
-
-    suspend fun suggestions(input: String): List<String> =
-        parseSuggestions(post("music/get_search_suggestions") { put("input", input) })
 
     private suspend fun browse(id: String) = post("browse") { put("browseId", id) }
 
