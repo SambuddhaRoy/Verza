@@ -3,14 +3,8 @@ package com.verza.ui.library
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PhoneAndroid
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,19 +12,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.verza.data.artAt
 import com.verza.graph
 import com.verza.ui.kit.Empty
-import com.verza.ui.kit.ListRow
-import com.verza.ui.kit.LocalDockHeight
-import com.verza.ui.kit.SongMenu
-import com.verza.ui.kit.Word
 import com.verza.ui.theme.LocalPalette
-import com.verza.ui.theme.Type
 
 private val readAudio = com.verza.data.phone.PhoneMusic.PERMISSION
 

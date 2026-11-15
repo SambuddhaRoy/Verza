@@ -22,7 +22,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -50,7 +49,6 @@ import com.verza.ui.kit.ListRow
 import com.verza.ui.kit.LocalDockHeight
 import com.verza.ui.kit.Masthead
 import com.verza.ui.kit.SongMenu
-import com.verza.ui.theme.Corner
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 

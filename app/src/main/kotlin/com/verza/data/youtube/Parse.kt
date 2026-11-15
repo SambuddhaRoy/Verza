@@ -143,11 +143,6 @@ internal fun parseQueue(response: JsonElement): List<Song> =
         Song(id, title, artist, art = r.thumbnail(), durationMs = r.firstRun("lengthText").durationMs())
     }.distinctBy { it.id }
 
-internal fun parseSuggestions(response: JsonElement): List<String> =
-    response.findAll("searchSuggestionRenderer").map { it["suggestion"]?.findFirst("runs")?.array
-        ?.mapNotNull { r -> r.child("text").string }?.joinToString("").orEmpty() }
-        .filter { it.isNotBlank() }.distinct()
-
 /** The artist and album pages among a song's byline runs: "Joji • Nectar • 2020". */
 private fun bylineLinks(runs: List<JsonElement>): Pair<List<Link>, Link?> {
     val artists = ArrayList<Link>()

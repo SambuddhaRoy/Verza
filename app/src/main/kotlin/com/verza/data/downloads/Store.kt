@@ -179,18 +179,6 @@ class DownloadStore(
         if (location.startsWith("content://")) context.contentResolver.openInputStream(Uri.parse(location)) ?: error("can't read $location")
         else File(location).inputStream()
 
-    /**
-     * A readable name for a chosen folder: a tree Uri of "primary:Music/Verza" reads back as
-     * "Music/Verza". Falls back to something honest rather than showing raw percent-encoding.
-     */
-    fun folderLabel(treeUri: String?): String {
-        if (treeUri.isNullOrBlank()) return ""
-        return runCatching {
-            val id = DocumentsContract.getTreeDocumentId(Uri.parse(treeUri))
-            id.substringAfter(':', id).ifBlank { id }
-        }.getOrDefault("Chosen folder")
-    }
-
     private fun uniqueFile(dir: File, name: String): File {
         val dot = name.lastIndexOf('.')
         val stem = if (dot > 0) name.substring(0, dot) else name
