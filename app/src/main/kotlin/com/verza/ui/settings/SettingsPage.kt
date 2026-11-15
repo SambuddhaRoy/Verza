@@ -78,21 +78,22 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                 }
             } else Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Signed in to YouTube Music", style = Type.RowTitle, color = LocalPalette.current.ink, modifier = Modifier.weight(1f))
-                TextButton(onClick = { scope.launch { graph.account.set(null) } }) { Text("Sign out") }
+                TextButton(onClick = { scope.launch { graph.account.set(null) } }) { Text("sign out") }
             }
         }
         item { SectionTitle("playback") }
         item {
-            Choice("Audio quality", "How much of YouTube's stream to fetch", listOf("HIGH" to "High", "MEDIUM" to "Medium", "LOW" to "Low"), quality) {
+            Choice("Audio quality", "How much of YouTube's stream to fetch", listOf("HIGH" to "high", "MEDIUM" to "medium", "LOW" to "low"), quality) {
                 scope.launch { s.quality.set(it) }
             }
         }
         item {
-            Choice("Fade between songs", "Fade out at the end of a song and in at the start of the next", listOf(0 to "Off", 3 to "3s", 6 to "6s", 12 to "12s"), fade) {
+            Choice("Fade between songs", "Fade out at the end of a song and in at the start of the next", listOf(0 to "off", 3 to "3s", 6 to "6s", 12 to "12s"), fade) {
                 scope.launch { s.fadeSeconds.set(it) }
             }
         }
         item { Toggle("Skip silence", "Skip silent stretches inside a song", s.skipSilence) }
+        item { Toggle("Visualiser", "The music drawn around the cover in Now Playing", s.visualizer) }
         item {
             Row(Modifier.fillMaxWidth().clip(Corner).clickable(onClick = onEqualizer).padding(vertical = 10.dp)) {
                 Column {
@@ -175,8 +176,8 @@ private fun AddSource(onDone: () -> Unit) {
         title = { Text("Add a source") },
         text = {
             Column {
-                OutlinedTextField(link, { link = it; problem = null }, singleLine = true, placeholder = { Text("https://…/manifest.json") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), shape = Corner)
+                com.verza.ui.kit.Field(link, { link = it; problem = null }, placeholder = "https://…/manifest.json",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
                 problem?.let { Text(it, style = Type.RowSubtitle, color = androidx.compose.ui.graphics.Color(0xFFE5484D), modifier = Modifier.padding(top = 8.dp)) }
             }
         },
@@ -194,7 +195,7 @@ private fun AddSource(onDone: () -> Unit) {
                 }
             }) { Text(if (checking) "Checking…" else "Add") }
         },
-        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("cancel") } },
     )
 }
 
@@ -250,11 +251,11 @@ private fun ListenBrainz() {
             Text("ListenBrainz: $user", style = Type.RowTitle, color = p.ink)
             Text("Its weekly mixes are on Home", style = Type.RowSubtitle, color = p.inkMuted)
         }
-        TextButton(onClick = { scope.launch { graph.mixPrefs.listenBrainzUser.set(""); graph.mixes.rebuildListenBrainz() } }) { Text("Disconnect") }
+        TextButton(onClick = { scope.launch { graph.mixPrefs.listenBrainzUser.set(""); graph.mixes.rebuildListenBrainz() } }) { Text("disconnect") }
     } else Column(Modifier.padding(vertical = 4.dp)) {
         Text("A ListenBrainz username brings its weekly mixes to Home, Spotify listening included.", style = Type.Body, color = p.inkMuted)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(typed, { typed = it; note = null }, singleLine = true, placeholder = { Text("Username") }, shape = Corner, modifier = Modifier.weight(1f))
+            com.verza.ui.kit.Field(typed, { typed = it; note = null }, placeholder = "Username", modifier = Modifier.weight(1f))
             TextButton(enabled = typed.isNotBlank(), onClick = {
                 note = "Checking…"
                 scope.launch {
@@ -264,7 +265,7 @@ private fun ListenBrainz() {
                         com.verza.data.mixes.ListenBrainzRepository.Check.Unreachable -> "Couldn't reach ListenBrainz. Try again."
                     }
                 }
-            }) { Text("Connect") }
+            }) { Text("connect") }
         }
         note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
     }
@@ -351,11 +352,11 @@ internal fun Lossless() {
                     style = Type.RowSubtitle, color = p.inkMuted,
                 )
             }
-            TextButton(onClick = { own = !own }) { Text("Use my own") }
+            TextButton(onClick = { own = !own }) { Text("use my own") }
             TextButton(onClick = {
                 com.verza.data.downloads.Soulseek.logout(context)
                 scope.launch { graph.settings.soulseekUser.set(""); graph.settings.losslessDownloads.set(false) }
-            }) { Text("Sign out") }
+            }) { Text("sign out") }
         } else TextButton(onClick = { own = !own }, modifier = Modifier.padding(start = 0.dp)) { Text("I have a Soulseek account") }
         if (own) {
             OutlinedTextField(name, { name = it; note = null }, singleLine = true, enabled = !busy, placeholder = { Text("Soulseek username") },
@@ -366,7 +367,7 @@ internal fun Lossless() {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), shape = Corner, modifier = Modifier.weight(1f))
                 TextButton(enabled = !busy && name.isNotBlank() && password.isNotEmpty(), onClick = {
                     scope.launch { if (signIn(name.trim(), password, false)) password = "" }
-                }) { Text("Sign in") }
+                }) { Text("sign in") }
             }
         }
     }
@@ -437,7 +438,7 @@ private fun LibraryFile() {
         onDismissRequest = { resetting = false },
         title = { Text("Reset listening stats?") },
         text = { Text("Your play history goes. Likes, playlists and downloads stay.") },
-        confirmButton = { TextButton(onClick = { resetting = false; scope.launch { graph.db.stats().clearAll(); note = "Listening stats reset" } }) { Text("Reset") } },
-        dismissButton = { TextButton(onClick = { resetting = false }) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { resetting = false; scope.launch { graph.db.stats().clearAll(); note = "Listening stats reset" } }) { Text("reset") } },
+        dismissButton = { TextButton(onClick = { resetting = false }) { Text("cancel") } },
     )
 }

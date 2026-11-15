@@ -149,17 +149,17 @@ private fun PlaylistMenu(id: Long, name: String, onDeleted: () -> Unit, modifier
             AlertDialog(
                 onDismissRequest = done,
                 title = { Text("Rename playlist") },
-                text = { OutlinedTextField(text, { text = it }, singleLine = true, shape = Corner) },
-                confirmButton = { TextButton(enabled = text.isNotBlank() && text.trim() != name, onClick = { scope.launch { graph.library.renamePlaylist(id, text.trim()); graph.sync.flush() }; done() }) { Text("Rename") } },
-                dismissButton = { TextButton(onClick = done) { Text("Cancel") } },
+                text = { com.verza.ui.kit.Field(text, { text = it }, placeholder = "Name") },
+                confirmButton = { TextButton(enabled = text.isNotBlank() && text.trim() != name, onClick = { scope.launch { graph.library.renamePlaylist(id, text.trim()); graph.sync.flush() }; done() }) { Text("rename") } },
+                dismissButton = { TextButton(onClick = done) { Text("cancel") } },
             )
         }
         "delete" -> AlertDialog(
             onDismissRequest = done,
             title = { Text("Delete \"$name\"?") },
             text = { Text("The songs stay in your library; only the playlist goes, here and on YouTube Music.") },
-            confirmButton = { TextButton(onClick = { done(); onDeleted(); graph.scope.launch { graph.library.deletePlaylist(id); graph.sync.flush() } }) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = done) { Text("Cancel") } },
+            confirmButton = { TextButton(onClick = { done(); onDeleted(); graph.scope.launch { graph.library.deletePlaylist(id); graph.sync.flush() } }) { Text("delete") } },
+            dismissButton = { TextButton(onClick = done) { Text("cancel") } },
         )
     }
 }
@@ -245,8 +245,8 @@ fun Shelf(section: Section, onOpen: (String) -> Unit) {
         items(section.cards, key = { it.song?.id ?: it.page ?: it.title }) { card ->
             Column(Modifier.width(150.dp).clip(com.verza.ui.theme.Corner).clickable { card.song?.let(player::playWithRadio) ?: card.page?.let(onOpen) }) {
                 Cover(card.art?.let { artAt(it, 544) }, 150.dp, round = card.page?.startsWith("UC") == true)
-                Text(card.title, style = Type.RowTitle.copy(fontSize = Type.RowSubtitle.fontSize), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                Text(card.subtitle, style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (card.song != null) com.verza.data.shownTitle(card.title, card.subtitle.substringBefore(" • ")) else card.title, style = Type.RowTitle.copy(fontSize = Type.RowSubtitle.fontSize), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                Text(card.subtitle.replace(" • ", " · "), style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

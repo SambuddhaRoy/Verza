@@ -48,7 +48,9 @@ fun YourSound() {
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp + LocalDockHeight.current)) {
         item {
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Figure("${ms / 3_600_000}", "hours", Modifier.weight(1f))
+                // Under an hour, minutes: "0 hours" says nothing.
+                if (ms >= 3_600_000) Figure("${ms / 3_600_000}", if (ms < 7_200_000) "hour" else "hours", Modifier.weight(1f))
+                else Figure("${ms / 60_000}", "minutes", Modifier.weight(1f))
                 Figure("${plays ?: 0}", "plays", Modifier.weight(1f))
                 Figure("${streak(days)}", "days in a row", Modifier.weight(1f))
             }
@@ -76,7 +78,10 @@ fun YourSound() {
         }
         if (artists.isNotEmpty()) item { SectionTitle("top artists") }
         items(artists, key = { "a" + it.artist }) { a ->
-            Text("${a.artist}  ·  ${a.totalMs / 60_000} min", style = Type.RowTitle, color = p.ink, modifier = Modifier.padding(vertical = 8.dp))
+            // The artist's picture, how often and how long: minutes alone read "0 min" for a short listen.
+            val mins = a.totalMs / 60_000
+            ListRow(a.artist, (if (a.plays == 1) "1 play" else "${a.plays} plays") + (if (mins > 0) " · $mins min" else ""), onClick = {},
+                leading = { com.verza.ui.library.ArtistPicture(a.artist) })
         }
     }
 }

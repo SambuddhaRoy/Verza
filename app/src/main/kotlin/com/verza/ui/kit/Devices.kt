@@ -134,10 +134,10 @@ private fun AddComputer(computer: Connect.Computer, onDone: () -> Unit) {
         text = {
             Column {
                 Text("In Verza on the computer, open Settings, then devices, and choose Show code.", style = Type.Body)
-                if (byAddress) OutlinedTextField(address, { address = it; problem = null }, singleLine = true, placeholder = { Text("Address, like 192.168.1.20") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), shape = Corner, modifier = Modifier.padding(top = 12.dp))
-                OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6); problem = null }, singleLine = true, placeholder = { Text("Code") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = Corner, modifier = Modifier.padding(top = 12.dp))
+                if (byAddress) Field(address, { address = it; problem = null }, placeholder = "Address, like 192.168.1.20",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), modifier = Modifier.padding(top = 12.dp))
+                Field(code, { code = it.filter(Char::isDigit).take(6); problem = null }, placeholder = "Code",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.padding(top = 12.dp))
                 problem?.let { Text(it, style = Type.RowSubtitle, color = androidx.compose.ui.graphics.Color(0xFFE5484D), modifier = Modifier.padding(top = 8.dp)) }
             }
         },
@@ -154,7 +154,7 @@ private fun AddComputer(computer: Connect.Computer, onDone: () -> Unit) {
                 }
             }) { Text(if (busy) "Adding…" else "Add") }
         },
-        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("cancel") } },
     )
 }
 
@@ -165,6 +165,6 @@ fun DevicesDialog(onDone: () -> Unit) {
         onDismissRequest = onDone,
         title = { Text("Devices") },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) { Devices() } },
-        confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDone) { Text("done") } },
     )
 }

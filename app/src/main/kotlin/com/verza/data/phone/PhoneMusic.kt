@@ -42,7 +42,12 @@ data class PhoneLibrary(
     val songs: List<Song>,
     val albums: List<PhoneCollection>,
     val playlists: List<PhoneCollection>,
+    /** Each song's tags and when it arrived, by its id, for Library's sorting. */
+    val facts: Map<String, Facts> = emptyMap(),
 )
+
+/** What sorting needs beyond a song: from the file's tags. [track] is the track alone, disc dropped. */
+data class Facts(val album: String? = null, val albumArtist: String? = null, val year: Int? = null, val track: Int = 0, val addedSec: Long = 0)
 
 /** One file as MediaStore describes it, before it is sorted into albums and playlists. */
 data class PhoneFile(
@@ -57,6 +62,7 @@ data class PhoneFile(
     val year: Int?,
     /** False when the file names no artist, in which case its album is just its folder's name. */
     val tagged: Boolean,
+    val addedSec: Long = 0,
 )
 
 /**
@@ -142,6 +148,7 @@ class PhoneMusic(
             MediaStore.Audio.Media.TRACK,
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DISPLAY_NAME,
+            MediaStore.Audio.Media.DATE_ADDED,
             @Suppress("DEPRECATION") MediaStore.Audio.Media.DATA,
         ) + (if (Build.VERSION.SDK_INT >= 29) arrayOf(MediaStore.Audio.Media.RELATIVE_PATH) else emptyArray()) +
             // Asking for a column a phone hasn't got fails the whole query, so only where it's documented.
@@ -199,13 +206,15 @@ class PhoneMusic(
                         track = int(MediaStore.Audio.Media.TRACK),
                         year = int(MediaStore.Audio.Media.YEAR).takeIf { it > 0 },
                         tagged = artist != null,
+                        addedSec = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED).takeIf { it >= 0 }?.let { cursor.getLong(it) } ?: 0,
                     )
                 }
             }
         }
         val (albums, playlists) = PhoneGrouping.group(files)
         // A second copy of a song Verza saved is the same song, and a list can't show one id twice.
-        val lib = withCovers(PhoneLibrary(files.map { it.item }.distinctBy { it.id }, albums, playlists))
+        val lib = withCovers(PhoneLibrary(files.map { it.item }.distinctBy { it.id }, albums, playlists,
+            files.associate { it.item.id to Facts(it.album, it.albumArtist, it.year, it.track % 1000, it.addedSec) }))
         _library.value = lib
         fillCovers()
         lib

@@ -22,6 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,11 @@ fun LibraryPage(onOpen: (String) -> Unit) {
     var open by rememberSaveable { mutableStateOf<String?>(null) }
     BackHandler(enabled = open != null) { open = null }
     val p = LocalPalette.current
+    // An album or artist opened from a collection: its songs, in its order.
+    var group by remember { mutableStateOf<Pair<String, List<Song>>?>(null) }
+    BackHandler(enabled = group != null) { group = null }
+    group?.let { (title, songs) -> Section(title) { SongList(songs) }; return }
+    val graph = LocalContext.current.graph
 
     when (val section = open) {
         null -> Column(Modifier.fillMaxSize()) {
@@ -66,7 +73,18 @@ fun LibraryPage(onOpen: (String) -> Unit) {
                 )
             }
         }
-        "on device" -> Section(section) { OnDevice(onOpen) }
+        "on device" -> Section(section) { OnDevice(onOpen) { t, _, ss -> group = t to ss } }
+        "downloaded" -> {
+            val songs by library.downloaded.collectAsState(initial = null)
+            val phone by graph.phone.library.collectAsState()
+            // Downloads sort by their files' tags, which the phone's scan reads, where it may.
+            LaunchedEffect(Unit) { if (graph.phone.allowed() && graph.phone.library.value == null) runCatching { graph.phone.scan() } }
+            Section(section) {
+                val s = songs ?: return@Section
+                if (s.isEmpty()) Empty(emptyLine(section))
+                else Collection("downloaded", s, facts = { phone?.facts?.get(it.id) ?: com.verza.data.phone.Facts(album = it.album) }, onOpenGroup = { t, _, ss -> group = t to ss })
+            }
+        }
         "playlists" -> {
             val lists by library.playlists.collectAsState(initial = null)
             val theirs by account("account-playlists", ListSerializer(Card.serializer())) { it.accountPlaylists() }
