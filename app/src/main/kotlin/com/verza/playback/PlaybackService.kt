@@ -69,7 +69,16 @@ class PlaybackService : MediaLibraryService() {
         val graph = graph
         resolver = Resolver(graph)
         val upstream = DefaultDataSource.Factory(this, OkHttpDataSource.Factory(graph.http))
-        player = ExoPlayer.Builder(this)
+        // The output is copied as it plays, for Now Playing's visualiser (Spectrum).
+        val renderers = object : androidx.media3.exoplayer.DefaultRenderersFactory(this) {
+            override fun buildAudioSink(context: android.content.Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean) =
+                androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(androidx.media3.exoplayer.audio.TeeAudioProcessor(Spectrum)))
+                    .build()
+        }
+        player = ExoPlayer.Builder(this, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(ResolvingDataSource.Factory(upstream, resolver)))
             .setAudioAttributes(AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).setUsage(C.USAGE_MEDIA).build(), true)
             .setHandleAudioBecomingNoisy(true)

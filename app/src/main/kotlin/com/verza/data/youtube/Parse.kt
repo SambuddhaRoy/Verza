@@ -46,7 +46,7 @@ internal fun parseResultRow(row: JsonObject): Card? {
     val columns = row["flexColumns"] as? JsonArray ?: return null
     val title = columns.getOrNull(0).firstRunText() ?: return null
     val song = parseSongRow(row)
-    val parts = columns.getOrNull(1).runTexts()
+    val parts = columns.getOrNull(1).bylineParts()
     // Song rows drop their type label, so the artist comes first: playing a result used to save
     // "Song Radiohead" as the artist and split one band into many in the history.
     val subtitle = (if (song != null && parts.firstOrNull() in TYPE_LABELS) parts.drop(1) else parts).joinToString(" • ")
@@ -56,14 +56,29 @@ internal fun parseResultRow(row: JsonObject): Card? {
     return Card(title = title, subtitle = subtitle, art = row.thumbnail(), song = song, page = if (song == null) page else null)
 }
 
-internal fun parseResults(response: JsonElement): List<Card> =
-    response.findAll("musicResponsiveListItemRenderer").mapNotNull(::parseResultRow)
+internal fun parseResults(response: JsonElement): List<Card> {
+    // The songs under an artist's top-result card name no artist ("Song • 4:19"): the card is the
+    // artist. Without this they were saved as "Unknown artist" when played.
+    val artistOf = HashMap<String, String>()
+    for (shelf in response.findAll("musicCardShelfRenderer")) {
+        val name = shelf["title"].firstRunText() ?: continue
+        val isArtist = shelf["subtitle"].runTexts().firstOrNull() == "Artist"
+        if (!isArtist) continue
+        for (row in shelf.findAll("musicResponsiveListItemRenderer")) parseSongRow(row)?.let { artistOf[it.id] = name }
+    }
+    return response.findAll("musicResponsiveListItemRenderer").mapNotNull(::parseResultRow)
+        .map { c ->
+            val name = c.song?.let { artistOf[it.id] }
+            if (name == null || c.song.artist != "Unknown artist") c
+            else c.copy(subtitle = (listOf(name) + c.subtitle.split(" • ").filter { it.isNotBlank() }).joinToString(" • "), song = c.song.copy(artist = name))
+        }
         .distinctBy { it.song?.id ?: it.page ?: it.title }
+}
 
 /** A card on a shelf (`musicTwoRowItemRenderer`): a song, or a page. */
 private fun parseTwoRow(item: JsonObject): Card? {
     val title = item.firstRun("title") ?: return null
-    val runs = item["subtitle"].runTexts()
+    val runs = item["subtitle"].bylineParts()
     val subtitle = runs.joinToString(" • ")
     val art = item.thumbnail()
     val videoId = item.findFirst("watchEndpoint").child("videoId").string

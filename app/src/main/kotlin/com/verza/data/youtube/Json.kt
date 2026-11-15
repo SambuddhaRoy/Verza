@@ -45,6 +45,20 @@ internal fun JsonElement?.firstRun(key: String): String? =
     child(key)?.findFirst("runs")?.array?.firstOrNull()?.child("text").string
 
 /** The texts of the runs under this element, without the bullets between them. */
+/**
+ * A byline's parts, split at its dots only: "The Chainsmokers", " & ", "Coldplay" is one part, where
+ * [runTexts] gives three and a joined byline read "The Chainsmokers • & • Coldplay".
+ */
+internal fun JsonElement?.bylineParts(): List<String> {
+    val out = ArrayList<String>()
+    val cur = StringBuilder()
+    for (t in this?.findFirst("runs")?.array?.mapNotNull { it.child("text").string }.orEmpty()) {
+        if (t.trim() == "•") { if (cur.isNotBlank()) out += cur.toString().trim(); cur.clear() } else cur.append(t)
+    }
+    if (cur.isNotBlank()) out += cur.toString().trim()
+    return out
+}
+
 internal fun JsonElement?.runTexts(): List<String> =
     this?.findFirst("runs")?.array?.mapNotNull { it.child("text").string }?.filter { it.isNotBlank() && it.trim() != "•" }.orEmpty()
 

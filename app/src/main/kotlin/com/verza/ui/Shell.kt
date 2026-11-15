@@ -156,7 +156,7 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
                 Cover(song.art?.let { artAt(it, 226) }, 46.dp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(song.title, style = Type.RowTitle, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.RowTitle, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(song.artist, style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 IconButton(onClick = player::toggle) {

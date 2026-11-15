@@ -103,7 +103,7 @@ fun AddToPlaylist(song: Song, onDone: () -> Unit) {
         onDismissRequest = onDone,
         title = { Text(if (naming) "New playlist" else "Add to playlist") },
         text = {
-            if (naming) OutlinedTextField(name, { name = it }, singleLine = true, placeholder = { Text("Name") }, shape = Corner)
+            if (naming) Field(name, { name = it }, placeholder = "Name")
             else LazyColumn(Modifier.heightIn(max = 360.dp)) {
                 item { ListRow("New playlist", null, icon = Icons.Rounded.Add, onClick = { naming = true }) }
                 items(lists, key = { it.playlist.id }) { pl ->
@@ -116,9 +116,9 @@ fun AddToPlaylist(song: Song, onDone: () -> Unit) {
             if (naming) TextButton(enabled = name.isNotBlank(), onClick = {
                 scope.launch { val id = graph.library.createPlaylist(name.trim()); graph.library.addToPlaylist(id, song); graph.sync.flush() }
                 onDone()
-            }) { Text("Make it") }
+            }) { Text("make it") }
         },
-        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("cancel") } },
     )
 }
 

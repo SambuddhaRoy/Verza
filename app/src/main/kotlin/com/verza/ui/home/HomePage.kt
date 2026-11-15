@@ -17,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -108,7 +109,9 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
 
     fun songs(title: String, list: List<com.verza.data.Song>) = Section(title, list.map { Card(it.title, it.artist, it.art, song = it) })
     val shelves = buildList {
-        if (recent.isNotEmpty()) add(songs("recently played", recent.take(20)))
+        // The same song from two places (its video and its album track) is one song played.
+        val played = recent.distinctBy { (it.title + "\u0000" + it.artist).lowercase() }
+        if (played.isNotEmpty()) add(songs("recently played", played.take(20)))
         if (mixes.isNotEmpty()) add(Section("made for you", mixes.map { Card(it.title, it.subtitle, it.items.firstOrNull { i -> i.thumbnailUrl != null }?.thumbnailUrl, page = "mix:" + it.id) }))
         local?.onRepeat?.takeIf { it.isNotEmpty() }?.let { add(songs("on repeat", it)) }
         because.getOrNull(0)?.let(::add)
@@ -119,9 +122,11 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(bottom = 16.dp + LocalDockHeight.current)) {
             item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Settings is a word, as on the desktop, level with the page's name.
+                Row(verticalAlignment = Alignment.Bottom) {
                     Masthead("for you", dateline(), Modifier.weight(1f))
-                    IconButton(onClick = onSettings, modifier = Modifier.padding(end = 8.dp)) { Icon(Icons.Rounded.Settings, "Settings", tint = p.inkMuted) }
+                    com.verza.ui.kit.Word("settings", p.inkMuted, onClick = onSettings)
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(20.dp))
                 }
             }
             item { UpdateLine() }

@@ -107,6 +107,29 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
   copy refused and YouTube used instead, the service up during a download and gone after.
 
+## The desktop's audit, carried over (2.3.0)
+
+The same rules as Verza Next 1.13.0 (its CLAUDE.md, "The rules the November audit settled"):
+- **Now Playing follows the theme** (Ink is the palette's ink). Its background is the desktop's
+  flowing shader in AGSL (`ui/nowplaying/Flow.kt`, `FlowingCover`), Android 13+ only; earlier,
+  the still blur. 30fps while on screen.
+- **The visualiser reads the player's own output**: a `TeeAudioProcessor` in the audio sink
+  (PlaybackService's renderers factory) feeds `playback/Spectrum.kt`, an FFT into 48 log bands,
+  scaled to the loudest band lately (a fixed scale left music in the bottom third). No microphone
+  permission, which Android's `Visualizer` needs. Off while nothing watches. Setting: `visualizer`.
+- **Downloaded and On device are collections** (`ui/library/Collection.kt`): songs, albums or
+  artists with orders, kept per section in the `collections` shared prefs. Tags come from the
+  phone's scan (`PhoneLibrary.facts`, with MediaStore's DATE_ADDED); downloads use the scan's facts
+  for their files when the phone may read music.
+- **Artist pictures**: `ArtistArt`, YouTube Music's artist search, exact name only, kept in the
+  `artist-art` prefs ("" for none).
+- **Titles shown as songs**: `data/Titles.kt` `shownTitle`, the desktop's `nice()`, in `ListRow`,
+  shelves, Now Playing and the dock. `TitlesTest` holds the desktop's cases.
+- **Search**: songs under an artist's top-result card carry no artist; `parseResults` takes it from
+  the card (they were saved as "Unknown artist"). Bylines split at dots only (`bylineParts`).
+- Fields are `Kit.Field`, a line, never `OutlinedTextField`. Settings is a word on Home.
+- `verza-shots/mob/_collection.py` and `_audit.py <dark|light>` (pictures of every screen).
+
 ## Your Sound is a tab (after 2.2.0)
 
 The dock's words are home, search, library and your sound (route `sound`), as on the desktop; it was a

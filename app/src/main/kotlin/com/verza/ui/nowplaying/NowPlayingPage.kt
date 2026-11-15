@@ -58,6 +58,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -95,10 +97,11 @@ import com.verza.ui.theme.Type
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Now Playing sits on the cover, so its ink is white whatever the system's dark mode says.
-private val Ink = Color.White
-private val InkSoft = Color.White.copy(alpha = 0.72f)
-private val InkFaint = Color.White.copy(alpha = 0.28f)
+// Now Playing follows the theme, as on the desktop: white type on a dimmed cover, or black type on a
+// cover washed pale.
+private val Ink: Color @Composable get() = LocalPalette.current.ink
+private val InkSoft: Color @Composable get() = LocalPalette.current.ink.copy(alpha = 0.72f)
+private val InkFaint: Color @Composable get() = LocalPalette.current.ink.copy(alpha = 0.28f)
 
 /**
  * Now Playing: the cover as a square on a dimmed blur of itself, and under it the title, the artist
@@ -122,17 +125,17 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
     var devices by remember { mutableStateOf(false) }
     if (devices) com.verza.ui.kit.DevicesDialog(onDone = { devices = false })
     BackHandler(onBack = onClose)
-    com.verza.ui.kit.LightBarIcons()
+    val p = LocalPalette.current
+    if (p.dark) com.verza.ui.kit.LightBarIcons()
+    val visualizer by graph.settings.visualizer.flow.collectAsState(initial = true)
 
     // The artist's and album's pages; a file on the phone's are its song's on YouTube Music.
     val links by produceState<Pair<List<Link>, Link?>?>(null, song.id) {
         value = runCatching { graph.youtube.twin(song)?.let { graph.youtube.links(it.id, it.title) } }.getOrNull()
     }
 
-    Box(Modifier.fillMaxSize().takesTouches().background(Color.Black)) {
-        AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(60.dp), alpha = 0.55f)
-        // White type has to read on a white cover too.
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
+    Box(Modifier.fillMaxSize().takesTouches().background(p.canvas)) {
+        FlowingCover(song.art?.let { artAt(it, 226) }, p.dark)
         BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
             val pageHeight = maxHeight
             LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -141,16 +144,22 @@ fun NowPlayingPage(onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -
                         IconButton(onClick = onClose, modifier = Modifier.offset(x = (-12).dp)) {
                             Icon(Icons.Rounded.KeyboardArrowDown, "Close", tint = Ink, modifier = Modifier.size(32.dp))
                         }
-                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true).clip(Corner))
+                        // The cover leaves a tenth of its room each side for the visualiser's bars.
+                        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            val side = minOf(maxWidth, maxHeight) * (if (visualizer) 0.8f else 1f)
+                            var swell by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+                            if (visualizer) CoverVisualizer(side, p.accent, now.playing, onBass = { swell = it })
+                            AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.size(side)
+                                .graphicsLayer { val k = 1f + swell * 0.04f; scaleX = k; scaleY = k }.clip(Corner))
                         }
                         Spacer(Modifier.height(20.dp))
-                        Text(song.title, style = Type.Title.copy(fontSize = 34.sp, lineHeight = 39.sp), color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Title.copy(fontSize = 34.sp, lineHeight = 39.sp), color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Names(song, links, onOpen = { onClose(); onOpen(it) })
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             now.lossless?.let { LosslessMark(it) }
                             Spacer(Modifier.weight(1f))
-                            IconButton(onClick = onLyrics) { Icon(Icons.Rounded.Lyrics, "Lyrics", tint = Ink) }
+                            Text("lyrics", style = Type.Section.copy(fontSize = 22.sp), color = Ink,
+                                modifier = Modifier.clickable(onClick = onLyrics).semantics { role = androidx.compose.ui.semantics.Role.Button }.padding(horizontal = 8.dp, vertical = 10.dp))
                             val isLiked = song.id in liked
                             IconButton(onClick = { graph.like(song, !isLiked) }) {
                                 Icon(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", tint = Ink)
@@ -218,8 +227,8 @@ private fun SleepPicker(sleep: Sleep?, onDone: () -> Unit) {
                 MenuItem("Wind down over 30 minutes") { pick { player.sleepIn(30, windDown = true) } }
             }
         },
-        confirmButton = { if (sleep != null) TextButton(onClick = { pick { player.sleep.value = null } }) { Text("Turn off") } },
-        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
+        confirmButton = { if (sleep != null) TextButton(onClick = { pick { player.sleep.value = null } }) { Text("turn off") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("cancel") } },
     )
 }
 
@@ -261,6 +270,7 @@ private fun LosslessMark(format: String) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val soft = InkSoft
         Canvas(Modifier.size(width = 22.dp, height = 13.dp)) {
             val step = size.width / 5f
             val swing = size.height * 0.13f
@@ -273,7 +283,7 @@ private fun LosslessMark(format: String) {
                     if (i < 5) { high = !high; wave.lineTo(i * step, if (high) y - swing else y + swing) }
                 }
             }
-            drawPath(wave, InkSoft, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = PathEffect.cornerPathEffect(step * 0.5f)))
+            drawPath(wave, soft, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = PathEffect.cornerPathEffect(step * 0.5f)))
         }
         Text(if (detail) format else "Lossless", style = Type.Small.copy(fontSize = 13.sp), color = InkSoft, maxLines = 1)
     }
@@ -291,6 +301,7 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
     val seek by rememberUpdatedState(onSeek)
     val shown = dragged ?: if (now.durationMs > 0) (position.toFloat() / now.durationMs).coerceIn(0f, 1f) else 0f
     val thickness by animateDpAsState(if (dragged != null) 5.dp else 2.dp, label = "scrub")
+    val ink = Ink; val faint = InkFaint
     Canvas(
         Modifier.fillMaxWidth().height(34.dp)
             .pointerInput(Unit) { detectTapGestures { o -> if (duration > 0) seek(((o.x / size.width).coerceIn(0f, 1f) * duration).toLong()) } }
@@ -305,8 +316,8 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
         val y = size.height / 2
         val x = size.width * shown
         val w = thickness.toPx()
-        drawLine(InkFaint, Offset(0f, y), Offset(size.width, y), w, StrokeCap.Round)
-        drawLine(Ink, Offset(0f, y), Offset(x, y), w, StrokeCap.Round)
+        drawLine(faint, Offset(0f, y), Offset(size.width, y), w, StrokeCap.Round)
+        drawLine(ink, Offset(0f, y), Offset(x, y), w, StrokeCap.Round)
         drawCircle(accent, 5.dp.toPx() + w / 2, Offset(x, y))
     }
     Row(Modifier.fillMaxWidth()) {

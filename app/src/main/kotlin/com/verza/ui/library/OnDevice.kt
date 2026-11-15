@@ -39,7 +39,7 @@ private val readAudio = com.verza.data.phone.PhoneMusic.PERMISSION
  * then every song. Scanned each time it opens, so music copied on since shows up.
  */
 @Composable
-fun OnDevice(onOpen: (String) -> Unit) {
+fun OnDevice(onOpen: (String) -> Unit, onOpenGroup: (String, String, List<com.verza.data.Song>) -> Unit) {
     val context = LocalContext.current
     val graph = context.graph
     var allowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, readAudio) == PackageManager.PERMISSION_GRANTED) }
@@ -47,32 +47,15 @@ fun OnDevice(onOpen: (String) -> Unit) {
     val p = LocalPalette.current
 
     if (!allowed) {
-        Empty("Allow access to play the music on your phone. Verza only reads your files.", Icons.Rounded.PhoneAndroid)
-        androidx.compose.foundation.layout.Box(Modifier.padding(start = 20.dp)) { Word("allow", p.accent) { ask.launch(readAudio) } }
+        // The word under the line, not after the page: placed after it, it was pushed off the screen.
+        Empty("Allow access to play the music on your phone. Verza only reads your files.", Icons.Rounded.PhoneAndroid, action = "allow") { ask.launch(readAudio) }
         return
     }
     LaunchedEffect(Unit) { graph.phone.scan() }
     val library by graph.phone.library.collectAsState()
     val lib = library ?: return
     if (lib.songs.isEmpty()) { Empty("No music found on this phone"); return }
-    val player = graph.player
-    LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
-        for ((label, groups) in listOf("albums" to lib.albums, "playlists" to lib.playlists)) {
-            if (groups.isEmpty()) continue
-            item(key = "h$label") { Text(label, style = Type.Section, color = p.ink, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)) }
-            items(groups, key = { it.id }) { c ->
-                ListRow(c.title, if (c.isAlbum) c.subtitle else if (c.songs.size == 1) "1 song" else "${c.songs.size} songs",
-                    art = c.songs.firstNotNullOfOrNull { it.art }?.let { artAt(it, 226) }, onClick = { onOpen(c.id) })
-            }
-        }
-        item(key = "hsongs") {
-            androidx.compose.foundation.layout.Row(Modifier.padding(top = 16.dp, bottom = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Text("songs", style = Type.Section, color = p.ink, modifier = Modifier.weight(1f))
-                Word("shuffle") { player.shuffle(lib.songs) }
-            }
-        }
-        itemsIndexed(lib.songs, key = { _, s -> s.id }) { i, song ->
-            ListRow(song.title, song.artist, art = song.art?.let { artAt(it, 226) }, onClick = { player.play(lib.songs, i) }, trailing = { SongMenu(song) })
-        }
-    }
+    // Songs, albums or artists, as on the desktop; Verza's own downloads are under Downloaded.
+    Collection("local", lib.songs.filter { it.onPhone }, facts = { lib.facts[it.id] ?: com.verza.data.phone.Facts() }, onOpenGroup = onOpenGroup,
+        folders = lib.playlists.map { c -> c.title to { onOpen(c.id) } })
 }

@@ -29,6 +29,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -66,21 +69,25 @@ fun SearchPage(onOpen: (String) -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
         Masthead("search", "explore")
-        OutlinedTextField(
+        com.verza.ui.kit.Field(
             value = state.query,
             onValueChange = model::type,
-            singleLine = true,
-            placeholder = { Text("Songs, albums, artists", style = Type.Body) },
-            leadingIcon = { Icon(Icons.Rounded.Search, null) },
-            trailingIcon = { if (state.query.isNotEmpty()) IconButton(onClick = { model.type("") }) { Icon(Icons.Rounded.Close, "Clear") } },
+            placeholder = "Songs, albums, artists",
+            style = Type.Section.copy(fontSize = 22.sp, lineHeight = 28.sp),
+            leading = { Icon(Icons.Rounded.Search, null, tint = p.inkMuted) },
+            trailing = { if (state.query.isNotEmpty()) IconButton(onClick = { model.type("") }) { Icon(Icons.Rounded.Close, "Clear", tint = p.inkMuted) } },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { keyboard?.hide(); focus.clearFocus(); model.search() }),
-            shape = Corner,
-            textStyle = Type.RowTitle,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         )
         Row(
-            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth()
+                .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.85f to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
+                }
+                .horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             for ((filter, word) in Filters) {

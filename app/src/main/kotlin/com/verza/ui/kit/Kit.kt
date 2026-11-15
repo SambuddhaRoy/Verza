@@ -24,6 +24,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -112,6 +114,7 @@ fun ListRow(
     playing: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val p = LocalPalette.current
     Row(
@@ -123,6 +126,7 @@ fun ListRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
+            leading != null -> leading()
             icon != null -> Box(Modifier.padding(vertical = 6.dp).size(50.dp), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = p.accent, modifier = Modifier.size(26.dp))
             }
@@ -130,26 +134,73 @@ fun ListRow(
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f).heightIn(min = 62.dp).padding(vertical = 8.dp), verticalArrangement = Arrangement.Center) {
-            Text(title, style = Type.RowTitle, color = if (playing) p.accent else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // A video's title shown as a song's; the byline's dots the same as everywhere else.
+            Text(com.verza.data.shownTitle(title, subtitle?.substringBefore(" • ")), style = Type.RowTitle, color = if (playing) p.accent else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (!subtitle.isNullOrBlank()) {
-                Text(subtitle, style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle.replace(" • ", " · "), style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         trailing?.invoke()
     }
 }
 
-/** Nothing here yet: a quiet symbol over one line saying what to do. */
+/** Nothing here yet: a quiet symbol over one line saying what to do, and the word that does it. */
 @Composable
-fun Empty(text: String, icon: ImageVector = Icons.Rounded.MusicNote) {
+fun Empty(text: String, icon: ImageVector = Icons.Rounded.MusicNote, action: String? = null, onAction: () -> Unit = {}) {
     val p = LocalPalette.current
     Box(Modifier.fillMaxSize().padding(bottom = LocalDockHeight.current), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 40.dp)) {
             Icon(icon, contentDescription = null, tint = p.inkMuted.copy(alpha = 0.55f), modifier = Modifier.size(52.dp))
             Spacer(Modifier.height(14.dp))
             Text(text, style = Type.RowTitle, color = p.inkMuted, textAlign = TextAlign.Center)
+            if (action != null) { Spacer(Modifier.height(8.dp)); Word(action, p.accent, onClick = onAction) }
         }
     }
+}
+
+/**
+ * A text field that isn't a box: the text over a line, the accent's when you're in it. Every field in
+ * the app is one, as on the desktop.
+ */
+@Composable
+fun Field(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    style: androidx.compose.ui.text.TextStyle = Type.RowTitle,
+    leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
+    keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default,
+) {
+    val p = LocalPalette.current
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by source.collectIsFocusedAsState()
+    androidx.compose.foundation.text.BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = style.copy(color = p.ink),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(p.accent),
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        interactionSource = source,
+        modifier = modifier,
+        decorationBox = { inner ->
+            Column {
+                Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (leading != null) { leading(); Spacer(Modifier.width(10.dp)) }
+                    Box(Modifier.weight(1f)) {
+                        if (value.isEmpty()) Text(placeholder, style = style, color = p.inkMuted, maxLines = 1)
+                        inner()
+                    }
+                    trailing?.invoke()
+                }
+                Box(Modifier.fillMaxWidth().height(if (focused) 2.dp else 1.dp).background(if (focused) p.accent else p.line))
+            }
+        },
+    )
 }
 
 /**
