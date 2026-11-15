@@ -37,16 +37,21 @@ object Sessions {
         return PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(out.toByteArray())
     }
 
-    /** [songs] from [index] at [positionMs] as a session, for a link or for a computer (Connect). Null when nothing is left to share. */
-    fun session(songs: List<Song>, index: Int, positionMs: Long): SharedSession? {
+    /**
+     * [songs] from [index] at [positionMs] as a session, for a link or for a computer (Connect): [max]
+     * songs, the one playing and what follows it first. Null when nothing is left to share.
+     */
+    fun session(songs: List<Song>, index: Int, positionMs: Long, max: Int = MAX_TRACKS): SharedSession? {
         val kept = songs.withIndex().filter { isVideoId(it.value.id) }
         if (kept.isEmpty()) return null
         // The song playing, or the nearest kept one before it.
-        val at = (kept.indexOfLast { it.index <= index }).coerceAtLeast(0).coerceAtMost(MAX_TRACKS - 1)
+        val at = (kept.indexOfLast { it.index <= index }).coerceAtLeast(0)
+        // It used to take the queue's first fifty: past the fiftieth song, the wrong one played.
+        val from = (kept.size - max).coerceAtMost(at).coerceAtLeast(0)
         return SharedSession(
-            index = at,
-            positionMs = if (kept.getOrNull(at)?.index == index) positionMs else 0,
-            tracks = kept.take(MAX_TRACKS).map { (_, s) -> SharedTrack(s.id, s.title, s.artist, s.art) },
+            index = at - from,
+            positionMs = if (kept[at].index == index) positionMs else 0,
+            tracks = kept.drop(from).take(max).map { (_, s) -> SharedTrack(s.id, s.title, s.artist, s.art) },
         )
     }
 

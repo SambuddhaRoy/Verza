@@ -30,6 +30,20 @@ class LinksTest {
         assertNull(Sessions.link(listOf(song("content://media/1")), 0, 0))
     }
 
+    @Test fun aLongQueueKeepsTheSongPlayingAndWhatFollows() {
+        val songs = List(200) { song("s" + it.toString().padStart(10, '0')) }
+        val s = Sessions.session(songs, 120, 7_000)!!
+        assertEquals(50, s.tracks.size)
+        assertEquals(songs[120].id, s.tracks[s.index].id)
+        assertEquals(7_000, s.positionMs)
+        // Near the end, the fifty end there and the song is still the one playing.
+        val e = Sessions.session(songs, 190, 0)!!
+        assertEquals(songs[190].id, e.tracks[e.index].id)
+        assertEquals(songs[199].id, e.tracks.last().id)
+        // A computer gets all of it.
+        assertEquals(200, Sessions.session(songs, 120, 0, max = 500)!!.tracks.size)
+    }
+
     private fun craft(json: String): String {
         val out = ByteArrayOutputStream()
         GZIPOutputStream(out).use { it.write(json.toByteArray()) }

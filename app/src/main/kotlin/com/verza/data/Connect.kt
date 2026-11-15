@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -78,6 +81,7 @@ class Connect(private val context: Context, private val settings: Settings, priv
 
     private var watching: Job? = null
     private var listening: Job? = null
+    private var warming: Job? = null
 
     /** The app is on screen: watch every paired computer, and listen for ones on this network. */
     fun start() {
@@ -102,10 +106,21 @@ class Connect(private val context: Context, private val settings: Settings, priv
             }
         }
         listening = scope.launch(Dispatchers.IO) { runCatching { listen() } }
+        // What this phone starts, and what's next, goes ahead to each computer in reach, which loads it
+        // then: a handover finds it there instead of starting from nothing.
+        warming = scope.launch(Dispatchers.IO) {
+            val songs = player.state.map { s -> s.queue.drop(s.index).take(2).filter { isVideoId(it.id) } }.distinctUntilChanged()
+            combine(songs, _playing.map { it.keys }.distinctUntilChanged()) { a, b -> a to b }.collect { (ahead, inReach) ->
+                if (ahead.isNotEmpty()) for (c in paired.get()) if (c.id in inReach) send(c, buildJsonObject {
+                    put("action", "warm")
+                    put("tracks", json.encodeToJsonElement(ListSerializer(SharedTrack.serializer()), ahead.map { SharedTrack(it.id, it.title, it.artist, it.art) }))
+                })
+            }
+        }
     }
 
     fun stop() {
-        watching?.cancel(); listening?.cancel()
+        watching?.cancel(); listening?.cancel(); warming?.cancel()
         _playing.value = emptyMap(); _found.value = emptyList()
     }
 
@@ -160,7 +175,7 @@ class Connect(private val context: Context, private val settings: Settings, priv
     /** Hands this phone's queue to [computer], from where it is, and stops here. False with nothing it can play. */
     fun playThere(computer: Computer, via: String? = null): Boolean {
         val now = player.state.value
-        val session = Sessions.session(now.queue, now.index, player.position) ?: return false
+        val session = Sessions.session(now.queue, now.index, player.position, MAX_TRACKS) ?: return false
         send(computer, buildJsonObject {
             put("action", "playSession"); put("session", json.encodeToJsonElement(SharedSession.serializer(), session))
             // The computer greets a flicked queue with the other half of the animation.
@@ -251,7 +266,7 @@ class Connect(private val context: Context, private val settings: Settings, priv
         const val PORT = 47126
         private const val BEACON_PORT = 47127
         private const val RETRY_MS = 5_000L
-        private const val MAX_TRACKS = 50
+        private const val MAX_TRACKS = 500   // the whole playlist moves, not its first fifty
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; isLenient = true }
     }
 }
