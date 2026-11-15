@@ -61,6 +61,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.verza.data.artAt
 import com.verza.graph
+import kotlinx.coroutines.launch
 import com.verza.playback.NowPlaying
 import com.verza.ui.home.HomePage
 import com.verza.ui.kit.Cover
@@ -138,6 +139,17 @@ fun Shell() {
         val onboarded by settings.onboarded.flow.collectAsState(initial = null)
         val musicSetUp by settings.musicSetUp.flow.collectAsState(initial = null)
         if ((onboarded == false || musicSetUp == false) && route != "signin") Welcome(account = onboarded == false, onSignIn = { nav.navigate("signin") })
+        // What an update brought, once. A new install has nothing to compare with, so it's marked seen.
+        val context = LocalContext.current
+        val tourSeen by settings.tourSeen.flow.collectAsState(initial = null)
+        val paired by context.graph.connect.paired.flow.collectAsState(initial = emptyList())
+        val updated = remember { context.packageManager.getPackageInfo(context.packageName, 0).let { it.firstInstallTime != it.lastUpdateTime } }
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        val seen = { scope.launch { settings.tourSeen.set(com.verza.ui.signin.TOUR) }; Unit }
+        if (onboarded == true && musicSetUp == true && route != "signin" && (tourSeen ?: com.verza.ui.signin.TOUR) < com.verza.ui.signin.TOUR) {
+            if (updated) com.verza.ui.signin.Tour(paired.isNotEmpty(), onDone = seen, onSetUp = { seen(); nav.navigate("settings") })
+            else LaunchedEffect(Unit) { seen() }
+        }
     }
 }
 

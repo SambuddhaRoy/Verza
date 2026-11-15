@@ -50,6 +50,8 @@ class Settings(private val context: Context) {
     val flick = bool("flick", true)
     /** A flick that brings music here while something plays asks which to keep, instead of the new one winning. */
     val flickAsk = bool("flick_ask", false)
+    /** The last tour of what an update brought that was seen (ui/signin/Tour.kt's TOUR). */
+    val tourSeen = int("tour_seen", 0)
     /** Fade into and out of each song, in seconds; 0 is off. */
     val fadeSeconds = int("crossfade_seconds", 0)
     /** Which of Standby's faces was last on show. */
