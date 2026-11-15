@@ -107,6 +107,24 @@ from someone sharing the song, and YouTube's stream only when nobody does or eve
   Checked on the emulator: sign-in, a FLAC tagged from MusicBrainz with its cover (24s), a wrong-length
   copy refused and YouTube used instead, the service up during a download and gone after.
 
+## Flick to play on the computer (branch `flick`, unreleased: needs a real phone)
+
+In Now Playing, with a paired computer in reach (`flickTarget`, the first online, setting `flick`),
+a flick of the phone hands the queue over (`Connect.playThere(c, via = "flick")`) and the cover flies
+off the top with a trail and accent rings (`ui/nowplaying/FlickAway.kt`); the computer answers with
+the other half (renderer.js `arrive`). A line under the transport says it can be done, and a tap on
+it does the same.
+- **The gesture** is `playback/Flick.kt`: accelerometer with gravity low-passed off (no linear-
+  acceleration sensor, which the emulator fakes), a push over 14 m/s² toward the top edge or away
+  from your face, dominant 1.6x over the other axes, then a stop within 350ms; 2s cooldown.
+  `FlickTest` holds flicks, a shake, a bump with no stop, a gentle move and a double flick.
+  **Thresholds are from physics, not from a real hand; tune them on a phone.**
+- Pointing at the computer can't be known: no PC has UWB, and a compass bearing indoors is noise.
+  The flick goes to the computer in reach; with two, the first paired.
+- `verza-shots/mob/_flick.py` fakes a flick through `adb emu sensor set acceleration` against the
+  desktop test build (paired by `_pair.py`, which finds Connect's port: the installed app often has
+  47126) and `zarrive.mjs` pictures the computer's half.
+
 ## The desktop's audit, carried over (2.3.0)
 
 The same rules as Verza Next 1.13.0 (its CLAUDE.md, "The rules the November audit settled"):

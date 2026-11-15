@@ -131,6 +131,7 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
 
         item { SectionTitle("devices") }
         item { com.verza.ui.kit.Devices() }
+        item { Toggle("Flick to play on your computer", "In Now Playing, flick the phone toward the computer and the music moves there", s.flick) }
 
         item { SectionTitle("your library") }
         item { LibraryFile() }
