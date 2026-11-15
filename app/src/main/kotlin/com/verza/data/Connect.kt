@@ -158,10 +158,14 @@ class Connect(private val context: Context, private val settings: Settings, priv
     fun seek(computer: Computer, ms: Long) = send(computer, buildJsonObject { put("action", "seek"); put("positionMs", ms) })
 
     /** Hands this phone's queue to [computer], from where it is, and stops here. False with nothing it can play. */
-    fun playThere(computer: Computer): Boolean {
+    fun playThere(computer: Computer, via: String? = null): Boolean {
         val now = player.state.value
         val session = Sessions.session(now.queue, now.index, player.position) ?: return false
-        send(computer, buildJsonObject { put("action", "playSession"); put("session", json.encodeToJsonElement(SharedSession.serializer(), session)) })
+        send(computer, buildJsonObject {
+            put("action", "playSession"); put("session", json.encodeToJsonElement(SharedSession.serializer(), session))
+            // The computer greets a flicked queue with the other half of the animation.
+            if (via != null) put("via", via)
+        })
         if (now.playing) player.toggle()
         return true
     }
