@@ -145,6 +145,18 @@ that was updated (`firstInstallTime != lastUpdateTime`), after the welcome if th
 install marks it seen. `tourSeen` holds the last `TOUR` seen: for the next release worth a tour, bump
 `TOUR` and rewrite the steps. `verza-shots/mob/_tour.py` installs over the previous APK and pictures it.
 
+## The nitpick pass (2.4.1)
+
+- **The emulator boots from its snapshot** with `-no-snapshot-save`: plays, Recent and the queue go back to
+  that day each boot. An empty Your Sound or a short Recent after a reboot is that, not a bug.
+- **Menus draw on `surfaceContainer`**, which Material leaves lavender in light: Theme.kt sets it, and
+  `surfaceTint` to transparent.
+- **A song played from its video** has a frame of it for art; `PlaybackService` looks the song up and
+  `Library.cover` keeps the album cover, which `played()` won't replace with the frame again.
+- **Lyrics** show a blank line as ♪ only before a gap of 5s or more (`musicalGaps`, `LyricsGapsTest`).
+- Words the computer uses are the words here: "forget"/"remove" (`SmallWord`), "best"/"data saver",
+  12am/12pm. Predictive back is on (`enableOnBackInvokedCallback`); back handling is all `BackHandler`.
+
 ## The desktop's audit, carried over (2.3.0)
 
 The same rules as Verza Next 1.13.0 (its CLAUDE.md, "The rules the November audit settled"):
