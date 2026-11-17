@@ -88,7 +88,7 @@ private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier) {
         shader.setFloatUniform("time", time * 1.25f)
         shader.setFloatUniform("intensity", 0.9f + bass * 0.9f)
         shader.setFloatUniform("dim", if (dark) 0.62f - 0.28f * lum else 1f)
-        shader.setFloatUniform("veil", if (dark) 0f else 0.5f + 0.22f * (1f - lum))
+        shader.setFloatUniform("veil", if (dark) 0f else 0.7f + 0.2f * (1f - lum))   // light: washed pale, not grey (a dark cover read murky at 0.72)
         drawRect(brush)
     })
 }
@@ -149,6 +149,7 @@ fun CoverVisualizer(cover: Dp, color: Color, playing: Boolean, onBass: (Float) -
             val pos = k.toFloat() / total
             val mirrored = if (pos < 0.5f) pos * 2 else (1 - pos) * 2
             val v = smooth[min(smooth.size - 1, (mirrored * (smooth.size - 1)).toInt())]
+            if (v < 0.02f) return   // a silent bar is nothing: paused, a dot per bar read as a dotted frame
             val len = 3.dp.toPx() + v * maxLen
             val sx = x + nx * gap; val sy = y + ny * gap
             drawLine(color.copy(alpha = 0.12f), Offset(sx, sy), Offset(sx + nx * len, sy + ny * len), width * 3, StrokeCap.Round)

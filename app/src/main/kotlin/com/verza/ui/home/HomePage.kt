@@ -79,7 +79,12 @@ class HomeModel(graph: Graph) : ViewModel() {
                 }
                 // Every lookup failed: offline. Keep the saved copy rather than emptying the shelves.
                 if (shelves.seeds.isNotEmpty() && radios.all { it == null }) error("offline")
-                radios.filterNotNull().filter { it.cards.size >= HomeShelves.MIN_SONGS }
+                // Each song once across them: Coldplay's radio and Keane's both carried End of Beginning,
+                // Sailor Song and Demons.
+                val seen = HashSet<String>()
+                radios.filterNotNull()
+                    .map { sec -> sec.copy(cards = sec.cards.filter { c -> seen.add(com.verza.data.SameSong.key(c.title, c.subtitle)) }) }
+                    .filter { it.cards.size >= HomeShelves.MIN_SONGS }
             }.catch { }.collect { _because.value = it }
         }
     }

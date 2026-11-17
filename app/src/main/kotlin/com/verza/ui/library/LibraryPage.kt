@@ -8,6 +8,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.Alignment
 import com.verza.ui.kit.Word
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.foundation.layout.Box
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -58,7 +63,7 @@ fun LibraryPage(onOpen: (String) -> Unit) {
     // An album or artist opened from a collection: its songs, in its order.
     var group by remember { mutableStateOf<Pair<String, List<Song>>?>(null) }
     BackHandler(enabled = group != null) { group = null }
-    group?.let { (title, songs) -> Section(title) { SongList(songs) }; return }
+    group?.let { (title, songs) -> Section(title, onBack = { group = null }) { SongList(songs) }; return }
     val graph = LocalContext.current.graph
 
     when (val section = open) {
@@ -73,13 +78,13 @@ fun LibraryPage(onOpen: (String) -> Unit) {
                 )
             }
         }
-        "on device" -> Section(section) { OnDevice(onOpen) { t, _, ss -> group = t to ss } }
+        "on device" -> Section(section, onBack = { open = null }) { OnDevice(onOpen) { t, _, ss -> group = t to ss } }
         "downloaded" -> {
             val songs by library.downloaded.collectAsState(initial = null)
             val phone by graph.phone.library.collectAsState()
             // Downloads sort by their files' tags, which the phone's scan reads, where it may.
             LaunchedEffect(Unit) { if (graph.phone.allowed() && graph.phone.library.value == null) runCatching { graph.phone.scan() } }
-            Section(section) {
+            Section(section, onBack = { open = null }) {
                 val s = songs ?: return@Section
                 if (s.isEmpty()) Empty(emptyLine(section))
                 else Collection("downloaded", s, facts = { phone?.facts?.get(it.id) ?: com.verza.data.phone.Facts(album = it.album) }, onOpenGroup = { t, _, ss -> group = t to ss })
@@ -88,9 +93,13 @@ fun LibraryPage(onOpen: (String) -> Unit) {
         "playlists" -> {
             val lists by library.playlists.collectAsState(initial = null)
             val theirs by account("account-playlists", ListSerializer(Card.serializer())) { it.accountPlaylists() }
-            Section(section) {
+            Section(section, onBack = { open = null }) {
                 val l = lists ?: return@Section
-                if (l.isEmpty() && theirs.isEmpty()) Empty("Make a playlist from any song's menu")
+                // A playlist can be started here, not only from a song's menu.
+                var naming by remember { mutableStateOf(false) }
+                Box(Modifier.padding(horizontal = 20.dp)) { Word("new playlist", p.accent) { naming = true } }
+                if (naming) NewPlaylist(onDone = { naming = false }, onMade = { onOpen("pl:$it") })
+                if (l.isEmpty() && theirs.isEmpty()) Empty("Make a playlist here or from any song's menu")
                 else LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
                     items(l, key = { it.playlist.id }) { pl ->
                         ListRow(pl.playlist.name, if (pl.count == 1) "1 song" else "${pl.count} songs", art = pl.cover?.let { artAt(it, 226) },
@@ -105,7 +114,7 @@ fun LibraryPage(onOpen: (String) -> Unit) {
             // Your likes here first, then the account's, each song once.
             val mine by library.liked.collectAsState(initial = null)
             val theirs by account("account-liked", ListSerializer(Song.serializer())) { it.accountLiked() }
-            Section(section) {
+            Section(section, onBack = { open = null }) {
                 val s = (mine ?: return@Section).let { m -> (m + theirs).distinctBy { it.id } }
                 if (s.isEmpty()) Empty(emptyLine(section)) else SongList(s)
             }
@@ -115,7 +124,7 @@ fun LibraryPage(onOpen: (String) -> Unit) {
                 "recent" -> library.recent
                 else -> library.downloaded
             }.collectAsState(initial = null)
-            Section(section) {
+            Section(section, onBack = { open = null }) {
                 val s = songs ?: return@Section
                 if (s.isEmpty()) Empty(emptyLine(section)) else SongList(s)
             }
@@ -144,11 +153,35 @@ private fun emptyLine(section: String) = when (section) {
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+private fun Section(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        Masthead(title)
+        // The way back to Library's words, as an album page has; it used to be the system's back only.
+        IconButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp)) {
+            Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = LocalPalette.current.ink)
+        }
+        Masthead(title, modifier = Modifier.padding(top = 0.dp))
         content()
     }
+}
+
+/** Names a new, empty playlist and opens it. */
+@Composable
+private fun NewPlaylist(onDone: () -> Unit, onMade: (Long) -> Unit) {
+    val graph = LocalContext.current.graph
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var name by remember { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("New playlist") },
+        text = { com.verza.ui.kit.Field(name, { name = it }, placeholder = "Name") },
+        confirmButton = {
+            androidx.compose.material3.TextButton(enabled = name.isNotBlank(), onClick = {
+                scope.launch { val id = graph.library.createPlaylist(name.trim()); graph.sync.flush(); onMade(id) }
+                onDone()
+            }) { Text("make it") }
+        },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDone) { Text("cancel") } },
+    )
 }
 
 /** Songs that play as a list from the one tapped, or all of them, in order or shuffled. */

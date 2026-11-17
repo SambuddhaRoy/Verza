@@ -83,7 +83,7 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
         }
         item { SectionTitle("playback") }
         item {
-            Choice("Audio quality", "How much of YouTube's stream to fetch", listOf("HIGH" to "high", "MEDIUM" to "medium", "LOW" to "low"), quality) {
+            Choice("Audio quality", "How much of YouTube's stream to fetch", listOf("HIGH" to "best", "MEDIUM" to "medium", "LOW" to "data saver"), quality) {
                 scope.launch { s.quality.set(it) }
             }
         }
@@ -118,9 +118,7 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                     Text(source.name, style = Type.RowTitle, color = LocalPalette.current.ink)
                     Text(runCatching { java.net.URI(source.url).host }.getOrNull().orEmpty(), style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
                 }
-                IconButton(onClick = { scope.launch { s.sources.set(sources.filterIndexed { j, _ -> j != i }) } }) {
-                    Icon(Icons.Rounded.Close, "Remove ${source.name}", tint = LocalPalette.current.inkMuted)
-                }
+                com.verza.ui.kit.SmallWord("remove", LocalPalette.current.inkMuted, "Remove ${source.name}") { scope.launch { s.sources.set(sources.filterIndexed { j, _ -> j != i }) } }
             }
         }
         item { Row(Modifier.fillMaxWidth().clip(Corner).clickable { adding = true }.padding(vertical = 12.dp)) { Text("Add a source", style = Type.RowTitle, color = LocalPalette.current.accent) } }

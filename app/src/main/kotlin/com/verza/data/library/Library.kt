@@ -96,10 +96,16 @@ class Library(db: LibraryDb, scope: CoroutineScope) {
             (row ?: SongRow(song.id, song.title, song.artist, song.art, song.durationMs)).copy(
                 title = song.title,
                 artist = song.artist,
-                thumbnailUrl = song.art ?: row?.thumbnailUrl,
+                // A cover found earlier outranks the video frame the song arrives with again.
+                thumbnailUrl = if (com.verza.data.isAlbumArt(row?.thumbnailUrl) && !com.verza.data.isAlbumArt(song.art)) row?.thumbnailUrl else song.art ?: row?.thumbnailUrl,
                 lastPlayedAt = System.currentTimeMillis(),
             ),
         )
+    }
+
+    /** The song's cover, found for one that came with only a video's frame. */
+    suspend fun cover(id: String, art: String) {
+        songs.get(id)?.let { songs.put(it.copy(thumbnailUrl = art)) }
     }
 
     /** A listen of [ms], counted for Your Sound when it's at least five seconds. */

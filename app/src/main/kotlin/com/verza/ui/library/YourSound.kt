@@ -68,7 +68,7 @@ fun YourSound() {
                 }
             }
             Row(Modifier.fillMaxWidth()) {
-                for (label in listOf("midnight", "6am", "noon", "6pm")) Text(label, style = Type.Small, color = p.inkMuted, modifier = Modifier.weight(1f))
+                for (label in listOf("12am", "6am", "12pm", "6pm")) Text(label, style = Type.Small, color = p.inkMuted, modifier = Modifier.weight(1f))
             }
         }
         if (songs.isNotEmpty()) item { SectionTitle("top songs") }

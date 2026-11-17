@@ -6,6 +6,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -95,6 +96,9 @@ fun VerzaTheme(swatches: List<Color>, content: @Composable () -> Unit) {
         background = palette.canvas, onBackground = palette.ink,
         surface = palette.canvas, onSurface = palette.ink, onSurfaceVariant = palette.inkMuted,
         surfaceContainerHigh = palette.surface, surfaceContainerHighest = palette.surfaceHigh,
+        // Menus are drawn on surfaceContainer, which Material leaves lavender in light: black or white here.
+        surfaceContainer = if (dark) palette.surface.compositeOver(palette.canvas) else palette.canvas,
+        surfaceTint = androidx.compose.ui.graphics.Color.Transparent,
         outline = palette.line,
     )
     MaterialTheme(colorScheme = scheme) {
