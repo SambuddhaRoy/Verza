@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -67,6 +69,22 @@ fun Masthead(title: String, dateline: String? = null, modifier: Modifier = Modif
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(text, style = Type.Section, color = LocalPalette.current.ink, modifier = modifier.padding(top = 24.dp, bottom = 8.dp))
+}
+
+/** A row's own small word, "forget", "remove": a word as the desktop has, at 48dp tall. */
+@Composable
+fun SmallWord(text: String, color: Color, label: String = text, onClick: () -> Unit) {
+    Text(
+        text,
+        style = Type.RowTitle,
+        color = color,
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clickable(onClick = onClick)
+            .semantics { role = Role.Button; contentDescription = label }
+            .padding(horizontal = 8.dp)
+            .wrapContentHeight(),
+    )
 }
 
 /** A button that is just the word, in large light type: "play", "shuffle". */

@@ -81,7 +81,7 @@ fun Devices() {
                         style = Type.RowSubtitle, color = if (there?.playing == true) p.accent else p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
-                IconButton(onClick = { scope.launch { connect.forget(computer) } }) { Icon(Icons.Rounded.Close, "Forget ${computer.name}", tint = p.inkMuted) }
+                SmallWord("forget", p.inkMuted, "Forget ${computer.name}") { scope.launch { connect.forget(computer) } }   // the desktop says "forget" too
             }
             if (inReach) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (there?.track != null) {

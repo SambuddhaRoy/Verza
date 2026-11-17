@@ -41,7 +41,7 @@ val LocalOpen = androidx.compose.runtime.staticCompositionLocalOf<(String) -> Un
  * then whatever [extra] items the page adds, each given a way to close the menu.
  */
 @Composable
-fun SongMenu(song: Song, extra: @Composable (close: () -> Unit) -> Unit = {}) {
+fun SongMenu(song: Song, inPlayer: Boolean = false, extra: @Composable (close: () -> Unit) -> Unit = {}) {
     val context = LocalContext.current
     val graph = context.graph
     val open = LocalOpen.current
@@ -57,8 +57,9 @@ fun SongMenu(song: Song, extra: @Composable (close: () -> Unit) -> Unit = {}) {
             MenuItem("Add to queue") { shown = false; graph.player.enqueue(listOf(song)) }
             MenuItem("Add to playlist…") { shown = false; picking = true }
             val isLiked = song.id in liked
-            MenuItem(if (isLiked) "Unlike" else "Like") { shown = false; graph.like(song, !isLiked) }
-            MenuItem("Start radio") { shown = false; graph.player.playWithRadio(song) }
+            // Now Playing has both as buttons right beside its ⋯.
+            if (!inPlayer) MenuItem(if (isLiked) "Unlike" else "Like") { shown = false; graph.like(song, !isLiked) }
+            if (!inPlayer) MenuItem("Start radio") { shown = false; graph.player.playWithRadio(song) }
             if (song.id in downloaded) MenuItem("Remove download") {
                 shown = false
                 graph.scope.launch {

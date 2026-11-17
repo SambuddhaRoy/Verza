@@ -2,6 +2,8 @@ package com.verza.ui.search
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,14 +80,15 @@ fun SearchPage(onOpen: (String) -> Unit) {
             keyboardActions = KeyboardActions(onSearch = { keyboard?.hide(); focus.clearFocus(); model.search() }),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         )
-        Row(
+        // The filters narrow a search, so they come with one, not before.
+        if (state.query.isNotEmpty() || state.results != null) Row(
             Modifier.fillMaxWidth()
                 .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
                     drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.85f to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
                 }
-                .horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 10.dp),
+                .horizontalScroll(rememberScrollState()).padding(start = 20.dp, end = 48.dp, top = 2.dp, bottom = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             for ((filter, word) in Filters) {
@@ -93,7 +96,7 @@ fun SearchPage(onOpen: (String) -> Unit) {
                     word,
                     style = Type.Section.copy(fontSize = 24.sp),
                     color = if (filter == state.filter) p.ink else p.inkMuted,
-                    modifier = Modifier.clickable { focus.clearFocus(); model.filter(filter) }.padding(vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 48.dp).clickable { focus.clearFocus(); model.filter(filter) }.wrapContentHeight(),
                 )
             }
         }

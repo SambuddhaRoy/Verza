@@ -112,7 +112,20 @@ class PlaybackService : MediaLibraryService() {
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
             countListen()
             listening = item?.mediaId
-            item?.let { scope.launch(Dispatchers.IO) { graph.library.played(it.toSong()) } }
+            item?.let {
+                scope.launch(Dispatchers.IO) {
+                    val song = it.toSong()
+                    graph.library.played(song)
+                    // A video's picture is a frame of it: Home's Recent showed Chris Martin's face for Viva La
+                    // Vida. The same song on YouTube Music has the cover, so Recent keeps that instead.
+                    if (!song.onPhone && !com.verza.data.isAlbumArt(song.art)) runCatching {
+                        val key = com.verza.data.SameSong.key(com.verza.data.shownTitle(song.title, song.artist), song.artist)
+                        graph.youtube.searchSongs("${com.verza.data.shownTitle(song.title, song.artist)} ${song.artist}").take(5)
+                            .firstOrNull { f -> com.verza.data.isAlbumArt(f.art) && com.verza.data.SameSong.key(f.title, f.artist) == key }
+                            ?.let { f -> graph.library.cover(song.id, f.art!!) }
+                    }
+                }
+            }
             lookAhead()
             saveQueue()
         }

@@ -124,7 +124,10 @@ internal fun parseAlbum(response: JsonElement): Album {
         s.copy(art = s.art ?: art, artist = if (s.artist == "Unknown artist") artist ?: s.artist else s.artist)
     }
     val title = head.firstRun("title") ?: "Album"
-    val subtitle = (head.child("subtitle") ?: head.child("straplineTextOne")).runTexts().joinToString(" ")
+    // "Album · Coldplay · 2002": the header's own line says what it is and when, the strapline whose.
+    // Joined with spaces it read "Album  •  2002", and the artist was nowhere on the page.
+    val kindYear = head.child("subtitle").runTexts().map { it.trim() }
+    val subtitle = (kindYear.take(1) + listOfNotNull(artist?.takeIf { a -> kindYear.none { it.equals(a, true) } }) + kindYear.drop(1)).joinToString(" · ")
     return Album(title, subtitle, art, songs.map { it.copy(album = it.album ?: title) })
 }
 

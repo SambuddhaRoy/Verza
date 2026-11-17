@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
@@ -152,15 +153,15 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             now.lossless?.let { LosslessMark(it) }
                             Spacer(Modifier.weight(1f))
-                            Text("lyrics", style = Type.Section.copy(fontSize = 22.sp), color = Ink,
-                                modifier = Modifier.clickable(onClick = onLyrics).semantics { role = androidx.compose.ui.semantics.Role.Button }.padding(horizontal = 8.dp, vertical = 10.dp))
+                            // A microphone, as the desktop has it: a word among icons read as a heading.
+                            IconButton(onClick = onLyrics) { Icon(Icons.Rounded.Mic, "Lyrics", tint = Ink) }
                             val isLiked = song.id in liked
                             IconButton(onClick = { graph.like(song, !isLiked) }) {
                                 Icon(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", tint = Ink)
                             }
                             IconButton(onClick = { player.playWithRadio(song) }) { Icon(Icons.Rounded.Radio, "Radio", tint = Ink) }
                             androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(inkMuted = Ink)) {
-                                SongMenu(song) { close ->
+                                SongMenu(song, inPlayer = true) { close ->
                                     MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
                                     MenuItem("Discovery radio") {
                                         close()
@@ -171,7 +172,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                             else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
                                         }
                                     }
-                                    MenuItem("Standby") { close(); onStandby() }
+                                    MenuItem("Clock screen") { close(); onStandby() }
                                     MenuItem("Devices") { close(); devices = true }
                                     MenuItem("Share listening session") {
                                         close()

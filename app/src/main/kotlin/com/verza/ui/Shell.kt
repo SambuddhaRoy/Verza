@@ -161,7 +161,7 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
     // The tab a page was opened from stays lit while it's showing.
     val stack by nav.currentBackStack.collectAsState()
     val current = stack.lastOrNull { it.destination.route in Tabs.keys }?.destination?.route
-    Column(modifier.fillMaxWidth().takesTouches().background(p.canvas.copy(alpha = 0.96f)).navigationBarsPadding()) {
+    Column(modifier.fillMaxWidth().takesTouches().background(p.canvas).navigationBarsPadding()) {   // solid: at 96% the list showed through
         now.song?.let { song ->
             Row(
                 Modifier.fillMaxWidth().height(PlayerHeight).clickable(onClick = onOpenPlayer).padding(horizontal = 20.dp),

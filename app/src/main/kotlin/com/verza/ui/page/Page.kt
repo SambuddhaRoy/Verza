@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -119,7 +120,9 @@ fun PageScreen(id: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
             is PageContent.OfAlbum -> AlbumPage(c.album, playlist = id.removePrefix("pl:").takeIf { id.startsWith("pl:") }?.toLongOrNull())
             is PageContent.OfArtist -> ArtistPage(c.artist, onOpen)
         }
-        IconButton(onClick = onBack, modifier = Modifier.padding(8.dp)) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = p.ink) }
+        // A bar of the page's own colour under the way back, so the list scrolls beneath it, not through it.
+        Box(Modifier.fillMaxWidth().height(56.dp).background(p.canvas))
+        IconButton(onClick = onBack, modifier = Modifier.padding(4.dp)) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = p.ink) }
         if (id.startsWith("pl:")) (content as? PageContent.OfAlbum)?.let { c ->
             PlaylistMenu(id.removePrefix("pl:").toLong(), c.album.title, onDeleted = onBack, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
         }
