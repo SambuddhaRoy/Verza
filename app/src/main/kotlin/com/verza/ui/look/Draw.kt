@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
@@ -357,4 +358,38 @@ fun rememberLevel(fps: Int = 30): androidx.compose.runtime.State<Float> {
         }
     }
     return level
+}
+
+/**
+ * Turns its content a quarter turn and lays it out that way: the width it takes is the height it had.
+ * [clockwise] reads top to bottom.
+ */
+fun Modifier.vertical(clockwise: Boolean = true) = this.then(
+    androidx.compose.ui.Modifier.layout { measurable, _ ->
+        val p = measurable.measure(androidx.compose.ui.unit.Constraints())
+        layout(p.height, p.width) {
+            p.placeWithLayer(-(p.width - p.height) / 2, (p.width - p.height) / 2) { rotationZ = if (clockwise) 90f else -90f }
+        }
+    },
+)
+
+/** A rectangle with its corners stepped off in [steps] pixels of [pixel]: a pixel-art box. */
+class PixelShape(private val pixel: Dp = 4.dp, private val steps: Int = 2) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val s = with(density) { pixel.toPx() }
+        val w = size.width; val h = size.height
+        val path = Path().apply {
+            // Each corner is a staircase of [steps]: going clockwise from the top edge.
+            moveTo(s * steps, 0f); lineTo(w - s * steps, 0f)
+            for (k in steps - 1 downTo 0) { lineTo(w - s * k - s, s * (steps - 1 - k)); lineTo(w - s * k - s, s * (steps - k)); lineTo(w - s * k, s * (steps - k)) }
+            lineTo(w, h - s * steps)
+            for (k in steps - 1 downTo 0) { lineTo(w - s * (steps - 1 - k), h - s * k - s); lineTo(w - s * (steps - k), h - s * k - s); lineTo(w - s * (steps - k), h - s * k) }
+            lineTo(s * steps, h)
+            for (k in steps - 1 downTo 0) { lineTo(s * k + s, h - s * (steps - 1 - k)); lineTo(s * k + s, h - s * (steps - k)); lineTo(s * k, h - s * (steps - k)) }
+            lineTo(0f, s * steps)
+            for (k in steps - 1 downTo 0) { lineTo(s * (steps - 1 - k), s * k + s); lineTo(s * (steps - k), s * k + s); lineTo(s * (steps - k), s * k) }
+            close()
+        }
+        return Outline.Generic(path)
+    }
 }

@@ -102,7 +102,8 @@ object PlayfulLook : Look("playful", "Playful", "Covers as cards to pick, tilt a
     override fun cover(size: Dp): Shape = RoundedCornerShape(if (size in 1.dp..64.dp) 8.dp else 14.dp)
     override val group: Shape = RoundedCornerShape(20.dp)
     override val panel = androidx.compose.foundation.BorderStroke(2.5.dp, Navy)
-    override val edgeFade = false
+    // The page's ground fades in under the floating dock, so the list doesn't show between its panels.
+    override val edgeFade = true
     override fun dockHeight(playing: Boolean) = 10.dp + 68.dp + (if (playing) 12.dp + 66.dp else 0.dp) + 14.dp
 
     override val type = Types(

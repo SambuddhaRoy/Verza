@@ -98,7 +98,8 @@ object SketchLook : Look("sketch", "Hand-drawn", "Inked by hand, with Spin the r
     override fun cover(size: Dp): Shape = WobblyShape((size.value * 7).toInt(), if (size in 1.dp..64.dp) 7.dp else 12.dp, 1.6.dp)
     override val group: Shape = WobblyShape(41, 18.dp, 2.dp)
     override val panel = androidx.compose.foundation.BorderStroke(2.dp, Ink)
-    override val edgeFade = false
+    // The page's ground fades in under the floating dock, so the list doesn't show between its panels.
+    override val edgeFade = true
     override fun dockHeight(playing: Boolean) = 10.dp + 66.dp + (if (playing) 12.dp + 64.dp else 0.dp) + 12.dp
 
     override val type = Types(
