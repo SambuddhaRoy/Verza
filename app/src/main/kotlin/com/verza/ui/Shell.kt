@@ -1,5 +1,22 @@
 package com.verza.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlinx.coroutines.delay
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,7 +45,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
@@ -218,39 +234,115 @@ private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Un
         )
         now.song?.let { MiniPlayer(now, onOpenPlayer) }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f).height(BarHeight).takesTouches().glass(CircleShape, BarHeight / 2).padding(4.dp)) {
-                for ((route, tab) in Tabs) {
-                    val on = route == current
-                    val tint = if (on) p.accent else p.ink
-                    Column(
-                        Modifier.weight(1f).fillMaxHeight().clip(CircleShape)
-                            .background(if (on) p.ink.copy(alpha = if (p.dark) 0.12f else 0.07f) else Color.Transparent)
-                            .clickable { go(route) }
-                            .semantics(mergeDescendants = true) { role = Role.Tab; selected = on },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Icon(tab.icon, null, tint = tint, modifier = Modifier.size(25.dp))
-                        Text(tab.label, style = Type.Tab, color = tint, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
-                    }
-                }
-            }
+            TabBar(current, ::go, Modifier.weight(1f))
             Spacer(Modifier.width(10.dp))
-            GlassButton(Icons.Rounded.Search, "Search", size = BarHeight, tint = if (current == "search") p.accent else p.ink, modifier = Modifier.takesTouches()) { go("search") }
+            // On the search page its circle is stained like a chosen tab.
+            GlassButton(Icons.Rounded.Search, "Search", size = BarHeight, stain = if (current == "search") p.accent else null, modifier = Modifier.takesTouches()) { go("search") }
         }
     }
 }
 
-/** The playing song in a capsule of glass over the tabs; a tap raises Now Playing. */
+/**
+ * The tabs on a capsule of glass. The chosen one sits in a drop of glass stained with the accent, and
+ * moving to another, the drop's ends chase it at different speeds: it stretches toward the new tab and
+ * settles round there, the way a drop of water runs.
+ */
+@Composable
+private fun TabBar(current: String?, go: (String) -> Unit, modifier: Modifier) {
+    val p = LocalPalette.current
+    val routes = Tabs.keys.toList()
+    val index = routes.indexOf(current)
+    val left = remember { Animatable(index.coerceAtLeast(0).toFloat()) }
+    val right = remember { Animatable(index.coerceAtLeast(0) + 1f) }
+    val shown = remember { Animatable(if (index >= 0) 1f else 0f) }
+    LaunchedEffect(index) {
+        if (index < 0) { shown.animateTo(0f, tween(180)); return@LaunchedEffect }
+        if (shown.value == 0f) { left.snapTo(index.toFloat()); right.snapTo(index + 1f) }
+        val ahead = spring<Float>(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow)
+        val behind = spring<Float>(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)
+        val forward = index >= left.value
+        launch { shown.animateTo(1f, tween(180)) }
+        launch { left.animateTo(index.toFloat(), if (forward) behind else ahead) }
+        launch { right.animateTo(index + 1f, if (forward) ahead else behind) }
+    }
+    Row(
+        modifier.height(BarHeight).takesTouches().glass(CircleShape, BarHeight / 2).padding(4.dp)
+            .drawBehind {
+                if (shown.value <= 0f) return@drawBehind
+                val w = size.width / routes.size
+                val start = Offset(left.value * w, 0f)
+                val drop = Size((right.value - left.value) * w, size.height)
+                val round = CornerRadius(size.height / 2)
+                drawRoundRect(Brush.verticalGradient(
+                    0f to p.accent.copy(alpha = (if (p.dark) 0.5f else 0.3f) * shown.value),
+                    1f to p.accent.copy(alpha = (if (p.dark) 0.3f else 0.16f) * shown.value),
+                ), start, drop, round)
+                drawRoundRect(p.accent.copy(alpha = 0.45f * shown.value), start, drop, round, style = Stroke(1.dp.toPx()))
+            },
+    ) {
+        for ((route, tab) in Tabs) {
+            val on = route == current
+            Column(
+                Modifier.weight(1f).fillMaxHeight().clip(CircleShape)
+                    .clickable { go(route) }
+                    .semantics(mergeDescendants = true) { role = Role.Tab; selected = on },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(tab.icon, null, tint = p.ink, modifier = Modifier.size(25.dp))
+                Text(tab.label, style = Type.Tab, color = p.ink, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+    }
+}
+
+/**
+ * The playing song in a capsule of glass over the tabs; a tap raises Now Playing. The glass holds the
+ * cover's colours, and its rim fills with the accent as the song plays, from the top left round.
+ */
 @Composable
 private fun MiniPlayer(now: NowPlaying, onOpen: () -> Unit) {
     val song = now.song ?: return
     val p = LocalPalette.current
-    val player = LocalContext.current.graph.player
+    val context = LocalContext.current
+    val player = context.graph.player
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
+    // A cover twelve pixels wide, stretched across the capsule, is its colours and nothing else.
+    val colours = coil3.compose.rememberAsyncImagePainter(
+        coil3.request.ImageRequest.Builder(context).data(song.art?.let { artAt(it, 60) }).size(12).precision(coil3.size.Precision.EXACT).build(),
+    )
+    val played = remember { mutableFloatStateOf(0f) }
+    // Polled, since position isn't pushed; read in the draw phase, so a tick is a redraw only.
+    LaunchedEffect(song.id, now.playing, now.durationMs) {
+        while (true) {
+            played.floatValue = if (now.durationMs > 0) (player.position.toFloat() / now.durationMs).coerceIn(0f, 1f) else 0f
+            if (!now.playing) break
+            delay(500)
+        }
+    }
     Row(
-        Modifier.fillMaxWidth().height(PlayerHeight).takesTouches().glass(CircleShape, PlayerHeight / 2, pressed)
+        Modifier.fillMaxWidth().height(PlayerHeight).takesTouches()
+            .glass(CircleShape, PlayerHeight / 2, pressed, inside = { with(colours) { draw(size, alpha = if (p.dark) 0.45f else 0.38f) } })
+            .drawWithCache {
+                val inset = 1.dp.toPx()
+                val h = size.height
+                val rim = Path().apply {
+                    moveTo(h / 2, inset)
+                    lineTo(size.width - h / 2, inset)
+                    arcTo(Rect(size.width - h + inset, inset, size.width - inset, h - inset), -90f, 180f, false)
+                    lineTo(h / 2, h - inset)
+                    arcTo(Rect(inset, inset, h - inset, h - inset), 90f, 180f, false)
+                }
+                val measure = PathMeasure().apply { setPath(rim, false) }
+                val part = Path()
+                val line = Stroke(2.dp.toPx(), cap = StrokeCap.Round)
+                onDrawWithContent {
+                    drawContent()
+                    part.reset()
+                    if (measure.getSegment(0f, measure.length * played.floatValue, part, true)) drawPath(part, p.accent, style = line)
+                }
+            }
             .clickable(source, null, onClick = onOpen)
             .semantics { contentDescription = "Now playing: ${song.title}" }
             .padding(start = 8.dp, end = 4.dp),
@@ -260,11 +352,11 @@ private fun MiniPlayer(now: NowPlaying, onOpen: () -> Unit) {
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(song.artist, style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(song.artist, style = Type.Small, color = p.ink.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = player::toggle) {
             Icon(if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play", tint = p.ink, modifier = Modifier.size(30.dp))
         }
-        IconButton(onClick = player::next) { Icon(Icons.Rounded.FastForward, "Next", tint = p.ink, modifier = Modifier.size(28.dp)) }
+        IconButton(onClick = player::next) { Icon(Icons.Rounded.SkipNext, "Next", tint = p.ink, modifier = Modifier.size(30.dp)) }
     }
 }

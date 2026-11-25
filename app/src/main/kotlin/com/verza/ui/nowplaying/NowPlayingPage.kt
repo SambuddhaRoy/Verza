@@ -425,18 +425,19 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
         val at = (shown * now.durationMs).toLong()
         Text(clock(at), style = Type.Small.copy(fontSize = 12.sp), color = InkSoft, modifier = Modifier.width(56.dp))
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { now.lossless?.let { LosslessMark(it) } }
-        Text("−" + clock((now.durationMs - at).coerceAtLeast(0)), style = Type.Small.copy(fontSize = 12.sp), color = InkSoft, modifier = Modifier.width(56.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        Text(clock(now.durationMs), style = Type.Small.copy(fontSize = 12.sp), color = InkSoft, modifier = Modifier.width(56.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }
 
-/** Back, play or pause, and on: large symbols with nothing drawn round them. */
+/** Back and on as large symbols with nothing round them; play and pause on stained glass between. */
 @Composable
 private fun Transport(now: NowPlaying) {
     val player = LocalContext.current.graph.player
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        Glyph(Icons.Rounded.FastRewind, "Previous", size = 72.dp, iconSize = 46.dp, onClick = player::previous)
-        Glyph(if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play", size = 88.dp, iconSize = 66.dp, onClick = player::toggle)
-        Glyph(Icons.Rounded.FastForward, "Next", size = 72.dp, iconSize = 46.dp, onClick = player::next)
+        Glyph(Icons.Rounded.SkipPrevious, "Previous", size = 72.dp, iconSize = 44.dp, onClick = player::previous)
+        // Play and pause on a disc of glass stained with the song's colour: the one control that matters most.
+        GlassButton(if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play", size = 84.dp, iconSize = 50.dp, tint = Ink, stain = LocalPalette.current.accent, onClick = player::toggle)
+        Glyph(Icons.Rounded.SkipNext, "Next", size = 72.dp, iconSize = 44.dp, onClick = player::next)
     }
 }
 

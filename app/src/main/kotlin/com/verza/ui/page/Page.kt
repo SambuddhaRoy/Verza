@@ -1,5 +1,9 @@
 package com.verza.ui.page
 
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
@@ -204,12 +208,21 @@ private fun AlbumPage(album: Album, playlist: Long?) {
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 60.dp, bottom = 16.dp + LocalDockHeight.current)) {
         item {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                val shape = artCorner(300.dp)
-                Cover(
-                    album.art?.let { artAt(it, 1200) }, 0.dp,
-                    Modifier.fillMaxWidth(0.72f).widthIn(max = 320.dp).aspectRatio(1f)
-                        .shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.35f)),
-                )
+                // The cover lights the page round it: a blur of itself behind it, where Apple puts a grey
+                // shadow, as the desktop's Now Playing glows. Android 12 blurs; before it, the shadow.
+                val glows = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth(0.72f).widthIn(max = 320.dp).aspectRatio(1f)) {
+                    if (glows) Box(
+                        Modifier.align(Alignment.Center).requiredSize(maxWidth + 120.dp)
+                            .graphicsLayer { translationY = 20.dp.toPx(); alpha = if (p.dark) 0.8f else 0.65f }
+                            .blur(44.dp, BlurredEdgeTreatment.Unbounded),
+                    ) { AsyncImage(album.art?.let { artAt(it, 226) }, null, contentScale = ContentScale.Crop, modifier = Modifier.padding(60.dp).fillMaxSize()) }
+                    val shape = artCorner(300.dp)
+                    Cover(
+                        album.art?.let { artAt(it, 1200) }, 0.dp,
+                        Modifier.matchParentSize().then(if (glows) Modifier else Modifier.shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.35f))),
+                    )
+                }
                 Spacer(Modifier.height(18.dp))
                 Text(album.title, style = Type.Section, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                 // "Coldplay • 2002": who in the accent, as Apple Music has it, and the rest quietly under.

@@ -63,12 +63,18 @@ val LocalDockHeight = compositionLocalOf { 0.dp }
 /** "recently played" as "Recently played": Apple's sentence case, for words that arrive lowercase. */
 fun String.sentence() = replaceFirstChar { it.titlecase() }
 
-/** A page's name, large and bold, with [trailing] (a button or two) level with it. */
+/**
+ * A page's name, large and bold, with [trailing] (a button or two) level with it. [dateline] is the
+ * Zune's line over the name, "Tuesday evening", in the accent: Verza's own, kept from its first design.
+ */
 @Composable
-fun Masthead(title: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
+fun Masthead(title: String, modifier: Modifier = Modifier, dateline: String? = null, trailing: (@Composable () -> Unit)? = null) {
     val p = LocalPalette.current
-    Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title.sentence(), style = Type.Masthead, color = p.ink, modifier = Modifier.weight(1f).semantics { heading() })
+    Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.Bottom) {
+        Column(Modifier.weight(1f)) {
+            if (dateline != null) Text(dateline, style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.accent)
+            Text(title.sentence(), style = Type.Masthead, color = p.ink, modifier = Modifier.semantics { heading() })
+        }
         trailing?.invoke()
     }
 }

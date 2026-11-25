@@ -122,7 +122,7 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
         LazyColumn(contentPadding = PaddingValues(bottom = 16.dp + LocalDockHeight.current)) {
             item {
                 // Settings sits by the page's name, where Apple Music keeps the account.
-                Masthead("Home") { com.verza.ui.kit.IconCircle(androidx.compose.material.icons.Icons.Rounded.Settings, "Settings", onClick = onSettings) }
+                Masthead("Home", dateline = dateline()) { com.verza.ui.kit.IconCircle(androidx.compose.material.icons.Icons.Rounded.Settings, "Settings", onClick = onSettings) }
             }
             item { UpdateLine() }
             for (section in shelves) {
@@ -142,6 +142,13 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
             shelves.isEmpty() -> Empty("Play some music and Home fills up with songs picked from what you listen to.")
         }
     }
+}
+
+/** "Tuesday evening": the day and its part, over Home's name, as the Zune's pages had. */
+private fun dateline(): String {
+    val now = java.time.LocalDateTime.now()
+    val part = when (now.hour) { in 5..11 -> "morning"; in 12..16 -> "afternoon"; in 17..21 -> "evening"; else -> "night" }
+    return now.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault()) + " " + part
 }
 
 /** "Verza 2.0.1 is ready · update", when a newer release is downloaded. */

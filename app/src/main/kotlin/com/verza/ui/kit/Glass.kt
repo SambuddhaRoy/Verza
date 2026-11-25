@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
@@ -62,6 +63,10 @@ import com.verza.ui.theme.LocalPalette
  * shows: it would be drawing itself. So the content and the panes over it are siblings ([Glassed]).
  *
  * The blur needs Android 12, the lens 13. Below 12 a pane is the tint alone, nearly opaque.
+ *
+ * Where Verza's glass parts from Apple's: Apple's has no colour of its own. Verza's takes the playing
+ * song's. A pane can be [stain]ed with the accent (the selected tab, play and pause), or hold
+ * something of the song [inside] it (the mini player holds its cover's colours).
  */
 
 /** The content behind a layer of glass, as last drawn. */
@@ -100,10 +105,11 @@ fun Glassed(ground: Color, modifier: Modifier = Modifier, content: @Composable B
 
 /**
  * A pane of glass in [shape] over the nearest [Glassed] content. [corner] is the shape's corner
- * radius (half the height for a capsule), which the lens bends within.
+ * radius (half the height for a capsule), which the lens bends within. [stain] colours the glass;
+ * [inside] is drawn into it, under its tint.
  */
 @Composable
-fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false): Modifier {
+fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Color? = null, inside: (DrawScope.() -> Unit)? = null): Modifier {
     val backdrop = LocalBackdrop.current
     val p = LocalPalette.current
     val layer = rememberGraphicsLayer()
@@ -136,7 +142,12 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false): Modifier
                     layer.record { translate(shift.x, shift.y) { drawLayer(backdrop.layer) } }
                     clipPath(path) { drawLayer(layer) }
                 }
+                if (inside != null) clipPath(path) { inside() }
                 drawPath(path, tint)
+                if (stain != null) drawPath(path, Brush.verticalGradient(
+                    0f to stain.copy(alpha = if (p.dark) 0.62f else 0.34f),
+                    1f to stain.copy(alpha = if (p.dark) 0.38f else 0.2f),
+                ))
                 if (press > 0f) drawPath(path, Color.White.copy(alpha = 0.12f * press))
                 drawPath(path, rim, style = Stroke(stroke))
                 if (!p.dark) drawPath(path, Color.Black.copy(alpha = 0.05f), style = Stroke(stroke / 2))
@@ -146,15 +157,15 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false): Modifier
 
 /** A round glass button with one symbol: the way back, a page's menu, search. */
 @Composable
-fun GlassButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 44.dp, tint: Color = LocalPalette.current.ink, onClick: () -> Unit) {
+fun GlassButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 44.dp, tint: Color = LocalPalette.current.ink, stain: Color? = null, iconSize: Dp = size * 0.5f, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     Box(
-        modifier.size(size).glass(CircleShape, size / 2, pressed)
+        modifier.size(size).glass(CircleShape, size / 2, pressed, stain)
             .clickable(source, null, onClick = onClick)
             .semantics { role = Role.Button },
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, label, tint = tint, modifier = Modifier.size(size * 0.5f)) }
+    ) { Icon(icon, label, tint = tint, modifier = Modifier.size(iconSize)) }
 }
 
 /** Blur, a lift in saturation, then (on 13 and up) the lens at the rim. */
