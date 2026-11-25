@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
-import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.ChromeButton
 import com.verza.ui.kit.Glassed
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
@@ -68,15 +68,16 @@ fun LyricsPage(onClose: () -> Unit) {
     val now by graph.player.state.collectAsState()
     val song = now.song ?: return
     BackHandler(onBack = onClose)
-    val p = com.verza.ui.theme.LocalPalette.current.overMedia()
-    com.verza.ui.kit.LightBarIcons()
+    val look = com.verza.ui.look.LocalLook.current
+    val p = look.nowPlaying(com.verza.ui.theme.LocalPalette.current)
+    com.verza.ui.kit.BarIcons(light = p.dark)
     val lyrics by produceState<Lyrics?>(null, song.id) { value = runCatching { graph.lyrics.get(song) }.getOrDefault(Lyrics.None) }
 
     // Over the cover's colours, as Now Playing is, and dark like it whatever the theme.
     CompositionLocalProvider(com.verza.ui.theme.LocalPalette provides p) { Glassed(
         ground = Color.Black,
         modifier = Modifier.fillMaxSize().takesTouches(),
-        content = { FlowingCover(song.art?.let { artAt(it, 226) }, true) },
+        content = { look.NowPlayingBackground(song.art?.let { artAt(it, 226) }) },
     ) {
         // The lines fade into the top rather than running into the status bar.
         val fade = Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.drawWithContent {
@@ -111,7 +112,7 @@ fun LyricsPage(onClose: () -> Unit) {
                 }
             }
         }
-        GlassButton(Icons.Rounded.KeyboardArrowDown, "Close", Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp), onClick = onClose)
+        ChromeButton(Icons.Rounded.KeyboardArrowDown, "Close", Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp), onClick = onClose)
     } }
 }
 

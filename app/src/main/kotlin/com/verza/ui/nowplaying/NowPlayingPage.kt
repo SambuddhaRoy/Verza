@@ -26,7 +26,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
-import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.ChromeButton
 import com.verza.ui.kit.Glassed
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
@@ -117,10 +117,10 @@ import com.verza.ui.theme.Type
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Now Playing is dark whatever the theme, as Apple Music's is: white type over the cover's own colours.
-private val Ink = Color.White
-private val InkSoft = Color.White.copy(alpha = 0.62f)
-private val InkFaint = Color.White.copy(alpha = 0.22f)
+// Now Playing's inks, from its own palette: the look makes it (Look.nowPlaying), dark for most.
+private val Ink: Color @Composable get() = LocalPalette.current.ink
+private val InkSoft: Color @Composable get() = LocalPalette.current.inkMuted
+private val InkFaint: Color @Composable get() = LocalPalette.current.line
 
 /**
  * Now Playing: a sheet over the app, its ground the cover's colours flowing slowly. The cover, rounded
@@ -144,12 +144,13 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
     var devices by remember { mutableStateOf(false) }
     if (devices) com.verza.ui.kit.DevicesDialog(onDone = { devices = false })
     BackHandler(onBack = onClose)
-    com.verza.ui.kit.LightBarIcons()
+    val look = com.verza.ui.look.LocalLook.current
     val visualizer by graph.settings.visualizer.flow.collectAsState(initial = true)
     val target = flick.sendTo
     val p = LocalPalette.current
     // The page's own palette: white ink, and an accent measured against the dark.
-    val dark = remember(p) { p.overMedia() }
+    val dark = remember(p, look) { look.nowPlaying(p) }
+    com.verza.ui.kit.BarIcons(light = dark.dark)
 
     // The artist's and album's pages; a file on the phone's are its song's on YouTube Music.
     val links by produceState<Pair<List<Link>, Link?>?>(null, song.id) {
@@ -163,7 +164,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
         Glassed(
             ground = Color.Black,
             modifier = Modifier.fillMaxSize().takesTouches().graphicsLayer { translationY = pull.value },
-            content = { FlowingCover(song.art?.let { artAt(it, 226) }, true) },
+            content = { look.NowPlayingBackground(song.art?.let { artAt(it, 226) }) },
             glass = {
                 BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
                     val pageHeight = maxHeight
@@ -184,7 +185,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                     if (visualizer && flick.fly.value == 0f) CoverVisualizer(side, p.accent, now.playing, onBass = { swell = it })
                                     // A flick toward the computer sends the cover flying off the top, and the music with it;
                                     // one back toward you brings the computer's down from there.
-                                    FlyingCover(art, side, swell, flick.fly.value, flick.label, Modifier.graphicsLayer { scaleX = rest; scaleY = rest })
+                                    look.NowPlayingCover(art, side, rest, swell, flick.fly.value, flick.label)
                                 }
                                 Spacer(Modifier.height(18.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -194,7 +195,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                     }
                                     Spacer(Modifier.width(12.dp))
                                     val isLiked = song.id in liked
-                                    GlassButton(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", size = 40.dp) { graph.like(song, !isLiked) }
+                                    ChromeButton(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", size = 40.dp) { graph.like(song, !isLiked) }
                                     Spacer(Modifier.width(10.dp))
                                     SongMenu(song, inPlayer = true) { close ->
                                         MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
@@ -225,7 +226,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                 Spacer(Modifier.navigationBarsPadding().height(4.dp))
                             }
                         }
-                        item { Text("Up next", style = Type.Headline, color = Ink, modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = 4.dp)) }
+                        item { Text(com.verza.ui.look.LocalLook.current.case.of("Up next"), style = Type.Headline, color = Ink, modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = 4.dp)) }
                         val upNext = now.queue.withIndex().drop(now.index + 1)
                         itemsIndexed(upNext, key = { _, (i, s) -> "$i${s.id}" }) { _, (i, s) ->
                             ListRow(s.title, s.artist, art = s.art?.let { artAt(it, 226) }, modifier = Modifier.padding(horizontal = 24.dp), onClick = { player.jumpTo(i) })
@@ -400,7 +401,9 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
     val duration by rememberUpdatedState(now.durationMs)
     val seek by rememberUpdatedState(onSeek)
     val shown = dragged ?: if (now.durationMs > 0) (position.toFloat() / now.durationMs).coerceIn(0f, 1f) else 0f
-    val thickness by animateDpAsState(if (dragged != null) 12.dp else 7.dp, label = "scrub")
+    val drag by animateFloatAsState(if (dragged != null) 1f else 0f, label = "scrub")
+    val look = com.verza.ui.look.LocalLook.current
+    val palette = LocalPalette.current
     Canvas(
         Modifier.fillMaxWidth().height(30.dp)
             .semantics { contentDescription = "Position, ${clock((shown * now.durationMs).toLong())} of ${clock(now.durationMs)}" }
@@ -413,13 +416,7 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
                 ) { change, _ -> change.consume(); dragged = (change.position.x / size.width).coerceIn(0f, 1f) }
             },
     ) {
-        val w = thickness.toPx()
-        val top = Offset(0f, size.height / 2 - w / 2)
-        val track = Size(size.width, w)
-        val round = CornerRadius(w / 2)
-        drawRoundRect(InkFaint, top, track, round)
-        // The played part ends square against the rest, as Apple's does.
-        clipRect(right = size.width * shown) { drawRoundRect(Ink.copy(alpha = 0.86f), top, track, round) }
+        with(look) { scrubber(shown, drag, palette) }
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         val at = (shown * now.durationMs).toLong()
@@ -436,7 +433,7 @@ private fun Transport(now: NowPlaying) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         Glyph(Icons.Rounded.SkipPrevious, "Previous", size = 72.dp, iconSize = 44.dp, onClick = player::previous)
         // Play and pause on a disc of glass stained with the song's colour: the one control that matters most.
-        GlassButton(if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play", size = 84.dp, iconSize = 50.dp, tint = Ink, stain = LocalPalette.current.accent, onClick = player::toggle)
+        com.verza.ui.look.LocalLook.current.PlayButton(now.playing, player::toggle)
         Glyph(Icons.Rounded.SkipNext, "Next", size = 72.dp, iconSize = 44.dp, onClick = player::next)
     }
 }

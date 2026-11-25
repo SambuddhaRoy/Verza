@@ -105,5 +105,5 @@ fun EqualizerPage(onBack: () -> Unit) {
             }
         }
     }
-    }, glass = { com.verza.ui.kit.GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) })
+    }, glass = { com.verza.ui.kit.ChromeButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) })
 }

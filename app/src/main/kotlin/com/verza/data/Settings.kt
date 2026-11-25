@@ -46,6 +46,8 @@ class Settings(private val context: Context) {
     val skipSilence = bool("skip_silence", false)
     /** The music drawn around the cover in Now Playing, as on the desktop. */
     val visualizer = bool("visualizer", true)
+    /** Which look Verza wears (ui/look): "glass" unless one was chosen. */
+    val look = Setting(context, stringPreferencesKey("look"), "glass")
     /** A flick of the phone toward the computer plays there; one back toward you brings the computer's music here. */
     val flick = bool("flick", true)
     /** A flick that brings music here while something plays asks which to keep, instead of the new one winning. */

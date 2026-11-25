@@ -41,6 +41,45 @@ data class Palette(
         const val MIN_CONTRAST = 4.5f
         val Magenta = Color(0xFFE6007E)
 
+        /**
+         * A look's own palette: its [canvas] and [ink], and an accent that is [accent] when the look has
+         * one of its own, or else the cover's, searched for until it reads on [canvas] (and on a button's
+         * fill over it). Everything not given is worked out from those.
+         */
+        fun make(
+            canvas: Color,
+            ink: Color,
+            swatches: List<Color> = emptyList(),
+            accent: Color? = null,
+            surface: Color? = null,
+            cell: Color? = null,
+            grouped: Color? = null,
+            fill: Color? = null,
+            line: Color? = null,
+            inkMuted: Color? = null,
+        ): Palette {
+            val dark = canvas.luminance() < 0.5f
+            val fillColour = fill ?: ink.copy(alpha = if (dark) 0.14f else 0.08f)
+            val pick = accent ?: run {
+                val vivid = swatches.maxByOrNull { val c = hsv(it); c[1] * (0.4f + c[2]) }?.takeIf { hsv(it)[1] > 0.12f }
+                val seed = hsv(vivid ?: Magenta)
+                accentFor(seed[0], if (vivid == null) 0.85f else seed[1], fillColour.compositeOver(canvas), dark)
+            }
+            return Palette(
+                canvas = canvas,
+                ink = ink,
+                inkMuted = inkMuted ?: secondaryOn(canvas, ink),
+                accent = pick,
+                onAccent = readableOn(pick),
+                surface = surface ?: lerp(canvas, ink, 0.06f),
+                surfaceHigh = lerp(surface ?: canvas, ink, 0.12f),
+                line = line ?: ink.copy(alpha = if (dark) 0.22f else 0.2f),
+                fill = fillColour,
+                cell = cell ?: lerp(canvas, ink, if (dark) 0.1f else 0.04f),
+                grouped = grouped ?: canvas,
+            )
+        }
+
         /** [swatches] are the cover's colours (Palette swatches), empty for no cover or a colourless one. */
         fun from(swatches: List<Color>, dark: Boolean): Palette {
             val vivid = swatches.maxByOrNull { val c = hsv(it); c[1] * (0.4f + c[2]) }

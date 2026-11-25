@@ -5,7 +5,7 @@ import com.verza.ui.kit.Masthead
 import com.verza.ui.kit.Hairline
 import com.verza.ui.kit.Group
 import com.verza.ui.kit.Glassed
-import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.ChromeButton
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
@@ -179,7 +179,7 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                 }
             }
         },
-        glass = { GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) },
+        glass = { ChromeButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) },
     )
     if (adding) AddSource(onDone = { adding = false })
 }

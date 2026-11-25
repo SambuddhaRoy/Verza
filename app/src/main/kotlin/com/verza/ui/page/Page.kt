@@ -22,7 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.ChromeButton
 import com.verza.ui.kit.Glassed
 import com.verza.ui.kit.Hairline
 import com.verza.ui.theme.artCorner
@@ -151,10 +151,10 @@ fun PageScreen(id: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
         },
         glass = {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onClick = onBack)
+                ChromeButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onClick = onBack)
                 Spacer(Modifier.weight(1f))
                 (content as? PageContent.OfAlbum)?.album?.let { album ->
-                    if (album.songs.any { !it.onPhone && it.id !in downloaded }) GlassButton(Icons.Rounded.Download, "Download") { graph.downloads.save(album.songs) }
+                    if (album.songs.any { !it.onPhone && it.id !in downloaded }) ChromeButton(Icons.Rounded.Download, "Download") { graph.downloads.save(album.songs) }
                     if (id.startsWith("pl:")) PlaylistMenu(id.removePrefix("pl:").toLong(), album.title, onDeleted = onBack)
                 }
             }
@@ -170,7 +170,7 @@ private fun PlaylistMenu(id: Long, name: String, onDeleted: () -> Unit) {
     var shown by remember { mutableStateOf(false) }
     var asking by remember { mutableStateOf<String?>(null) }   // "rename" or "delete"
     Box {
-        GlassButton(Icons.Rounded.MoreHoriz, "More") { shown = true }
+        ChromeButton(Icons.Rounded.MoreHoriz, "More") { shown = true }
         DropdownMenu(expanded = shown, onDismissRequest = { shown = false }, shape = Corner) {
             MenuItem("Rename") { shown = false; asking = "rename" }
             MenuItem("Delete playlist") { shown = false; asking = "delete" }
@@ -300,23 +300,9 @@ private fun ArtistPage(artist: Artist, onOpen: (String) -> Unit) {
     }
 }
 
-/** A row of covers across the page, each opening its page or playing its song. */
+/** A row of covers across the page, as the look lays one out. */
 @Composable
-fun Shelf(section: Section, onOpen: (String) -> Unit) {
-    val p = LocalPalette.current
-    val player = LocalContext.current.graph.player
-    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(section.cards, key = { it.song?.id ?: it.page ?: it.title }) { card ->
-            val round = card.page?.startsWith("UC") == true
-            Column(Modifier.width(156.dp).clip(Corner).clickable { card.song?.let(player::playWithRadio) ?: card.page?.let(onOpen) }, horizontalAlignment = if (round) Alignment.CenterHorizontally else Alignment.Start) {
-                Cover(card.art?.let { artAt(it, 544) }, 156.dp, round = round)
-                val small = Type.RowSubtitle.copy(fontSize = 14.sp, lineHeight = 18.sp)
-                Text(if (card.song != null) com.verza.data.shownTitle(card.title, card.subtitle.substringBefore(" • ")) else card.title, style = small, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
-                Text(card.subtitle.replace(" • ", " · "), style = small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
+fun Shelf(section: Section, onOpen: (String) -> Unit) = com.verza.ui.look.LocalLook.current.Shelf(section, onOpen)
 
 /** What a byline may say a record is, before who made it: "Album • Coldplay • 2012". */
 private val Kinds = setOf("Album", "Single", "EP", "Playlist", "Mix", "Audiobook")

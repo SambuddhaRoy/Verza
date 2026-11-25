@@ -18,7 +18,7 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.role
-import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.ChromeButton
 import com.verza.ui.kit.Glassed
 import com.verza.ui.kit.Hairline
 import androidx.compose.foundation.layout.Arrangement
@@ -201,7 +201,7 @@ private fun Section(title: String, onBack: () -> Unit, content: @Composable () -
                 content()
             }
         },
-        glass = { GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) },
+        glass = { ChromeButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) },
     )
 }
 

@@ -53,6 +53,7 @@ import com.verza.ui.theme.GroupCorner
 import com.verza.ui.theme.artCorner
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
+import com.verza.ui.look.LocalLook
 
 /**
  * How much of the foot of the screen the dock covers. Pages run on under it, so every list adds this
@@ -63,27 +64,14 @@ val LocalDockHeight = compositionLocalOf { 0.dp }
 /** "recently played" as "Recently played": Apple's sentence case, for words that arrive lowercase. */
 fun String.sentence() = replaceFirstChar { it.titlecase() }
 
-/**
- * A page's name, large and bold, with [trailing] (a button or two) level with it. [dateline] is the
- * Zune's line over the name, "Tuesday evening", in the accent: Verza's own, kept from its first design.
- */
+/** A page's name, in the current look; [dateline] over it, [trailing] (a button or two) level with it. */
 @Composable
-fun Masthead(title: String, modifier: Modifier = Modifier, dateline: String? = null, trailing: (@Composable () -> Unit)? = null) {
-    val p = LocalPalette.current
-    Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.Bottom) {
-        Column(Modifier.weight(1f)) {
-            if (dateline != null) Text(dateline, style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.accent)
-            Text(title.sentence(), style = Type.Masthead, color = p.ink, modifier = Modifier.semantics { heading() })
-        }
-        trailing?.invoke()
-    }
-}
+fun Masthead(title: String, modifier: Modifier = Modifier, dateline: String? = null, trailing: (@Composable () -> Unit)? = null) =
+    LocalLook.current.Masthead(title, modifier, dateline, trailing)
 
 /** A heading inside a page: "Recently played". */
 @Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text.sentence(), style = Type.Section, color = LocalPalette.current.ink, modifier = modifier.padding(top = 26.dp, bottom = 10.dp).semantics { heading() })
-}
+fun SectionTitle(text: String, modifier: Modifier = Modifier) = LocalLook.current.SectionTitle(text, modifier)
 
 /** A row's own small action, "Forget", "Remove": plain words in [color], 48dp tall. */
 @Composable
@@ -101,29 +89,15 @@ fun SmallWord(text: String, color: Color, label: String = text, onClick: () -> U
     )
 }
 
-/**
- * A button: its words (and [icon]) in [color] on a capsule of the fill, as Apple Music's Play and
- * Shuffle are. The accent marks the one to press; the rest are in ink.
- */
+/** A button, as the look draws one: [color] is the accent for the one to press, ink for the rest. */
 @Composable
-fun Word(text: String, color: Color = LocalPalette.current.ink, modifier: Modifier = Modifier, icon: ImageVector? = null, enabled: Boolean = true, onClick: () -> Unit) {
-    val p = LocalPalette.current
-    val ink = if (enabled) color else color.copy(alpha = 0.4f)
-    Row(
-        modifier
-            .heightIn(min = 48.dp)
-            .clip(CircleShape)
-            .background(p.fill)
-            .clickable(enabled = enabled, onClick = onClick)
-            .semantics { role = Role.Button }
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (icon != null) { Icon(icon, null, tint = ink, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)) }
-        Text(text.sentence(), style = Type.Headline, color = ink, maxLines = 1)
-    }
-}
+fun Word(text: String, color: Color = LocalPalette.current.ink, modifier: Modifier = Modifier, icon: ImageVector? = null, enabled: Boolean = true, onClick: () -> Unit) =
+    LocalLook.current.Button(text, color, modifier, icon, enabled, onClick)
+
+/** A round button floating over a page (back, a page's menu, download), as the look draws one. */
+@Composable
+fun ChromeButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 44.dp, tint: Color = LocalPalette.current.ink, stain: Color? = null, iconSize: Dp = size * 0.5f, onClick: () -> Unit) =
+    LocalLook.current.ChromeButton(icon, label, modifier, size, tint, stain, iconSize, onClick)
 
 /** A round button with one symbol on the fill, for the content layer (glass is for the controls over it). */
 @Composable
@@ -142,7 +116,7 @@ fun IconCircle(icon: ImageVector, label: String, modifier: Modifier = Modifier, 
 @Composable
 fun Cover(url: String?, size: Dp, modifier: Modifier = Modifier, round: Boolean = false) {
     val p = LocalPalette.current
-    val shape = if (round) CircleShape else artCorner(size)
+    val shape = if (round) CircleShape else LocalLook.current.cover(size)
     AsyncImage(
         model = url,
         contentDescription = null,
@@ -155,11 +129,9 @@ fun Cover(url: String?, size: Dp, modifier: Modifier = Modifier, round: Boolean 
     )
 }
 
-/** The thin line between rows, starting at [start] so it runs under the words and not the picture. */
+/** The line between rows, as the look draws it, from [start] so it runs under the words and not the picture. */
 @Composable
-fun Hairline(start: Dp = 0.dp) {
-    Box(Modifier.fillMaxWidth().padding(start = start).height(0.5.dp).background(LocalPalette.current.line))
-}
+fun Hairline(start: Dp = 0.dp) = LocalLook.current.Divider(start)
 
 /**
  * A list row: the cover and two lines, a hairline under the words. The playing row's title takes the
@@ -277,7 +249,7 @@ fun Group(title: String? = null, modifier: Modifier = Modifier, footer: String? 
     val p = LocalPalette.current
     Column(modifier.fillMaxWidth().padding(top = 22.dp)) {
         if (title != null) Text(title.sentence(), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp).semantics { heading() })
-        Column(Modifier.fillMaxWidth().clip(GroupCorner).background(p.cell).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
+        Column(Modifier.fillMaxWidth().clip(LocalLook.current.group).background(p.cell).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
         if (footer != null) Text(footer, style = Type.Small, color = p.inkMuted, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
     }
 }
@@ -289,18 +261,30 @@ fun Group(title: String? = null, modifier: Modifier = Modifier, footer: String? 
  */
 fun Modifier.takesTouches() = pointerInput(Unit) { detectTapGestures { } }
 
-/** Light status-bar icons while this is on screen, for the pages that are dark whatever the system says. */
+/**
+ * The status and navigation bars' icons: [light] ones over a dark page, dark over a light one, while
+ * this is on screen. A look can be dark while the system is light, and Now Playing dark in a light look.
+ */
 @Composable
-fun LightBarIcons() {
+fun BarIcons(light: Boolean) {
     val view = androidx.compose.ui.platform.LocalView.current
-    androidx.compose.runtime.DisposableEffect(view) {
+    androidx.compose.runtime.DisposableEffect(view, light) {
         val window = (view.context as? android.app.Activity)?.window
         val bars = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
         val was = bars?.isAppearanceLightStatusBars
-        bars?.isAppearanceLightStatusBars = false
-        onDispose { if (was != null) bars.isAppearanceLightStatusBars = was }
+        val wasNav = bars?.isAppearanceLightNavigationBars
+        bars?.isAppearanceLightStatusBars = !light
+        bars?.isAppearanceLightNavigationBars = !light
+        onDispose {
+            if (was != null) bars.isAppearanceLightStatusBars = was
+            if (wasNav != null) bars.isAppearanceLightNavigationBars = wasNav
+        }
     }
 }
+
+/** Light bar icons, for the pages that are dark whatever the look. */
+@Composable
+fun LightBarIcons() = BarIcons(light = true)
 
 /** A switch as iOS draws one: a white knob the same size on or off, the track the accent when on. */
 @Composable

@@ -120,9 +120,10 @@ private val Ink = Color.White
 private val InkSoft = Color.White.copy(alpha = 0.72f)
 private val InkFaint = Color.White.copy(alpha = 0.30f)
 
-private val Display = Type.Title.copy(fontWeight = FontWeight.Medium)
-private val Digits = Type.Title.copy(fontWeight = FontWeight.Medium, fontFeatureSettings = "tnum")
-private val SmallType = Type.Body
+// In the look's type, read as it composes.
+private val Display: androidx.compose.ui.text.TextStyle @androidx.compose.runtime.Composable get() = Type.Title.copy(fontWeight = FontWeight.Medium)
+private val Digits: androidx.compose.ui.text.TextStyle @androidx.compose.runtime.Composable get() = Type.Title.copy(fontWeight = FontWeight.Medium, fontFeatureSettings = "tnum")
+private val SmallType: androidx.compose.ui.text.TextStyle @androidx.compose.runtime.Composable get() = Type.Body
 
 /**
  * Standby: for a phone on a stand or a charger, as the StandBy apps do it. Three faces, which a
@@ -284,8 +285,9 @@ private fun SongNames(song: Song) {
 private fun CoverClock(text: String, spoken: String, art: String?, brightness: Float?) {
     BoxWithConstraints(contentAlignment = Alignment.Center) {
         val measurer = rememberTextMeasurer()
-        val layout = remember(text, constraints.maxWidth, constraints.maxHeight) {
-            val base = Digits.copy(fontSize = 100.sp, lineHeight = 88.sp, textAlign = TextAlign.Center)
+        val digits = Digits
+        val layout = remember(text, constraints.maxWidth, constraints.maxHeight, digits) {
+            val base = digits.copy(fontSize = 100.sp, lineHeight = 88.sp, textAlign = TextAlign.Center)
             val probe = measurer.measure(text, base, constraints = Constraints())
             val scale = min(constraints.maxWidth * 0.98f / probe.size.width, constraints.maxHeight * 0.98f / probe.size.height)
             measurer.measure(text, base.copy(fontSize = 100.sp * scale, lineHeight = 88.sp * scale), constraints = Constraints())
