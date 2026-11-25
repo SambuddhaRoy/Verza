@@ -124,6 +124,7 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
                 // Settings sits by the page's name, where Apple Music keeps the account.
                 Masthead("Home", dateline = dateline()) { com.verza.ui.kit.IconCircle(androidx.compose.material.icons.Icons.Rounded.Settings, "Settings", onClick = onSettings) }
             }
+            item { com.verza.ui.look.LocalLook.current.HomeHero() }
             item { UpdateLine() }
             for (section in shelves) {
                 item(key = "t" + section.title) { SectionTitle(section.title, Modifier.padding(horizontal = 20.dp)) }

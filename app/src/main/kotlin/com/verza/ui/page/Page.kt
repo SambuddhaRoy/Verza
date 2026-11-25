@@ -216,7 +216,7 @@ private fun AlbumPage(album: Album, playlist: Long?) {
                         Modifier.align(Alignment.Center).requiredSize(maxWidth + 120.dp)
                             .graphicsLayer { translationY = 20.dp.toPx(); alpha = if (p.dark) 0.8f else 0.65f }
                             .blur(44.dp, BlurredEdgeTreatment.Unbounded),
-                    ) { AsyncImage(album.art?.let { artAt(it, 226) }, null, contentScale = ContentScale.Crop, modifier = Modifier.padding(60.dp).fillMaxSize()) }
+                    ) { AsyncImage(album.art?.let { artAt(it, 226) }, null, contentScale = ContentScale.Crop, colorFilter = com.verza.ui.look.LocalLook.current.coverFilter, modifier = Modifier.padding(60.dp).fillMaxSize()) }
                     val shape = artCorner(300.dp)
                     Cover(
                         album.art?.let { artAt(it, 1200) }, 0.dp,
@@ -224,7 +224,9 @@ private fun AlbumPage(album: Album, playlist: Long?) {
                     )
                 }
                 Spacer(Modifier.height(18.dp))
-                Text(album.title, style = Type.Section, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                // The look's title face, a little under its full size: a record's name, not a page's.
+                val name = Type.Title
+                Text(album.title, style = name.copy(fontSize = name.fontSize * 0.8f, lineHeight = name.lineHeight * 0.8f), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                 // "Coldplay • 2002": who in the accent, as Apple Music has it, and the rest quietly under.
                 val parts = album.subtitle.split(Regex("\\s*[•·]\\s*")).filter { it.isNotBlank() }
                 val who = parts.firstOrNull { it !in Kinds && it.toIntOrNull() == null }.orEmpty()

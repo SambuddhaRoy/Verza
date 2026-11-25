@@ -100,7 +100,7 @@ private fun Figure(value: String, label: String, modifier: Modifier) {
 }
 
 /** Days in a row up to today (or yesterday, if today has no listening yet). [days] are yyyy-MM-dd. */
-private fun streak(days: List<String>): Int {
+internal fun streak(days: List<String>): Int {
     val set = days.toSet()
     var day = LocalDate.now().let { if (it.toString() in set) it else it.minusDays(1) }
     var n = 0

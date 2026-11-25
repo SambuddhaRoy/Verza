@@ -166,6 +166,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
             modifier = Modifier.fillMaxSize().takesTouches().graphicsLayer { translationY = pull.value },
             content = { look.NowPlayingBackground(song.art?.let { artAt(it, 226) }) },
             glass = {
+                look.NowPlayingDecor()
                 BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
                     val pageHeight = maxHeight
                     LazyColumn(Modifier.nestedScroll(sheet), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -190,7 +191,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                 Spacer(Modifier.height(18.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
-                                        Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Section, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Title.let { it.copy(fontSize = it.fontSize * 0.8f, lineHeight = it.lineHeight * 0.8f) }, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         Names(song, links, onOpen = { onClose(); onOpen(it) })
                                     }
                                     Spacer(Modifier.width(12.dp))

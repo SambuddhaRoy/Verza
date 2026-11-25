@@ -121,6 +121,7 @@ fun Cover(url: String?, size: Dp, modifier: Modifier = Modifier, round: Boolean 
         model = url,
         contentDescription = null,
         contentScale = ContentScale.Crop,
+        colorFilter = LocalLook.current.coverFilter,
         modifier = modifier
             .size(size)
             .clip(shape)
@@ -249,7 +250,8 @@ fun Group(title: String? = null, modifier: Modifier = Modifier, footer: String? 
     val p = LocalPalette.current
     Column(modifier.fillMaxWidth().padding(top = 22.dp)) {
         if (title != null) Text(title.sentence(), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp).semantics { heading() })
-        Column(Modifier.fillMaxWidth().clip(LocalLook.current.group).background(p.cell).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
+        val look = LocalLook.current
+        Column(Modifier.fillMaxWidth().clip(look.group).background(p.cell).then(look.panel?.let { Modifier.border(it, look.group) } ?: Modifier).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
         if (footer != null) Text(footer, style = Type.Small, color = p.inkMuted, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
     }
 }

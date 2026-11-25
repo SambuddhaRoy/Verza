@@ -86,6 +86,12 @@ abstract class Look(val id: String, val name: String, val note: String) {
     /** An inset group's shape (Settings). */
     open val group: Shape = GroupCorner
 
+    /** Drawn over every cover in lists and shelves: Minimalism's grey. */
+    open val coverFilter: androidx.compose.ui.graphics.ColorFilter? = null
+
+    /** A frame round inset groups, for the looks that draw one. */
+    open val panel: androidx.compose.foundation.BorderStroke? = null
+
     /** How far the dock reaches up from the navigation bar, with a song playing or not. */
     open fun dockHeight(playing: Boolean): Dp = 8.dp + 62.dp + (if (playing) 8.dp + 56.dp else 0.dp) + 12.dp
 
@@ -154,7 +160,7 @@ val LocalLook = staticCompositionLocalOf<Look> { GlassLook }
 /** Every look, in the order Settings shows them. */
 object Looks {
     val all: List<Look> by lazy {
-        listOf<Look>(GlassLook)
+        listOf<Look>(GlassLook, GridLook, BrutalLook, GenZLook, MinimalLook)
     }
 
     fun byId(id: String?): Look = all.firstOrNull { it.id == id } ?: GlassLook

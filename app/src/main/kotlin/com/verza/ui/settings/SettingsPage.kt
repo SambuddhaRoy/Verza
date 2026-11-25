@@ -1,5 +1,6 @@
 package com.verza.ui.settings
 
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import com.verza.ui.kit.Masthead
 import com.verza.ui.kit.Hairline
@@ -77,6 +78,13 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
         content = {
             LazyColumn(contentPadding = PaddingValues(top = 52.dp, bottom = 24.dp + LocalDockHeight.current)) {
                 item { Masthead("Settings") }
+                item {
+                    // The look first: it changes everything else on this page as you choose.
+                    Column(Modifier.padding(top = 22.dp)) {
+                        Text(com.verza.ui.look.LocalLook.current.case.of("Look"), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, modifier = Modifier.padding(start = 32.dp, bottom = 10.dp))
+                        com.verza.ui.look.LookPicker()
+                    }
+                }
                 item {
                     Group("Account", Modifier.padding(horizontal = 16.dp)) {
                         // Signed in, your likes and playlists go to YouTube Music and Home is your own.
