@@ -2,40 +2,39 @@ package com.verza.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import com.verza.ui.kit.takesTouches
-import com.verza.ui.nowplaying.LyricsPage
-import com.verza.ui.nowplaying.NowPlayingPage
-import com.verza.ui.settings.EqualizerPage
-import com.verza.ui.settings.SettingsPage
-import com.verza.ui.signin.SignIn
-import com.verza.ui.signin.Welcome
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FastForward
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -44,13 +43,23 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,67 +70,98 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.verza.data.artAt
 import com.verza.graph
-import kotlinx.coroutines.launch
 import com.verza.playback.NowPlaying
 import com.verza.ui.home.HomePage
 import com.verza.ui.kit.Cover
+import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.Glassed
 import com.verza.ui.kit.LocalDockHeight
 import com.verza.ui.kit.LocalOpen
+import com.verza.ui.kit.glass
+import com.verza.ui.kit.takesTouches
 import com.verza.ui.library.LibraryPage
+import com.verza.ui.nowplaying.LyricsPage
+import com.verza.ui.nowplaying.NowPlayingPage
 import com.verza.ui.page.PageScreen
 import com.verza.ui.search.SearchPage
+import com.verza.ui.settings.EqualizerPage
+import com.verza.ui.settings.SettingsPage
+import com.verza.ui.signin.SignIn
+import com.verza.ui.signin.Welcome
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-/** The pages the dock switches between, in its order: route to the word shown. Your Sound is one, as on the desktop. */
-private val Tabs = linkedMapOf("home" to "home", "search" to "search", "library" to "library", "sound" to "your sound")
+private class Tab(val label: String, val icon: ImageVector)
 
-private val TabsHeight = 56.dp
-private val PlayerHeight = 64.dp
+/** The tab bar's places, in its order. Search is the round button at its end, as iOS puts it. */
+private val Tabs = linkedMapOf(
+    "home" to Tab("Home", Icons.Rounded.Home),
+    "library" to Tab("Library", Icons.Rounded.LibraryMusic),
+    "sound" to Tab("Your Sound", Icons.Rounded.GraphicEq),
+)
 
-/** The whole app: pages over the canvas, and the dock (the mini player and the tabs) at the foot. */
+private val BarHeight = 62.dp
+private val PlayerHeight = 56.dp
+private val Gap = 8.dp
+
+/** The whole app: the pages, and floating over them in glass the mini player and the tab bar. */
 @Composable
 fun Shell() {
     val nav = rememberNavController()
     val p = LocalPalette.current
     val player = LocalContext.current.graph.player
     val now by player.state.collectAsState()
-    val dock = TabsHeight + if (now.song != null) PlayerHeight else 0.dp
+    val inset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // What the glass covers at the foot, and a little more so a list's last row clears it.
+    val dock = inset + Gap + BarHeight + (if (now.song != null) Gap + PlayerHeight else 0.dp) + 12.dp
     val open: (String) -> Unit = { id -> nav.navigate("page/$id") }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var lyricsOpen by rememberSaveable { mutableStateOf(false) }
     var standbyOpen by rememberSaveable { mutableStateOf(false) }
+    val route = nav.currentBackStackEntryAsState().value?.destination?.route
 
     Box(Modifier.fillMaxSize().background(p.canvas)) {
-        CompositionLocalProvider(LocalDockHeight provides dock, LocalOpen provides open) {
-            NavHost(
-                navController = nav,
-                startDestination = "home",
-                modifier = Modifier.fillMaxSize().statusBarsPadding(),
-                enterTransition = { fadeIn() },
-                exitTransition = { fadeOut() },
-            ) {
-                composable("home") { HomePage(onOpen = open, onSettings = { nav.navigate("settings") }) }
-                composable("settings") { SettingsPage(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate("signin") }, onEqualizer = { nav.navigate("equalizer") }) }
-                composable("equalizer") { EqualizerPage(onBack = { nav.popBackStack() }) }
-                composable("signin") { SignIn(onDone = { nav.popBackStack() }) }
-                composable("search") { SearchPage(onOpen = open) }
-                composable("library") { LibraryPage(onOpen = open) }
-                composable("sound") {
-                    Column(Modifier.fillMaxSize()) {
-                        com.verza.ui.kit.Masthead("your sound", "your listening")
-                        com.verza.ui.library.YourSound()
+        Glassed(
+            ground = p.canvas,
+            modifier = Modifier.fillMaxSize(),
+            content = {
+                CompositionLocalProvider(LocalDockHeight provides dock, LocalOpen provides open) {
+                    NavHost(
+                        navController = nav,
+                        startDestination = "home",
+                        modifier = Modifier.fillMaxSize().statusBarsPadding(),
+                        enterTransition = { fadeIn() },
+                        exitTransition = { fadeOut() },
+                    ) {
+                        composable("home") { HomePage(onOpen = open, onSettings = { nav.navigate("settings") }) }
+                        composable("settings") { SettingsPage(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate("signin") }, onEqualizer = { nav.navigate("equalizer") }) }
+                        composable("equalizer") { EqualizerPage(onBack = { nav.popBackStack() }) }
+                        composable("signin") { SignIn(onDone = { nav.popBackStack() }) }
+                        composable("search") { SearchPage(onOpen = open) }
+                        composable("library") { LibraryPage(onOpen = open) }
+                        composable("sound") {
+                            Column(Modifier.fillMaxSize()) {
+                                com.verza.ui.kit.Masthead("Your Sound")
+                                com.verza.ui.library.YourSound()
+                            }
+                        }
+                        composable("page/{id}") { entry ->
+                            PageScreen(entry.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() }, onOpen = open)
+                        }
                     }
                 }
-                composable("page/{id}") { entry ->
-                    PageScreen(entry.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() }, onOpen = open)
+            },
+            glass = {
+                // The edges: lists soften into the status bar and under the dock, rather than being cut.
+                Box(Modifier.statusBarsPadding().fillMaxWidth().height(16.dp).background(Brush.verticalGradient(listOf(p.canvas, p.canvas.copy(alpha = 0f)))))
+                // Signing in is Google's page, whole; the dock would cover its foot.
+                if (route != "signin") {
+                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(dock + 16.dp).background(Brush.verticalGradient(0f to p.canvas.copy(alpha = 0f), 0.55f to p.canvas.copy(alpha = 0.6f), 1f to p.canvas.copy(alpha = 0.96f))))
+                    Dock(nav, now, onOpenPlayer = { playerOpen = true }, Modifier.align(Alignment.BottomCenter))
                 }
-            }
-        }
-        // Signing in is Google's page, whole; the dock would cover its foot.
-        val route = nav.currentBackStackEntryAsState().value?.destination?.route
-        if (route != "signin") Dock(nav, now, onOpenPlayer = { playerOpen = true }, Modifier.align(Alignment.BottomCenter))
+            },
+        )
         // Now Playing rises over everything from the mini player and drops back.
         // Flicks work from anywhere in the app: bringing the computer's music here needs nothing playing.
         val flick = com.verza.ui.nowplaying.FlickHandoff(playerOpen, openPlayer = { lyricsOpen = false; standbyOpen = false; playerOpen = true })
@@ -153,83 +193,78 @@ fun Shell() {
     }
 }
 
-/** One pane at the foot: the playing song over a hairline that is also its progress, then the tabs. */
+/** What floats at the foot: how far downloads have got, the playing song, then the tabs and search. */
 @Composable
 private fun Dock(nav: NavHostController, now: NowPlaying, onOpenPlayer: () -> Unit, modifier: Modifier) {
     val p = LocalPalette.current
-    val player = LocalContext.current.graph.player
     // The tab a page was opened from stays lit while it's showing.
     val stack by nav.currentBackStack.collectAsState()
-    val current = stack.lastOrNull { it.destination.route in Tabs.keys }?.destination?.route
-    Column(modifier.fillMaxWidth().takesTouches().background(p.canvas).navigationBarsPadding()) {   // solid: at 96% the list showed through
-        now.song?.let { song ->
-            Row(
-                Modifier.fillMaxWidth().height(PlayerHeight).clickable(onClick = onOpenPlayer).padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Cover(song.art?.let { artAt(it, 226) }, 46.dp)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.RowTitle, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(song.artist, style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                IconButton(onClick = player::toggle) {
-                    Icon(if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play", tint = p.ink, modifier = Modifier.size(32.dp))
-                }
-            }
+    val current = stack.lastOrNull { it.destination.route in Tabs.keys || it.destination.route == "search" }?.destination?.route
+    fun go(tab: String) {
+        // The tab you're in takes you back to its top; another brings back where you were in it.
+        if (tab == current) nav.popBackStack(tab, inclusive = false)
+        else nav.navigate(tab) {
+            popUpTo(nav.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
         }
-        Progress(now)
-        // While downloads run, one quiet line says how far along they are.
+    }
+    Column(modifier.fillMaxWidth().navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = Gap), verticalArrangement = Arrangement.spacedBy(Gap)) {
         val downloads by LocalContext.current.graph.downloads.progress.collectAsState()
         if (downloads.running) Text(
-            (if (downloads.sorting) "sorting your downloads " else "downloading ") + "${downloads.done + 1} of ${downloads.total}" + (downloads.current?.let { " · $it" } ?: ""),
-            style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 6.dp),
+            (if (downloads.sorting) "Sorting your downloads " else "Downloading ") + "${downloads.done + 1} of ${downloads.total}" + (downloads.current?.let { " · $it" } ?: ""),
+            style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         )
-        Row(
-            Modifier.fillMaxWidth().height(TabsHeight).horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            for ((tab, word) in Tabs) {
-                // The whole height of the row takes the tap, not just the word.
-                Box(
-                    Modifier.fillMaxHeight().clickable {
-                        // The tab you're in takes you back to its top; another brings back where you were in it.
-                        if (tab == current) nav.popBackStack(tab, inclusive = false)
-                        else nav.navigate(tab) {
-                            popUpTo(nav.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(word, style = Type.Section.copy(fontSize = 26.sp), color = if (tab == current) p.ink else p.inkMuted)
+        now.song?.let { MiniPlayer(now, onOpenPlayer) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f).height(BarHeight).takesTouches().glass(CircleShape, BarHeight / 2).padding(4.dp)) {
+                for ((route, tab) in Tabs) {
+                    val on = route == current
+                    val tint = if (on) p.accent else p.ink
+                    Column(
+                        Modifier.weight(1f).fillMaxHeight().clip(CircleShape)
+                            .background(if (on) p.ink.copy(alpha = if (p.dark) 0.12f else 0.07f) else Color.Transparent)
+                            .clickable { go(route) }
+                            .semantics(mergeDescendants = true) { role = Role.Tab; selected = on },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(tab.icon, null, tint = tint, modifier = Modifier.size(25.dp))
+                        Text(tab.label, style = Type.Tab, color = tint, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+                    }
                 }
             }
+            Spacer(Modifier.width(10.dp))
+            GlassButton(Icons.Rounded.Search, "Search", size = BarHeight, tint = if (current == "search") p.accent else p.ink, modifier = Modifier.takesTouches()) { go("search") }
         }
     }
 }
 
-/** The hairline between the player and the tabs, filled as far as the song has played. */
+/** The playing song in a capsule of glass over the tabs; a tap raises Now Playing. */
 @Composable
-private fun Progress(now: NowPlaying) {
+private fun MiniPlayer(now: NowPlaying, onOpen: () -> Unit) {
+    val song = now.song ?: return
     val p = LocalPalette.current
     val player = LocalContext.current.graph.player
-    val fraction = remember { mutableFloatStateOf(0f) }
-    // Polled, since position isn't pushed; read in the draw phase, so a tick is a redraw only.
-    LaunchedEffect(now.song?.id, now.playing, now.durationMs) {
-        while (true) {
-            fraction.floatValue = if (now.durationMs > 0) (player.position.toFloat() / now.durationMs).coerceIn(0f, 1f) else 0f
-            if (!now.playing) break
-            delay(500)
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Row(
+        Modifier.fillMaxWidth().height(PlayerHeight).takesTouches().glass(CircleShape, PlayerHeight / 2, pressed)
+            .clickable(source, null, onClick = onOpen)
+            .semantics { contentDescription = "Now playing: ${song.title}" }
+            .padding(start = 8.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Cover(song.art?.let { artAt(it, 226) }, 40.dp)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(song.artist, style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        IconButton(onClick = player::toggle) {
+            Icon(if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play", tint = p.ink, modifier = Modifier.size(30.dp))
+        }
+        IconButton(onClick = player::next) { Icon(Icons.Rounded.FastForward, "Next", tint = p.ink, modifier = Modifier.size(28.dp)) }
     }
-    Box(
-        Modifier.fillMaxWidth().height(1.dp).drawBehind {
-            drawRect(p.line)
-            drawLine(p.accent, Offset.Zero, Offset(size.width * fraction.floatValue, 0f), strokeWidth = size.height * 2)
-        },
-    )
 }

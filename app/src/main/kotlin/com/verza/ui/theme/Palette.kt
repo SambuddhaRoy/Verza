@@ -2,6 +2,7 @@ package com.verza.ui.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 
@@ -21,8 +22,20 @@ data class Palette(
     val surface: Color,
     val surfaceHigh: Color,
     val line: Color,
+    /** A button's or a field's ground, translucent over whatever it sits on: Apple's tertiary fill. */
+    val fill: Color,
+    /** An inset group's rows ([grouped] behind them): Apple's secondary grouped background. */
+    val cell: Color,
+    /** The page behind inset groups: black, or Apple's light grey. */
+    val grouped: Color,
 ) {
     val dark: Boolean get() = canvas.luminance() < 0.5f
+
+    /** For a page over the playing cover's colours (Now Playing, Lyrics): dark whatever the theme, white ink. */
+    fun overMedia() = copy(
+        canvas = Color.Black, ink = Color.White, inkMuted = Color.White.copy(alpha = 0.62f), line = Color.White.copy(alpha = 0.22f),
+        fill = Color.White.copy(alpha = 0.16f), cell = Color(0xFF1C1C1E), grouped = Color.Black,
+    )
 
     companion object {
         const val MIN_CONTRAST = 4.5f
@@ -38,7 +51,9 @@ data class Palette(
             fun neutral(sat: Float, value: Float) = fromHsv(hue, sat * tint, value)
             val canvas = if (dark) Color.Black else Color.White
             val ink = if (dark) Color.White else Color.Black
-            val accent = accentFor(hue, if (vivid == null) 0.85f else seed[1], canvas, dark)
+            val fill = Color(0xFF767680).copy(alpha = if (dark) 0.24f else 0.12f)
+            // Measured on a button's fill, the harder ground of the two: it then reads on the page too.
+            val accent = accentFor(hue, if (vivid == null) 0.85f else seed[1], fill.compositeOver(canvas), dark)
             return Palette(
                 canvas = canvas,
                 ink = ink,
@@ -47,7 +62,10 @@ data class Palette(
                 onAccent = readableOn(accent),
                 surface = if (dark) neutral(0.16f, 0.12f) else neutral(0.035f, 0.955f),
                 surfaceHigh = if (dark) neutral(0.14f, 0.17f) else neutral(0.04f, 0.915f),
-                line = ink.copy(alpha = if (dark) 0.14f else 0.10f),
+                line = ink.copy(alpha = if (dark) 0.22f else 0.2f),
+                fill = fill,
+                cell = if (dark) Color(0xFF1C1C1E) else Color.White,
+                grouped = if (dark) Color.Black else Color(0xFFF2F2F7),
             )
         }
     }

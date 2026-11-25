@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,7 +51,9 @@ fun SongMenu(song: Song, inPlayer: Boolean = false, extra: @Composable (close: (
     var shown by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { shown = true }) { Icon(Icons.Rounded.MoreVert, "More", tint = LocalPalette.current.inkMuted) }
+        // In Now Playing it floats in glass beside the like; in a list it's the row's quiet ⋯.
+        if (inPlayer) GlassButton(Icons.Rounded.MoreHoriz, "More", size = 40.dp) { shown = true }
+        else IconButton(onClick = { shown = true }) { Icon(Icons.Rounded.MoreHoriz, "More", tint = LocalPalette.current.inkMuted) }
         DropdownMenu(expanded = shown, onDismissRequest = { shown = false }, shape = Corner) {
             MenuItem("Play next") { shown = false; graph.player.playNext(song) }
             MenuItem("Add to queue") { shown = false; graph.player.enqueue(listOf(song)) }
@@ -116,9 +118,9 @@ fun AddToPlaylist(song: Song, onDone: () -> Unit) {
             if (naming) TextButton(enabled = name.isNotBlank(), onClick = {
                 scope.launch { val id = graph.library.createPlaylist(name.trim()); graph.library.addToPlaylist(id, song); graph.sync.flush() }
                 onDone()
-            }) { Text("make it") }
+            }) { Text("Make it") }
         },
-        dismissButton = { TextButton(onClick = onDone) { Text("cancel") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
 }
 

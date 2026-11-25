@@ -153,7 +153,7 @@ private fun AddComputer(computer: Connect.Computer, onDone: () -> Unit) {
                 }
             }) { Text(if (busy) "Adding…" else "Add") }
         },
-        dismissButton = { TextButton(onClick = onDone) { Text("cancel") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
 }
 
@@ -164,6 +164,6 @@ fun DevicesDialog(onDone: () -> Unit) {
         onDismissRequest = onDone,
         title = { Text("Devices") },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) { Devices() } },
-        confirmButton = { TextButton(onClick = onDone) { Text("done") } },
+        confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
     )
 }

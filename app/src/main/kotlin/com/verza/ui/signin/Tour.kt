@@ -1,5 +1,6 @@
 package com.verza.ui.signin
 
+import com.verza.ui.kit.sentence
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
@@ -71,9 +72,9 @@ fun Tour(paired: Boolean, onDone: () -> Unit, onSetUp: () -> Unit) {
     ) {
         Drawing(step.art, Modifier.fillMaxWidth().aspectRatio(2f).padding(bottom = 28.dp))
         Text("${i + 1} of ${Steps.size}", style = Type.Small, color = p.inkMuted)
-        Text(step.title, style = Type.Masthead.copy(fontSize = 56.sp, lineHeight = 60.sp), color = p.ink, modifier = Modifier.padding(top = 4.dp))
+        Text(step.title.sentence(), style = Type.Masthead, color = p.ink, modifier = Modifier.padding(top = 4.dp))
         Text(step.text, style = Type.RowTitle, color = p.inkMuted, modifier = Modifier.padding(top = 12.dp))
-        Row(Modifier.padding(top = 28.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+        Row(Modifier.padding(top = 28.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Word(if (last) "done" else "next", p.accent) { if (last) onDone() else i++ }
             if (!last) Word("skip", onClick = onDone)
             else if (!paired) Word("add a computer", onClick = onSetUp)

@@ -2,6 +2,25 @@ package com.verza.ui.library
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowCircleDown
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.Glassed
+import com.verza.ui.kit.Hairline
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,10 +69,18 @@ import com.verza.ui.kit.SongMenu
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 
-/** Your Sound is a tab of its own now, as on the desktop. */
-private val Sections = listOf("liked", "recent", "playlists", "downloaded", "on device")
+/** The Library's sections: the key kept while one is open, its name, its symbol. Your Sound is a tab of its own. */
+private val Sections = listOf(
+    Triple("liked", "Liked songs", Icons.Rounded.Favorite),
+    Triple("recent", "Recently played", Icons.Rounded.History),
+    Triple("playlists", "Playlists", Icons.AutoMirrored.Rounded.QueueMusic),
+    Triple("downloaded", "Downloaded", Icons.Rounded.ArrowCircleDown),
+    Triple("on device", "On this phone", Icons.Rounded.Smartphone),
+)
 
-/** The library as its sections in big words, the Zune's main menu; each opens as a page. */
+private fun nameOf(key: String) = Sections.firstOrNull { it.first == key }?.second ?: key
+
+/** The library as a list of its sections, as Apple Music's is; each opens as a page. */
 @Composable
 fun LibraryPage(onOpen: (String) -> Unit) {
     val library = LocalContext.current.graph.library
@@ -68,23 +95,32 @@ fun LibraryPage(onOpen: (String) -> Unit) {
 
     when (val section = open) {
         null -> Column(Modifier.fillMaxSize()) {
-            Masthead("library", "your collection")
-            for (name in Sections) {
-                Text(
-                    name,
-                    style = Type.Masthead.copy(fontSize = 36.sp, lineHeight = 42.sp),
-                    color = p.ink,
-                    modifier = Modifier.fillMaxWidth().clickable { open = name }.padding(horizontal = 20.dp, vertical = 4.dp),
-                )
+            Masthead("Library")
+            for ((key, name, icon) in Sections) {
+                Row(
+                    Modifier.fillMaxWidth().clickable { open = key }.padding(start = 20.dp)
+                        .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(icon, null, tint = p.accent, modifier = Modifier.size(26.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Row(Modifier.heightIn(min = 54.dp).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(name, style = Type.RowTitle.copy(fontSize = 20.sp, lineHeight = 25.sp), color = p.ink, modifier = Modifier.weight(1f))
+                            Icon(Icons.Rounded.ChevronRight, null, tint = p.inkMuted)
+                        }
+                        Hairline()
+                    }
+                }
             }
         }
-        "on device" -> Section(section, onBack = { open = null }) { OnDevice(onOpen) { t, _, ss -> group = t to ss } }
+        "on device" -> Section(nameOf(section), onBack = { open = null }) { OnDevice(onOpen) { t, _, ss -> group = t to ss } }
         "downloaded" -> {
             val songs by library.downloaded.collectAsState(initial = null)
             val phone by graph.phone.library.collectAsState()
             // Downloads sort by their files' tags, which the phone's scan reads, where it may.
             LaunchedEffect(Unit) { if (graph.phone.allowed() && graph.phone.library.value == null) runCatching { graph.phone.scan() } }
-            Section(section, onBack = { open = null }) {
+            Section(nameOf(section), onBack = { open = null }) {
                 val s = songs ?: return@Section
                 if (s.isEmpty()) Empty(emptyLine(section))
                 else Collection("downloaded", s, facts = { phone?.facts?.get(it.id) ?: com.verza.data.phone.Facts(album = it.album) }, onOpenGroup = { t, _, ss -> group = t to ss })
@@ -93,11 +129,11 @@ fun LibraryPage(onOpen: (String) -> Unit) {
         "playlists" -> {
             val lists by library.playlists.collectAsState(initial = null)
             val theirs by account("account-playlists", ListSerializer(Card.serializer())) { it.accountPlaylists() }
-            Section(section, onBack = { open = null }) {
+            Section(nameOf(section), onBack = { open = null }) {
                 val l = lists ?: return@Section
                 // A playlist can be started here, not only from a song's menu.
                 var naming by remember { mutableStateOf(false) }
-                Box(Modifier.padding(horizontal = 20.dp)) { Word("new playlist", p.accent) { naming = true } }
+                Box(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) { Word("New playlist", p.accent, icon = Icons.Rounded.Add) { naming = true } }
                 if (naming) NewPlaylist(onDone = { naming = false }, onMade = { onOpen("pl:$it") })
                 if (l.isEmpty() && theirs.isEmpty()) Empty("Make a playlist here or from any song's menu")
                 else LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
@@ -105,7 +141,7 @@ fun LibraryPage(onOpen: (String) -> Unit) {
                         ListRow(pl.playlist.name, if (pl.count == 1) "1 song" else "${pl.count} songs", art = pl.cover?.let { artAt(it, 226) },
                             onClick = { onOpen("pl:${pl.playlist.id}") })
                     }
-                    if (theirs.isNotEmpty()) item { Text("from youtube music", style = Type.Section, color = p.ink, modifier = Modifier.padding(top = 20.dp, bottom = 6.dp)) }
+                    if (theirs.isNotEmpty()) item { Text("From YouTube Music", style = Type.Section, color = p.ink, modifier = Modifier.padding(top = 20.dp, bottom = 6.dp)) }
                     items(theirs, key = { it.page!! }) { c -> ListRow(c.title, c.subtitle, art = c.art?.let { artAt(it, 226) }, onClick = { onOpen(c.page!!) }) }
                 }
             }
@@ -114,7 +150,7 @@ fun LibraryPage(onOpen: (String) -> Unit) {
             // Your likes here first, then the account's, each song once.
             val mine by library.liked.collectAsState(initial = null)
             val theirs by account("account-liked", ListSerializer(Song.serializer())) { it.accountLiked() }
-            Section(section, onBack = { open = null }) {
+            Section(nameOf(section), onBack = { open = null }) {
                 val s = (mine ?: return@Section).let { m -> (m + theirs).distinctBy { it.id } }
                 if (s.isEmpty()) Empty(emptyLine(section)) else SongList(s)
             }
@@ -124,7 +160,7 @@ fun LibraryPage(onOpen: (String) -> Unit) {
                 "recent" -> library.recent
                 else -> library.downloaded
             }.collectAsState(initial = null)
-            Section(section, onBack = { open = null }) {
+            Section(nameOf(section), onBack = { open = null }) {
                 val s = songs ?: return@Section
                 if (s.isEmpty()) Empty(emptyLine(section)) else SongList(s)
             }
@@ -154,14 +190,19 @@ private fun emptyLine(section: String) = when (section) {
 
 @Composable
 private fun Section(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
-        // The way back to Library's words, as an album page has; it used to be the system's back only.
-        IconButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp)) {
-            Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = LocalPalette.current.ink)
-        }
-        Masthead(title, modifier = Modifier.padding(top = 0.dp))
-        content()
-    }
+    // The way back to the Library, in glass over the page's top, as an album page has.
+    Glassed(
+        ground = LocalPalette.current.canvas,
+        modifier = Modifier.fillMaxSize(),
+        content = {
+            Column(Modifier.fillMaxSize()) {
+                Spacer(Modifier.height(52.dp))
+                Masthead(title)
+                content()
+            }
+        },
+        glass = { GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) },
+    )
 }
 
 /** Names a new, empty playlist and opens it. */
@@ -178,9 +219,9 @@ private fun NewPlaylist(onDone: () -> Unit, onMade: (Long) -> Unit) {
             androidx.compose.material3.TextButton(enabled = name.isNotBlank(), onClick = {
                 scope.launch { val id = graph.library.createPlaylist(name.trim()); graph.sync.flush(); onMade(id) }
                 onDone()
-            }) { Text("make it") }
+            }) { Text("Make it") }
         },
-        dismissButton = { androidx.compose.material3.TextButton(onClick = onDone) { Text("cancel") } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDone) { Text("Cancel") } },
     )
 }
 
@@ -192,11 +233,12 @@ private fun SongList(songs: List<Song>) {
     val p = LocalPalette.current
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                Word("play", p.accent) { player.play(songs) }
-                Word("shuffle") { player.shuffle(songs) }
-                Spacer(Modifier.weight(1f))
-                Text(if (songs.size == 1) "1 song" else "${songs.size} songs", style = Type.Small, color = p.inkMuted)
+            Column(Modifier.padding(bottom = 6.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Word("Play", p.accent, Modifier.weight(1f), icon = Icons.Rounded.PlayArrow) { player.play(songs) }
+                    Word("Shuffle", p.accent, Modifier.weight(1f), icon = Icons.Rounded.Shuffle) { player.shuffle(songs) }
+                }
+                Text(if (songs.size == 1) "1 song" else "${songs.size} songs", style = Type.Small, color = p.inkMuted, modifier = Modifier.padding(top = 10.dp))
             }
         }
         itemsIndexed(songs, key = { _, s -> s.id }) { i, song ->

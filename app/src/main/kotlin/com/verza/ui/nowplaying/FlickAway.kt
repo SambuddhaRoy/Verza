@@ -1,5 +1,8 @@
 package com.verza.ui.nowplaying
 
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -140,7 +143,7 @@ fun FlickHandoff(playerOpen: Boolean, openPlayer: () -> Unit): FlickState {
             },
             // Lowercase words, as every word you press is; a name keeps its own.
             confirmButton = { TextButton(onClick = { state.asking = null; take(c) }) { Text("from ${c.name}") } },
-            dismissButton = { TextButton(onClick = { state.asking = null; graph.connect.tell(c, "pause") }) { Text("keep this one") } },
+            dismissButton = { TextButton(onClick = { state.asking = null; graph.connect.tell(c, "pause") }) { Text("Keep this one") } },
         )
     }
     return state
@@ -194,7 +197,7 @@ fun FlyingCover(art: String?, side: Dp, swell: Float, fly: Float, label: String?
                 rotationX = 32f * t
                 cameraDistance = 14f * density
                 alpha = (if (k == 0) 1f else 0.35f / k) * (1f - t * 0.6f)
-            }.clip(Corner))
+            }.then(if (k == 0) Modifier.shadow(30.dp, Corner, ambientColor = Color.Black.copy(alpha = 0.45f), spotColor = Color.Black.copy(alpha = 0.55f)) else Modifier).clip(Corner))
         }
     }
 }

@@ -1,5 +1,8 @@
 package com.verza.ui.library
 
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,7 +50,8 @@ fun YourSound() {
 
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp + LocalDockHeight.current)) {
         item {
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            // The three figures on one panel, as a summary in Apple's apps sits.
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(com.verza.ui.theme.GroupCorner).background(p.cell).padding(16.dp)) {
                 // Under an hour, minutes: "0 hours" says nothing.
                 if (ms >= 3_600_000) Figure("${ms / 3_600_000}", if (ms < 7_200_000) "hour" else "hours", Modifier.weight(1f))
                 else Figure("${ms / 60_000}", "minutes", Modifier.weight(1f))
@@ -64,7 +68,7 @@ fun YourSound() {
                 val w = size.width / 24
                 for (h in 0 until 24) {
                     val v = (byHour[h] ?: 0L).toFloat() / max
-                    drawRect(p.accent.copy(alpha = 0.35f + 0.65f * v), Offset(h * w + 1, size.height * (1 - v)), Size(w - 2, size.height * v))
+                    drawRoundRect(p.accent.copy(alpha = 0.35f + 0.65f * v), Offset(h * w + 1, size.height * (1 - v)), Size(w - 2, size.height * v), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
                 }
             }
             Row(Modifier.fillMaxWidth()) {
@@ -90,8 +94,8 @@ fun YourSound() {
 private fun Figure(value: String, label: String, modifier: Modifier) {
     val p = LocalPalette.current
     Column(modifier) {
-        Text(value, style = Type.Masthead.copy(fontSize = Type.Section.fontSize * 1.4f), color = p.ink)
-        Text(label, style = Type.RowSubtitle, color = p.inkMuted)
+        Text(value, style = Type.Masthead.copy(fontSize = 30.sp, lineHeight = 36.sp), color = p.ink)
+        Text(label, style = Type.Small, color = p.inkMuted)
     }
 }
 

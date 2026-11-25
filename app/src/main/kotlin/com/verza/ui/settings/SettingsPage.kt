@@ -1,6 +1,14 @@
 package com.verza.ui.settings
 
 import androidx.compose.foundation.clickable
+import com.verza.ui.kit.Masthead
+import com.verza.ui.kit.Hairline
+import com.verza.ui.kit.Group
+import com.verza.ui.kit.Glassed
+import com.verza.ui.kit.GlassButton
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,7 +23,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
+import com.verza.ui.kit.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -61,105 +69,118 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
     var adding by remember { mutableStateOf(false) }
     val cookie by graph.account.cookie.collectAsState()
 
-    LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp + LocalDockHeight.current)) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = LocalPalette.current.ink) }
-            }
-            Text("settings", style = Type.Masthead, color = LocalPalette.current.ink, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
-        }
-        item { SectionTitle("account") }
-        item {
-            // Signed in, your likes and playlists go to YouTube Music and Home is your own.
-            if (cookie.isNullOrBlank()) Row(Modifier.fillMaxWidth().clip(Corner).clickable(onClick = onSignIn).padding(vertical = 12.dp)) {
-                Column {
-                    Text("Sign in to YouTube Music", style = Type.RowTitle, color = LocalPalette.current.accent)
-                    Text("Your likes, playlists and Home from your account", style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
+    val p = LocalPalette.current
+    // iOS's settings: inset groups on the grey page, the way back in glass over its top.
+    Glassed(
+        ground = p.grouped,
+        modifier = Modifier.fillMaxSize().background(p.grouped),
+        content = {
+            LazyColumn(contentPadding = PaddingValues(top = 52.dp, bottom = 24.dp + LocalDockHeight.current)) {
+                item { Masthead("Settings") }
+                item {
+                    Group("Account", Modifier.padding(horizontal = 16.dp)) {
+                        // Signed in, your likes and playlists go to YouTube Music and Home is your own.
+                        if (cookie.isNullOrBlank()) Row(Modifier.fillMaxWidth().clickable(onClick = onSignIn).padding(vertical = 12.dp)) {
+                            Column {
+                                Text("Sign in to YouTube Music", style = Type.RowTitle, color = p.accent)
+                                Text("Your likes, playlists and Home from your account", style = Type.Small, color = p.inkMuted)
+                            }
+                        } else Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Signed in to YouTube Music", style = Type.RowTitle, color = p.ink, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { scope.launch { graph.account.set(null) } }) { Text("Sign out") }
+                        }
+                    }
                 }
-            } else Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Signed in to YouTube Music", style = Type.RowTitle, color = LocalPalette.current.ink, modifier = Modifier.weight(1f))
-                TextButton(onClick = { scope.launch { graph.account.set(null) } }) { Text("sign out") }
-            }
-        }
-        item { SectionTitle("playback") }
-        item {
-            Choice("Audio quality", "How much of YouTube's stream to fetch", listOf("HIGH" to "best", "MEDIUM" to "medium", "LOW" to "data saver"), quality) {
-                scope.launch { s.quality.set(it) }
-            }
-        }
-        item {
-            Choice("Fade between songs", "Fade out at the end of a song and in at the start of the next", listOf(0 to "off", 3 to "3s", 6 to "6s", 12 to "12s"), fade) {
-                scope.launch { s.fadeSeconds.set(it) }
-            }
-        }
-        item { Toggle("Skip silence", "Skip silent stretches inside a song", s.skipSilence) }
-        item { Toggle("Visualiser", "The music drawn around the cover in Now Playing", s.visualizer) }
-        item {
-            Row(Modifier.fillMaxWidth().clip(Corner).clickable(onClick = onEqualizer).padding(vertical = 10.dp)) {
-                Column {
-                    Text("Equaliser", style = Type.RowTitle, color = LocalPalette.current.ink)
-                    Text("Bands, presets, bass and loudness", style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
+                item {
+                    Group("Playback", Modifier.padding(horizontal = 16.dp)) {
+                        Choice("Audio quality", "How much of YouTube's stream to fetch", listOf("HIGH" to "Best", "MEDIUM" to "Medium", "LOW" to "Data saver"), quality) {
+                            scope.launch { s.quality.set(it) }
+                        }
+                        Hairline()
+                        Choice("Fade between songs", "Fade out at the end of a song and in at the start of the next", listOf(0 to "Off", 3 to "3s", 6 to "6s", 12 to "12s"), fade) {
+                            scope.launch { s.fadeSeconds.set(it) }
+                        }
+                        Hairline()
+                        Toggle("Skip silence", "Skip silent stretches inside a song", s.skipSilence)
+                        Hairline()
+                        Toggle("Visualiser", "The music drawn around the cover in Now Playing", s.visualizer)
+                        Hairline()
+                        Row(Modifier.fillMaxWidth().clickable(onClick = onEqualizer).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Equaliser", style = Type.RowTitle, color = p.ink)
+                                Text("Bands, presets, bass and loudness", style = Type.Small, color = p.inkMuted)
+                            }
+                            Icon(Icons.Rounded.ChevronRight, null, tint = p.inkMuted)
+                        }
+                        Hairline()
+                        Toggle("Resume on open", "Open where you left off", s.resumeOnOpen)
+                    }
+                }
+                item {
+                    Group(
+                        "Lossless sources", Modifier.padding(horizontal = 16.dp),
+                        footer = "A server that serves songs as FLAC. When it has the one you play, you hear it lossless instead of YouTube's stream.",
+                    ) {
+                        for ((i, source) in sources.withIndex()) {
+                            // Only the host: the rest of a link can be a password.
+                            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(source.name, style = Type.RowTitle, color = p.ink)
+                                    Text(runCatching { java.net.URI(source.url).host }.getOrNull().orEmpty(), style = Type.Small, color = p.inkMuted)
+                                }
+                                com.verza.ui.kit.SmallWord("remove", p.accent, "Remove ${source.name}") { scope.launch { s.sources.set(sources.filterIndexed { j, _ -> j != i }) } }
+                            }
+                            Hairline()
+                        }
+                        Row(Modifier.fillMaxWidth().clickable { adding = true }.padding(vertical = 12.dp)) { Text("Add a source", style = Type.RowTitle, color = p.accent) }
+                        if (sources.isNotEmpty()) {
+                            Hairline()
+                            Toggle("Use on mobile data", "A lossless song is roughly 30 MB, several times YouTube's", s.sourcesOnMobileData)
+                        }
+                    }
+                }
+                item { Group("Downloads", Modifier.padding(horizontal = 16.dp)) { Lossless() } }
+                item {
+                    Group("Devices", Modifier.padding(horizontal = 16.dp)) {
+                        com.verza.ui.kit.Devices()
+                        Hairline()
+                        Toggle("Flick to move music", "Flick the phone toward the computer and the music moves there; flick it back toward you and the computer's comes here", s.flick)
+                        Hairline()
+                        Toggle("Ask which to keep", "When a flick brings the computer's music here while this phone plays, choose which to keep. Off, the one brought in wins", s.flickAsk)
+                    }
+                }
+                item { Group("Your library", Modifier.padding(horizontal = 16.dp)) { LibraryFile() } }
+                item { Group("Listening elsewhere", Modifier.padding(horizontal = 16.dp)) { ListenBrainz() } }
+                item {
+                    Group("Search", Modifier.padding(horizontal = 16.dp)) {
+                        Toggle("Save search history", "Remember recent searches", s.saveSearchHistory)
+                        Hairline()
+                        Row(Modifier.fillMaxWidth().clickable { scope.launch { s.searchHistory.set(emptyList()) } }.padding(vertical = 12.dp)) {
+                            Text("Clear search history", style = Type.RowTitle, color = p.accent)
+                        }
+                    }
+                }
+                item {
+                    Group("About", Modifier.padding(horizontal = 16.dp)) {
+                        val context = LocalContext.current
+                        val ready by graph.updates.ready.collectAsState()
+                        var checked by remember { mutableStateOf<String?>(null) }
+                        Row(Modifier.fillMaxWidth().clickable {
+                            val r = ready
+                            if (r != null) com.verza.ui.home.install(context, r)
+                            else { checked = "Looking…"; scope.launch { checked = graph.updates.check()?.let { "Verza ${it.version} is downloading" } ?: "Verza is up to date" } }
+                        }.padding(vertical = 10.dp)) {
+                            Column {
+                                Text(if (ready != null) "Update to ${ready!!.version}" else "Check for updates", style = Type.RowTitle, color = p.accent)
+                                Text(checked ?: "Verza ${BuildConfig.VERSION_NAME}", style = Type.Small, color = p.inkMuted)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        item { Toggle("Resume on open", "Open where you left off", s.resumeOnOpen) }
-
-        item { SectionTitle("lossless sources") }
-        item {
-            Text(
-                "A server that serves songs as FLAC. When it has the one you play, you hear it lossless instead of YouTube's stream.",
-                style = Type.Body, color = LocalPalette.current.inkMuted, modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
-        for ((i, source) in sources.withIndex()) item(key = "source$i") {
-            // Only the host: the rest of a link can be a password.
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(source.name, style = Type.RowTitle, color = LocalPalette.current.ink)
-                    Text(runCatching { java.net.URI(source.url).host }.getOrNull().orEmpty(), style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
-                }
-                com.verza.ui.kit.SmallWord("remove", LocalPalette.current.inkMuted, "Remove ${source.name}") { scope.launch { s.sources.set(sources.filterIndexed { j, _ -> j != i }) } }
-            }
-        }
-        item { Row(Modifier.fillMaxWidth().clip(Corner).clickable { adding = true }.padding(vertical = 12.dp)) { Text("Add a source", style = Type.RowTitle, color = LocalPalette.current.accent) } }
-        if (sources.isNotEmpty()) item { Toggle("Use on mobile data", "A lossless song is roughly 30 MB, several times YouTube's", s.sourcesOnMobileData) }
-
-        item { SectionTitle("downloads") }
-        item { Lossless() }
-
-        item { SectionTitle("devices") }
-        item { com.verza.ui.kit.Devices() }
-        item { Toggle("Flick to move music", "Flick the phone toward the computer and the music moves there; flick it back toward you and the computer's comes here", s.flick) }
-        item { Toggle("Ask which to keep", "When a flick brings the computer's music here while this phone plays, choose which to keep. Off, the one brought in wins", s.flickAsk) }
-
-        item { SectionTitle("your library") }
-        item { LibraryFile() }
-        item { SectionTitle("listening elsewhere") }
-        item { ListenBrainz() }
-        item { SectionTitle("search") }
-        item { Toggle("Save search history", "Remember recent searches", s.saveSearchHistory) }
-        item {
-            Row(Modifier.fillMaxWidth().clip(Corner).clickable { scope.launch { s.searchHistory.set(emptyList()) } }.padding(vertical = 12.dp)) {
-                Text("Clear search history", style = Type.RowTitle, color = LocalPalette.current.ink)
-            }
-        }
-        item { SectionTitle("about") }
-        item {
-            val context = LocalContext.current
-            val ready by graph.updates.ready.collectAsState()
-            var checked by remember { mutableStateOf<String?>(null) }
-            Row(Modifier.fillMaxWidth().clip(Corner).clickable {
-                val r = ready
-                if (r != null) com.verza.ui.home.install(context, r)
-                else { checked = "Looking…"; scope.launch { checked = graph.updates.check()?.let { "Verza ${it.version} is downloading" } ?: "Verza is up to date" } }
-            }.padding(vertical = 12.dp)) {
-                Column {
-                    Text(if (ready != null) "Update to ${ready!!.version}" else "Check for updates", style = Type.RowTitle, color = LocalPalette.current.accent)
-                    Text(checked ?: "Verza ${BuildConfig.VERSION_NAME}", style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
-                }
-            }
-        }
-    }
+        },
+        glass = { GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) },
+    )
     if (adding) AddSource(onDone = { adding = false })
 }
 
@@ -195,7 +216,7 @@ private fun AddSource(onDone: () -> Unit) {
                 }
             }) { Text(if (checking) "Checking…" else "Add") }
         },
-        dismissButton = { TextButton(onClick = onDone) { Text("cancel") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
 }
 
@@ -205,14 +226,14 @@ private fun Toggle(title: String, subtitle: String, setting: Setting<Boolean>) {
     val scope = rememberCoroutineScope()
     val on by setting.flow.collectAsState(initial = false)
     Row(
-        Modifier.fillMaxWidth().clip(Corner).clickable { scope.launch { setting.set(!on) } }
+        Modifier.fillMaxWidth().clickable { scope.launch { setting.set(!on) } }
             .semantics(mergeDescendants = true) { role = Role.Switch; stateDescription = if (on) "On" else "Off" }
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(title, style = Type.RowTitle, color = LocalPalette.current.ink)
-            Text(subtitle, style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
+            Text(subtitle, style = Type.Small, color = LocalPalette.current.inkMuted)
         }
         Switch(checked = on, onCheckedChange = null)
     }
@@ -223,12 +244,12 @@ private fun Toggle(title: String, subtitle: String, setting: Setting<Boolean>) {
 private fun <T> Choice(title: String, subtitle: String, options: List<Pair<T, String>>, value: T, onPick: (T) -> Unit) {
     val i = options.indexOfFirst { it.first == value }.coerceAtLeast(0)
     Row(
-        Modifier.fillMaxWidth().clip(Corner).clickable { onPick(options[(i + 1) % options.size].first) }.padding(vertical = 10.dp),
+        Modifier.fillMaxWidth().clickable { onPick(options[(i + 1) % options.size].first) }.padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(title, style = Type.RowTitle, color = LocalPalette.current.ink)
-            Text(subtitle, style = Type.RowSubtitle, color = LocalPalette.current.inkMuted)
+            Text(subtitle, style = Type.Small, color = LocalPalette.current.inkMuted)
         }
         Text(options[i].second, style = Type.RowTitle, color = LocalPalette.current.accent)
     }
@@ -251,7 +272,7 @@ private fun ListenBrainz() {
             Text("ListenBrainz: $user", style = Type.RowTitle, color = p.ink)
             Text("Its weekly mixes are on Home", style = Type.RowSubtitle, color = p.inkMuted)
         }
-        TextButton(onClick = { scope.launch { graph.mixPrefs.listenBrainzUser.set(""); graph.mixes.rebuildListenBrainz() } }) { Text("disconnect") }
+        TextButton(onClick = { scope.launch { graph.mixPrefs.listenBrainzUser.set(""); graph.mixes.rebuildListenBrainz() } }) { Text("Disconnect") }
     } else Column(Modifier.padding(vertical = 4.dp)) {
         Text("A ListenBrainz username brings its weekly mixes to Home, Spotify listening included.", style = Type.Body, color = p.inkMuted)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -265,7 +286,7 @@ private fun ListenBrainz() {
                         com.verza.data.mixes.ListenBrainzRepository.Check.Unreachable -> "Couldn't reach ListenBrainz. Try again."
                     }
                 }
-            }) { Text("connect") }
+            }) { Text("Connect") }
         }
         note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
     }
@@ -315,7 +336,7 @@ internal fun Lossless() {
 
     Column {
         Row(
-            Modifier.fillMaxWidth().clip(Corner).clickable(enabled = !busy) {
+            Modifier.fillMaxWidth().clickable(enabled = !busy) {
                 scope.launch {
                     when {
                         lossless -> { graph.settings.losslessDownloads.set(false); note = null }
@@ -352,11 +373,11 @@ internal fun Lossless() {
                     style = Type.RowSubtitle, color = p.inkMuted,
                 )
             }
-            TextButton(onClick = { own = !own }) { Text("use my own") }
+            TextButton(onClick = { own = !own }) { Text("Use my own") }
             TextButton(onClick = {
                 com.verza.data.downloads.Soulseek.logout(context)
                 scope.launch { graph.settings.soulseekUser.set(""); graph.settings.losslessDownloads.set(false) }
-            }) { Text("sign out") }
+            }) { Text("Sign out") }
         } else TextButton(onClick = { own = !own }, modifier = Modifier.padding(start = 0.dp)) { Text("I have a Soulseek account") }
         if (own) {
             OutlinedTextField(name, { name = it; note = null }, singleLine = true, enabled = !busy, placeholder = { Text("Soulseek username") },
@@ -367,7 +388,7 @@ internal fun Lossless() {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), shape = Corner, modifier = Modifier.weight(1f))
                 TextButton(enabled = !busy && name.isNotBlank() && password.isNotEmpty(), onClick = {
                     scope.launch { if (signIn(name.trim(), password, false)) password = "" }
-                }) { Text("sign in") }
+                }) { Text("Sign in") }
             }
         }
     }
@@ -420,10 +441,10 @@ private fun LibraryFile() {
         scope.launch { graph.settings.downloadFolder.set(uri.toString()) }
     }
     @Composable fun Action(title: String, subtitle: String, onClick: () -> Unit) {
-        Row(Modifier.fillMaxWidth().clip(Corner).clickable(onClick = onClick).padding(vertical = 10.dp)) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp)) {
             Column {
                 Text(title, style = Type.RowTitle, color = p.ink)
-                Text(subtitle, style = Type.RowSubtitle, color = p.inkMuted)
+                Text(subtitle, style = Type.Small, color = p.inkMuted)
             }
         }
     }
@@ -438,7 +459,7 @@ private fun LibraryFile() {
         onDismissRequest = { resetting = false },
         title = { Text("Reset listening stats?") },
         text = { Text("Your play history goes. Likes, playlists and downloads stay.") },
-        confirmButton = { TextButton(onClick = { resetting = false; scope.launch { graph.db.stats().clearAll(); note = "Listening stats reset" } }) { Text("reset") } },
-        dismissButton = { TextButton(onClick = { resetting = false }) { Text("cancel") } },
+        confirmButton = { TextButton(onClick = { resetting = false; scope.launch { graph.db.stats().clearAll(); note = "Listening stats reset" } }) { Text("Reset") } },
+        dismissButton = { TextButton(onClick = { resetting = false }) { Text("Cancel") } },
     )
 }

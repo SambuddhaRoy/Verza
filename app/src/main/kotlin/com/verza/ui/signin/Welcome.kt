@@ -1,5 +1,6 @@
 package com.verza.ui.signin
 
+import com.verza.ui.kit.sentence
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -55,11 +56,11 @@ fun Welcome(account: Boolean, onSignIn: () -> Unit) {
             .verticalScroll(rememberScrollState()).padding(horizontal = 28.dp).padding(top = 72.dp, bottom = 28.dp),
     ) {
         @Composable fun Heading(text: String, lead: String) {
-            Text(text, style = Type.Masthead.copy(fontSize = 64.sp, lineHeight = 68.sp), color = p.ink)
+            Text(text.sentence(), style = Type.Masthead.copy(fontSize = 40.sp, lineHeight = 46.sp), color = p.ink)
             Text(lead, style = Type.RowTitle, color = p.inkMuted, modifier = Modifier.padding(top = 12.dp, bottom = 20.dp))
         }
         @Composable fun Words(content: @Composable () -> Unit) =
-            Row(Modifier.padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) { content() }
+            Row(Modifier.padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) { content() }
 
         when (step) {
             0 -> {

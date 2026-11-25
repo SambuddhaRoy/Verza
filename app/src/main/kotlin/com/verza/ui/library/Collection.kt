@@ -3,6 +3,12 @@ package com.verza.ui.library
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.selected
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -73,22 +79,34 @@ fun Collection(key: String, songs: List<Song>, facts: (Song) -> Facts, onOpenGro
 
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                Word("play", p.accent) { player.play(order) }
-                Word("shuffle") { player.shuffle(order) }
-                Spacer(Modifier.weight(1f))
-                Text(if (songs.size == 1) "1 song" else "${songs.size} songs", style = Type.Small, color = p.inkMuted)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Word("Play", p.accent, Modifier.weight(1f), icon = androidx.compose.material.icons.Icons.Rounded.PlayArrow) { player.play(order) }
+                Word("Shuffle", p.accent, Modifier.weight(1f), icon = androidx.compose.material.icons.Icons.Rounded.Shuffle) { player.shuffle(order) }
             }
         }
         item {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
-                for (v in SORTS.keys) Text(v, style = Type.Section.copy(fontSize = 19.sp, lineHeight = 24.sp), color = if (v == view) p.ink else p.inkMuted,
-                    modifier = Modifier.clickable { view = v; sort = SORTS.getValue(v).first(); save() }.semantics { role = Role.Tab }.padding(end = 16.dp, top = 12.dp, bottom = 12.dp))
+            // Songs, albums or artists as iOS's segmented control: a capsule of the fill, the chosen one raised.
+            Row(Modifier.fillMaxWidth().padding(top = 14.dp).height(44.dp).clip(CircleShape).background(p.fill).padding(3.dp)) {
+                for (v in SORTS.keys) {
+                    val on = v == view
+                    Box(
+                        Modifier.weight(1f).fillMaxHeight().clip(CircleShape)
+                            .background(if (on) (if (p.dark) androidx.compose.ui.graphics.Color(0xFF636366) else androidx.compose.ui.graphics.Color.White) else androidx.compose.ui.graphics.Color.Transparent)
+                            .clickable { view = v; sort = SORTS.getValue(v).first(); save() }
+                            .semantics { role = Role.Tab; selected = on },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(v.replaceFirstChar { it.titlecase() }, style = Type.Headline.copy(fontSize = 14.sp, lineHeight = 18.sp), color = p.ink) }
+                }
+            }
+        }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+                Text(if (songs.size == 1) "1 song" else "${songs.size} songs", style = Type.Small, color = p.inkMuted)
                 Spacer(Modifier.weight(1f))
                 Box {
                     var open by remember { mutableStateOf(false) }
-                    Text("by $sort ▾", style = Type.Section.copy(fontSize = 19.sp, lineHeight = 24.sp), color = p.inkMuted,
-                        modifier = Modifier.clickable { open = true }.semantics { role = Role.DropdownList }.padding(vertical = 12.dp))
+                    Text("By $sort ▾", style = Type.RowSubtitle, color = p.accent,
+                        modifier = Modifier.clickable { open = true }.semantics { role = Role.DropdownList }.padding(vertical = 14.dp))
                     DropdownMenu(open, onDismissRequest = { open = false }) {
                         for (s in SORTS.getValue(view)) DropdownMenuItem(text = { Text(s, color = if (s == sort) p.accent else p.ink) }, onClick = { sort = s; save(); open = false })
                     }
@@ -97,7 +115,7 @@ fun Collection(key: String, songs: List<Song>, facts: (Song) -> Facts, onOpenGro
         }
         items(rows, key = { it.key }) { row ->
             when (row) {
-                is Line.Head -> Text(row.label, style = Type.Section, color = p.accent, modifier = Modifier.padding(top = 18.dp, bottom = 4.dp))
+                is Line.Head -> Text(row.label.replaceFirstChar { it.titlecase() }, style = Type.Section.copy(fontSize = 20.sp, lineHeight = 25.sp), color = p.ink, modifier = Modifier.padding(top = 20.dp, bottom = 2.dp))
                 is Line.Item -> if (view == "songs") {
                     val song = row.songs.single()
                     ListRow(song.title, listOfNotNull(song.artist, facts(song).album).joinToString(" • "), art = song.art?.let { artAt(it, 226) },
@@ -112,7 +130,7 @@ fun Collection(key: String, songs: List<Song>, facts: (Song) -> Facts, onOpenGro
         }
         // Folders of songs that aren't an album, on the phone: after the albums.
         if (view == "albums" && folders.isNotEmpty()) {
-            item { Text("folders", style = Type.Section, color = p.accent, modifier = Modifier.padding(top = 18.dp, bottom = 4.dp)) }
+            item { Text("Folders", style = Type.Section.copy(fontSize = 20.sp, lineHeight = 25.sp), color = p.ink, modifier = Modifier.padding(top = 20.dp, bottom = 2.dp)) }
             items(folders, key = { "f" + it.first }) { (title, open) -> ListRow(title, null, icon = androidx.compose.material.icons.Icons.Rounded.Folder, onClick = open) }
         }
     }
@@ -124,9 +142,9 @@ fun ArtistPicture(name: String) {
     val context = LocalContext.current
     val p = LocalPalette.current
     val url by produceState(ArtistArt.cached(context, name), name) { if (value == null) value = ArtistArt.find(context, name) }
-    Box(Modifier.padding(vertical = 6.dp).size(50.dp).clip(CircleShape).background(p.surfaceHigh), contentAlignment = Alignment.Center) {
-        if (url.isNullOrEmpty()) Text(sortName(name).take(1).lowercase().ifEmpty { "?" }, style = Type.Section, color = p.inkMuted)
-        else coil3.compose.AsyncImage(artAt(url!!, 226), null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.size(50.dp))
+    Box(Modifier.padding(vertical = 6.dp).size(48.dp).clip(CircleShape).background(p.surfaceHigh), contentAlignment = Alignment.Center) {
+        if (url.isNullOrEmpty()) Text(sortName(name).take(1).uppercase().ifEmpty { "?" }, style = Type.Section, color = p.inkMuted)
+        else coil3.compose.AsyncImage(artAt(url!!, 226), null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.size(48.dp))
     }
 }
 

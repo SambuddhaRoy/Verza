@@ -8,6 +8,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,12 +34,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -46,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.verza.ui.theme.Corner
+import com.verza.ui.theme.GroupCorner
+import com.verza.ui.theme.artCorner
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 
@@ -55,27 +60,30 @@ import com.verza.ui.theme.Type
  */
 val LocalDockHeight = compositionLocalOf { 0.dp }
 
-/** A page's name over its dateline: the Zune's masthead. */
+/** "recently played" as "Recently played": Apple's sentence case, for words that arrive lowercase. */
+fun String.sentence() = replaceFirstChar { it.titlecase() }
+
+/** A page's name, large and bold, with [trailing] (a button or two) level with it. */
 @Composable
-fun Masthead(title: String, dateline: String? = null, modifier: Modifier = Modifier) {
+fun Masthead(title: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
     val p = LocalPalette.current
-    Column(modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp)) {
-        if (dateline != null) Text(dateline, style = Type.Body, color = p.inkMuted)
-        Text(title, style = Type.Masthead, color = p.ink)
+    Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title.sentence(), style = Type.Masthead, color = p.ink, modifier = Modifier.weight(1f).semantics { heading() })
+        trailing?.invoke()
     }
 }
 
-/** A heading inside a page: "recently played". */
+/** A heading inside a page: "Recently played". */
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = Type.Section, color = LocalPalette.current.ink, modifier = modifier.padding(top = 24.dp, bottom = 8.dp))
+    Text(text.sentence(), style = Type.Section, color = LocalPalette.current.ink, modifier = modifier.padding(top = 26.dp, bottom = 10.dp).semantics { heading() })
 }
 
-/** A row's own small word, "forget", "remove": a word as the desktop has, at 48dp tall. */
+/** A row's own small action, "Forget", "Remove": plain words in [color], 48dp tall. */
 @Composable
 fun SmallWord(text: String, color: Color, label: String = text, onClick: () -> Unit) {
     Text(
-        text,
+        text.sentence(),
         style = Type.RowTitle,
         color = color,
         modifier = Modifier
@@ -87,25 +95,48 @@ fun SmallWord(text: String, color: Color, label: String = text, onClick: () -> U
     )
 }
 
-/** A button that is just the word, in large light type: "play", "shuffle". */
+/**
+ * A button: its words (and [icon]) in [color] on a capsule of the fill, as Apple Music's Play and
+ * Shuffle are. The accent marks the one to press; the rest are in ink.
+ */
 @Composable
-fun Word(text: String, color: Color = LocalPalette.current.ink, enabled: Boolean = true, onClick: () -> Unit) {
-    Text(
-        text,
-        style = Type.Section.copy(fontSize = 24.sp, lineHeight = 30.sp),
-        color = if (enabled) color else color.copy(alpha = 0.4f),
-        modifier = Modifier
+fun Word(text: String, color: Color = LocalPalette.current.ink, modifier: Modifier = Modifier, icon: ImageVector? = null, enabled: Boolean = true, onClick: () -> Unit) {
+    val p = LocalPalette.current
+    val ink = if (enabled) color else color.copy(alpha = 0.4f)
+    Row(
+        modifier
+            .heightIn(min = 48.dp)
+            .clip(CircleShape)
+            .background(p.fill)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { role = Role.Button }
-            .padding(vertical = 6.dp),
-    )
+            .padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) { Icon(icon, null, tint = ink, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)) }
+        Text(text.sentence(), style = Type.Headline, color = ink, maxLines = 1)
+    }
 }
 
-/** A cover, square, with a hairline on a light page so a white cover isn't a hole in the list. */
+/** A round button with one symbol on the fill, for the content layer (glass is for the controls over it). */
+@Composable
+fun IconCircle(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 40.dp, tint: Color = LocalPalette.current.ink, onClick: () -> Unit) {
+    Box(
+        modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick).semantics { role = Role.Button; contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(size).clip(CircleShape).background(LocalPalette.current.fill), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.55f))
+        }
+    }
+}
+
+/** A cover, square, its corner growing with its size; a hairline on a light page so a white cover isn't a hole. */
 @Composable
 fun Cover(url: String?, size: Dp, modifier: Modifier = Modifier, round: Boolean = false) {
     val p = LocalPalette.current
-    val shape = if (round) CircleShape else Corner
+    val shape = if (round) CircleShape else artCorner(size)
     AsyncImage(
         model = url,
         contentDescription = null,
@@ -114,11 +145,20 @@ fun Cover(url: String?, size: Dp, modifier: Modifier = Modifier, round: Boolean 
             .size(size)
             .clip(shape)
             .background(p.surfaceHigh)
-            .then(if (p.dark) Modifier else Modifier.border(1.dp, p.line, shape)),
+            .then(if (p.dark) Modifier else Modifier.border(0.5.dp, p.line, shape)),
     )
 }
 
-/** A list row: the cover and two lines, no edges. The playing row's title takes the accent. */
+/** The thin line between rows, starting at [start] so it runs under the words and not the picture. */
+@Composable
+fun Hairline(start: Dp = 0.dp) {
+    Box(Modifier.fillMaxWidth().padding(start = start).height(0.5.dp).background(LocalPalette.current.line))
+}
+
+/**
+ * A list row: the cover and two lines, a hairline under the words. The playing row's title takes the
+ * accent.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListRow(
@@ -139,30 +179,34 @@ fun ListRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(Corner)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(start = 2.dp),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
             leading != null -> leading()
-            icon != null -> Box(Modifier.padding(vertical = 6.dp).size(50.dp), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = p.accent, modifier = Modifier.size(26.dp))
+            icon != null -> Box(Modifier.padding(vertical = 6.dp).size(48.dp), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = p.accent, modifier = Modifier.size(24.dp))
             }
-            else -> Cover(art, 50.dp, Modifier.padding(vertical = 6.dp), round)
+            else -> Cover(art, 48.dp, Modifier.padding(vertical = 6.dp), round)
         }
         Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f).heightIn(min = 62.dp).padding(vertical = 8.dp), verticalArrangement = Arrangement.Center) {
-            // A video's title shown as a song's; the byline's dots the same as everywhere else.
-            Text(com.verza.data.shownTitle(title, subtitle?.substringBefore(" • ")), style = Type.RowTitle, color = if (playing) p.accent else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (!subtitle.isNullOrBlank()) {
-                Text(subtitle.replace(" • ", " · "), style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).heightIn(min = 60.dp).padding(vertical = 8.dp), verticalArrangement = Arrangement.Center) {
+                    // A video's title shown as a song's; the byline's dots the same as everywhere else.
+                    Text(com.verza.data.shownTitle(title, subtitle?.substringBefore(" • ")), style = Type.RowTitle.copy(fontSize = 16.sp, lineHeight = 21.sp), color = if (playing) p.accent else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (!subtitle.isNullOrBlank()) {
+                        Text(subtitle.replace(" • ", " · "), style = Type.RowSubtitle.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                trailing?.invoke()
             }
+            Hairline()
         }
-        trailing?.invoke()
     }
 }
 
-/** Nothing here yet: a quiet symbol over one line saying what to do, and the word that does it. */
+/** Nothing here yet: a quiet symbol over one line saying what to do, and the button that does it. */
 @Composable
 fun Empty(text: String, icon: ImageVector = Icons.Rounded.MusicNote, action: String? = null, onAction: () -> Unit = {}) {
     val p = LocalPalette.current
@@ -171,14 +215,13 @@ fun Empty(text: String, icon: ImageVector = Icons.Rounded.MusicNote, action: Str
             Icon(icon, contentDescription = null, tint = p.inkMuted.copy(alpha = 0.55f), modifier = Modifier.size(52.dp))
             Spacer(Modifier.height(14.dp))
             Text(text, style = Type.RowTitle, color = p.inkMuted, textAlign = TextAlign.Center)
-            if (action != null) { Spacer(Modifier.height(8.dp)); Word(action, p.accent, onClick = onAction) }
+            if (action != null) { Spacer(Modifier.height(16.dp)); Word(action, p.accent, onClick = onAction) }
         }
     }
 }
 
 /**
- * A text field that isn't a box: the text over a line, the accent's when you're in it. Every field in
- * the app is one, as on the desktop.
+ * A text field: the words on a rounded fill, as iOS draws one. Every field in the app is one.
  */
 @Composable
 fun Field(
@@ -189,12 +232,11 @@ fun Field(
     style: androidx.compose.ui.text.TextStyle = Type.RowTitle,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    shape: androidx.compose.ui.graphics.Shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
     keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
     keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default,
 ) {
     val p = LocalPalette.current
-    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val focused by source.collectIsFocusedAsState()
     androidx.compose.foundation.text.BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -203,22 +245,35 @@ fun Field(
         cursorBrush = androidx.compose.ui.graphics.SolidColor(p.accent),
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        interactionSource = source,
         modifier = modifier,
         decorationBox = { inner ->
-            Column {
-                Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (leading != null) { leading(); Spacer(Modifier.width(10.dp)) }
-                    Box(Modifier.weight(1f)) {
-                        if (value.isEmpty()) Text(placeholder, style = style, color = p.inkMuted, maxLines = 1)
-                        inner()
-                    }
-                    trailing?.invoke()
+            Row(
+                Modifier.heightIn(min = 44.dp).clip(shape).background(p.fill).padding(start = if (leading != null) 10.dp else 14.dp, end = if (trailing != null) 0.dp else 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (leading != null) { leading(); Spacer(Modifier.width(6.dp)) }
+                Box(Modifier.weight(1f)) {
+                    if (value.isEmpty()) Text(placeholder, style = style, color = p.inkMuted, maxLines = 1)
+                    inner()
                 }
-                Box(Modifier.fillMaxWidth().height(if (focused) 2.dp else 1.dp).background(if (focused) p.accent else p.line))
+                trailing?.invoke()
             }
         },
     )
+}
+
+/**
+ * An inset group of rows, as iOS's settings have: [title] over it, [content] on a rounded panel.
+ * Rows inside put a [Hairline] between them.
+ */
+@Composable
+fun Group(title: String? = null, modifier: Modifier = Modifier, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    val p = LocalPalette.current
+    Column(modifier.fillMaxWidth().padding(top = 22.dp)) {
+        if (title != null) Text(title.sentence(), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp).semantics { heading() })
+        Column(Modifier.fillMaxWidth().clip(GroupCorner).background(p.cell).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
+        if (footer != null) Text(footer, style = Type.Small, color = p.inkMuted, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
+    }
 }
 
 /**
@@ -239,4 +294,38 @@ fun LightBarIcons() {
         bars?.isAppearanceLightStatusBars = false
         onDispose { if (was != null) bars.isAppearanceLightStatusBars = was }
     }
+}
+
+/** A switch as iOS draws one: a white knob the same size on or off, the track the accent when on. */
+@Composable
+fun Switch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: Boolean = true) {
+    val p = LocalPalette.current
+    androidx.compose.material3.Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        enabled = enabled,
+        // Content in the knob keeps it full size when off; Material shrinks an empty one.
+        thumbContent = { Box(Modifier.size(1.dp)) },
+        colors = androidx.compose.material3.SwitchDefaults.colors(
+            checkedThumbColor = Color.White, checkedTrackColor = p.accent, checkedBorderColor = Color.Transparent,
+            uncheckedThumbColor = Color.White, uncheckedTrackColor = Color(0xFF787880).copy(alpha = if (p.dark) 0.36f else 0.18f), uncheckedBorderColor = Color.Transparent,
+        ),
+    )
+}
+
+/** A slider as iOS draws one: a thin track, the accent as far as the value, a round white knob. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun Slider(value: Float, onValueChange: (Float) -> Unit, modifier: Modifier = Modifier, valueRange: ClosedFloatingPointRange<Float> = 0f..1f) {
+    val p = LocalPalette.current
+    val colors = androidx.compose.material3.SliderDefaults.colors(
+        thumbColor = Color.White, activeTrackColor = p.accent, inactiveTrackColor = Color(0xFF787880).copy(alpha = if (p.dark) 0.36f else 0.2f),
+    )
+    androidx.compose.material3.Slider(
+        value = value, onValueChange = onValueChange, modifier = modifier, valueRange = valueRange, colors = colors,
+        thumb = { Box(Modifier.size(26.dp).shadow(4.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f)).background(Color.White, CircleShape)) },
+        track = { state ->
+            androidx.compose.material3.SliderDefaults.Track(sliderState = state, colors = colors, drawStopIndicator = null, thumbTrackGapSize = 0.dp, modifier = Modifier.height(4.dp))
+        },
+    )
 }

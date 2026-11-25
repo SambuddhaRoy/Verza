@@ -1,6 +1,16 @@
 package com.verza.ui.search
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -54,9 +64,9 @@ import com.verza.ui.kit.SongMenu
 import com.verza.ui.theme.LocalPalette
 import com.verza.ui.theme.Type
 
-private val Filters = listOf(Filter.TOP to "top results", Filter.SONGS to "songs", Filter.ALBUMS to "albums", Filter.ARTISTS to "artists", Filter.PLAYLISTS to "playlists")
+private val Filters = listOf(Filter.TOP to "Top results", Filter.SONGS to "Songs", Filter.ALBUMS to "Albums", Filter.ARTISTS to "Artists", Filter.PLAYLISTS to "Playlists")
 
-/** Search: the field, the filters as words, then results, or your recent searches before any. */
+/** Search: the field, the filters as chips, then results, or your recent searches before any. */
 @Composable
 fun SearchPage(onOpen: (String) -> Unit) {
     val graph = LocalContext.current.graph
@@ -68,13 +78,13 @@ fun SearchPage(onOpen: (String) -> Unit) {
     val keyboard = LocalSoftwareKeyboardController.current
 
     Column(Modifier.fillMaxSize()) {
-        Masthead("search", "explore")
+        Masthead("Search")
         com.verza.ui.kit.Field(
             value = state.query,
             onValueChange = model::type,
             placeholder = "Songs, albums, artists",
-            style = Type.Section.copy(fontSize = 22.sp, lineHeight = 28.sp),
-            leading = { Icon(Icons.Rounded.Search, null, tint = p.inkMuted) },
+            shape = CircleShape,
+            leading = { Icon(Icons.Rounded.Search, null, tint = p.inkMuted, modifier = Modifier.size(22.dp)) },
             trailing = { if (state.query.isNotEmpty()) IconButton(onClick = { model.type("") }) { Icon(Icons.Rounded.Close, "Clear", tint = p.inkMuted) } },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { keyboard?.hide(); focus.clearFocus(); model.search() }),
@@ -88,16 +98,24 @@ fun SearchPage(onOpen: (String) -> Unit) {
                     drawContent()
                     drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(0.85f to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
                 }
-                .horizontalScroll(rememberScrollState()).padding(start = 20.dp, end = 48.dp, top = 2.dp, bottom = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                .horizontalScroll(rememberScrollState()).padding(start = 20.dp, end = 48.dp, top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             for ((filter, word) in Filters) {
-                Text(
-                    word,
-                    style = Type.Section.copy(fontSize = 24.sp),
-                    color = if (filter == state.filter) p.ink else p.inkMuted,
-                    modifier = Modifier.heightIn(min = 48.dp).clickable { focus.clearFocus(); model.filter(filter) }.wrapContentHeight(),
-                )
+                // A chip 36 tall in a 48 tall place to press.
+                val on = filter == state.filter
+                Box(
+                    Modifier.heightIn(min = 48.dp).clickable(remember { MutableInteractionSource() }, null) { focus.clearFocus(); model.filter(filter) }
+                        .semantics { role = Role.Tab; selected = on },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        word,
+                        style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp),
+                        color = if (on) p.canvas else p.ink,
+                        modifier = Modifier.clip(CircleShape).background(if (on) p.ink else p.fill).padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
         }
         Box(Modifier.weight(1f)) {

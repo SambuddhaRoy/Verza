@@ -48,9 +48,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
-import java.time.LocalDateTime
-import java.time.format.TextStyle
-import java.util.Locale
 
 /**
  * Home's shelves that come from the play log: [local] at once (null until read), and the "because you
@@ -124,12 +121,8 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(bottom = 16.dp + LocalDockHeight.current)) {
             item {
-                // Settings is a word, as on the desktop, level with the page's name.
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Masthead("for you", dateline(), Modifier.weight(1f))
-                    com.verza.ui.kit.Word("settings", p.inkMuted, onClick = onSettings)
-                    androidx.compose.foundation.layout.Spacer(Modifier.width(20.dp))
-                }
+                // Settings sits by the page's name, where Apple Music keeps the account.
+                Masthead("Home") { com.verza.ui.kit.IconCircle(androidx.compose.material.icons.Icons.Rounded.Settings, "Settings", onClick = onSettings) }
             }
             item { UpdateLine() }
             for (section in shelves) {
@@ -149,13 +142,6 @@ fun HomePage(onOpen: (String) -> Unit, onSettings: () -> Unit) {
             shelves.isEmpty() -> Empty("Play some music and Home fills up with songs picked from what you listen to.")
         }
     }
-}
-
-/** "saturday evening". */
-private fun dateline(): String {
-    val now = LocalDateTime.now()
-    val part = when (now.hour) { in 5..11 -> "morning"; in 12..16 -> "afternoon"; in 17..21 -> "evening"; else -> "night" }
-    return now.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault()).lowercase() + " " + part
 }
 
 /** "Verza 2.0.1 is ready · update", when a newer release is downloaded. */

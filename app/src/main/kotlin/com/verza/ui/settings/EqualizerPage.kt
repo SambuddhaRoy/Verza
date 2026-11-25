@@ -1,5 +1,8 @@
 package com.verza.ui.settings
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
+import com.verza.ui.kit.Slider
+import com.verza.ui.kit.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,11 +55,9 @@ fun EqualizerPage(onBack: () -> Unit) {
     val loud by s.loudness.flow.collectAsState(initial = false)
     val bands = List(layout.bandCount) { stored.getOrElse(it) { 0 } }
 
-    LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp + LocalDockHeight.current)) {
-        item {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = p.ink) }
-            Text("equaliser", style = Type.Masthead, color = p.ink)
-        }
+    com.verza.ui.kit.Glassed(p.canvas, Modifier.fillMaxSize(), content = {
+    LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 52.dp, bottom = 24.dp + LocalDockHeight.current)) {
+        item { Text("Equaliser", style = Type.Masthead, color = p.ink, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)) }
         item {
             Row(Modifier.fillMaxWidth().clickable { scope.launch { s.eqOn.set(!on) } }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Equaliser", style = Type.RowTitle, color = p.ink, modifier = Modifier.weight(1f))
@@ -64,12 +65,16 @@ fun EqualizerPage(onBack: () -> Unit) {
             }
         }
         item {
-            Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            // The presets as chips, the chosen one in ink, as the search's filters are.
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (preset0 in EqPreset.entries) {
+                    val chosen = preset0.name == preset
                     Text(
-                        preset0.displayName.lowercase(), style = Type.Section.copy(fontSize = 22.sp),
-                        color = if (preset0.name == preset) p.accent else p.inkMuted,
-                        modifier = Modifier.clickable { scope.launch { s.eqPreset.set(preset0.name); s.eqBands.set(preset0.levelsFor(layout)); s.eqOn.set(true) } },
+                        preset0.displayName, style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp),
+                        color = if (chosen) p.canvas else p.ink,
+                        modifier = Modifier.padding(vertical = 4.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (chosen) p.ink else p.fill)
+                            .clickable { scope.launch { s.eqPreset.set(preset0.name); s.eqBands.set(preset0.levelsFor(layout)); s.eqOn.set(true) } }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                     )
                 }
             }
@@ -100,4 +105,5 @@ fun EqualizerPage(onBack: () -> Unit) {
             }
         }
     }
+    }, glass = { com.verza.ui.kit.GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onBack) })
 }

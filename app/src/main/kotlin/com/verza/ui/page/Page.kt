@@ -1,6 +1,27 @@
 package com.verza.ui.page
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.Glassed
+import com.verza.ui.kit.Hairline
+import com.verza.ui.theme.artCorner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +53,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.TextButton
@@ -106,38 +126,47 @@ class PageModel(graph: Graph, id: String) : ViewModel() {
     }
 }
 
-/** An album's, a playlist's or an artist's page, with the way back over its top corner. */
+/** An album's, a playlist's or an artist's page, with the way back and its actions in glass over its top. */
 @Composable
 fun PageScreen(id: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
     val graph = LocalContext.current.graph
     val model: PageModel = viewModel(key = id, factory = viewModelFactory { initializer { PageModel(graph, id) } })
     val content by model.content.collectAsState()
     val p = LocalPalette.current
-    Box(Modifier.fillMaxSize()) {
-        when (val c = content) {
-            null -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = p.accent)
-            is PageContent.Failed -> Empty(c.message)
-            is PageContent.OfAlbum -> AlbumPage(c.album, playlist = id.removePrefix("pl:").takeIf { id.startsWith("pl:") }?.toLongOrNull())
-            is PageContent.OfArtist -> ArtistPage(c.artist, onOpen)
-        }
-        // A bar of the page's own colour under the way back, so the list scrolls beneath it, not through it.
-        Box(Modifier.fillMaxWidth().height(56.dp).background(p.canvas))
-        IconButton(onClick = onBack, modifier = Modifier.padding(4.dp)) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = p.ink) }
-        if (id.startsWith("pl:")) (content as? PageContent.OfAlbum)?.let { c ->
-            PlaylistMenu(id.removePrefix("pl:").toLong(), c.album.title, onDeleted = onBack, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
-        }
-    }
+    val downloaded by graph.library.downloadedIds.collectAsState()
+    Glassed(
+        ground = p.canvas,
+        modifier = Modifier.fillMaxSize(),
+        content = {
+            when (val c = content) {
+                null -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = p.accent)
+                is PageContent.Failed -> Empty(c.message)
+                is PageContent.OfAlbum -> AlbumPage(c.album, playlist = id.removePrefix("pl:").takeIf { id.startsWith("pl:") }?.toLongOrNull())
+                is PageContent.OfArtist -> ArtistPage(c.artist, onOpen)
+            }
+        },
+        glass = {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onClick = onBack)
+                Spacer(Modifier.weight(1f))
+                (content as? PageContent.OfAlbum)?.album?.let { album ->
+                    if (album.songs.any { !it.onPhone && it.id !in downloaded }) GlassButton(Icons.Rounded.Download, "Download") { graph.downloads.save(album.songs) }
+                    if (id.startsWith("pl:")) PlaylistMenu(id.removePrefix("pl:").toLong(), album.title, onDeleted = onBack)
+                }
+            }
+        },
+    )
 }
 
 /** A playlist made in Verza: renamed or deleted from the ⋯ over its top corner. */
 @Composable
-private fun PlaylistMenu(id: Long, name: String, onDeleted: () -> Unit, modifier: Modifier) {
+private fun PlaylistMenu(id: Long, name: String, onDeleted: () -> Unit) {
     val graph = LocalContext.current.graph
     val scope = rememberCoroutineScope()
     var shown by remember { mutableStateOf(false) }
     var asking by remember { mutableStateOf<String?>(null) }   // "rename" or "delete"
-    Box(modifier) {
-        IconButton(onClick = { shown = true }) { Icon(Icons.Rounded.MoreVert, "More", tint = LocalPalette.current.ink) }
+    Box {
+        GlassButton(Icons.Rounded.MoreHoriz, "More") { shown = true }
         DropdownMenu(expanded = shown, onDismissRequest = { shown = false }, shape = Corner) {
             MenuItem("Rename") { shown = false; asking = "rename" }
             MenuItem("Delete playlist") { shown = false; asking = "delete" }
@@ -151,44 +180,51 @@ private fun PlaylistMenu(id: Long, name: String, onDeleted: () -> Unit, modifier
                 onDismissRequest = done,
                 title = { Text("Rename playlist") },
                 text = { com.verza.ui.kit.Field(text, { text = it }, placeholder = "Name") },
-                confirmButton = { TextButton(enabled = text.isNotBlank() && text.trim() != name, onClick = { scope.launch { graph.library.renamePlaylist(id, text.trim()); graph.sync.flush() }; done() }) { Text("rename") } },
-                dismissButton = { TextButton(onClick = done) { Text("cancel") } },
+                confirmButton = { TextButton(enabled = text.isNotBlank() && text.trim() != name, onClick = { scope.launch { graph.library.renamePlaylist(id, text.trim()); graph.sync.flush() }; done() }) { Text("Rename") } },
+                dismissButton = { TextButton(onClick = done) { Text("Cancel") } },
             )
         }
         "delete" -> AlertDialog(
             onDismissRequest = done,
             title = { Text("Delete \"$name\"?") },
             text = { Text("The songs stay in your library; only the playlist goes, here and on YouTube Music.") },
-            confirmButton = { TextButton(onClick = { done(); onDeleted(); graph.scope.launch { graph.library.deletePlaylist(id); graph.sync.flush() } }) { Text("delete") } },
-            dismissButton = { TextButton(onClick = done) { Text("cancel") } },
+            confirmButton = { TextButton(onClick = { done(); onDeleted(); graph.scope.launch { graph.library.deletePlaylist(id); graph.sync.flush() } }) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = done) { Text("Cancel") } },
         )
     }
 }
 
-/** The cover, the name, then play and shuffle as words, then the songs in order. */
+/** The cover, centred, the name and who made it, Play and Shuffle side by side, then the songs in order. */
 @Composable
 private fun AlbumPage(album: Album, playlist: Long?) {
     val p = LocalPalette.current
     val graph = LocalContext.current.graph
     val player = graph.player
     val now by player.state.collectAsState()
-    val downloaded by graph.library.downloadedIds.collectAsState()
-    LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 56.dp, bottom = 16.dp + LocalDockHeight.current)) {
+    LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 60.dp, bottom = 16.dp + LocalDockHeight.current)) {
         item {
-            Column(Modifier.widthIn(max = 420.dp)) {
-                Cover(album.art?.let { artAt(it, 1200) }, 0.dp, Modifier.fillMaxWidth().aspectRatio(1f))
-                Spacer(Modifier.height(14.dp))
-                Text(album.title, style = Type.Title, color = p.ink, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                if (album.subtitle.isNotBlank()) Text(album.subtitle, style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Row(Modifier.padding(top = 6.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Word("play", p.accent, enabled = album.songs.isNotEmpty()) { player.play(album.songs) }
-                    Word("shuffle", enabled = album.songs.isNotEmpty()) { player.shuffle(album.songs) }
-                    if (album.songs.any { !it.onPhone && it.id !in downloaded }) Word("download") { graph.downloads.save(album.songs) }
-                    Spacer(Modifier.weight(1f))
-                    Text(songsLabel(album.songs), style = Type.Small, color = p.inkMuted)
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                val shape = artCorner(300.dp)
+                Cover(
+                    album.art?.let { artAt(it, 1200) }, 0.dp,
+                    Modifier.fillMaxWidth(0.72f).widthIn(max = 320.dp).aspectRatio(1f)
+                        .shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.35f)),
+                )
+                Spacer(Modifier.height(18.dp))
+                Text(album.title, style = Type.Section, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                // "Coldplay • 2002": who in the accent, as Apple Music has it, and the rest quietly under.
+                val parts = album.subtitle.split(Regex("\\s*[•·]\\s*")).filter { it.isNotBlank() }
+                val who = parts.firstOrNull { it !in Kinds && it.toIntOrNull() == null }.orEmpty()
+                val rest = parts.filter { it != who }.joinToString(" · ")
+                if (who.isNotBlank()) Text(who, style = Type.RowTitle.copy(fontSize = 19.sp, lineHeight = 24.sp), color = p.accent, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                Text(listOf(rest, songsLabel(album.songs)).filter { it.isNotBlank() }.joinToString(" · "), style = Type.Small, color = p.inkMuted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+                Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Word("Play", p.accent, Modifier.weight(1f), icon = Icons.Rounded.PlayArrow, enabled = album.songs.isNotEmpty()) { player.play(album.songs) }
+                    Word("Shuffle", p.accent, Modifier.weight(1f), icon = Icons.Rounded.Shuffle, enabled = album.songs.isNotEmpty()) { player.shuffle(album.songs) }
                 }
             }
         }
+        item { Hairline() }
         itemsIndexed(album.songs, key = { i, s -> "$i${s.id}" }) { i, song ->
             TrackRow(i + 1, song, playing = song.id == now.song?.id, playlist = playlist) { player.play(album.songs, i) }
         }
@@ -198,31 +234,45 @@ private fun AlbumPage(album: Album, playlist: Long?) {
 @Composable
 private fun TrackRow(number: Int, song: Song, playing: Boolean, playlist: Long?, onClick: () -> Unit) {
     val p = LocalPalette.current
-    Row(Modifier.fillMaxWidth().clip(com.verza.ui.theme.Corner).clickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("$number", style = Type.RowSubtitle, color = p.inkMuted, modifier = Modifier.width(32.dp))
+    Row(Modifier.fillMaxWidth().clip(Corner).clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
+        Text("$number", style = Type.RowSubtitle, color = if (playing) p.accent else p.inkMuted, modifier = Modifier.width(34.dp))
         Column(Modifier.weight(1f)) {
-            Text(song.title, style = Type.RowTitle, color = if (playing) p.accent else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(song.artist, style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        val graph = LocalContext.current.graph
-        SongMenu(song) { close ->
-            if (playlist != null) MenuItem("Remove from this playlist") {
-                close(); graph.scope.launch { graph.library.removeFromPlaylist(playlist, song.id); graph.sync.flush() }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
+                    Text(song.title, style = Type.RowTitle.copy(fontSize = 16.sp, lineHeight = 21.sp), color = if (playing) p.accent else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(song.artist, style = Type.RowSubtitle.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                val graph = LocalContext.current.graph
+                SongMenu(song) { close ->
+                    if (playlist != null) MenuItem("Remove from this playlist") {
+                        close(); graph.scope.launch { graph.library.removeFromPlaylist(playlist, song.id); graph.sync.flush() }
+                    }
+                }
             }
+            Hairline()
         }
     }
 }
 
-/** The artist's picture and name, then their shelves: songs as rows, the rest as covers across. */
+/** The artist's picture, the width of the page with their name over its foot, then their shelves. */
 @Composable
 private fun ArtistPage(artist: Artist, onOpen: (String) -> Unit) {
     val p = LocalPalette.current
     val player = LocalContext.current.graph.player
-    LazyColumn(contentPadding = PaddingValues(top = 56.dp, bottom = 16.dp + LocalDockHeight.current)) {
+    val top = artist.sections.firstOrNull { s -> s.cards.isNotEmpty() && s.cards.all { it.song != null } }?.cards?.mapNotNull { it.song }.orEmpty()
+    LazyColumn(contentPadding = PaddingValues(bottom = 16.dp + LocalDockHeight.current)) {
         item {
-            Column(Modifier.padding(horizontal = 20.dp)) {
-                Cover(artist.art?.let { artAt(it, 1200) }, 0.dp, Modifier.fillMaxWidth().aspectRatio(1f))
-                Text(artist.name, style = Type.Masthead, color = p.ink, modifier = Modifier.padding(top = 12.dp))
+            Box(Modifier.fillMaxWidth().aspectRatio(1f).background(p.surfaceHigh)) {
+                AsyncImage(artist.art?.let { artAt(it, 1200) }, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
+                Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 20.dp, end = 16.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(artist.name, style = Type.Masthead, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    if (top.isNotEmpty()) Box(
+                        Modifier.size(52.dp).clip(CircleShape).background(p.accent).clickable { player.play(top) }
+                            .semantics { role = Role.Button; contentDescription = "Play ${artist.name}" },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.PlayArrow, null, tint = p.onAccent, modifier = Modifier.size(30.dp)) }
+                }
             }
         }
         for (section in artist.sections) {
@@ -242,16 +292,21 @@ private fun ArtistPage(artist: Artist, onOpen: (String) -> Unit) {
 fun Shelf(section: Section, onOpen: (String) -> Unit) {
     val p = LocalPalette.current
     val player = LocalContext.current.graph.player
-    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(section.cards, key = { it.song?.id ?: it.page ?: it.title }) { card ->
-            Column(Modifier.width(150.dp).clip(com.verza.ui.theme.Corner).clickable { card.song?.let(player::playWithRadio) ?: card.page?.let(onOpen) }) {
-                Cover(card.art?.let { artAt(it, 544) }, 150.dp, round = card.page?.startsWith("UC") == true)
-                Text(if (card.song != null) com.verza.data.shownTitle(card.title, card.subtitle.substringBefore(" • ")) else card.title, style = Type.RowTitle.copy(fontSize = Type.RowSubtitle.fontSize), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                Text(card.subtitle.replace(" • ", " · "), style = Type.RowSubtitle, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val round = card.page?.startsWith("UC") == true
+            Column(Modifier.width(156.dp).clip(Corner).clickable { card.song?.let(player::playWithRadio) ?: card.page?.let(onOpen) }, horizontalAlignment = if (round) Alignment.CenterHorizontally else Alignment.Start) {
+                Cover(card.art?.let { artAt(it, 544) }, 156.dp, round = round)
+                val small = Type.RowSubtitle.copy(fontSize = 14.sp, lineHeight = 18.sp)
+                Text(if (card.song != null) com.verza.data.shownTitle(card.title, card.subtitle.substringBefore(" • ")) else card.title, style = small, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
+                Text(card.subtitle.replace(" • ", " · "), style = small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
 }
+
+/** What a byline may say a record is, before who made it: "Album • Coldplay • 2012". */
+private val Kinds = setOf("Album", "Single", "EP", "Playlist", "Mix", "Audiobook")
 
 private fun songsLabel(songs: List<Song>): String {
     val minutes = songs.sumOf { it.durationMs } / 60_000

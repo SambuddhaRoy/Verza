@@ -33,13 +33,19 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.verza.R
 
-/** The one corner radius, on covers, rows, buttons, fields, sheets and the dock. */
+/** Rows, menus and the cards in a shelf. Covers pick their own by size ([artCorner]). */
 val Corner = RoundedCornerShape(12.dp)
+
+/** A cover's corner grows with it, as Apple's artwork does: a thumbnail's is small, a page's cover larger. */
+fun artCorner(size: androidx.compose.ui.unit.Dp) = RoundedCornerShape(if (size in 1.dp..64.dp) 6.dp else 10.dp)
+
+/** An inset group of rows (Settings, the Library's index), the larger corner iOS gives them. */
+val GroupCorner = RoundedCornerShape(22.dp)
 
 val LocalPalette = staticCompositionLocalOf { Palette.from(emptyList(), dark = true) }
 
-// Inter has an optical-size axis (14 to 32). Headings use the 32 end, the display cut, so a large
-// title doesn't look like body text zoomed in.
+// Inter stands in for SF Pro, which may not ship on Android. It has an optical-size axis (14 to 32):
+// titles use the 32 end, the display cut, so a large title isn't body text zoomed in.
 @OptIn(ExperimentalTextApi::class)
 private fun inter(weight: FontWeight, opsz: Float) = Font(
     R.font.inter_variable,
@@ -47,20 +53,45 @@ private fun inter(weight: FontWeight, opsz: Float) = Font(
     variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight), FontVariation.Setting("opsz", opsz)),
 )
 
-private val BodyFace = FontFamily(listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold).map { inter(it, 14f) })
-private val DisplayFace = FontFamily(listOf(FontWeight.Light, FontWeight.Normal, FontWeight.Medium).map { inter(it, 32f) })
+private val BodyFace = FontFamily(listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { inter(it, 14f) })
+private val DisplayFace = FontFamily(listOf(FontWeight.Normal, FontWeight.SemiBold, FontWeight.Bold).map { inter(it, 32f) })
 
+/**
+ * Apple's text styles at their default size (HIG, Typography, "Large (default)"), set in Inter. The
+ * tracking is Inter's own: tighter as the size grows, a little open at the smallest.
+ */
 object Type {
-    /** A page's name: "library", very large and light. */
-    val Masthead = TextStyle(fontFamily = DisplayFace, fontWeight = FontWeight.Light, fontSize = 46.sp, lineHeight = 52.sp, letterSpacing = (-0.03).em)
-    /** A section or a word used as a button: "recently played", "play". */
-    val Section = TextStyle(fontFamily = DisplayFace, fontWeight = FontWeight.Light, fontSize = 27.sp, lineHeight = 33.sp, letterSpacing = (-0.02).em)
-    /** An album's or a song's name at the top of its page. */
-    val Title = TextStyle(fontFamily = DisplayFace, fontWeight = FontWeight.Normal, fontSize = 32.sp, lineHeight = 37.sp, letterSpacing = (-0.018).em)
-    val RowTitle = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 22.sp)
-    val RowSubtitle = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 18.sp)
-    val Body = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp)
-    val Small = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.04.em)
+    /** A page's name, "Library": Large Title, 34/41 bold. */
+    val Masthead = TextStyle(fontFamily = DisplayFace, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 41.sp, letterSpacing = (-0.022).em)
+    /** A heading inside a page, "Recently played": Title 2, 22/28 bold. */
+    val Section = TextStyle(fontFamily = DisplayFace, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-0.02).em)
+    /** An album's or a song's name at the top of its page: Title 1, 28/34 bold. */
+    val Title = TextStyle(fontFamily = DisplayFace, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.021).em)
+    /** Headline, 17/22 semibold: a button's words, an emphasised row. */
+    val Headline = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = (-0.013).em)
+    /** Body, 17/22. */
+    val RowTitle = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = (-0.013).em)
+    /** Subhead, 15/20. */
+    val RowSubtitle = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp, letterSpacing = (-0.009).em)
+    /** Callout, 16/21: prose. */
+    val Body = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em)
+    /** Footnote, 13/18. */
+    val Small = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = (-0.003).em)
+    /** Caption 2, 11/13 semibold: a tab's label. */
+    val Tab = TextStyle(fontFamily = BodyFace, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 13.sp, letterSpacing = 0.004.em)
+}
+
+/** Material's own components (dialogs, menus, text buttons) in the same type. */
+private val MaterialType = androidx.compose.material3.Typography().let { t ->
+    t.copy(
+        headlineSmall = Type.Section,
+        titleLarge = Type.Headline.copy(fontSize = 20.sp, lineHeight = 25.sp),
+        titleMedium = Type.Headline,
+        bodyLarge = Type.RowTitle,
+        bodyMedium = Type.Body,
+        bodySmall = Type.Small,
+        labelLarge = Type.Headline,
+    )
 }
 
 /** The colours in a cover, for [Palette.from]. */
@@ -101,7 +132,8 @@ fun VerzaTheme(swatches: List<Color>, content: @Composable () -> Unit) {
         surfaceTint = androidx.compose.ui.graphics.Color.Transparent,
         outline = palette.line,
     )
-    MaterialTheme(colorScheme = scheme) {
+    val shapes = androidx.compose.material3.Shapes(extraSmall = RoundedCornerShape(10.dp), small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(14.dp), large = RoundedCornerShape(22.dp), extraLarge = RoundedCornerShape(28.dp))
+    MaterialTheme(colorScheme = scheme, typography = MaterialType, shapes = shapes) {
         CompositionLocalProvider(LocalPalette provides palette, content = content)
     }
 }

@@ -1,6 +1,33 @@
 package com.verza.ui.nowplaying
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.FastForward
+import androidx.compose.material.icons.rounded.FastRewind
+import androidx.compose.material.icons.rounded.Lyrics
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
+import com.verza.ui.kit.GlassButton
+import com.verza.ui.kit.Glassed
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -90,17 +117,16 @@ import com.verza.ui.theme.Type
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Now Playing follows the theme, as on the desktop: white type on a dimmed cover, or black type on a
-// cover washed pale.
-private val Ink: Color @Composable get() = LocalPalette.current.ink
-private val InkSoft: Color @Composable get() = LocalPalette.current.ink.copy(alpha = 0.72f)
-private val InkFaint: Color @Composable get() = LocalPalette.current.ink.copy(alpha = 0.28f)
+// Now Playing is dark whatever the theme, as Apple Music's is: white type over the cover's own colours.
+private val Ink = Color.White
+private val InkSoft = Color.White.copy(alpha = 0.62f)
+private val InkFaint = Color.White.copy(alpha = 0.22f)
 
 /**
- * Now Playing: the cover as a square on a dimmed blur of itself, and under it the title, the artist
- * and album (each opens its page), the Lossless mark when it is, the scrubber and the transport. The
- * cover takes what the rest leaves, so a small phone gets a smaller cover, not controls off the foot of
- * the screen. The queue is below, on the same scrolling page.
+ * Now Playing: a sheet over the app, its ground the cover's colours flowing slowly. The cover, rounded
+ * and lifted, settles smaller while paused. Under it the title and who made it, like and ⋯ in glass,
+ * the scrubber, the transport, then lyrics, radio, shuffle and repeat. The queue follows on the same
+ * page. Pulled down from the top, it goes.
  */
 @Composable
 fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> Unit, onLyrics: () -> Unit, onStandby: () -> Unit) {
@@ -118,87 +144,164 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
     var devices by remember { mutableStateOf(false) }
     if (devices) com.verza.ui.kit.DevicesDialog(onDone = { devices = false })
     BackHandler(onBack = onClose)
-    val p = LocalPalette.current
-    if (p.dark) com.verza.ui.kit.LightBarIcons()
+    com.verza.ui.kit.LightBarIcons()
     val visualizer by graph.settings.visualizer.flow.collectAsState(initial = true)
     val target = flick.sendTo
+    val p = LocalPalette.current
+    // The page's own palette: white ink, and an accent measured against the dark.
+    val dark = remember(p) { p.overMedia() }
 
     // The artist's and album's pages; a file on the phone's are its song's on YouTube Music.
     val links by produceState<Pair<List<Link>, Link?>?>(null, song.id) {
         value = runCatching { graph.youtube.twin(song)?.let { graph.youtube.links(it.id, it.title) } }.getOrNull()
     }
+    val pull = remember { Animatable(0f) }
+    val shut = with(LocalDensity.current) { 140.dp.toPx() }
+    val sheet = remember(onClose) { PullToClose(pull, shut, scope, onClose) }
 
-    Box(Modifier.fillMaxSize().takesTouches().background(p.canvas)) {
-        FlowingCover(song.art?.let { artAt(it, 226) }, p.dark)
-        BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
-            val pageHeight = maxHeight
-            LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-                item {
-                    Column(Modifier.fillMaxWidth().height(pageHeight - 40.dp).padding(horizontal = 24.dp)) {
-                        IconButton(onClick = onClose, modifier = Modifier.offset(x = (-12).dp)) {
-                            Icon(Icons.Rounded.KeyboardArrowDown, "Close", tint = Ink, modifier = Modifier.size(32.dp))
-                        }
-                        // The cover leaves a tenth of its room each side for the visualiser's bars.
-                        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            val side = minOf(maxWidth, maxHeight) * (if (visualizer) 0.8f else 1f)
-                            var swell by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-                            if (visualizer && flick.fly.value == 0f) CoverVisualizer(side, p.accent, now.playing, onBass = { swell = it })
-                            // A flick toward the computer sends the cover flying off the top, and the music with it;
-                            // one back toward you brings the computer's down from there.
-                            FlyingCover(art, side, swell, flick.fly.value, flick.label)
-                        }
-                        Spacer(Modifier.height(20.dp))
-                        Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Title.copy(fontSize = 34.sp, lineHeight = 39.sp), color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Names(song, links, onOpen = { onClose(); onOpen(it) })
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            now.lossless?.let { LosslessMark(it) }
-                            Spacer(Modifier.weight(1f))
-                            // A microphone, as the desktop has it: a word among icons read as a heading.
-                            IconButton(onClick = onLyrics) { Icon(Icons.Rounded.Mic, "Lyrics", tint = Ink) }
-                            val isLiked = song.id in liked
-                            IconButton(onClick = { graph.like(song, !isLiked) }) {
-                                Icon(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", tint = Ink)
-                            }
-                            IconButton(onClick = { player.playWithRadio(song) }) { Icon(Icons.Rounded.Radio, "Radio", tint = Ink) }
-                            androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(inkMuted = Ink)) {
-                                SongMenu(song, inPlayer = true) { close ->
-                                    MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
-                                    MenuItem("Discovery radio") {
-                                        close()
-                                        android.widget.Toast.makeText(context, "Finding music you haven't heard…", android.widget.Toast.LENGTH_SHORT).show()
-                                        scope.launch {
-                                            val found = runCatching { graph.youtube.twin(song)?.let { graph.discovery.from(it.id) } }.getOrNull().orEmpty()
-                                            if (found.isEmpty()) android.widget.Toast.makeText(context, "Couldn't find anything new for this one", android.widget.Toast.LENGTH_SHORT).show()
-                                            else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
+    CompositionLocalProvider(LocalPalette provides dark) {
+        Glassed(
+            ground = Color.Black,
+            modifier = Modifier.fillMaxSize().takesTouches().graphicsLayer { translationY = pull.value },
+            content = { FlowingCover(song.art?.let { artAt(it, 226) }, true) },
+            glass = {
+                BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
+                    val pageHeight = maxHeight
+                    LazyColumn(Modifier.nestedScroll(sheet), contentPadding = PaddingValues(bottom = 24.dp)) {
+                        item {
+                            Column(Modifier.fillMaxWidth().height(pageHeight - 32.dp).padding(horizontal = 24.dp)) {
+                                // The grabber: says the sheet can be pulled down, and closes it when pressed.
+                                Box(
+                                    Modifier.fillMaxWidth().height(30.dp).clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
+                                        .semantics { role = Role.Button; contentDescription = "Close" },
+                                    contentAlignment = Alignment.Center,
+                                ) { Box(Modifier.size(width = 38.dp, height = 5.dp).clip(CircleShape).background(InkFaint.copy(alpha = 0.45f))) }
+                                // The cover leaves a tenth of its room each side for the visualiser's bars.
+                                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    val side = minOf(maxWidth, maxHeight) * (if (visualizer) 0.8f else 0.96f)
+                                    var swell by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+                                    val rest by animateFloatAsState(if (now.playing) 1f else 0.84f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow), label = "rest")
+                                    if (visualizer && flick.fly.value == 0f) CoverVisualizer(side, p.accent, now.playing, onBass = { swell = it })
+                                    // A flick toward the computer sends the cover flying off the top, and the music with it;
+                                    // one back toward you brings the computer's down from there.
+                                    FlyingCover(art, side, swell, flick.fly.value, flick.label, Modifier.graphicsLayer { scaleX = rest; scaleY = rest })
+                                }
+                                Spacer(Modifier.height(18.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Section, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Names(song, links, onOpen = { onClose(); onOpen(it) })
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    val isLiked = song.id in liked
+                                    GlassButton(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", size = 40.dp) { graph.like(song, !isLiked) }
+                                    Spacer(Modifier.width(10.dp))
+                                    SongMenu(song, inPlayer = true) { close ->
+                                        MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
+                                        MenuItem("Discovery radio") {
+                                            close()
+                                            android.widget.Toast.makeText(context, "Finding music you haven't heard…", android.widget.Toast.LENGTH_SHORT).show()
+                                            scope.launch {
+                                                val found = runCatching { graph.youtube.twin(song)?.let { graph.discovery.from(it.id) } }.getOrNull().orEmpty()
+                                                if (found.isEmpty()) android.widget.Toast.makeText(context, "Couldn't find anything new for this one", android.widget.Toast.LENGTH_SHORT).show()
+                                                else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
+                                            }
+                                        }
+                                        MenuItem("Clock screen") { close(); onStandby() }
+                                        MenuItem("Devices") { close(); devices = true }
+                                        MenuItem("Share listening session") {
+                                            close()
+                                            Sessions.link(now.queue, now.index, player.position)?.let { shareSession(context, it) }
                                         }
                                     }
-                                    MenuItem("Clock screen") { close(); onStandby() }
-                                    MenuItem("Devices") { close(); devices = true }
-                                    MenuItem("Share listening session") {
-                                        close()
-                                        Sessions.link(now.queue, now.index, player.position)?.let { shareSession(context, it) }
-                                    }
                                 }
+                                Spacer(Modifier.height(14.dp))
+                                Scrubber(now, onSeek = player::seek)
+                                Transport(now)
+                                Extras(now, onLyrics = onLyrics, onRadio = { player.playWithRadio(song) })
+                                // Said once there's somewhere to flick to: the gesture can't be seen otherwise.
+                                if (target != null) Text("Flick toward ${target.name} to play there", style = Type.Small, color = InkSoft,
+                                    modifier = Modifier.fillMaxWidth().clickable(onClick = flick.send).padding(vertical = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                Spacer(Modifier.navigationBarsPadding().height(4.dp))
                             }
                         }
-                        Scrubber(now, onSeek = player::seek)
-                        Transport(now)
-                        // Said once there's somewhere to flick to: the gesture can't be seen otherwise.
-                        if (target != null) Text("flick toward ${target.name} to play there", style = Type.Small, color = InkSoft,
-                            modifier = Modifier.fillMaxWidth().clickable(onClick = flick.send).padding(vertical = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                        Spacer(Modifier.navigationBarsPadding().height(8.dp))
+                        item { Text("Up next", style = Type.Headline, color = Ink, modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = 4.dp)) }
+                        val upNext = now.queue.withIndex().drop(now.index + 1)
+                        itemsIndexed(upNext, key = { _, (i, s) -> "$i${s.id}" }) { _, (i, s) ->
+                            ListRow(s.title, s.artist, art = s.art?.let { artAt(it, 226) }, modifier = Modifier.padding(horizontal = 24.dp), onClick = { player.jumpTo(i) })
+                        }
                     }
                 }
-                item { Text("up next", style = Type.Section, color = Ink, modifier = Modifier.padding(start = 24.dp, top = 12.dp, bottom = 8.dp)) }
-                val upNext = now.queue.withIndex().drop(now.index + 1)
-                itemsIndexed(upNext, key = { _, (i, s) -> "$i${s.id}" }) { _, (i, s) ->
-                    androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides LocalPalette.current.copy(ink = Ink, inkMuted = InkSoft)) {
-                        ListRow(s.title, s.artist, art = s.art?.let { artAt(it, 226) }, modifier = Modifier.padding(horizontal = 24.dp), onClick = { player.jumpTo(i) })
-                    }
-                }
-            }
-        }
+            },
+        )
     }
+}
+
+/**
+ * Pulling the page down past its top moves it with the finger, and far enough (or fast enough) closes
+ * it; let go short of that and it springs back.
+ */
+private class PullToClose(
+    private val pull: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    private val shut: Float,
+    private val scope: kotlinx.coroutines.CoroutineScope,
+    private val onClose: () -> Unit,
+) : NestedScrollConnection {
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        // Pushing back up while pulled: undo the pull before the list scrolls.
+        if (pull.value > 0f && available.y < 0f) {
+            val used = maxOf(available.y, -pull.value)
+            scope.launch { pull.snapTo(pull.value + used) }
+            return Offset(0f, used)
+        }
+        return Offset.Zero
+    }
+
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        if (available.y > 0f && source == NestedScrollSource.UserInput) {
+            scope.launch { pull.snapTo(pull.value + available.y) }
+            return Offset(0f, available.y)
+        }
+        return Offset.Zero
+    }
+
+    override suspend fun onPreFling(available: Velocity): Velocity {
+        if (pull.value <= 0f) return Velocity.Zero
+        if (pull.value > shut || available.y > 2400f) onClose() else pull.animateTo(0f, spring(dampingRatio = 0.8f))
+        return available
+    }
+}
+
+/** Lyrics and radio, then shuffle and repeat, which light up while on. */
+@Composable
+private fun Extras(now: NowPlaying, onLyrics: () -> Unit, onRadio: () -> Unit) {
+    val player = LocalContext.current.graph.player
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+        Glyph(Icons.Rounded.Lyrics, "Lyrics", onClick = onLyrics)
+        Glyph(Icons.Rounded.Radio, "Radio", onClick = onRadio)
+        Glyph(Icons.Rounded.Shuffle, "Shuffle", on = now.shuffle, onClick = player::toggleShuffle)
+        Glyph(if (now.repeat == REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", on = now.repeat != REPEAT_MODE_OFF, onClick = player::cycleRepeat)
+    }
+}
+
+/**
+ * A symbol to press, with no button drawn round it: pressed, a soft disc blooms behind it, as under
+ * Apple's transport. [on] keeps a quieter disc, for a toggle that is on.
+ */
+@Composable
+private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: Dp = 48.dp, iconSize: Dp = 24.dp, on: Boolean? = null, onClick: () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val bloom by animateFloatAsState(if (pressed) 1f else 0f, spring(stiffness = Spring.StiffnessMedium), label = "bloom")
+    Box(
+        Modifier.size(size).clickable(source, null, onClick = onClick)
+            .semantics { role = Role.Button; contentDescription = label; if (on != null) stateDescription = if (on) "On" else "Off" }
+            .drawBehind {
+                val ground = (if (on == true) 0.16f else 0f) + 0.14f * bloom
+                if (ground > 0f) drawCircle(Color.White.copy(alpha = ground), radius = this.size.minDimension / 2 * (0.86f + 0.14f * bloom))
+            },
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, null, tint = if (on == false) InkSoft else Ink, modifier = Modifier.size(iconSize).graphicsLayer { val s = 1f - 0.08f * bloom; scaleX = s; scaleY = s }) }
 }
 
 /** How long a sleep timer has left, "12:04", or "end of song". Ticks while it's on screen. */
@@ -225,8 +328,8 @@ private fun SleepPicker(sleep: Sleep?, onDone: () -> Unit) {
                 MenuItem("Wind down over 30 minutes") { pick { player.sleepIn(30, windDown = true) } }
             }
         },
-        confirmButton = { if (sleep != null) TextButton(onClick = { pick { player.sleep.value = null } }) { Text("turn off") } },
-        dismissButton = { TextButton(onClick = onDone) { Text("cancel") } },
+        confirmButton = { if (sleep != null) TextButton(onClick = { pick { player.sleep.value = null } }) { Text("Turn off") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
 }
 
@@ -242,12 +345,12 @@ private fun shareSession(context: android.content.Context, link: String) {
 @Composable
 private fun Names(song: Song, links: Pair<List<Link>, Link?>?, onOpen: (String) -> Unit) {
     val names = links?.first.orEmpty().ifEmpty { listOf(Link(song.artist, "")) } + listOfNotNull(links?.second)
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 2.dp)) {
         names.forEachIndexed { i, link ->
-            if (i > 0) Text("·", style = Type.RowTitle, color = InkSoft)
+            if (i > 0) Text("·", style = Type.RowTitle.copy(fontSize = 18.sp, lineHeight = 23.sp), color = InkSoft)
             Text(
                 link.name,
-                style = Type.RowTitle,
+                style = Type.RowTitle.copy(fontSize = 18.sp, lineHeight = 23.sp),
                 color = InkSoft,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -287,21 +390,20 @@ private fun LosslessMark(format: String) {
     }
 }
 
-/** A thin line with the time either side; drag or tap to seek. The finger owns the position while it's down. */
+/** A capsule that fills as the song plays, thicker under the finger; the times under it, and Lossless between them. */
 @Composable
 private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
     val player = LocalContext.current.graph.player
-    val accent = LocalPalette.current.accent
     var position by remember { mutableLongStateOf(player.position) }
     LaunchedEffect(now.song?.id, now.playing) { while (true) { position = player.position; if (!now.playing) break; delay(250) } }
     var dragged by remember { mutableStateOf<Float?>(null) }
     val duration by rememberUpdatedState(now.durationMs)
     val seek by rememberUpdatedState(onSeek)
     val shown = dragged ?: if (now.durationMs > 0) (position.toFloat() / now.durationMs).coerceIn(0f, 1f) else 0f
-    val thickness by animateDpAsState(if (dragged != null) 5.dp else 2.dp, label = "scrub")
-    val ink = Ink; val faint = InkFaint
+    val thickness by animateDpAsState(if (dragged != null) 12.dp else 7.dp, label = "scrub")
     Canvas(
-        Modifier.fillMaxWidth().height(34.dp)
+        Modifier.fillMaxWidth().height(30.dp)
+            .semantics { contentDescription = "Position, ${clock((shown * now.durationMs).toLong())} of ${clock(now.durationMs)}" }
             .pointerInput(Unit) { detectTapGestures { o -> if (duration > 0) seek(((o.x / size.width).coerceIn(0f, 1f) * duration).toLong()) } }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -311,34 +413,30 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
                 ) { change, _ -> change.consume(); dragged = (change.position.x / size.width).coerceIn(0f, 1f) }
             },
     ) {
-        val y = size.height / 2
-        val x = size.width * shown
         val w = thickness.toPx()
-        drawLine(faint, Offset(0f, y), Offset(size.width, y), w, StrokeCap.Round)
-        drawLine(ink, Offset(0f, y), Offset(x, y), w, StrokeCap.Round)
-        drawCircle(accent, 5.dp.toPx() + w / 2, Offset(x, y))
+        val top = Offset(0f, size.height / 2 - w / 2)
+        val track = Size(size.width, w)
+        val round = CornerRadius(w / 2)
+        drawRoundRect(InkFaint, top, track, round)
+        // The played part ends square against the rest, as Apple's does.
+        clipRect(right = size.width * shown) { drawRoundRect(Ink.copy(alpha = 0.86f), top, track, round) }
     }
-    Row(Modifier.fillMaxWidth()) {
-        Text(clock((shown * now.durationMs).toLong()), style = Type.Small, color = InkSoft)
-        Spacer(Modifier.weight(1f))
-        Text(clock(now.durationMs), style = Type.Small, color = InkSoft)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        val at = (shown * now.durationMs).toLong()
+        Text(clock(at), style = Type.Small.copy(fontSize = 12.sp), color = InkSoft, modifier = Modifier.width(56.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { now.lossless?.let { LosslessMark(it) } }
+        Text("−" + clock((now.durationMs - at).coerceAtLeast(0)), style = Type.Small.copy(fontSize = 12.sp), color = InkSoft, modifier = Modifier.width(56.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }
 
+/** Back, play or pause, and on: large symbols with nothing drawn round them. */
 @Composable
 private fun Transport(now: NowPlaying) {
     val player = LocalContext.current.graph.player
-    val accent = LocalPalette.current.accent
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = player::toggleShuffle) { Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (now.shuffle) accent else InkSoft) }
-        IconButton(onClick = player::previous) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = Ink, modifier = Modifier.size(36.dp)) }
-        IconButton(onClick = player::toggle, modifier = Modifier.size(72.dp)) {
-            Icon(if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play", tint = Ink, modifier = Modifier.size(56.dp))
-        }
-        IconButton(onClick = player::next) { Icon(Icons.Rounded.SkipNext, "Next", tint = Ink, modifier = Modifier.size(36.dp)) }
-        IconButton(onClick = player::cycleRepeat) {
-            Icon(if (now.repeat == REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", tint = if (now.repeat == REPEAT_MODE_OFF) InkSoft else accent)
-        }
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        Glyph(Icons.Rounded.FastRewind, "Previous", size = 72.dp, iconSize = 46.dp, onClick = player::previous)
+        Glyph(if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play", size = 88.dp, iconSize = 66.dp, onClick = player::toggle)
+        Glyph(Icons.Rounded.FastForward, "Next", size = 72.dp, iconSize = 46.dp, onClick = player::next)
     }
 }
 
