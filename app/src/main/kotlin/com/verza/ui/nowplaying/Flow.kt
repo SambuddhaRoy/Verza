@@ -112,7 +112,7 @@ private fun brightness(b: Bitmap): Float {
  */
 @Composable
 fun CoverVisualizer(cover: Dp, color: Color, playing: Boolean, onBass: (Float) -> Unit, modifier: Modifier = Modifier) {
-    DisposableEffect(Unit) { Spectrum.watching = true; onDispose { Spectrum.watching = false } }
+    DisposableEffect(Unit) { Spectrum.watch(); onDispose { Spectrum.unwatch() } }
     val smooth = remember { FloatArray(Spectrum.BANDS) }
     var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(playing) {

@@ -160,7 +160,7 @@ val LocalLook = staticCompositionLocalOf<Look> { GlassLook }
 /** Every look, in the order Settings shows them. */
 object Looks {
     val all: List<Look> by lazy {
-        listOf<Look>(GlassLook, GridLook, BrutalLook, GenZLook, MinimalLook)
+        listOf<Look>(GlassLook, GridLook, PlayfulLook, GradientLook, SketchLook, BrutalLook, GenZLook, MinimalLook)
     }
 
     fun byId(id: String?): Look = all.firstOrNull { it.id == id } ?: GlassLook

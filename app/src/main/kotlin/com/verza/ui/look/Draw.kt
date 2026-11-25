@@ -1,5 +1,7 @@
 package com.verza.ui.look
 
+import com.verza.graph
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -299,4 +301,60 @@ fun ChromeSmiley(size: Dp, modifier: Modifier = Modifier, sway: Boolean = true) 
         drawArc(metal, 200f, 140f, false, Offset(c.x + s * 0.06f, c.y - s * 0.17f), Size(s * 0.16f, s * 0.12f), style = Stroke(ring * 0.62f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
         drawArc(metal, 18f, 144f, false, Offset(c.x - s * 0.26f, c.y - s * 0.2f), Size(s * 0.52f, s * 0.44f), style = Stroke(ring * 0.8f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
     }
+}
+
+/** Rays from [centre] out past the edges, every other one in [ray]: a cartoon sunburst. */
+fun DrawScope.sunburst(centre: Offset, ray: Color, rays: Int = 28, turn: Float = 0f) {
+    val r = maxOf(size.width, size.height) * 1.6f
+    val step = 360f / rays
+    for (i in 0 until rays step 2) {
+        val a0 = Math.toRadians((i * step + turn).toDouble()); val a1 = Math.toRadians(((i + 1) * step + turn).toDouble())
+        val path = Path().apply {
+            moveTo(centre.x, centre.y)
+            lineTo(centre.x + (r * cos(a0)).toFloat(), centre.y + (r * sin(a0)).toFloat())
+            lineTo(centre.x + (r * cos(a1)).toFloat(), centre.y + (r * sin(a1)).toFloat())
+            close()
+        }
+        drawPath(path, ray)
+    }
+}
+
+/**
+ * Seconds since this first composed, ticking [fps] times a second, and not at all while no frames
+ * are drawn (the app in the background). For backgrounds that move: one behind every page that
+ * redrew at the display's rate made every pane of glass over it redraw as often.
+ */
+@Composable
+fun slowTime(fps: Int = 20): androidx.compose.runtime.State<Float> {
+    val t = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    androidx.compose.runtime.LaunchedEffect(fps) {
+        val start = androidx.compose.runtime.withFrameMillis { it }
+        while (true) {
+            androidx.compose.runtime.withFrameMillis { t.floatValue = (it - start) / 1000f }
+            kotlinx.coroutines.delay(1000L / fps)
+        }
+    }
+    return t
+}
+
+/**
+ * The music's low end, 0 to 1, eased so it swells and falls rather than flickers; 0 while nothing
+ * plays. Watches the spectrum while it's on screen.
+ */
+@Composable
+fun rememberLevel(fps: Int = 30): androidx.compose.runtime.State<Float> {
+    val graph = androidx.compose.ui.platform.LocalContext.current.graph
+    val now by graph.player.state.collectAsState()
+    val level = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    androidx.compose.runtime.DisposableEffect(Unit) { com.verza.playback.Spectrum.watch(); onDispose { com.verza.playback.Spectrum.unwatch() } }
+    androidx.compose.runtime.LaunchedEffect(now.playing) {
+        while (true) {
+            val target = if (now.playing) com.verza.playback.Spectrum.bass else 0f
+            val v = level.floatValue
+            level.floatValue = v + (target - v) * (if (target > v) 0.45f else 0.12f)
+            if (!now.playing && level.floatValue < 0.01f) { level.floatValue = 0f; break }
+            kotlinx.coroutines.delay(1000L / fps)
+        }
+    }
+    return level
 }

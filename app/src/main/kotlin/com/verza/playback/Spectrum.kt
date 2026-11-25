@@ -26,7 +26,11 @@ object Spectrum : TeeAudioProcessor.AudioBufferSink {
     /** The latest bands, 0 to 1, low to high. Read on the UI thread; a torn read is one frame's flicker. */
     val bands = FloatArray(BANDS)
     @Volatile var bass = 0f; private set
-    @Volatile var watching = false
+    /** How many things on screen want the spectrum; it is only worked out while one does. */
+    private val watchers = java.util.concurrent.atomic.AtomicInteger(0)
+    val watching: Boolean get() = watchers.get() > 0
+    fun watch() { watchers.incrementAndGet() }
+    fun unwatch() { watchers.updateAndGet { maxOf(0, it - 1) } }
 
     private var rate = 44100
     private var channels = 2
