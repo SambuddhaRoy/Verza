@@ -39,15 +39,9 @@ class LooksTest {
         }
     }
 
-    /** A spring past its end asked Roboto Flex for weight 1050, and the app crashed: weights are held to 100 to 1000. */
-    @Test fun flexWeightsStayInRange() {
-        assertEquals(1000, FlexLook.flex(1050, 100f, 16f, 20f).fontWeight?.weight)
-        assertEquals(100, FlexLook.flex(40, 100f, 16f, 20f).fontWeight?.weight)
-    }
-
     @Test fun eachLookHasItsOwnId() {
         assertEquals(Looks.all.size, Looks.all.map { it.id }.toSet().size)
         assertEquals(GlassLook, Looks.byId("no such look"))
-        assertEquals(14, Looks.all.size)
+        assertEquals(listOf(GlassLook, GenZLook), Looks.all)
     }
 }

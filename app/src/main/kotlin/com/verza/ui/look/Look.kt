@@ -26,8 +26,7 @@ import com.verza.ui.theme.artCorner
  * Playing shows the song. One is chosen in Settings, and LocalLook carries it everywhere; the pages
  * themselves are the same in every look, drawn through it.
  *
- * The defaults are Liquid glass. Each other look is after a trend in "Top 2026 Web Design Trends"
- * (Codex Community), and its file says which sites it learned from and what it took.
+ * The defaults are Liquid glass. Gen Z is the other; its file says what it learned from.
  */
 
 /** The text styles a look sets. [label] is its small voice: a caption, a tag, often mono. */
@@ -114,7 +113,7 @@ abstract class Look(val id: String, val name: String, val note: String) {
 
     /** A round button floating over a page: back, a page's menu, download. */
     @Composable open fun ChromeButton(icon: ImageVector, label: String, modifier: Modifier, size: Dp, tint: Color, stain: Color?, iconSize: Dp, onClick: () -> Unit) =
-        com.verza.ui.kit.GlassButton(icon, label, modifier, size, tint, stain, iconSize, onClick)
+        com.verza.ui.kit.GlassButton(icon, label, modifier, size, tint, stain, iconSize, onClick = onClick)
 
     /** The line between list rows, from [start]. */
     @Composable open fun Divider(start: Dp) = GlassHairline(start)
@@ -129,6 +128,9 @@ abstract class Look(val id: String, val name: String, val note: String) {
     @Composable open fun Dock(state: DockState, modifier: Modifier) = GlassDock(state, modifier)
 
     // Now Playing.
+
+    /** The visualiser's colour on Now Playing, whose palette is [np]: the page's accent by default. */
+    open fun visualizer(np: Palette, page: Palette): Color = page.accent
 
     /** Now Playing's colours, made from the page's. */
     open fun nowPlaying(page: Palette): Palette = page.overMedia()
@@ -145,6 +147,9 @@ abstract class Look(val id: String, val name: String, val note: String) {
 
     @Composable open fun PlayButton(playing: Boolean, onClick: () -> Unit) = GlassPlayButton(playing, onClick)
 
+    /** The cover takes all its room on Now Playing, with no ring of bars round it, and barely shrinks when paused. */
+    open val bigCover: Boolean get() = false
+
     /** Draws the scrubber's track: [shown] played of 1, thicker while [dragging]. */
     open fun DrawScope.scrubber(shown: Float, dragging: Float, p: Palette) = glassScrubber(shown, dragging, p)
 
@@ -160,8 +165,7 @@ val LocalLook = staticCompositionLocalOf<Look> { GlassLook }
 /** Every look, in the order Settings shows them. */
 object Looks {
     val all: List<Look> by lazy {
-        // The video's order, Liquid glass first. Its no-code chapter is a sponsor's segment, not a style.
-        listOf<Look>(GlassLook, GridLook, PlayfulLook, DepthLook, GradientLook, SketchLook, BrutalLook, GameLook, GenZLook, AntiLook, MinimalLook, FlexLook, PixelLook, MixLook)
+        listOf<Look>(GlassLook, GenZLook)
     }
 
     fun byId(id: String?): Look = all.firstOrNull { it.id == id } ?: GlassLook

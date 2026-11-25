@@ -1,5 +1,9 @@
 package com.verza.ui.nowplaying
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.foundation.basicMarquee
+import com.verza.ui.kit.popOn
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -169,6 +173,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                 look.NowPlayingDecor()
                 BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
                     val pageHeight = maxHeight
+                    val keys = remember(now.queue) { val seen = HashMap<String, Int>(); now.queue.map { q -> q.id + "#" + seen.merge(q.id, 1, Int::plus) } }
                     LazyColumn(Modifier.nestedScroll(sheet), contentPadding = PaddingValues(bottom = 24.dp)) {
                         item {
                             Column(Modifier.fillMaxWidth().height(pageHeight - 32.dp).padding(horizontal = 24.dp)) {
@@ -180,23 +185,29 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                 ) { Box(Modifier.size(width = 38.dp, height = 5.dp).clip(CircleShape).background(InkFaint.copy(alpha = 0.45f))) }
                                 // The cover leaves a tenth of its room each side for the visualiser's bars.
                                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    val side = minOf(maxWidth, maxHeight) * (if (visualizer) 0.8f else 0.96f)
+                                    val ring = visualizer && !look.bigCover
+                                    val side = minOf(maxWidth, maxHeight) * (if (ring) 0.8f else if (look.bigCover) 1f else 0.96f)
                                     var swell by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-                                    val rest by animateFloatAsState(if (now.playing) 1f else 0.84f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow), label = "rest")
-                                    if (visualizer && flick.fly.value == 0f) CoverVisualizer(side, p.accent, now.playing, onBass = { swell = it })
+                                    val rest by animateFloatAsState(if (now.playing) 1f else if (look.bigCover) 0.95f else 0.84f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow), label = "rest")
+                                    if (ring && flick.fly.value == 0f) CoverVisualizer(side, look.visualizer(dark, p), now.playing, onBass = { swell = it })
                                     // A flick toward the computer sends the cover flying off the top, and the music with it;
                                     // one back toward you brings the computer's down from there.
-                                    look.NowPlayingCover(art, side, rest, swell, flick.fly.value, flick.label)
+                                    // A new song's cover settles in with a little bounce.
+                                    val settle = remember { androidx.compose.animation.core.Animatable(1f) }
+                                    LaunchedEffect(song.id) { settle.snapTo(0.92f); settle.animateTo(1f, com.verza.ui.kit.bouncy()) }
+                                    Box(Modifier.graphicsLayer { scaleX = settle.value; scaleY = settle.value }, contentAlignment = Alignment.Center) {
+                                        look.NowPlayingCover(art, side, rest, swell, flick.fly.value, flick.label)
+                                    }
                                 }
                                 Spacer(Modifier.height(18.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
-                                        Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Title.let { it.copy(fontSize = it.fontSize * 0.8f, lineHeight = it.lineHeight * 0.8f) }, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Title.let { it.copy(fontSize = it.fontSize * 0.8f, lineHeight = it.lineHeight * 0.8f) }, color = Ink, maxLines = 1, modifier = Modifier.offset(x = (-16).dp).fadeEdges(16.dp, 24.dp).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 2500).padding(start = 16.dp))
                                         Names(song, links, onOpen = { onClose(); onOpen(it) })
                                     }
                                     Spacer(Modifier.width(12.dp))
                                     val isLiked = song.id in liked
-                                    ChromeButton(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", size = 40.dp) { graph.like(song, !isLiked) }
+                                    ChromeButton(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", Modifier.popOn(isLiked), size = 40.dp) { graph.like(song, !isLiked) }
                                     Spacer(Modifier.width(10.dp))
                                     SongMenu(song, inPlayer = true) { close ->
                                         MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
@@ -229,8 +240,10 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                         }
                         item { Text(com.verza.ui.look.LocalLook.current.case.of("Up next"), style = Type.Headline, color = Ink, modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = 4.dp)) }
                         val upNext = now.queue.withIndex().drop(now.index + 1)
-                        itemsIndexed(upNext, key = { _, (i, s) -> "$i${s.id}" }) { _, (i, s) ->
-                            ListRow(s.title, s.artist, art = s.art?.let { artAt(it, 226) }, modifier = Modifier.padding(horizontal = 24.dp), onClick = { player.jumpTo(i) })
+                        // Keyed by the song and which time it is in the queue, not by position: as a song ends the
+                        // rest keep their keys, and slide up into place instead of being redrawn.
+                        itemsIndexed(upNext, key = { _, (i, _) -> keys[i] }) { _, (i, s) ->
+                            ListRow(s.title, s.artist, art = s.art?.let { artAt(it, 226) }, modifier = Modifier.animateItem().padding(horizontal = 24.dp), onClick = { player.jumpTo(i) })
                         }
                     }
                 }
@@ -443,3 +456,12 @@ private fun clock(ms: Long): String {
     val s = ms / 1000
     return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
 }
+
+/** Fades the first [start] and last [end] of what's drawn, so a title scrolling by goes soft at the edges instead of being cut. */
+private fun Modifier.fadeEdges(start: androidx.compose.ui.unit.Dp, end: androidx.compose.ui.unit.Dp) = graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val a = (start.toPx() / size.width).coerceAtMost(0.3f)
+        val b = (end.toPx() / size.width).coerceAtMost(0.3f)
+        drawRect(Brush.horizontalGradient(0f to Color.Transparent, a to Color.Black, 1f - b to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
+    }

@@ -154,11 +154,13 @@ fun ListRow(
     leading: (@Composable () -> Unit)? = null,
 ) {
     val p = LocalPalette.current
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .squish(source, 0.98f)
             .clip(Corner)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .combinedClickable(source, androidx.compose.foundation.LocalIndication.current, onClick = onClick, onLongClick = onLongClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {

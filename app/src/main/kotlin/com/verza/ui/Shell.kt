@@ -67,6 +67,8 @@ private val Tabs = listOf(
 )
 
 /** The whole app: the pages over the look's ground, and the look's dock floating over them. */
+private val Still = androidx.compose.runtime.mutableStateOf(androidx.compose.ui.geometry.Offset.Zero)
+
 @Composable
 fun Shell() {
     val nav = rememberNavController()
@@ -85,7 +87,9 @@ fun Shell() {
     val route = nav.currentBackStackEntryAsState().value?.destination?.route
     // A look can be dark while the system is light, or the other way: the status bar follows the look.
     com.verza.ui.kit.BarIcons(light = p.dark)
+    val tilt = if (look is com.verza.ui.look.GlassLook) com.verza.ui.kit.rememberTilt() else Still
 
+    CompositionLocalProvider(com.verza.ui.kit.LocalTilt provides tilt) {
     Box(Modifier.fillMaxSize().background(p.canvas)) {
         Glassed(
             ground = p.canvas,
@@ -97,8 +101,8 @@ fun Shell() {
                         navController = nav,
                         startDestination = "home",
                         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-                        enterTransition = { fadeIn() },
-                        exitTransition = { fadeOut() },
+                        enterTransition = { fadeIn(androidx.compose.animation.core.tween(220)) + androidx.compose.animation.scaleIn(com.verza.ui.kit.bouncy(androidx.compose.animation.core.Spring.StiffnessMedium), initialScale = 0.96f) },
+                        exitTransition = { fadeOut(androidx.compose.animation.core.tween(160)) },
                     ) {
                         composable("home") { HomePage(onOpen = open, onSettings = { nav.navigate("settings") }) }
                         composable("settings") { SettingsPage(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate("signin") }, onEqualizer = { nav.navigate("equalizer") }) }
@@ -172,13 +176,13 @@ fun Shell() {
         if ((onboarded == false || musicSetUp == false) && route != "signin") Welcome(account = onboarded == false, onSignIn = { nav.navigate("signin") })
         // What an update brought, once. A new install has nothing to compare with, so it's marked seen.
         val tourSeen by settings.tourSeen.flow.collectAsState(initial = null)
-        val paired by context.graph.connect.paired.flow.collectAsState(initial = emptyList())
         val updated = remember { context.packageManager.getPackageInfo(context.packageName, 0).let { it.firstInstallTime != it.lastUpdateTime } }
         val scope = androidx.compose.runtime.rememberCoroutineScope()
         val seen = { scope.launch { settings.tourSeen.set(com.verza.ui.signin.TOUR) }; Unit }
         if (onboarded == true && musicSetUp == true && route != "signin" && (tourSeen ?: com.verza.ui.signin.TOUR) < com.verza.ui.signin.TOUR) {
-            if (updated) com.verza.ui.signin.Tour(paired.isNotEmpty(), onDone = seen, onSetUp = { seen(); nav.navigate("settings") })
+            if (updated) com.verza.ui.signin.Tour(onDone = seen)
             else LaunchedEffect(Unit) { seen() }
         }
+    }
     }
 }

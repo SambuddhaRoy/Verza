@@ -57,13 +57,15 @@ data class Palette(
             fill: Color? = null,
             line: Color? = null,
             inkMuted: Color? = null,
+            /** The colour searched from when no cover is playing, or it has none. */
+            fallback: Color = Magenta,
         ): Palette {
             val dark = canvas.luminance() < 0.5f
             val fillColour = fill ?: ink.copy(alpha = if (dark) 0.14f else 0.08f)
             val pick = accent ?: run {
                 val vivid = swatches.maxByOrNull { val c = hsv(it); c[1] * (0.4f + c[2]) }?.takeIf { hsv(it)[1] > 0.12f }
-                val seed = hsv(vivid ?: Magenta)
-                accentFor(seed[0], if (vivid == null) 0.85f else seed[1], fillColour.compositeOver(canvas), dark)
+                val seed = hsv(vivid ?: fallback)
+                accentFor(seed[0], if (vivid == null) maxOf(0.85f, seed[1]) else seed[1], fillColour.compositeOver(canvas), dark)
             }
             return Palette(
                 canvas = canvas,
