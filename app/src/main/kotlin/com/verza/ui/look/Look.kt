@@ -92,7 +92,7 @@ abstract class Look(val id: String, val name: String, val note: String) {
     open val panel: androidx.compose.foundation.BorderStroke? = null
 
     /** How far the dock reaches up from the navigation bar, with a song playing or not. */
-    open fun dockHeight(playing: Boolean): Dp = 8.dp + 62.dp + (if (playing) 8.dp + 56.dp else 0.dp) + 12.dp
+    open fun dockHeight(playing: Boolean): Dp = 12.dp + 62.dp + (if (playing) 10.dp + 64.dp else 0.dp) + 12.dp
 
     /** Lists soften into the status bar and under the dock, as content does under glass. */
     open val edgeFade: Boolean = true

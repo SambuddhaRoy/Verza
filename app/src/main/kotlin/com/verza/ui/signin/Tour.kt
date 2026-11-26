@@ -71,7 +71,7 @@ private class Step(val title: String, val text: String, val art: @Composable (Mo
 
 private val Steps = listOf(
     Step("pick a look", "Verza comes in two looks now. Tap one to wear it here, or change it later in Settings.", { LookPicker(it) }),
-    Step("glass that splits light", "Liquid glass bends what's under it, and splits it into colour at the edge, as thick glass does. Tilt your phone and the light moves round the rim.", { GlassArt(it) }),
+    Step("liquid glass", "Glass bends what's under it at its edge, as thick glass does. Tilt your phone and the light moves round the rim.", { GlassArt(it) }),
     Step("Gen Z", "Loud type in the colour of whatever's playing, a cover that fills the screen, and everything bounces when you touch it. In light and dark.", { GenZArt(it) }),
 )
 
