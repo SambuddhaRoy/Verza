@@ -236,7 +236,7 @@ private fun SongList(songs: List<Song>) {
             Column(Modifier.padding(bottom = 6.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Word("Play", p.accent, Modifier.weight(1f), icon = Icons.Rounded.PlayArrow) { player.play(songs) }
-                    Word("Shuffle", p.accent, Modifier.weight(1f), icon = Icons.Rounded.Shuffle) { player.shuffle(songs) }
+                    Word("Shuffle", p.ink, Modifier.weight(1f), icon = Icons.Rounded.Shuffle) { player.shuffle(songs) }
                 }
                 Text(if (songs.size == 1) "1 song" else "${songs.size} songs", style = Type.Small, color = p.inkMuted, modifier = Modifier.padding(top = 10.dp))
             }

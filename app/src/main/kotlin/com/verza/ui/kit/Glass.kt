@@ -73,6 +73,10 @@ import com.verza.ui.theme.LocalPalette
  * Where the light catches the rim there's a thin white glint, with a fainter one opposite. The light
  * follows the phone's tilt ([LocalTilt]): tip it and the glint slides round the edge. (2.5.0's glass
  * split the light into rainbows at the rim; the listener asked for just glass.)
+ *
+ * Since 2.7.0 (Soft glass) a pane is frosted in the page's own colour rather than white or grey, and
+ * lifted off the page by the soft surfaces' two shadows ([raise]) rather than a drop shadow: the page
+ * lifted, not a sheet laid on it.
  */
 
 /** Which way the phone leans, each axis -1 to 1; where the light sits on the glass. */
@@ -154,14 +158,10 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
     // Pressed, the pane swells and brightens, as Apple's does under a finger.
     val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow), label = "press")
     val see = backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val tint = when {
-        !see -> if (p.dark) Color(0xFF1C1C1E).copy(alpha = 0.94f) else Color.White.copy(alpha = 0.94f)
-        p.dark -> Color(0xFF26262A).copy(alpha = 0.58f)
-        else -> Color.White.copy(alpha = 0.6f)
-    }
+    // Frosted in the page's own material, so a pane is the page lifted, not a sheet laid on it.
+    val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (p.dark) 0.6f else 0.55f)
     return this
         .graphicsLayer { val s = 1f + 0.06f * press; scaleX = s; scaleY = s }
-        .shadow(if (p.dark) 10.dp else 14.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (p.dark) 0.5f else 0.14f), spotColor = Color.Black.copy(alpha = if (p.dark) 0.6f else 0.2f))
         .onGloballyPositioned { at = it.positionInRoot() }
         .drawWithCache {
             val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
@@ -170,11 +170,14 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
             val glintWidth = 1.6.dp.toPx()
             // Lit along the top, fading round the sides, a little light again at the foot.
             val rim = Brush.verticalGradient(
-                0f to Color.White.copy(alpha = if (p.dark) 0.34f else 0.95f),
-                0.45f to Color.White.copy(alpha = if (p.dark) 0.06f else 0.35f),
-                1f to Color.White.copy(alpha = if (p.dark) 0.16f else 0.7f),
+                0f to Color.White.copy(alpha = if (p.dark) 0.22f else 0.9f),
+                0.45f to Color.White.copy(alpha = if (p.dark) 0.04f else 0.3f),
+                1f to Color.White.copy(alpha = if (p.dark) 0.08f else 0.5f),
             )
+            // Lifted off the page as the soft surfaces are: lit at the top left, shadowed under.
+            val lift = minOf(7.dp.toPx(), minOf(size.width, size.height) * 0.12f)
             onDrawBehind {
+                raise(path, p.canvas, lift, p)
                 if (see) {
                     val shift = backdrop!!.origin - at
                     layer.record { translate(shift.x, shift.y) { drawLayer(backdrop.layer) } }

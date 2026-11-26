@@ -81,7 +81,7 @@ fun Collection(key: String, songs: List<Song>, facts: (Song) -> Facts, onOpenGro
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Word("Play", p.accent, Modifier.weight(1f), icon = androidx.compose.material.icons.Icons.Rounded.PlayArrow) { player.play(order) }
-                Word("Shuffle", p.accent, Modifier.weight(1f), icon = androidx.compose.material.icons.Icons.Rounded.Shuffle) { player.shuffle(order) }
+                Word("Shuffle", p.ink, Modifier.weight(1f), icon = androidx.compose.material.icons.Icons.Rounded.Shuffle) { player.shuffle(order) }
             }
         }
         item {

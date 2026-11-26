@@ -26,5 +26,5 @@ private fun family(res: Int, vararg weights: Int, axes: () -> Array<FontVariatio
 object Fonts {
     // Inter has an optical-size axis (14 to 32): titles use the 32 end, so a large title isn't body text zoomed in.
     val InterText = family(R.font.inter_variable, 400, 500, 600, 700) { arrayOf(FontVariation.Setting("opsz", 14f)) }
-    val InterDisplay = family(R.font.inter_variable, 400, 600, 700, 800, 900) { arrayOf(FontVariation.Setting("opsz", 32f)) }
+    val InterDisplay = family(R.font.inter_variable, 400, 500, 600, 700, 800, 900) { arrayOf(FontVariation.Setting("opsz", 32f)) }
 }

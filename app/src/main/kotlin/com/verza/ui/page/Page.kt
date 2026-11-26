@@ -235,7 +235,7 @@ private fun AlbumPage(album: Album, playlist: Long?) {
                 Text(listOf(rest, songsLabel(album.songs)).filter { it.isNotBlank() }.joinToString(" · "), style = Type.Small, color = p.inkMuted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
                 Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Word("Play", p.accent, Modifier.weight(1f), icon = Icons.Rounded.PlayArrow, enabled = album.songs.isNotEmpty()) { player.play(album.songs) }
-                    Word("Shuffle", p.accent, Modifier.weight(1f), icon = Icons.Rounded.Shuffle, enabled = album.songs.isNotEmpty()) { player.shuffle(album.songs) }
+                    Word("Shuffle", p.ink, Modifier.weight(1f), icon = Icons.Rounded.Shuffle, enabled = album.songs.isNotEmpty()) { player.shuffle(album.songs) }
                 }
             }
         }

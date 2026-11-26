@@ -1,5 +1,6 @@
 package com.verza.ui.library
 
+import com.verza.ui.kit.soft
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
@@ -51,7 +52,7 @@ fun YourSound() {
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp + LocalDockHeight.current)) {
         item {
             // The three figures on one panel, as a summary in Apple's apps sits.
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(com.verza.ui.theme.GroupCorner).background(p.cell).padding(16.dp)) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).soft(com.verza.ui.theme.GroupCorner, 6.dp).padding(16.dp)) {
                 // Under an hour, minutes: "0 hours" says nothing.
                 if (ms >= 3_600_000) Figure("${ms / 3_600_000}", if (ms < 7_200_000) "hour" else "hours", Modifier.weight(1f))
                 else Figure("${ms / 60_000}", "minutes", Modifier.weight(1f))

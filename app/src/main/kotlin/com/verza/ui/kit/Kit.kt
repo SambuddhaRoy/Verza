@@ -99,14 +99,15 @@ fun Word(text: String, color: Color = LocalPalette.current.ink, modifier: Modifi
 fun ChromeButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 44.dp, tint: Color = LocalPalette.current.ink, stain: Color? = null, iconSize: Dp = size * 0.5f, onClick: () -> Unit) =
     LocalLook.current.ChromeButton(icon, label, modifier, size, tint, stain, iconSize, onClick)
 
-/** A round button with one symbol on the fill, for the content layer (glass is for the controls over it). */
+/** A round button with one symbol, raised out of the page (glass is for the controls over it); it sinks when pressed. */
 @Composable
 fun IconCircle(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 40.dp, tint: Color = LocalPalette.current.ink, onClick: () -> Unit) {
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Box(
-        modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick).semantics { role = Role.Button; contentDescription = label },
+        modifier.size(48.dp).clip(CircleShape).clickable(source, null, onClick = onClick).semantics { role = Role.Button; contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.size(size).clip(CircleShape).background(LocalPalette.current.fill), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(size).soft(CircleShape, 4.dp, pressOf(source)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.55f))
         }
     }
@@ -202,7 +203,7 @@ fun Empty(text: String, icon: ImageVector = Icons.Rounded.MusicNote, action: Str
 }
 
 /**
- * A text field: the words on a rounded fill, as iOS draws one. Every field in the app is one.
+ * A text field: the words in a well pressed into the page. Every field in the app is one.
  */
 @Composable
 fun Field(
@@ -229,7 +230,7 @@ fun Field(
         modifier = modifier,
         decorationBox = { inner ->
             Row(
-                Modifier.heightIn(min = 44.dp).clip(shape).background(p.fill).padding(start = if (leading != null) 10.dp else 14.dp, end = if (trailing != null) 0.dp else 14.dp),
+                Modifier.heightIn(min = 44.dp).soft(shape, 4.dp, inset = true).padding(start = if (leading != null) 10.dp else 14.dp, end = if (trailing != null) 0.dp else 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (leading != null) { leading(); Spacer(Modifier.width(6.dp)) }
@@ -244,7 +245,7 @@ fun Field(
 }
 
 /**
- * An inset group of rows, as iOS's settings have: [title] over it, [content] on a rounded panel.
+ * A group of rows, as iOS's settings have: [title] over it, [content] on a panel raised out of the page.
  * Rows inside put a [Hairline] between them.
  */
 @Composable
@@ -253,7 +254,7 @@ fun Group(title: String? = null, modifier: Modifier = Modifier, footer: String? 
     Column(modifier.fillMaxWidth().padding(top = 22.dp)) {
         if (title != null) Text(title.sentence(), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp).semantics { heading() })
         val look = LocalLook.current
-        Column(Modifier.fillMaxWidth().clip(look.group).background(p.cell).then(look.panel?.let { Modifier.border(it, look.group) } ?: Modifier).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
+        Column(Modifier.fillMaxWidth().soft(look.group, 7.dp).clip(look.group).then(look.panel?.let { Modifier.border(it, look.group) } ?: Modifier).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
         if (footer != null) Text(footer, style = Type.Small, color = p.inkMuted, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
     }
 }

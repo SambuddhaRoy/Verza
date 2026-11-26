@@ -16,18 +16,16 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,12 +35,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
@@ -53,54 +50,42 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -112,13 +97,16 @@ import com.verza.data.mixes.StatsRepository
 import com.verza.graph
 import com.verza.playback.NowPlaying
 import com.verza.ui.kit.Cover
-import com.verza.ui.kit.GlassButton
-import com.verza.ui.kit.Glassed
-import com.verza.ui.kit.LocalTilt
+import com.verza.ui.kit.Etched
+import com.verza.ui.kit.SoftKey
 import com.verza.ui.kit.bouncy
 import com.verza.ui.kit.enter
 import com.verza.ui.kit.glass
 import com.verza.ui.kit.popOn
+import com.verza.ui.kit.pressOf
+import com.verza.ui.kit.raise
+import com.verza.ui.kit.sink
+import com.verza.ui.kit.soft
 import com.verza.ui.kit.squish
 import com.verza.ui.kit.takesTouches
 import com.verza.ui.theme.LocalPalette
@@ -126,83 +114,85 @@ import com.verza.ui.theme.Palette
 import com.verza.ui.theme.Type
 import com.verza.ui.theme.coverSwatches
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.asin
-import kotlin.math.sign
 
 /**
- * Liquid glass, after Apple Music (HIG, Materials and Tab bars): glass for the controls over the
- * pages, stained with the playing song's colour where Apple's has none.
- *
- * The pages are laid out as the Trend mix look was (after Brand Appart), which the listener kept the
- * layout of when that look went: a heavy name with a © after it, Home's bento of what's playing and
- * your figures with a charm hanging on a keychain, shelves as a deck of cards to swipe, buttons with
- * an arrow in a circle at their end, and the dock as two capsules, the song over the tabs. Now
- * Playing is glass's own.
+ * Soft glass: hyper-minimal, after the quiet sites Httpster files under Minimal (Drams' Rams-inspired
+ * pages, Middle Name, Heartbeat's drum machine, The Index). The page is one warm material, stone by
+ * day and graphite by night; controls are that material raised out of it or pressed into it
+ * (`ui/kit/Soft.kt`), and what floats over the pages (the dock, the buttons over a cover) is frosted
+ * glass of the same material. Words are few and small: names in a light large face, sections as small
+ * capitals on a line cut into the page, figures as figures. Colour is the song's, and it is spent in
+ * one place at a time: the dot by a page's name, the lamp in the chosen tab, and the play key, the one
+ * coloured key, as Braun's calculators had one orange key.
  */
-object GlassLook : Look("glass", "Liquid glass", "Glass over a bento of what you play, coloured by the song") {
-    override fun palette(swatches: List<Color>, dark: Boolean) = Palette.from(swatches, dark)
+object GlassLook : Look("soft", "Soft glass", "One soft material, glass over it, and one coloured key") {
+    override fun palette(swatches: List<Color>, dark: Boolean): Palette {
+        val canvas = if (dark) Color(0xFF1C1C1E) else Color(0xFFE9E7E3)
+        val ink = if (dark) Color(0xFFEEEDEA) else Color(0xFF151515)
+        // Rows, groups and menus are the page's own material, set apart by their shadows, not a fill.
+        return Palette.make(canvas, ink, swatches, cell = canvas, grouped = canvas, surface = lerp(canvas, ink, 0.05f))
+    }
 
-    override fun cover(size: Dp): Shape = RoundedCornerShape(if (size in 1.dp..64.dp) 10.dp else 20.dp)
-    override val group: Shape = RoundedCornerShape(26.dp)
+    override fun cover(size: Dp): Shape = RoundedCornerShape(if (size in 1.dp..64.dp) 8.dp else 14.dp)
+    override val group: Shape = RoundedCornerShape(24.dp)
 
-    @Composable override fun HomeHero() = GlassBento()
+    /** Now Playing is the page's material too, whatever the theme; the cover brings the colour. */
+    override fun nowPlaying(page: Palette) = page
 
-    // Inter, as Apple's text styles (HIG, Typography; SF Pro may not ship on Android), with Trend mix's
-    // heavy, tight names. The title stays Apple's: Now Playing sets the song in it.
+    @Composable override fun HomeHero() = PlayerPlate()
+    @Composable override fun NowPlayingBackground(art: String?) = CoverGlow(art)
+
+    private val figures = "tnum, ss01"
+
+    // Inter. Names large and light (500, tight), sections small capitals spaced out, figures tabular.
     override val type = Types(
-        masthead = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.ExtraBold, fontSize = 40.sp, lineHeight = 42.sp, letterSpacing = (-0.045).em),
-        section = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp, letterSpacing = (-0.035).em),
-        title = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.021).em),
-        headline = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = (-0.013).em),
-        rowTitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = (-0.013).em),
-        rowSubtitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp, letterSpacing = (-0.009).em),
-        body = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
-        small = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = (-0.003).em),
-        tab = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 13.sp, letterSpacing = 0.004.em),
-        label = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 18.sp),
+        masthead = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.Medium, fontSize = 38.sp, lineHeight = 42.sp, letterSpacing = (-0.045).em),
+        section = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-0.025).em),
+        title = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.03).em),
+        headline = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
+        rowTitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
+        rowSubtitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 19.sp, letterSpacing = (-0.006).em),
+        body = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 23.sp, letterSpacing = (-0.011).em),
+        small = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, fontFeatureSettings = figures),
+        tab = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 13.sp, letterSpacing = 0.02.em),
+        label = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.11.em, fontFeatureSettings = figures),
     )
 }
 
-private val Tile = RoundedCornerShape(26.dp)
+/** A figure set large, for the plate's counts. */
+private val Figure: TextStyle
+    @Composable get() = Type.Section.copy(fontSize = 26.sp, lineHeight = 30.sp, letterSpacing = (-0.03).em, fontFeatureSettings = "tnum")
 
-/** A page's name, heavy and tight, a © in a bead of the accent after it; the dateline over it, [trailing] level with it. */
+/** A page's name, large and light, the song's colour in a dot after it; the dateline over it in small capitals. */
 @Composable
 internal fun GlassMasthead(title: String, modifier: Modifier, dateline: String?, trailing: (@Composable () -> Unit)?) {
     val p = LocalPalette.current
-    Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
+    Row(modifier.fillMaxWidth().padding(start = 24.dp, end = 18.dp, top = 20.dp, bottom = 10.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
-            if (dateline != null) Text(dateline, style = Type.Small, color = p.inkMuted)
-            Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(top = 2.dp)) {
+            if (dateline != null) Text(dateline.uppercase(), style = Type.Label, color = p.inkMuted, modifier = Modifier.padding(bottom = 8.dp).semantics { contentDescription = dateline })
+            Row(verticalAlignment = Alignment.Top) {
                 Text(LocalLook.current.case.of(title), style = Type.Masthead, color = p.ink, modifier = Modifier.weight(1f, fill = false).semantics { heading() })
-                Box(Modifier.padding(start = 3.dp, top = 4.dp).size(20.dp).background(p.accent, CircleShape).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
-                    Text("©", style = Type.Label.copy(fontSize = 13.sp, lineHeight = 13.sp), color = p.onAccent)
-                }
+                Box(Modifier.padding(start = 6.dp, top = 10.dp).size(8.dp).background(p.accent, CircleShape).clearAndSetSemantics { })
             }
         }
         trailing?.invoke()
     }
 }
 
-/** Two tones: the first word in ink, the rest quieter ("Recently played"). */
+/** Small capitals, then a line cut into the page to the edge: "RECENTLY PLAYED ————". */
 @Composable
 internal fun GlassSectionTitle(text: String, modifier: Modifier) {
     val p = LocalPalette.current
-    val words = LocalLook.current.case.of(text).split(' ', limit = 2)
-    Text(
-        buildAnnotatedString {
-            append(words[0])
-            if (words.size > 1) withStyle(SpanStyle(color = p.inkMuted)) { append(" " + words[1]) }
-        },
-        style = Type.Section, color = p.ink, modifier = modifier.padding(top = 30.dp, bottom = 14.dp).semantics { heading() },
-    )
+    Row(modifier.fillMaxWidth().padding(top = 34.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text.uppercase(), style = Type.Label, color = p.ink, maxLines = 1, modifier = Modifier.semantics { heading(); contentDescription = text })
+        Etched(Modifier.padding(start = 14.dp).weight(1f))
+    }
 }
 
 /**
- * A capsule with its words and [icon], and an arrow in a circle at its end: the one to press ([color]
- * the accent) in ink with the circle in the accent, the rest on the fill.
+ * A raised pill of the page's material with its words; pressed, it sinks into the page. The one to
+ * press ([color] the accent) is ink, so it reads first without spending the song's colour.
  */
 @Composable
 internal fun GlassWordButton(text: String, color: Color, modifier: Modifier, icon: ImageVector?, enabled: Boolean, onClick: () -> Unit) {
@@ -210,112 +200,50 @@ internal fun GlassWordButton(text: String, color: Color, modifier: Modifier, ico
     val primary = color == p.accent
     val ink = (if (primary) p.canvas else p.ink).copy(alpha = if (enabled) 1f else 0.4f)
     val source = remember { MutableInteractionSource() }
+    val press = pressOf(source)
     Row(
-        modifier.heightIn(min = 50.dp).squish(source, 0.96f).clip(CircleShape).background(if (primary) p.ink else p.fill)
-            .clickable(source, LocalIndication.current, enabled = enabled, onClick = onClick)
-            .semantics { role = Role.Button }.padding(start = 18.dp, end = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier.heightIn(min = 50.dp).soft(CircleShape, 5.dp, press, face = if (primary) p.ink else null).clip(CircleShape)
+            .clickable(source, null, enabled = enabled, onClick = onClick)
+            .semantics { role = Role.Button }.padding(horizontal = 22.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) { Icon(icon, null, tint = ink, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }
-            Text(LocalLook.current.case.of(text), style = Type.Headline, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Box(
-            Modifier.padding(start = 10.dp).size(38.dp).background((if (primary) p.accent else p.ink).copy(alpha = if (enabled) 1f else 0.4f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = if (primary) p.onAccent else p.canvas, modifier = Modifier.size(18.dp)) }
+        if (icon != null) { Icon(icon, null, tint = ink, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)) }
+        Text(LocalLook.current.case.of(text), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
-internal fun GlassHairline(start: Dp) {
-    Box(Modifier.fillMaxWidth().padding(start = start).height(0.5.dp).background(LocalPalette.current.line))
-}
-
-/** How a card sits [depth] down the deck: lower, smaller, turned a little one way then the other. */
-private fun deckTurn(depth: Float): Float {
-    val turns = floatArrayOf(0f, 3.5f, -4f, -2f)
-    val d = depth.coerceIn(0f, 3f)
-    val i = d.toInt().coerceAtMost(2)
-    return turns[i] + (turns[i + 1] - turns[i]) * (d - i)
-}
+internal fun GlassHairline(start: Dp) = Etched(Modifier.padding(start = start))
 
 /**
- * A shelf as a deck of cards: tap the top one to play or open it, swipe it away either way and the
- * next comes up, the ones under it rising into place.
+ * A shelf: covers across, each raised a little off the page, numbered under it as an index is. An
+ * artist is round and unnumbered, its name centred.
  */
 @Composable
 internal fun GlassShelf(section: Section, onOpen: (String) -> Unit) {
     val p = LocalPalette.current
-    val cards = section.cards
-    if (cards.isEmpty()) return
-    var top by remember(section.title) { mutableIntStateOf(0) }
-    val dx = remember { Animatable(0f) }
-    // 1 the moment a card is thrown, springing back to 0: the cards under it rise into its place.
-    val lift = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    val next = {
-        scope.launch {
-            top = (top + 1) % cards.size
-            dx.snapTo(0f)
-            lift.snapTo(1f)
-            lift.animateTo(0f, bouncy())
-        }
-        Unit
-    }
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.fillMaxWidth().height(318.dp), contentAlignment = Alignment.TopCenter) {
-            for (k in minOf(2, cards.size - 1) downTo 0) {
-                val at = (top + k) % cards.size
-                key(at) {
-                    val card = cards[at]
-                    val isTop = k == 0
-                    val round = card.page?.startsWith("UC") == true
-                    val source = remember { MutableInteractionSource() }
-                    val go = cardAction(card, onOpen)
-                    Column(
-                        Modifier.padding(top = 8.dp).width(232.dp)
-                            .graphicsLayer {
-                                val d = k + lift.value
-                                translationY = d * 12.dp.toPx()
-                                val s = 1f - d * 0.05f
-                                scaleX = s; scaleY = s
-                                rotationZ = deckTurn(d)
-                                alpha = (3f - d).coerceIn(0f, 1f)
-                                if (isTop) { translationX = dx.value; rotationZ += dx.value / 30f }
-                            }
-                            .then(if (isTop) Modifier.squish(source, 0.97f) else Modifier)
-                            .shadow(if (isTop) 18.dp else 6.dp, Tile).background(p.cell, Tile).clip(Tile)
-                            .then(
-                                if (isTop) Modifier
-                                    .pointerInput(top) {
-                                        detectHorizontalDragGestures(
-                                            onDragEnd = {
-                                                scope.launch {
-                                                    if (abs(dx.value) > 110.dp.toPx()) { dx.animateTo(sign(dx.value) * 900.dp.toPx(), tween(220)); next() }
-                                                    else dx.animateTo(0f, spring(dampingRatio = 0.6f))
-                                                }
-                                            },
-                                            onDragCancel = { scope.launch { dx.animateTo(0f, spring()) } },
-                                        ) { change, d -> change.consume(); scope.launch { dx.snapTo(dx.value + d) } }
-                                    }
-                                    .clickable(source, null, onClick = go)
-                                    .semantics { customActions = listOf(CustomAccessibilityAction("Next card") { next(); true }) }
-                                else Modifier.clearAndSetSemantics { },
-                            )
-                            .padding(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Cover(card.art?.let { artAt(it, 544) }, 212.dp, round = round)
+    // The padding is the shadows' room: a LazyRow cuts off whatever is drawn outside it.
+    LazyRow(contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 16.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        itemsIndexed(section.cards, key = { i, _ -> i }) { i, card ->
+            val round = card.page?.startsWith("UC") == true
+            val source = remember { MutableInteractionSource() }
+            val shape = if (round) CircleShape else RoundedCornerShape(14.dp)
+            Column(
+                Modifier.width(148.dp).squish(source, 0.97f).clickable(source, null, onClick = cardAction(card, onOpen)),
+                horizontalAlignment = if (round) Alignment.CenterHorizontally else Alignment.Start,
+            ) {
+                Box(Modifier.size(148.dp).soft(shape, 7.dp)) { Cover(card.art?.let { artAt(it, 544) }, 148.dp, round = round) }
+                Row(Modifier.padding(top = 12.dp)) {
+                    if (!round) Text("%02d".format(i + 1), style = Type.Label, color = p.inkMuted, modifier = Modifier.padding(top = 3.dp, end = 8.dp).clearAndSetSemantics { })
+                    Column(horizontalAlignment = if (round) Alignment.CenterHorizontally else Alignment.Start) {
                         val align = if (round) TextAlign.Center else TextAlign.Start
-                        Text(cardTitle(card), style = Type.Headline.copy(fontSize = 16.sp, lineHeight = 21.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align, modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 4.dp, end = 4.dp))
-                        Text(card.subtitle.substringBefore(" • "), style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align, modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = 4.dp))
+                        Text(cardTitle(card), style = Type.Headline.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align)
+                        Text(card.subtitle.substringBefore(" • "), style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align)
                     }
                 }
             }
         }
-        if (cards.size > 1) Text("${top + 1} / ${cards.size}  ·  swipe", style = Type.Small, color = p.inkMuted)
     }
 }
 
@@ -331,11 +259,12 @@ internal fun cardAction(card: com.verza.data.Card, onOpen: (String) -> Unit): ()
 }
 
 /**
- * Home's bento: the song playing (or last played) large, under a caption and a play button of glass;
- * your plays in the accent; a charm of glass on a keychain; and the days in a row you've listened.
+ * Home's one object, like a player on a shelf: a raised plate holding the song playing (or last
+ * played) with the play key, the one coloured key, and under a cut line your figures: plays, days in a
+ * row, and who you've played most lately.
  */
 @Composable
-private fun GlassBento() {
+private fun PlayerPlate() {
     val graph = LocalContext.current.graph
     val now by graph.player.state.collectAsState()
     val recent by graph.library.recent.collectAsState(initial = emptyList())
@@ -346,106 +275,54 @@ private fun GlassBento() {
     val streak = com.verza.ui.library.streak(days)
     val p = LocalPalette.current
     val song = now.song ?: recent.firstOrNull()
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth().height(250.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Glassed(
-                ground = p.surface,
-                modifier = Modifier.weight(1.25f).fillMaxHeight().enter(0).clip(Tile),
-                content = {
-                    if (song?.art != null) AsyncImage(artAt(song.art!!, 544), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                    else Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(p.accent, p.surface))))
-                },
-                glass = {
-                    if (song != null) {
-                        GlassButton(
-                            if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play",
-                            Modifier.align(Alignment.TopEnd).padding(10.dp), size = 44.dp, stain = p.accent, iconModifier = Modifier.popOn(now.playing),
-                        ) { if (now.song != null) graph.player.toggle() else graph.player.play(listOf(song)) }
-                    }
-                    Column(
-                        Modifier.align(Alignment.BottomCenter).padding(8.dp).fillMaxWidth()
-                            .glass(RoundedCornerShape(19.dp), 19.dp).padding(horizontal = 12.dp, vertical = 10.dp),
-                    ) {
-                        Text(if (now.song != null) "Now playing" else if (song != null) "Last played" else "Nothing yet", style = Type.Small.copy(fontSize = 12.sp, lineHeight = 16.sp), color = p.ink.copy(alpha = 0.72f))
-                        Text(song?.let { com.verza.data.shownTitle(it.title, it.artist) } ?: "Play something", style = Type.Headline.copy(fontSize = 16.sp, lineHeight = 20.sp), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
-                },
-            )
-            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // The count runs up to its figure when it loads.
-                val shown by animateIntAsState(plays, tween(900), label = "plays")
-                Column(Modifier.weight(1f).fillMaxWidth().enter(1).clip(Tile).background(p.accent).padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                    Text("Plays", style = Type.Label, color = p.onAccent)
-                    Text("$shown", style = Type.Masthead.copy(fontSize = 44.sp, lineHeight = 46.sp), color = p.onAccent, maxLines = 1)
+    val art = RoundedCornerShape(14.dp)
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp).enter(0)
+            .soft(RoundedCornerShape(30.dp), 9.dp).padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(92.dp).soft(art, 5.dp)) {
+                if (song?.art != null) AsyncImage(artAt(song.art!!, 226), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(art))
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (now.playing) Box(Modifier.padding(end = 7.dp).size(6.dp).background(p.accent, CircleShape))
+                    val state = when { now.playing -> "Now playing"; now.song != null -> "Paused"; song != null -> "Last played"; else -> "Nothing yet" }
+                    Text(state.uppercase(), style = Type.Label, color = p.inkMuted, modifier = Modifier.semantics { contentDescription = state })
                 }
-                Charm(song?.art, Modifier.weight(1.1f).fillMaxWidth().enter(2).clip(Tile))
+                Text(song?.let { com.verza.data.shownTitle(it.title, it.artist) } ?: "Play something", style = Type.Headline.copy(fontSize = 18.sp, lineHeight = 23.sp), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                if (song != null) Text(song.artist, style = Type.Small.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            if (song != null) SoftKey(
+                if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play",
+                size = 56.dp, face = p.accent, iconModifier = Modifier.popOn(now.playing),
+            ) { if (now.song != null) graph.player.toggle() else graph.player.play(listOf(song)) }
         }
-        Row(
-            Modifier.fillMaxWidth().enter(3).clip(Tile).background(p.surface).padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Rounded.LocalFireDepartment, null, tint = p.accent, modifier = Modifier.size(28.dp))
-            Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(if (streak == 1) "1 day in a row" else "$streak days in a row", style = Type.Headline.copy(fontSize = 16.sp, lineHeight = 21.sp), color = p.ink)
-                Text(artists.firstOrNull()?.artist?.let { "Mostly $it lately" } ?: "Play something to start a streak", style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+        Etched(Modifier.padding(top = 18.dp, bottom = 16.dp))
+        Row {
+            // The count runs up to its figure when it loads.
+            val shown by animateIntAsState(plays, tween(900), label = "plays")
+            Stat("%,d".format(shown), "Plays", Modifier.weight(1f))
+            Stat("$streak", if (streak == 1) "Day in a row" else "Days in a row", Modifier.weight(1f))
+            Stat(artists.firstOrNull()?.artist ?: "–", "Most lately", Modifier.weight(1.3f))
         }
     }
 }
 
-/**
- * A bead of glass on a keychain drawn in line, over the cover's colours. It hangs the way gravity
- * pulls as the phone leans, swings in when Home opens, and swings when tapped.
- */
+/** A figure over its name in small capitals. */
 @Composable
-private fun Charm(art: String?, modifier: Modifier) {
+private fun Stat(value: String, label: String, modifier: Modifier) {
     val p = LocalPalette.current
-    val colours = coverSwatches(art).ifEmpty { listOf(p.accent) }
-    val tilt = LocalTilt.current
-    val swing = remember { Animatable(22f) }
-    val scope = rememberCoroutineScope()
-    // Plumb: the phone leaning right by an angle hangs the charm that much the other way on screen.
-    fun plumb() = -Math.toDegrees(asin(tilt.value.x.coerceIn(-0.7f, 0.7f).toDouble())).toFloat()
-    val loose = spring<Float>(dampingRatio = 0.14f, stiffness = 40f)
-    LaunchedEffect(tilt) { snapshotFlow { plumb() }.collectLatest { swing.animateTo(it, loose) } }
-    Glassed(
-        ground = p.surface,
-        modifier = modifier,
-        content = {
-            Box(Modifier.fillMaxSize().drawBehind {
-                drawCircle(Brush.radialGradient(listOf(colours[0].copy(alpha = 0.85f), Color.Transparent), Offset(size.width * 0.25f, size.height * 0.8f), size.width * 0.75f), size.width * 0.75f, Offset(size.width * 0.25f, size.height * 0.8f))
-                val second = colours.getOrElse(1) { p.accent }
-                drawCircle(Brush.radialGradient(listOf(second.copy(alpha = 0.7f), Color.Transparent), Offset(size.width * 0.85f, size.height * 0.45f), size.width * 0.6f), size.width * 0.6f, Offset(size.width * 0.85f, size.height * 0.45f))
-            })
-        },
-        glass = {
-            Column(
-                Modifier.align(Alignment.TopCenter).padding(top = 6.dp)
-                    .graphicsLayer { rotationZ = swing.value; transformOrigin = TransformOrigin(0.5f, 0f) }
-                    .clearAndSetSemantics { }
-                    .clickable(remember { MutableInteractionSource() }, null) { scope.launch { swing.animateTo(plumb(), loose, initialVelocity = if (swing.value > plumb()) -240f else 240f) } },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Canvas(Modifier.size(40.dp, 50.dp)) {
-                    val w = 2.2.dp.toPx()
-                    // The carabiner, its gate a line across its side, then the split ring.
-                    drawRoundRect(p.ink, Offset(size.width * 0.3f, 0f), Size(size.width * 0.4f, size.height * 0.56f), CornerRadius(size.width * 0.2f), style = Stroke(w))
-                    drawLine(p.ink, Offset(size.width * 0.66f, size.height * 0.12f), Offset(size.width * 0.58f, size.height * 0.4f), w, StrokeCap.Round)
-                    drawCircle(p.ink, size.width * 0.17f, Offset(size.width / 2, size.height * 0.78f), style = Stroke(w))
-                }
-                Box(Modifier.offset(y = (-5).dp).size(58.dp).glass(CircleShape, 29.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.MusicNote, null, tint = p.ink, modifier = Modifier.size(28.dp))
-                }
-            }
-        },
-    )
+    Column(modifier.padding(end = 8.dp).semantics(mergeDescendants = true) { contentDescription = "$label: $value" }) {
+        Text(value, style = Figure, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label.uppercase(), style = Type.Label.copy(fontSize = 10.sp), color = p.inkMuted, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+    }
 }
 
 private val BarHeight = 62.dp
 private val PlayerHeight = 64.dp
 
-/** What floats at the foot: how far downloads have got, the playing song, then the tabs in a capsule of their own. */
+/** What floats at the foot: how far downloads have got, the playing song, then the tabs, each in frosted glass. */
 @Composable
 internal fun GlassDock(state: DockState, modifier: Modifier) {
     Column(
@@ -470,9 +347,9 @@ internal fun DownloadsLine(text: String, color: Color = LocalPalette.current.ink
 }
 
 /**
- * The tabs, search among them, as symbols on a capsule of glass. The chosen one sits in a drop of
- * glass stained with the accent, and moving to another, the drop's ends chase it at different speeds:
- * it stretches toward the new tab and settles round there, the way a drop of water runs.
+ * The tabs as symbols on a capsule of frosted glass. The chosen one sits in a well pressed into the
+ * glass with a lamp of the song's colour under it; moving to another, the well's ends chase it at
+ * different speeds, so it stretches toward the new tab and settles there, the way a drop runs.
  */
 @Composable
 private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit) {
@@ -496,15 +373,12 @@ private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit)
             .drawBehind {
                 if (shown.value <= 0f) return@drawBehind
                 val w = size.width / tabs.size
-                val start = Offset(left.value * w, 0f)
-                val drop = Size((right.value - left.value) * w, size.height)
-                val round = CornerRadius(size.height / 2)
-                drawRoundRect(Brush.verticalGradient(
-                    0f to p.accent.copy(alpha = (if (p.dark) 0.5f else 0.3f) * shown.value),
-                    1f to p.accent.copy(alpha = (if (p.dark) 0.3f else 0.16f) * shown.value),
-                ), start, drop, round)
-                drawRoundRect(p.accent.copy(alpha = 0.35f * shown.value), start, drop, round, style = Stroke(1.dp.toPx()))
-                drawRoundRect(Color.White.copy(alpha = (if (p.dark) 0.25f else 0.7f) * shown.value), start, drop, round, style = Stroke(1.dp.toPx()))
+                val inset = 2.dp.toPx()
+                val well = Rect(left.value * w + inset, inset, right.value * w - inset, size.height - inset)
+                val path = Path().apply { addRoundRect(RoundRect(well, CornerRadius(well.height / 2))) }
+                drawPath(path, p.canvas.copy(alpha = 0.55f * shown.value))
+                sink(path, 5.dp.toPx(), p, shown.value)
+                drawCircle(p.accent.copy(alpha = shown.value), 2.5.dp.toPx(), Offset(well.center.x, well.bottom - 7.dp.toPx()))
             },
     ) {
         for (tab in tabs) {
@@ -513,7 +387,7 @@ private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit)
                 Modifier.size(width = 66.dp, height = BarHeight - 12.dp).clip(CircleShape).clickable { go(tab.route) }
                     .semantics { role = Role.Tab; selected = on; contentDescription = tab.label },
                 contentAlignment = Alignment.Center,
-            ) { Icon(tab.icon, null, tint = p.ink, modifier = Modifier.size(24.dp)) }
+            ) { Icon(tab.icon, null, tint = if (on) p.ink else p.inkMuted, modifier = Modifier.size(23.dp).offset(y = if (on) (-2).dp else 0.dp)) }
         }
     }
 }
@@ -534,9 +408,8 @@ internal fun playedFraction(now: NowPlaying): androidx.compose.runtime.State<Flo
 }
 
 /**
- * The playing song in a capsule of glass over the tabs, its cover round; a tap raises Now Playing.
- * The glass holds the cover's colours, and its rim fills with the accent as the song plays, from the
- * top left round.
+ * The playing song in a capsule of frosted glass over the tabs, its cover round; a tap raises Now
+ * Playing. The rim fills with the song's colour as it plays, from the top left round.
  */
 @Composable
 private fun GlassMiniPlayer(now: NowPlaying, onOpen: () -> Unit) {
@@ -544,13 +417,10 @@ private fun GlassMiniPlayer(now: NowPlaying, onOpen: () -> Unit) {
     val p = LocalPalette.current
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    // The cover's colours across the capsule, left to right. Not the cover itself stretched: a video's
-    // frame has dark bars at its sides, and their edges showed through the glass.
-    val colours = coverSwatches(song.art)
     val played by playedFraction(now)
     Row(
         Modifier.fillMaxWidth().height(PlayerHeight).takesTouches()
-            .glass(CircleShape, PlayerHeight / 2, pressed, inside = colours.takeIf { it.isNotEmpty() }?.let { c -> { drawRect(Brush.horizontalGradient((c + c).take(3)), alpha = if (p.dark) 0.45f else 0.38f) } })
+            .glass(CircleShape, PlayerHeight / 2, pressed)
             .drawWithCache {
                 val inset = 1.dp.toPx()
                 val h = size.height
@@ -584,7 +454,7 @@ private fun GlassMiniPlayer(now: NowPlaying, onOpen: () -> Unit) {
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(song.artist, style = Type.Small, color = p.ink.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(song.artist, style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -592,7 +462,7 @@ private fun GlassMiniPlayer(now: NowPlaying, onOpen: () -> Unit) {
     }
 }
 
-/** Play or pause, then next: the mini player's two buttons, in every look. */
+/** Play or pause, then next: the mini player's two buttons. */
 @Composable
 internal fun PlayPauseNext(now: NowPlaying, tint: Color, size: Dp = 30.dp) {
     val player = LocalContext.current.graph.player
@@ -602,24 +472,51 @@ internal fun PlayPauseNext(now: NowPlaying, tint: Color, size: Dp = 30.dp) {
     IconButton(onClick = player::next) { Icon(Icons.Rounded.SkipNext, "Next", tint = tint, modifier = Modifier.size(size)) }
 }
 
+/**
+ * Now Playing's ground: the page's material, with the cover's colours glowing behind where the cover
+ * sits and gone by the controls, so the keys stand on plain material as soft surfaces need.
+ */
+@Composable
+private fun CoverGlow(art: String?) {
+    val p = LocalPalette.current
+    val colours = coverSwatches(art).ifEmpty { listOf(p.accent) }
+    Canvas(Modifier.fillMaxSize()) {
+        drawRect(p.canvas)
+        val strength = if (p.dark) 0.3f else 0.34f
+        val spots = listOf(Offset(0.25f, 0.22f), Offset(0.8f, 0.3f), Offset(0.55f, 0.08f))
+        for ((i, at) in spots.withIndex()) {
+            val c = colours[i % colours.size]
+            val centre = Offset(size.width * at.x, size.height * at.y)
+            val r = size.width * 0.75f
+            drawCircle(Brush.radialGradient(listOf(c.copy(alpha = strength), Color.Transparent), centre, r), r, centre)
+        }
+    }
+}
+
 @Composable
 internal fun GlassNowPlayingCover(art: String?, side: Dp, rest: Float, swell: Float, fly: Float, label: String?) {
     com.verza.ui.nowplaying.FlyingCover(art, side, swell, fly, label, Modifier.graphicsLayer { scaleX = rest; scaleY = rest })
 }
 
-/** Play and pause on a disc of glass stained with the song's colour: the one control that matters most. */
+/** Play and pause on the one coloured key. */
 @Composable
 internal fun GlassPlayButton(playing: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
-    GlassButton(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", size = 84.dp, iconSize = 50.dp, tint = p.ink, stain = p.accent, iconModifier = Modifier.popOn(playing), onClick = onClick)
+    SoftKey(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", size = 84.dp, iconSize = 44.dp, face = p.accent, iconModifier = Modifier.popOn(playing), onClick = onClick)
 }
 
-/** A capsule that fills as the song plays; the played part ends square against the rest, as Apple's does. */
+/**
+ * A groove cut into the page, the played part of it in the song's colour, and a bead of the material
+ * riding in it at the playhead, larger under the finger.
+ */
 internal fun DrawScope.glassScrubber(shown: Float, dragging: Float, p: Palette) {
-    val w = (7f + 5f * dragging) * density
-    val top = Offset(0f, size.height / 2 - w / 2)
-    val track = Size(size.width, w)
-    val round = CornerRadius(w / 2)
-    drawRoundRect(p.line, top, track, round)
-    clipRect(right = size.width * shown) { drawRoundRect(p.ink.copy(alpha = 0.86f), top, track, round) }
+    val h = (6f + 2f * dragging) * density
+    val top = size.height / 2 - h / 2
+    val groove = Path().apply { addRoundRect(RoundRect(Rect(0f, top, size.width, top + h), CornerRadius(h / 2))) }
+    val x = size.width * shown
+    clipRect(right = x) { drawPath(groove, p.accent) }
+    sink(groove, 3f * density, p)
+    val r = (8f + 3f * dragging) * density
+    val bead = Path().apply { addOval(Rect(Offset(x.coerceIn(r, size.width - r), size.height / 2), r)) }
+    raise(bead, p.canvas, 3f * density, p)
 }

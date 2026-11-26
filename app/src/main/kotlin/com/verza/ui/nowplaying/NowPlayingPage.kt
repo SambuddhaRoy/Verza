@@ -300,20 +300,23 @@ private fun Extras(now: NowPlaying, onLyrics: () -> Unit, onRadio: () -> Unit) {
 }
 
 /**
- * A symbol to press, with no button drawn round it: pressed, a soft disc blooms behind it, as under
- * Apple's transport. [on] keeps a quieter disc, for a toggle that is on.
+ * A symbol to press, with no button drawn round it: pressed, a soft disc blooms behind it. [on] lights
+ * a lamp under it, for a toggle that is on.
  */
 @Composable
 private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: Dp = 48.dp, iconSize: Dp = 24.dp, on: Boolean? = null, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val bloom by animateFloatAsState(if (pressed) 1f else 0f, spring(stiffness = Spring.StiffnessMedium), label = "bloom")
+    val ink = Ink
+    val lamp = LocalPalette.current.accent
     Box(
         Modifier.size(size).clickable(source, null, onClick = onClick)
             .semantics { role = Role.Button; contentDescription = label; if (on != null) stateDescription = if (on) "On" else "Off" }
             .drawBehind {
-                val ground = (if (on == true) 0.16f else 0f) + 0.14f * bloom
-                if (ground > 0f) drawCircle(Color.White.copy(alpha = ground), radius = this.size.minDimension / 2 * (0.86f + 0.14f * bloom))
+                if (bloom > 0f) drawCircle(ink.copy(alpha = 0.08f * bloom), radius = this.size.minDimension / 2 * (0.86f + 0.14f * bloom))
+                // A toggle that's on lights a lamp of the song's colour under its symbol.
+                if (on == true) drawCircle(lamp, 2.5.dp.toPx(), Offset(this.size.width / 2, this.size.height - 5.dp.toPx()))
             },
         contentAlignment = Alignment.Center,
     ) { Icon(icon, null, tint = if (on == false) InkSoft else Ink, modifier = Modifier.size(iconSize).graphicsLayer { val s = 1f - 0.08f * bloom; scaleX = s; scaleY = s }) }
@@ -440,15 +443,15 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
     }
 }
 
-/** Back and on as large symbols with nothing round them; play and pause on stained glass between. */
+/** Back and on as soft keys, play and pause on the coloured one between. */
 @Composable
 private fun Transport(now: NowPlaying) {
     val player = LocalContext.current.graph.player
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        Glyph(Icons.Rounded.SkipPrevious, "Previous", size = 72.dp, iconSize = 44.dp, onClick = player::previous)
-        // Play and pause on a disc of glass stained with the song's colour: the one control that matters most.
+        com.verza.ui.kit.SoftKey(Icons.Rounded.SkipPrevious, "Previous", size = 62.dp, iconSize = 30.dp, onClick = player::previous)
+        // Play and pause on the one coloured key: the control that matters most.
         com.verza.ui.look.LocalLook.current.PlayButton(now.playing, player::toggle)
-        Glyph(Icons.Rounded.SkipNext, "Next", size = 72.dp, iconSize = 44.dp, onClick = player::next)
+        com.verza.ui.kit.SoftKey(Icons.Rounded.SkipNext, "Next", size = 62.dp, iconSize = 30.dp, onClick = player::next)
     }
 }
 

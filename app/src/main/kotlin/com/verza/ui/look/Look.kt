@@ -25,8 +25,9 @@ import com.verza.ui.theme.artCorner
  * page names itself and its sections, its buttons, how a shelf of covers sits, the dock, and how Now
  * Playing shows the song. LocalLook carries it everywhere, and the pages are drawn through it.
  *
- * There is one now, Liquid glass, and the defaults here are its. There were fourteen (2.5.0's history
- * has them), then two; Gen Z went at 2.6.1. The seam stays: a second look is one object again.
+ * There is one now, Soft glass (GlassLook.kt), and the defaults here are its. There were fourteen
+ * (2.5.0's history has them), then two; Gen Z went at 2.6.1, and at 2.7.0 Liquid glass became Soft
+ * glass. The seam stays: a second look is one object again.
  */
 
 /** The text styles a look sets. [label] is its small voice: a caption, a tag, often mono. */
