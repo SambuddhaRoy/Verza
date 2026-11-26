@@ -106,6 +106,7 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                         Hairline()
                         Toggle("Visualiser", "A level meter under the cover in Now Playing", s.visualizer)
                         Hairline()
+                        if (android.os.Build.VERSION.SDK_INT >= 33) { DeepCovers(); Hairline() }
                         Row(Modifier.fillMaxWidth().clickable(onClick = onEqualizer).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Equaliser", style = Type.RowTitle, color = p.ink)
@@ -219,6 +220,39 @@ private fun AddSource(onDone: () -> Unit) {
         },
         dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
+}
+
+/**
+ * 3D covers, an experiment (data/deep/Deep.kt). Turning it on fetches the depth model the first time,
+ * in the app's scope so leaving Settings doesn't stop it; the row says how far along it is.
+ */
+@Composable
+private fun DeepCovers() {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val on by graph.settings.deepCovers.flow.collectAsState(initial = false)
+    val model by graph.deep.model.collectAsState()
+    val note = when (val m = model) {
+        is com.verza.data.deep.Deep.Model.Fetching -> "Downloading the depth model, ${(m.share * 100).toInt()}%"
+        com.verza.data.deep.Deep.Model.Failed -> if (on) "The depth model didn't download. Turn this off and on to try again" else null
+        else -> null
+    } ?: "Covers with someone in front of a scene move as you tilt the phone. An experiment: it downloads a 28 MB model, removed again when this is off"
+    Row(
+        Modifier.fillMaxWidth().clickable {
+            scope.launch {
+                val next = !on
+                graph.settings.deepCovers.set(next)
+                if (next) graph.scope.launch { graph.deep.fetch() } else graph.deep.forget()
+            }
+        }.semantics(mergeDescendants = true) { role = Role.Switch; stateDescription = if (on) "On" else "Off" }.padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text("3D covers", style = Type.RowTitle, color = LocalPalette.current.ink)
+            Text(note, style = Type.Small, color = LocalPalette.current.inkMuted)
+        }
+        Switch(checked = on, onCheckedChange = null)
+    }
 }
 
 /** A setting with a switch; the whole row toggles it, and says so to TalkBack. */

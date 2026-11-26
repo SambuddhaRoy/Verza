@@ -53,6 +53,8 @@ class Graph(val context: Context) {
     val effects by lazy { com.verza.playback.AudioEffectsController() }
     val updates: com.verza.data.Updates by lazy { com.verza.data.Updates(context, http) }
     val lyrics: com.verza.data.LyricsSource by lazy { com.verza.data.LyricsSource(http) }
+    /** 3D covers: the depth model and the scenes made with it. */
+    val deep: com.verza.data.deep.Deep by lazy { com.verza.data.deep.Deep(context, http) }
     val artwork: com.verza.data.ArtworkRepository by lazy { com.verza.data.ArtworkRepository(http, context) }
     val phone: com.verza.data.phone.PhoneMusic by lazy { com.verza.data.phone.PhoneMusic(context, library, artwork) }
     val library: Library by lazy { Library(db, scope) }

@@ -88,6 +88,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.geometry.Offset
@@ -155,6 +158,16 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
     BackHandler(onBack = onClose)
     val look = com.verza.ui.look.LocalLook.current
     val visualizer by graph.settings.visualizer.flow.collectAsState(initial = true)
+    // A 3D cover (data/deep/Deep.kt): the cover's scene becomes the page's ground, when the experiment is
+    // on, the model is here and the cover has layers. Not mid-flick: the cover flies on its own then.
+    val deepOn by graph.settings.deepCovers.flow.collectAsState(initial = false)
+    val modelReady = graph.deep.model.collectAsState().value == com.verza.data.deep.Deep.Model.Ready
+    val scene by produceState<com.verza.data.deep.Scene?>(null, art, deepOn, modelReady) {
+        value = null
+        if (deepOn && modelReady && art != null && android.os.Build.VERSION.SDK_INT >= 33) value = graph.deep.scene(art)
+    }
+    val spot = remember { CoverSpot() }
+    val deep = scene != null && flick.fly.value == 0f && flick.label == null
     val target = flick.sendTo
     val p = LocalPalette.current
     // The page's own palette: white ink, and an accent measured against the dark.
@@ -173,7 +186,12 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
         Glassed(
             ground = Color.Black,
             modifier = Modifier.fillMaxSize().takesTouches().graphicsLayer { translationY = pull.value },
-            content = { look.NowPlayingBackground(song.art?.let { artAt(it, 226) }) },
+            content = {
+                androidx.compose.animation.Crossfade(if (deep) scene else null, animationSpec = androidx.compose.animation.core.tween(400), label = "deep") { s ->
+                    if (s != null && android.os.Build.VERSION.SDK_INT >= 33) DeepCover(s, spot, dark.dark)
+                    else look.NowPlayingBackground(song.art?.let { artAt(it, 226) })
+                }
+            },
             glass = { CompositionLocalProvider(com.verza.ui.kit.LocalClearGlass provides true) {
                 look.NowPlayingDecor()
                 BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -211,7 +229,14 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                     // A new song's cover settles in with a little bounce.
                                     val settle = remember { androidx.compose.animation.core.Animatable(1f) }
                                     LaunchedEffect(song.id) { settle.snapTo(0.92f); settle.animateTo(1f, com.verza.ui.kit.bouncy()) }
-                                    Box(Modifier.graphicsLayer { scaleX = settle.value; scaleY = settle.value }, contentAlignment = Alignment.Center) {
+                                    // With a 3D cover the page's ground draws it, lined up with this one, which steps aside.
+                                    val shown by animateFloatAsState(if (deep) 0f else 1f, androidx.compose.animation.core.tween(400), label = "shown")
+                                    spot.scale = { rest * settle.value }
+                                    Box(
+                                        Modifier.onGloballyPositioned { spot.rect = androidx.compose.ui.geometry.Rect(it.positionInRoot(), it.size.toSize()) }
+                                            .graphicsLayer { scaleX = settle.value; scaleY = settle.value; alpha = shown },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
                                         look.NowPlayingCover(art, side, rest, 0f, flick.fly.value, flick.label)
                                     }
                                 }

@@ -77,6 +77,7 @@ chaquopy { defaultConfig { version = "3.11"; localPython?.let { buildPython(it) 
 
 dependencies {
     coreLibraryDesugaring(libs.desugar)
+    implementation(libs.litert)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
