@@ -124,7 +124,9 @@ import kotlinx.coroutines.launch
  * you look at (covers, groups of rows) lies flat on it; what floats over the pages (the dock, the
  * buttons over a cover, all of Now Playing's) is fluted glass, ribbed rather than frosted.
  *
- * Two faces: Instrument Serif names things (pages, sections, songs), Inter is for reading and pressing.
+ * Two faces: Instrument Serif names pages and sections, Inter is for reading and pressing; a song's or a
+ * record's name is set in Newsreader bold, a serif with the weight Instrument Serif lacks (2.7.3, asked
+ * for to make the song's name easier to read).
  * The song's colour is spent in a few places only: Home's play key, the played part of the mini
  * player's rim, a toggle that's on. Since 2.7.1,
  * the spaced-out capitals, the dot after every name, the numbered shelves, the counting figures and the
@@ -187,7 +189,7 @@ object GlassLook : Look("soft", "Soft glass", "One soft material, fluted glass o
     override val type = Types(
         masthead = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 46.sp, lineHeight = 50.sp, letterSpacing = (-0.01).em),
         section = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 27.sp, lineHeight = 32.sp),
-        title = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 34.sp, lineHeight = 38.sp),
+        title = TextStyle(fontFamily = Fonts.TitleSerif, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 37.sp, letterSpacing = (-0.012).em),
         headline = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
         rowTitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
         rowSubtitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 19.sp, letterSpacing = (-0.006).em),
