@@ -43,9 +43,10 @@ class Graph(val context: Context) {
     // The mixes on Home: made on the phone from what you play, and from ListenBrainz when connected.
     private val mixSource by lazy { com.verza.data.mixes.MusicRepository(youtube) }
     val mixPrefs by lazy { com.verza.data.mixes.PreferencesRepository(context) }
+    val spotifyMixes by lazy { com.verza.data.mixes.SpotifyMixes(http) }
     val listenBrainz by lazy { com.verza.data.mixes.ListenBrainzRepository(context, http, mixSource) }
     val mixes by lazy {
-        com.verza.data.mixes.MixesRepository(context, scope, db.stats(), mixSource, com.verza.data.mixes.GenreRepository(context, http), mixPrefs, listenBrainz)
+        com.verza.data.mixes.MixesRepository(context, scope, db.stats(), mixSource, com.verza.data.mixes.GenreRepository(context, http), mixPrefs, listenBrainz, spotifyMixes)
     }
     val discovery by lazy { com.verza.data.mixes.Discovery(mixSource, db, settings.discoveryServed) }
     /** The equaliser, bass and loudness on the player's output (bound by PlaybackService). */
@@ -79,7 +80,7 @@ class Graph(val context: Context) {
     }
 
     /** Verza on a computer: what it plays, shown and controlled here (data/Connect.kt). */
-    val connect: com.verza.data.Connect by lazy { com.verza.data.Connect(context, settings, scope, player) }
+    val connect: com.verza.data.Connect by lazy { com.verza.data.Connect(context, settings, scope, player, backup) }
 
     /** A song's radio; a file on the phone gets its YouTube twin's, without the twin itself. */
     val player: com.verza.playback.Player by lazy {

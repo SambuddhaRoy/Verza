@@ -45,7 +45,10 @@ import java.net.Socket
  * which the network security config refuses everywhere else and should go on refusing.
  * Everything a computer sends is checked like a session link ([Sessions]): ids must be YouTube ids.
  */
-class Connect(private val context: Context, private val settings: Settings, private val scope: CoroutineScope, private val player: Player) {
+class Connect(
+    private val context: Context, private val settings: Settings, private val scope: CoroutineScope, private val player: Player,
+    private val backup: com.verza.data.library.Backup,
+) {
 
     @Serializable
     data class Computer(val id: String, val name: String, val host: String, val port: Int = PORT, val token: String = "")
@@ -66,6 +69,8 @@ class Connect(private val context: Context, private val settings: Settings, priv
     }
 
     @Serializable private data class Told(val name: String = "", val state: Playing? = null)
+    @Serializable private data class Shelf(val name: String = "", val tracks: List<Track> = emptyList())
+    @Serializable private data class Library(val playlists: List<Shelf> = emptyList(), val liked: List<Track> = emptyList())
     @Serializable private data class Beacon(val verza: Int = 0, val id: String = "", val name: String = "", val port: Int = PORT)
     @Serializable private data class Paired(val token: String = "", val id: String = "", val name: String = "", val error: String? = null)
 
@@ -219,6 +224,9 @@ class Connect(private val context: Context, private val settings: Settings, priv
             val status = lines.readLine().orEmpty()
             if (" 401" in status) { scope.launch { forget(computer) }; return }   // forgotten on the computer
             if (" 200" !in status) return
+            // In reach and paired: the libraries meet, at most every ten minutes.
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - (synced[computer.id] ?: -SYNC_MS) >= SYNC_MS) { synced[computer.id] = now; scope.launch(Dispatchers.IO) { runCatching { syncLibrary(computer) } } }
             var event = ""
             while (true) {
                 val line = lines.readLine() ?: return
@@ -235,6 +243,50 @@ class Connect(private val context: Context, private val settings: Settings, priv
                     }
                 }
             }
+        }
+    }
+
+    private val synced = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /**
+     * The library both ways with [computer] (Verza Next 1.16 and up): its playlists and liked songs are
+     * merged in here (`Backup.import`: by name, taking nothing away), then this phone's go there and are
+     * merged the same way. YouTube songs only, each way: a file means nothing on the other device. What
+     * arrived is said in a toast. A computer too old to know the route answers 404, and nothing happens.
+     */
+    suspend fun syncLibrary(computer: Computer) {
+        val (status, body) = request(computer.host, computer.port, "GET", "/connect/library", computer.token, null)
+        if (status != 200) return
+        val theirs = json.decodeFromString(Library.serializer(), body)
+        val now = System.currentTimeMillis()
+        fun song(t: Track, liked: Boolean, i: Int) = com.verza.data.library.BackupSong(
+            t.id, t.title.take(300).ifBlank { "Unknown" }, t.artist.take(300), t.art?.takeIf { it.startsWith("https://") },
+            liked = liked, likedAt = if (liked) now - i else null,
+        )
+        val liked = theirs.liked.filter { isVideoId(it.id) }.take(MAX_LIKED)
+        val lists = theirs.playlists.filter { it.name.isNotBlank() }.take(MAX_LISTS)
+            .map { it.name.trim().take(120) to it.tracks.filter { t -> isVideoId(t.id) }.take(MAX_LIST) }
+        val got = backup.import(com.verza.data.library.LibraryBackup(
+            exportedAt = now,
+            songs = (liked.mapIndexed { i, t -> song(t, true, i) } + lists.flatMap { (_, ts) -> ts.map { song(it, false, 0) } }).distinctBy { it.id },
+            playlists = lists.filter { it.second.isNotEmpty() }.map { (name, ts) -> com.verza.data.library.BackupPlaylist(name, now, ts.map { it.id }) },
+        ))
+
+        val mine = backup.snapshot(plays = false)
+        val byId = mine.songs.filter { isVideoId(it.id) }.associateBy { it.id }
+        fun out(id: String) = byId[id]?.let { Track(it.id, it.title, it.artist, it.thumbnailUrl?.takeIf { a -> a.startsWith("https://") }) }
+        val sent = Library(
+            playlists = mine.playlists.map { Shelf(it.name, it.trackIds.mapNotNull(::out)) }.filter { it.tracks.isNotEmpty() },
+            liked = mine.songs.filter { it.liked }.sortedByDescending { it.likedAt ?: 0 }.mapNotNull { out(it.id) },
+        )
+        request(computer.host, computer.port, "POST", "/connect/library", computer.token, json.encodeToJsonElement(Library.serializer(), sent) as JsonObject)
+
+        val bits = listOfNotNull(
+            got.playlists.takeIf { it > 0 }?.let { if (it == 1) "1 playlist" else "$it playlists" },
+            got.inPlaylists.takeIf { it > 0 && got.playlists == 0 }?.let { if (it == 1) "1 song" else "$it songs" },
+        )
+        if (bits.isNotEmpty()) withContext(Dispatchers.Main) {
+            android.widget.Toast.makeText(context, "From ${computer.name}: ${bits.joinToString(", ")}", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -268,6 +320,11 @@ class Connect(private val context: Context, private val settings: Settings, priv
         private const val BEACON_PORT = 47127
         private const val RETRY_MS = 5_000L
         private const val MAX_TRACKS = 500   // the whole playlist moves, not its first fifty
+        private const val SYNC_MS = 10 * 60_000L
+        // The computer's own limits on what it takes (connect.js): a library past them is cut, not refused.
+        private const val MAX_LISTS = 300
+        private const val MAX_LIST = 5000
+        private const val MAX_LIKED = 10000
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; isLenient = true }
     }
 }

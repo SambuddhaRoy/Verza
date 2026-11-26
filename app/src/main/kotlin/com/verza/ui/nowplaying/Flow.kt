@@ -38,6 +38,7 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
 import com.verza.playback.Spectrum
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -104,11 +105,14 @@ private fun brightness(b: Bitmap): Float {
     return if (n == 0) 0.5f else sum / n
 }
 
+/** How much room the meter takes under the cover: its gap, its tallest bar, and a little air. */
+val MeterRoom = 16.dp + 46.dp + 6.dp
+
 /**
- * The music around the cover: bars stand out from its four sides, low notes at the top centre to
- * high ones at the bottom, mirrored, jumping up and falling back slowly. [cover] is the cover's side,
- * centred in this box. Bars only while it's playing; [onBass] gets how hard the bass hits, for the
- * cover to swell with.
+ * The music as a level meter under the cover, the way a hi-fi's sits under its display: a row of thin
+ * bars mirrored about one line, the bass in the middle and the treble out at the edges, jumping up and
+ * falling back slowly. Paused, the row rests as dots. [cover] is the cover's side, centred in this box;
+ * [onBass] gets how hard the bass hits, for the cover to swell with.
  */
 @Composable
 fun CoverVisualizer(cover: Dp, color: Color, playing: Boolean, onBass: (Float) -> Unit, modifier: Modifier = Modifier) {
@@ -133,35 +137,23 @@ fun CoverVisualizer(cover: Dp, color: Color, playing: Boolean, onBass: (Float) -
     Canvas(modifier.fillMaxSize()) {
         tick   // redraw each tick
         val side = with(density) { cover.toPx() }
-        val cx = size.width / 2; val cy = size.height / 2
-        val half = side / 2
-        val gap = 6.dp.toPx()
-        val room = min(cx, cy) - half - gap
-        val maxLen = max(4.dp.toPx(), min(room, side * 0.16f))
-        val inset = 12.dp.toPx()                 // the corner's rounding: bars stand on the straight part
-        val edge = side - inset * 2
-        val spacing = 7.dp.toPx()
-        val perSide = max(6, (edge / spacing).toInt())
-        val total = perSide * 4
-        val width = spacing * 0.55f
-        // Clockwise from the top centre: top right half, right, bottom, left, top left half.
-        fun bar(k: Int, x: Float, y: Float, nx: Float, ny: Float) {
-            val pos = k.toFloat() / total
-            val mirrored = if (pos < 0.5f) pos * 2 else (1 - pos) * 2
-            val v = smooth[min(smooth.size - 1, (mirrored * (smooth.size - 1)).toInt())]
-            if (v < 0.02f) return   // a silent bar is nothing: paused, a dot per bar read as a dotted frame
-            val len = 3.dp.toPx() + v * maxLen
-            val sx = x + nx * gap; val sy = y + ny * gap
-            drawLine(color.copy(alpha = 0.12f), Offset(sx, sy), Offset(sx + nx * len, sy + ny * len), width * 3, StrokeCap.Round)
-            drawLine(color.copy(alpha = 0.4f + v * 0.6f), Offset(sx, sy), Offset(sx + nx * len, sy + ny * len), width, StrokeCap.Round)
+        val columns = 29
+        val step = side / columns
+        val width = step * 0.4f
+        val tallest = 46.dp.toPx()
+        val line = size.height / 2 + side / 2 + 16.dp.toPx() + tallest / 2
+        val left = size.width / 2 - side / 2 + step / 2
+        val middle = columns / 2
+        for (i in 0 until columns) {
+            val from = abs(i - middle).toFloat() / middle
+            val v = smooth[min(smooth.size - 1, (from * (smooth.size - 1)).toInt())]
+            val h = max(width, v * tallest)
+            val x = left + i * step
+            drawLine(
+                color.copy(alpha = 0.22f + 0.7f * min(1f, v * 1.6f)),
+                Offset(x, line - h / 2 + width / 2), Offset(x, line + h / 2 - width / 2), width, StrokeCap.Round,
+            )
         }
-        var k = 0
-        val step = edge / perSide
-        for (i in 0 until perSide / 2) bar(k++, cx + step * (i + 0.5f), cy - half, 0f, -1f)
-        for (i in 0 until perSide) bar(k++, cx + half, cy - half + inset + step * (i + 0.5f), 1f, 0f)
-        for (i in 0 until perSide) bar(k++, cx + half - inset - step * (i + 0.5f), cy + half, 0f, 1f)
-        for (i in 0 until perSide) bar(k++, cx - half, cy + half - inset - step * (i + 0.5f), -1f, 0f)
-        for (i in 0 until perSide - perSide / 2) bar(k++, cx - half + inset + step * (i + 0.5f), cy - half, 0f, -1f)
     }
 }
 

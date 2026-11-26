@@ -24,7 +24,7 @@ import java.util.Calendar
 
 // ── Curated mix model ────────────────────────────────────────────────────────
 
-enum class MixKind { DAYLIST, DISCOVER, RELEASE_RADAR, GENRE, VIBE, LISTENBRAINZ }
+enum class MixKind { DAYLIST, DISCOVER, RELEASE_RADAR, GENRE, VIBE, LISTENBRAINZ, SPOTIFY }
 
 /**
  * A Verza-curated playlist generated *on device* from the user's own play history plus YouTube's
@@ -61,6 +61,7 @@ class MixesRepository(
     private val genres: GenreRepository,
     private val prefs: PreferencesRepository,
     private val listenBrainz: ListenBrainzRepository,
+    private val spotify: SpotifyMixes,
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     // v2: Daylist and Discover are seeded by Taste now. A new key regenerates them straight away
@@ -73,10 +74,19 @@ class MixesRepository(
     private val lbKey = stringPreferencesKey("listenbrainz_mixes_v2")
     private val lbLock = Mutex()
 
+    // Spotify playlists followed by link, apart for the same reason. First on the shelf: the listener
+    // chose them.
+    private val spKey = stringPreferencesKey("spotify_mixes_v1")
+    private val spLock = Mutex()
+
     private val _mixes = MutableStateFlow<List<CuratedMix>>(emptyList())
     private val _lb = MutableStateFlow<List<CuratedMix>>(emptyList())
+    private val _sp = MutableStateFlow<List<CuratedMix>>(emptyList())
     val mixes: StateFlow<List<CuratedMix>> =
-        combine(_mixes, _lb) { own, lb -> own + lb }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+        combine(_mixes, _lb, _sp) { own, lb, sp -> sp + own + lb }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    /** The Spotify mixes alone, for Settings to name what's followed. */
+    val spotifyMixes: StateFlow<List<CuratedMix>> = _sp
 
     init {
         scope.launch {
@@ -87,9 +97,36 @@ class MixesRepository(
             _lb.value = loadCached(lbKey)
             refreshListenBrainz()
         }
+        scope.launch {
+            _sp.value = loadCached(spKey)
+            refreshSpotify()
+        }
     }
 
-    fun getMix(id: String): CuratedMix? = (_mixes.value + _lb.value).firstOrNull { it.id == id }
+    fun getMix(id: String): CuratedMix? = (_sp.value + _mixes.value + _lb.value).firstOrNull { it.id == id }
+
+    /** A forced rebuild of the Spotify mixes, after one is followed or dropped. */
+    fun rebuildSpotify() = scope.launch { refreshSpotify(force = true) }
+
+    /**
+     * Rebuilds the Spotify mixes when stale, or always with [force]. One that can't be fetched keeps
+     * its last build, so Home doesn't lose it to a bad connection.
+     */
+    suspend fun refreshSpotify(force: Boolean = false) = spLock.withLock {
+        val ids = prefs.spotifyLinks.get().lines().map { it.trim() }.filter { it.isNotEmpty() }
+        val cached = _sp.value.associateBy { it.id }
+        if (!force && ids.all { id -> cached["sp_$id"]?.let { !isStale(it) } == true } && cached.size == ids.size) return@withLock
+        val next = ids.mapNotNull { id ->
+            val old = cached["sp_$id"]
+            if (!force && old != null && !isStale(old)) return@mapNotNull old
+            val list = runCatching { spotify.fetch(id) }.getOrNull() ?: return@mapNotNull old
+            val items = listenBrainz.matched(list.pairs)
+            if (items.isEmpty()) old
+            else CuratedMix("sp_$id", MixKind.SPOTIFY, list.name, "From Spotify", items, System.currentTimeMillis())
+        }
+        _sp.value = next
+        persist(next, spKey)
+    }
 
     /** A forced rebuild on the app's own scope, so leaving Settings mid-build does not cancel it. */
     fun rebuildListenBrainz() = scope.launch { refreshListenBrainz(force = true) }
@@ -366,6 +403,8 @@ class MixesRepository(
             MixKind.DAYLIST -> mix.title != currentDaypart().second || age > 3 * 60 * 60_000L
             // Weekly playlists land on Mondays; twice a day picks a new week up soon enough.
             MixKind.LISTENBRAINZ -> age > 12 * 60 * 60_000L
+            // A Daily Mix changes every day, Discover Weekly on Mondays: twice a day catches both.
+            MixKind.SPOTIFY -> age > 12 * 60 * 60_000L
             else -> age > 7 * 24 * 60 * 60_000L
         }
     }

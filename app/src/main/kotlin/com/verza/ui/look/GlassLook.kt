@@ -122,9 +122,9 @@ import kotlinx.coroutines.launch
  * day and graphite by night; controls are that material raised out of it or pressed into it
  * (`ui/kit/Soft.kt`), and what floats over the pages (the dock, the buttons over a cover) is frosted
  * glass of the same material. Words are few and small: names in a light large face, sections as small
- * capitals on a line cut into the page, figures as figures. Colour is the song's, and it is spent in
- * one place at a time: the dot by a page's name, the lamp in the chosen tab, and the play key, the one
- * coloured key, as Braun's calculators had one orange key.
+ * capitals on a line cut into the page, figures as figures. Colour is the song's, and it is spent
+ * sparingly: the dot by a page's name, the lamp in the chosen tab, the played part of a song, and Home's
+ * play key, as Braun's calculators had one orange key. Now Playing's play key is ink.
  */
 object GlassLook : Look("soft", "Soft glass", "One soft material, glass over it, and one coloured key") {
     override fun palette(swatches: List<Color>, dark: Boolean): Palette {
@@ -139,6 +139,9 @@ object GlassLook : Look("soft", "Soft glass", "One soft material, glass over it,
 
     /** Now Playing is the page's material too, whatever the theme; the cover brings the colour. */
     override fun nowPlaying(page: Palette) = page
+
+    /** The meter under the cover is ink: Now Playing's colour is the cover's own glow. */
+    override fun visualizer(np: Palette, page: Palette) = np.ink
 
     @Composable override fun HomeHero() = PlayerPlate()
     @Composable override fun NowPlayingBackground(art: String?) = CoverGlow(art)
@@ -498,11 +501,14 @@ internal fun GlassNowPlayingCover(art: String?, side: Dp, rest: Float, swell: Fl
     com.verza.ui.nowplaying.FlyingCover(art, side, swell, fly, label, Modifier.graphicsLayer { scaleX = rest; scaleY = rest })
 }
 
-/** Play and pause on the one coloured key. */
+/**
+ * Play and pause on Now Playing: a larger key in ink, the page's own colours reversed, so it stands
+ * apart from back and on without the song's colour (which the listener wanted off it).
+ */
 @Composable
 internal fun GlassPlayButton(playing: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
-    SoftKey(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", size = 84.dp, iconSize = 44.dp, face = p.accent, iconModifier = Modifier.popOn(playing), onClick = onClick)
+    SoftKey(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", size = 84.dp, iconSize = 42.dp, face = p.ink, tint = p.canvas, iconModifier = Modifier.popOn(playing), onClick = onClick)
 }
 
 /**

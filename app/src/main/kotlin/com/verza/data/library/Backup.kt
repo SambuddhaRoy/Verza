@@ -32,7 +32,7 @@ data class BackupPlaylist(val name: String, val createdAt: Long, val trackIds: L
 data class BackupPlayEvent(val songId: String, val playedAt: Long, val listenedMs: Long)
 
 /** What an import added, for the message after it. */
-data class Imported(val songs: Int, val playlists: Int, val plays: Int)
+data class Imported(val songs: Int, val playlists: Int, val plays: Int, val inPlaylists: Int = 0)
 
 class Backup(db: LibraryDb) {
     private val songs = db.songs()
@@ -40,22 +40,27 @@ class Backup(db: LibraryDb) {
     private val stats = db.stats()
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
 
-    suspend fun export(): String = withContext(Dispatchers.IO) {
-        json.encodeToString(LibraryBackup.serializer(), LibraryBackup(
+    suspend fun export(): String = json.encodeToString(LibraryBackup.serializer(), snapshot())
+
+    /** The library as a backup holds it. [plays] false leaves the listening log out (a computer doesn't take it). */
+    suspend fun snapshot(plays: Boolean = true): LibraryBackup = withContext(Dispatchers.IO) {
+        LibraryBackup(
             exportedAt = System.currentTimeMillis(),
             songs = songs.all().map { BackupSong(it.id, it.title, it.artist, it.thumbnailUrl, it.durationMs, it.liked, it.likedAt, it.lastPlayedAt) },
             playlists = lists.allOnce().map { p -> BackupPlaylist(p.name, p.createdAt, lists.songIds(p.id)) },
-            playEvents = stats.getAll().map { BackupPlayEvent(it.songId, it.playedAt, it.listenedMs) },
-        ))
+            playEvents = if (plays) stats.getAll().map { BackupPlayEvent(it.songId, it.playedAt, it.listenedMs) } else emptyList(),
+        )
     }
 
     /**
-     * Merges a backup in, taking nothing away: a song keeps either side's like and the later last
-     * play, a playlist is added unless one of that name exists, and a play already logged isn't
-     * logged twice. Importing the same file again changes nothing.
+     * Merges a backup in, taking nothing away: a song keeps either side's like (and this side's time
+     * for it) and the later last play, a playlist joins the one of the same name (its missing songs
+     * added at the end) or arrives new, and a play already logged isn't logged twice. Importing the
+     * same file again changes nothing. A computer's library comes in this way too (Connect).
      */
-    suspend fun import(text: String): Imported = withContext(Dispatchers.IO) {
-        val backup = json.decodeFromString(LibraryBackup.serializer(), text)
+    suspend fun import(text: String): Imported = import(json.decodeFromString(LibraryBackup.serializer(), text))
+
+    suspend fun import(backup: LibraryBackup): Imported = withContext(Dispatchers.IO) {
         for (s in backup.songs) {
             val had = songs.get(s.id)
             songs.put(SongRow(
@@ -65,17 +70,21 @@ class Backup(db: LibraryDb) {
                 thumbnailUrl = s.thumbnailUrl ?: had?.thumbnailUrl,
                 durationMs = if (s.durationMs > 0) s.durationMs else had?.durationMs ?: 0,
                 liked = s.liked || had?.liked == true,
-                likedAt = s.likedAt ?: had?.likedAt,
+                likedAt = had?.likedAt ?: s.likedAt,
                 lastPlayedAt = maxOf(s.lastPlayedAt ?: 0, had?.lastPlayedAt ?: 0).takeIf { it > 0 },
                 downloadPath = had?.downloadPath,
             ))
         }
         var added = 0
+        var joined = 0
         for (pl in backup.playlists) {
-            if (lists.idByName(pl.name) != null) continue
-            val id = lists.create(PlaylistRow(name = pl.name, createdAt = pl.createdAt))
-            pl.trackIds.forEach { songId -> if (songs.get(songId) != null) lists.add(PlaylistTrackRow(id, songId, lists.nextPosition(id))) }
-            added++
+            val id = lists.idByName(pl.name) ?: lists.create(PlaylistRow(name = pl.name, createdAt = pl.createdAt)).also { added++ }
+            val has = lists.songIds(id).toHashSet()
+            for (songId in pl.trackIds) if (songId !in has && songs.get(songId) != null) {
+                lists.add(PlaylistTrackRow(id, songId, lists.nextPosition(id)))
+                has += songId
+                joined++
+            }
         }
         var plays = 0
         for (e in backup.playEvents) {
@@ -84,6 +93,6 @@ class Backup(db: LibraryDb) {
                 plays++
             }
         }
-        Imported(backup.songs.size, added, plays)
+        Imported(backup.songs.size, added, plays, joined)
     }
 }

@@ -55,7 +55,7 @@ const val TOUR = 26
 private class Step(val title: String, val text: String, val art: @Composable (Modifier) -> Unit)
 
 private val Steps = listOf(
-    Step("soft glass", "Verza is one soft material now. What you press rises out of the page and sinks under your finger, and the song's colour is kept for one key: play.", { SoftArt(it) }),
+    Step("soft glass", "Verza is one soft material now. What you press rises out of the page and sinks under your finger. Under the cover in Now Playing, the music shows as a level meter.", { SoftArt(it) }),
 )
 
 /** What an update brought, a step at a time, once: the welcome's page, with a picture of each thing over it. */
@@ -87,7 +87,7 @@ fun Tour(onDone: () -> Unit) {
     }
 }
 
-/** Three keys of the page's material, the middle one the song's colour, pressed in and springing back. */
+/** Now Playing's three keys, play in ink, pressed in and springing back. */
 @Composable
 private fun SoftArt(modifier: Modifier) {
     val p = LocalPalette.current
@@ -100,9 +100,9 @@ private fun SoftArt(modifier: Modifier) {
         for ((k, icon) in listOf(Icons.Rounded.SkipPrevious, Icons.Rounded.PlayArrow, Icons.Rounded.SkipNext).withIndex()) {
             val play = k == 1
             Box(
-                Modifier.size(if (play) 88.dp else 60.dp).soft(CircleShape, if (play) 8.dp else 5.dp, press = if (play) press else null, face = if (play) p.accent else null),
+                Modifier.size(if (play) 88.dp else 60.dp).soft(CircleShape, if (play) 8.dp else 5.dp, press = if (play) press else null, face = if (play) p.ink else null),
                 contentAlignment = Alignment.Center,
-            ) { Icon(icon, null, tint = if (play) p.onAccent else p.ink, modifier = Modifier.size(if (play) 42.dp else 28.dp)) }
+            ) { Icon(icon, null, tint = if (play) p.canvas else p.ink, modifier = Modifier.size(if (play) 42.dp else 28.dp)) }
         }
     }
 }

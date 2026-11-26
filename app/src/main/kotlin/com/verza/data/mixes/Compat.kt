@@ -67,8 +67,9 @@ class MusicRepository(private val youtube: YouTube) {
     }
 }
 
-/** The one setting the mixes read: the ListenBrainz user. */
+/** The settings the mixes read: the ListenBrainz user, and the Spotify playlists followed (ids, a line each). */
 class PreferencesRepository(context: Context) {
     val listenBrainzUser = Setting(context, stringPreferencesKey("listenbrainz_user"), "")
     val listenBrainzUserFlow: Flow<String> = listenBrainzUser.flow
+    val spotifyLinks = Setting(context, stringPreferencesKey("spotify_playlists"), "")
 }

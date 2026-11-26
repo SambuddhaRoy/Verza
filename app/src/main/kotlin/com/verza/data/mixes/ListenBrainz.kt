@@ -168,6 +168,12 @@ class ListenBrainzRepository(
         }
     }
 
+    /** [pairs] as YouTube Music songs, in order, those not found left out: for mixes from elsewhere (Spotify). */
+    suspend fun matched(pairs: List<Pair<String, String>>): List<HomeItem> {
+        val found = resolve(pairs)
+        return pairs.mapNotNull { found[key(it)] }.distinctBy { it.videoId }
+    }
+
     /** (title, artist) → the first YouTube Music song for it, misses cached too, four searches at a time. */
     private suspend fun resolve(pairs: List<Pair<String, String>>): Map<String, HomeItem> = cacheLock.withLock {
         val cache = loadCache()

@@ -44,7 +44,7 @@ class Settings(private val context: Context) {
     val onboarded = bool("onboarding_completed", false)
     val resumeOnOpen = bool("resume_on_open", true)
     val skipSilence = bool("skip_silence", false)
-    /** The music drawn around the cover in Now Playing, as on the desktop. */
+    /** The level meter under the cover in Now Playing. */
     val visualizer = bool("visualizer", true)
     /** A flick of the phone toward the computer plays there; one back toward you brings the computer's music here. */
     val flick = bool("flick", true)

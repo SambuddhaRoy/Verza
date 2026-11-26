@@ -104,7 +104,7 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                         Hairline()
                         Toggle("Skip silence", "Skip silent stretches inside a song", s.skipSilence)
                         Hairline()
-                        Toggle("Visualiser", "The music drawn around the cover in Now Playing", s.visualizer)
+                        Toggle("Visualiser", "A level meter under the cover in Now Playing", s.visualizer)
                         Hairline()
                         Row(Modifier.fillMaxWidth().clickable(onClick = onEqualizer).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -142,7 +142,7 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                 }
                 item { Group("Downloads", Modifier.padding(horizontal = 16.dp)) { Lossless() } }
                 item {
-                    Group("Devices", Modifier.padding(horizontal = 16.dp)) {
+                    Group("Devices", Modifier.padding(horizontal = 16.dp), footer = "A computer added here shares its playlists and liked songs with this phone, and this phone's with it, whenever it's in reach. Nothing is ever taken away on either side.") {
                         com.verza.ui.kit.Devices()
                         Hairline()
                         Toggle("Flick to move music", "Flick the phone toward the computer and the music moves there; flick it back toward you and the computer's comes here", s.flick)
@@ -151,7 +151,7 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                     }
                 }
                 item { Group("Your library", Modifier.padding(horizontal = 16.dp)) { LibraryFile() } }
-                item { Group("Listening elsewhere", Modifier.padding(horizontal = 16.dp)) { ListenBrainz() } }
+                item { Group("Listening elsewhere", Modifier.padding(horizontal = 16.dp)) { ListenBrainz(); com.verza.ui.kit.Hairline(); SpotifyFollow() } }
                 item {
                     Group("Search", Modifier.padding(horizontal = 16.dp)) {
                         Toggle("Save search history", "Remember recent searches", s.saveSearchHistory)
@@ -288,6 +288,65 @@ private fun ListenBrainz() {
                     }
                 }
             }) { Text("Connect") }
+        }
+        note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
+    }
+}
+
+/**
+ * Spotify's picks for you on Home: a link to Discover Weekly, Release Radar, a Daily Mix or any
+ * playlist is followed, refreshed twice a day and played from YouTube Music (data/mixes/SpotifyMixes.kt).
+ * Read once before it's kept, so a link that isn't a playlist says so here.
+ */
+@Composable
+private fun SpotifyFollow() {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val p = LocalPalette.current
+    val raw by graph.mixPrefs.spotifyLinks.flow.collectAsState(initial = "")
+    val ids = raw.lines().map { it.trim() }.filter { it.isNotEmpty() }
+    val built by graph.mixes.spotifyMixes.collectAsState()
+    var typed by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf<String?>(null) }
+    Column(Modifier.padding(vertical = 8.dp)) {
+        Text("Spotify mixes", style = Type.RowTitle, color = p.ink)
+        Text(
+            "Paste a link to your Discover Weekly, Release Radar, a Daily Mix or any Spotify playlist (Share, then Copy link). It's kept fresh on Home and plays from YouTube Music. No Spotify account needed.",
+            style = Type.RowSubtitle, color = p.inkMuted, modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
+        )
+        for (id in ids) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            val mix = built.firstOrNull { it.id == "sp_$id" }
+            Column(Modifier.weight(1f)) {
+                Text(mix?.title ?: "Getting it ready…", style = Type.RowTitle, color = p.ink, maxLines = 1)
+                if (mix != null) Text("${mix.items.size} songs on Home", style = Type.RowSubtitle, color = p.inkMuted)
+            }
+            TextButton(onClick = {
+                scope.launch { graph.mixPrefs.spotifyLinks.set((ids - id).joinToString("\n")); graph.mixes.rebuildSpotify() }
+            }) { Text("Remove") }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            com.verza.ui.kit.Field(typed, { typed = it; note = null }, placeholder = "open.spotify.com/playlist/…", modifier = Modifier.weight(1f))
+            TextButton(enabled = typed.isNotBlank(), onClick = {
+                val id = com.verza.data.mixes.SpotifyMixes.idOf(typed)
+                if (id == null) { note = "That isn't a link to a Spotify playlist"; return@TextButton }
+                if (id in ids) { note = "That one's already on Home"; typed = ""; return@TextButton }
+                note = "Reading it…"
+                scope.launch {
+                    val read = runCatching { graph.spotifyMixes.fetch(id) }
+                    val list = read.getOrNull()
+                    note = when {
+                        read.isFailure -> "Couldn't reach Spotify. Try again."
+                        list == null -> "Spotify has no playlist at that link"
+                        list.pairs.isEmpty() -> "That playlist is empty"
+                        else -> {
+                            graph.mixPrefs.spotifyLinks.set((ids + id).joinToString("\n"))
+                            graph.mixes.rebuildSpotify()
+                            typed = ""
+                            null   // its row says "Getting it ready…" until it's on Home
+                        }
+                    }
+                }
+            }) { Text("Add") }
         }
         note?.let { Text(it, style = Type.RowSubtitle, color = p.inkMuted) }
     }
