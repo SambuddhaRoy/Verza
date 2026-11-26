@@ -53,10 +53,10 @@ class Discovery(private val music: MusicRepository, db: LibraryDb, private val s
         if (picked.size < 10) {
             // Nearly all offered before: top up with what was offered longest ago.
             val age = order.withIndex().associate { it.value to it.index }
-            val recycled = inGenre.filter { it.id != videoId && it.id !in known.videoIds && it.id in offered }
+            val recycled = inGenre.filter { it.id.isNotEmpty() && it.id != videoId && it.id !in known.videoIds && it.id in offered }
                 .distinctBy { it.id }.sortedBy { age[it.id] ?: Int.MAX_VALUE }
             picked = (picked + recycled).distinctBy { it.id }.take(40)
-                .ifEmpty { inGenre.filter { it.id != videoId }.distinctBy { it.id }.take(40) }
+                .ifEmpty { inGenre.filter { it.id.isNotEmpty() && it.id != videoId }.distinctBy { it.id }.take(40) }
         }
         // Offered again means offered recently: to the back, so oldest-first stays true.
         val again = picked.map { it.id }.toSet()

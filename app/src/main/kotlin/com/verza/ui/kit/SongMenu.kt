@@ -61,7 +61,7 @@ fun SongMenu(song: Song, inPlayer: Boolean = false, extra: @Composable (close: (
             val isLiked = song.id in liked
             // Now Playing has both as buttons right beside its ⋯.
             if (!inPlayer) MenuItem(if (isLiked) "Unlike" else "Like") { shown = false; graph.like(song, !isLiked) }
-            if (!inPlayer) MenuItem("Start radio") { shown = false; graph.player.playWithRadio(song) }
+            MenuItem("Start radio") { shown = false; graph.player.playWithRadio(song) }
             if (song.id in downloaded) MenuItem("Remove download") {
                 shown = false
                 graph.scope.launch {

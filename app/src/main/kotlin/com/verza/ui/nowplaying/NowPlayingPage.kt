@@ -1,5 +1,6 @@
 package com.verza.ui.nowplaying
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.basicMarquee
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.draw.clip
@@ -147,6 +149,8 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
     var sleepPicker by remember { mutableStateOf(false) }
     if (sleepPicker) SleepPicker(sleep, onDone = { sleepPicker = false })
     var devices by remember { mutableStateOf(false) }
+    // Discovery radio is searching (tens of seconds): its key breathes and ignores another tap.
+    var finding by remember { mutableStateOf(false) }
     if (devices) com.verza.ui.kit.DevicesDialog(onDone = { devices = false })
     BackHandler(onBack = onClose)
     val look = com.verza.ui.look.LocalLook.current
@@ -174,8 +178,13 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                 look.NowPlayingDecor()
                 BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
                     val pageHeight = maxHeight
-                    val keys = remember(now.queue) { val seen = HashMap<String, Int>(); now.queue.map { q -> q.id + "#" + seen.merge(q.id, 1, Int::plus) } }
                     LazyColumn(Modifier.nestedScroll(sheet), contentPadding = PaddingValues(bottom = 24.dp)) {
+                        // One read of what's playing for both the rows and their keys. `now` is a State, so
+                        // this lambda reads the newest queue whenever the list runs it, which can be before
+                        // anything remembered in composition has caught up: keys remembered from the last
+                        // queue were one short when Discovery radio added songs, and the app crashed (2.7.2).
+                        val queued = now
+                        val keys = HashMap<String, Int>().let { seen -> queued.queue.map { q -> q.id + "#" + seen.merge(q.id, 1, Int::plus) } }
                         item {
                             Column(Modifier.fillMaxWidth().height(pageHeight - 32.dp).padding(horizontal = 24.dp)) {
                                 // The grabber: says the sheet can be pulled down, and closes it when pressed.
@@ -218,15 +227,6 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                     Spacer(Modifier.width(10.dp))
                                     SongMenu(song, inPlayer = true) { close ->
                                         MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
-                                        MenuItem("Discovery radio") {
-                                            close()
-                                            android.widget.Toast.makeText(context, "Finding music you haven't heard…", android.widget.Toast.LENGTH_SHORT).show()
-                                            scope.launch {
-                                                val found = runCatching { graph.youtube.twin(song)?.let { graph.discovery.from(it.id) } }.getOrNull().orEmpty()
-                                                if (found.isEmpty()) android.widget.Toast.makeText(context, "Couldn't find anything new for this one", android.widget.Toast.LENGTH_SHORT).show()
-                                                else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
-                                            }
-                                        }
                                         MenuItem("Clock screen") { close(); onStandby() }
                                         MenuItem("Devices") { close(); devices = true }
                                         MenuItem("Share listening session") {
@@ -238,7 +238,20 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                 Spacer(Modifier.height(14.dp))
                                 Scrubber(now, onSeek = player::seek)
                                 Transport(now)
-                                Extras(now, onLyrics = onLyrics, onRadio = { player.playWithRadio(song) })
+                                Extras(now, onLyrics = onLyrics, finding = finding, onDiscover = {
+                                    if (!finding) {
+                                        finding = true
+                                        android.widget.Toast.makeText(context, "Finding music you haven't heard…", android.widget.Toast.LENGTH_SHORT).show()
+                                        // The app's scope, so leaving Now Playing doesn't throw the search away; on the
+                                        // main thread, since it ends in a toast (the search itself moves off it).
+                                        graph.scope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                            val found = runCatching { graph.youtube.twin(song)?.let { graph.discovery.from(it.id) } }.getOrNull().orEmpty()
+                                            finding = false
+                                            if (found.isEmpty()) android.widget.Toast.makeText(context, "Couldn't find anything new for this one", android.widget.Toast.LENGTH_SHORT).show()
+                                            else if (player.state.value.song?.id == song.id) player.replaceUpcoming(found)
+                                        }
+                                    }
+                                })
                                 // Said once there's somewhere to flick to: the gesture can't be seen otherwise.
                                 if (target != null) Text("Flick toward ${target.name} to play there", style = Type.Small, color = InkSoft,
                                     modifier = Modifier.fillMaxWidth().clickable(onClick = flick.send).padding(vertical = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
@@ -246,7 +259,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                             }
                         }
                         item { Text(com.verza.ui.look.LocalLook.current.case.of("Up next"), style = Type.Headline, color = Ink, modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = 4.dp)) }
-                        val upNext = now.queue.withIndex().drop(now.index + 1)
+                        val upNext = queued.queue.withIndex().drop(queued.index + 1)
                         // Keyed by the song and which time it is in the queue, not by position: as a song ends the
                         // rest keep their keys, and slide up into place instead of being redrawn.
                         itemsIndexed(upNext, key = { _, (i, _) -> keys[i] }) { _, (i, s) ->
@@ -294,13 +307,17 @@ private class PullToClose(
     }
 }
 
-/** Lyrics and radio, then shuffle and repeat, which light up while on. */
+/**
+ * Lyrics and Discovery radio, then shuffle and repeat, which light up while on. Discovery takes the place
+ * plain radio had (that is Start radio in the menu now), and its symbol breathes while it searches, which
+ * takes a while.
+ */
 @Composable
-private fun Extras(now: NowPlaying, onLyrics: () -> Unit, onRadio: () -> Unit) {
+private fun Extras(now: NowPlaying, onLyrics: () -> Unit, finding: Boolean, onDiscover: () -> Unit) {
     val player = LocalContext.current.graph.player
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
         Glyph(Icons.Rounded.Lyrics, "Lyrics", onClick = onLyrics)
-        Glyph(Icons.Rounded.Radio, "Radio", onClick = onRadio)
+        Glyph(Icons.Rounded.Explore, if (finding) "Discovery radio, finding songs" else "Discovery radio", busy = finding, onClick = onDiscover)
         Glyph(Icons.Rounded.Shuffle, "Shuffle", on = now.shuffle, onClick = player::toggleShuffle)
         Glyph(if (now.repeat == REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", on = now.repeat != REPEAT_MODE_OFF, onClick = player::cycleRepeat)
     }
@@ -311,7 +328,7 @@ private fun Extras(now: NowPlaying, onLyrics: () -> Unit, onRadio: () -> Unit) {
  * the song's colour under the symbol, for a toggle that is on.
  */
 @Composable
-private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: Dp = 48.dp, iconSize: Dp = 22.dp, on: Boolean? = null, onClick: () -> Unit) {
+private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: Dp = 48.dp, iconSize: Dp = 22.dp, on: Boolean? = null, busy: Boolean = false, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val lamp = LocalPalette.current.accent
@@ -323,7 +340,13 @@ private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: 
             .semantics { role = Role.Button; contentDescription = label; if (on != null) stateDescription = if (on) "On" else "Off" }
             .drawBehind { if (lit > 0.01f) drawCircle(lamp, 2.5.dp.toPx() * lit, Offset(this.size.width / 2, this.size.height - 7.dp.toPx())) },
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = if (on == false) InkSoft else Ink, modifier = Modifier.size(iconSize)) }
+    ) {
+        // Busy: the symbol breathes, so a long search reads as working rather than stuck.
+        val breath = if (busy) androidx.compose.animation.core.rememberInfiniteTransition(label = "busy").animateFloat(
+            1f, 0.35f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "breath",
+        ) else null
+        Icon(icon, null, tint = if (on == false) InkSoft else Ink, modifier = Modifier.size(iconSize).graphicsLayer { alpha = breath?.value ?: 1f })
+    }
 }
 
 /** How long a sleep timer has left, "12:04", or "end of song". Ticks while it's on screen. */
