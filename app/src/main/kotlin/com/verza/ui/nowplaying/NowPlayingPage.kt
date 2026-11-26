@@ -185,10 +185,10 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                 ) { Box(Modifier.size(width = 38.dp, height = 5.dp).clip(CircleShape).background(InkFaint.copy(alpha = 0.45f))) }
                                 // The cover leaves a tenth of its room each side for the visualiser's bars.
                                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    val ring = visualizer && !look.bigCover
-                                    val side = minOf(maxWidth, maxHeight) * (if (ring) 0.8f else if (look.bigCover) 1f else 0.96f)
+                                    val ring = visualizer
+                                    val side = minOf(maxWidth, maxHeight) * (if (ring) 0.8f else 0.96f)
                                     var swell by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-                                    val rest by animateFloatAsState(if (now.playing) 1f else if (look.bigCover) 0.95f else 0.84f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow), label = "rest")
+                                    val rest by animateFloatAsState(if (now.playing) 1f else 0.84f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow), label = "rest")
                                     if (ring && flick.fly.value == 0f) CoverVisualizer(side, look.visualizer(dark, p), now.playing, onBass = { swell = it })
                                     // A flick toward the computer sends the cover flying off the top, and the music with it;
                                     // one back toward you brings the computer's down from there.

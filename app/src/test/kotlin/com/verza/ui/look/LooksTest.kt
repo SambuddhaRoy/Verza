@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.Color
 import com.verza.ui.theme.Palette
 import com.verza.ui.theme.contrastRatio
 import com.verza.ui.theme.fromHsv
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -18,30 +17,26 @@ class LooksTest {
         assertTrue("$what reads at %.2f:1".format(r), r >= floor)
     }
 
-    /** Words on a look's page read, whatever is playing and whichever the system's theme. */
-    @Test fun everyLookReadsOnItsPage() {
-        for (look in Looks.all) for (dark in listOf(true, false)) for (cover in covers) {
-            val p = look.palette(cover, dark)
-            val name = "${look.name} (${if (dark) "dark" else "light"}, ${cover.firstOrNull()})"
+    /** Words on the page read, whatever is playing and whichever the system's theme. */
+    @Test fun readsOnThePage() {
+        for (dark in listOf(true, false)) for (cover in covers) {
+            val p = GlassLook.palette(cover, dark)
+            val name = "${if (dark) "dark" else "light"}, ${cover.firstOrNull()}"
             check("$name ink", p.ink, p.canvas)
             check("$name secondary", p.inkMuted, p.canvas)
             check("$name accent", p.accent, p.canvas)
+            // The bento's plays tile and the © bead set words on the accent.
+            check("$name on the accent", p.onAccent, p.accent)
         }
     }
 
     /** And on Now Playing, whose ground the look makes from the page's. */
-    @Test fun everyLookReadsOnNowPlaying() {
-        for (look in Looks.all) for (dark in listOf(true, false)) for (cover in covers) {
-            val p = look.nowPlaying(look.palette(cover, dark))
-            val name = "${look.name} Now Playing (${if (dark) "dark" else "light"})"
+    @Test fun readsOnNowPlaying() {
+        for (dark in listOf(true, false)) for (cover in covers) {
+            val p = GlassLook.nowPlaying(GlassLook.palette(cover, dark))
+            val name = "Now Playing (${if (dark) "dark" else "light"})"
             check("$name ink", p.ink, p.canvas)
             check("$name secondary", p.inkMuted, p.canvas)
         }
-    }
-
-    @Test fun eachLookHasItsOwnId() {
-        assertEquals(Looks.all.size, Looks.all.map { it.id }.toSet().size)
-        assertEquals(GlassLook, Looks.byId("no such look"))
-        assertEquals(listOf(GlassLook, GenZLook), Looks.all)
     }
 }

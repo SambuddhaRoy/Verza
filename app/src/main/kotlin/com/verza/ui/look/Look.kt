@@ -23,10 +23,10 @@ import com.verza.ui.theme.artCorner
 /*
  * A look is a whole way for Verza to look: its colours and type, the ground under the pages, how a
  * page names itself and its sections, its buttons, how a shelf of covers sits, the dock, and how Now
- * Playing shows the song. One is chosen in Settings, and LocalLook carries it everywhere; the pages
- * themselves are the same in every look, drawn through it.
+ * Playing shows the song. LocalLook carries it everywhere, and the pages are drawn through it.
  *
- * The defaults are Liquid glass. Gen Z is the other; its file says what it learned from.
+ * There is one now, Liquid glass, and the defaults here are its. There were fourteen (2.5.0's history
+ * has them), then two; Gen Z went at 2.6.1. The seam stays: a second look is one object again.
  */
 
 /** The text styles a look sets. [label] is its small voice: a caption, a tag, often mono. */
@@ -147,29 +147,14 @@ abstract class Look(val id: String, val name: String, val note: String) {
 
     @Composable open fun PlayButton(playing: Boolean, onClick: () -> Unit) = GlassPlayButton(playing, onClick)
 
-    /** The cover takes all its room on Now Playing, with no ring of bars round it, and barely shrinks when paused. */
-    open val bigCover: Boolean get() = false
-
     /** Draws the scrubber's track: [shown] played of 1, thicker while [dragging]. */
     open fun DrawScope.scrubber(shown: Float, dragging: Float, p: Palette) = glassScrubber(shown, dragging, p)
 
     /** Anything the look floats over Now Playing (a mascot, a badge, a HUD). */
     @Composable open fun NowPlayingDecor() {}
-
-    /** A small likeness of the look for its card in Settings. */
-    @Composable open fun Preview(modifier: Modifier) = DefaultPreview(this, modifier)
 }
 
 val LocalLook = staticCompositionLocalOf<Look> { GlassLook }
-
-/** Every look, in the order Settings shows them. */
-object Looks {
-    val all: List<Look> by lazy {
-        listOf<Look>(GlassLook, GenZLook)
-    }
-
-    fun byId(id: String?): Look = all.firstOrNull { it.id == id } ?: GlassLook
-}
 
 /** An offset that's [x] and [y] dp, for the look files' drawing. */
 internal fun DrawScope.dp(x: Float, y: Float) = Offset(x * density, y * density)

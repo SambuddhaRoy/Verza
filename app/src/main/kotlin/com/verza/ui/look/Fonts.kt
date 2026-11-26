@@ -3,7 +3,6 @@ package com.verza.ui.look
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.verza.R
@@ -28,8 +27,4 @@ object Fonts {
     // Inter has an optical-size axis (14 to 32): titles use the 32 end, so a large title isn't body text zoomed in.
     val InterText = family(R.font.inter_variable, 400, 500, 600, 700) { arrayOf(FontVariation.Setting("opsz", 14f)) }
     val InterDisplay = family(R.font.inter_variable, 400, 600, 700, 800, 900) { arrayOf(FontVariation.Setting("opsz", 32f)) }
-    /** Gen Z's grotesk, set very tight. */
-    val InterTight = family(R.font.inter_tight, 400, 500, 600, 700, 800, 900)
-    /** Gen Z's italic serif, for the odd word set against the grotesk. */
-    val Serif = FontFamily(Font(R.font.instrument_serif_italic, FontWeight.Normal, FontStyle.Italic))
 }

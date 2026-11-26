@@ -46,8 +46,7 @@ class MainActivity : ComponentActivity() {
                 graph.sync.flush(); graph.updates.check()
             }
             val playing by graph.player.state.collectAsState()
-            val lookId by graph.settings.look.flow.collectAsState(initial = null)
-            VerzaTheme(swatches = coverSwatches(playing.song?.art), look = com.verza.ui.look.Looks.byId(lookId)) {
+            VerzaTheme(swatches = coverSwatches(playing.song?.art), look = com.verza.ui.look.GlassLook) {
                 Shell()
                 incoming?.let { ListenAlong(it) }
             }

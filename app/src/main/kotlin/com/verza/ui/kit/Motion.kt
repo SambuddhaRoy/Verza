@@ -6,31 +6,21 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /*
  * The app's motion, in a few pieces used everywhere: things give under a finger and spring back, a
- * heart or a play button pops when it changes, cards rise into place, Gen Z's names drop in a letter
- * at a time. Springs, not durations, so a movement interrupted carries on from where it was.
+ * heart or a play button pops when it changes, cards rise into place. Springs, not durations, so a
+ * movement interrupted carries on from where it was.
  */
 
 /** A spring with a little overshoot: lively, but settled in a few hundred milliseconds. */
@@ -78,27 +68,5 @@ fun Modifier.enter(order: Int = 0): Modifier {
         translationY = (1f - v) * rise
         val s = 0.94f + 0.06f * v
         scaleX = s; scaleY = s
-    }
-}
-
-/**
- * [text] whose letters drop in one after another on a spring, the first time it shows. Read as one
- * word by TalkBack. For short words: page names.
- */
-@Composable
-fun BouncyLetters(text: String, style: TextStyle, color: Color, modifier: Modifier = Modifier, heading: Boolean = true) {
-    val drop = with(LocalDensity.current) { (style.fontSize.toPx() * 0.6f) }
-    Row(modifier.semantics(mergeDescendants = true) { contentDescription = text; if (heading) heading() }, verticalAlignment = Alignment.Bottom) {
-        text.forEachIndexed { i, ch ->
-            val t = remember(text) { Animatable(0f) }
-            LaunchedEffect(text) {
-                delay(i * 28L)
-                launch { t.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMediumLow)) }
-            }
-            Text(
-                ch.toString(), style = style, color = color, softWrap = false,
-                modifier = Modifier.clearAndSetSemantics { }.graphicsLayer { translationY = (1f - t.value) * -drop; alpha = t.value.coerceIn(0f, 1f) },
-            )
-        }
     }
 }

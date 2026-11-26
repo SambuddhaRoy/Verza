@@ -145,8 +145,6 @@ import kotlin.math.sign
 object GlassLook : Look("glass", "Liquid glass", "Glass over a bento of what you play, coloured by the song") {
     override fun palette(swatches: List<Color>, dark: Boolean) = Palette.from(swatches, dark)
 
-    @Composable override fun Preview(modifier: Modifier) = GlassPreview(modifier)
-
     override fun cover(size: Dp): Shape = RoundedCornerShape(if (size in 1.dp..64.dp) 10.dp else 20.dp)
     override val group: Shape = RoundedCornerShape(26.dp)
 
@@ -624,52 +622,4 @@ internal fun DrawScope.glassScrubber(shown: Float, dragging: Float, p: Palette) 
     val round = CornerRadius(w / 2)
     drawRoundRect(p.line, top, track, round)
     clipRect(right = size.width * shown) { drawRoundRect(p.ink.copy(alpha = 0.86f), top, track, round) }
-}
-
-/** The look's card: a small bento (the song's colour glowing in one tile, the accent in another) over a capsule of glass. */
-@Composable
-private fun GlassPreview(modifier: Modifier) {
-    val p = LocalPalette.current
-    Box(modifier.background(p.canvas).drawBehind {
-        val pad = 10.dp.toPx()
-        val gap = 6.dp.toPx()
-        val r = CornerRadius(14.dp.toPx())
-        val pill = Size(size.width - 2 * pad, 30.dp.toPx())
-        val pillAt = Offset(pad, size.height - pad - pill.height)
-        val top = 52.dp.toPx()
-        val h = pillAt.y - gap - top
-        val wide = (size.width - 2 * pad - gap) * 0.56f
-        val narrow = size.width - 2 * pad - gap - wide
-        drawRoundRect(p.surface, Offset(pad, top), Size(wide, h), r)
-        drawRoundRect(Brush.radialGradient(listOf(p.accent.copy(alpha = 0.8f), Color.Transparent), Offset(pad + wide * 0.4f, top + h * 0.6f), wide * 0.8f), Offset(pad, top), Size(wide, h), r)
-        val half = (h - gap) / 2
-        drawRoundRect(p.accent, Offset(pad + wide + gap, top), Size(narrow, half), r)
-        drawRoundRect(p.surface, Offset(pad + wide + gap, top + half + gap), Size(narrow, half), r)
-        val round = CornerRadius(pill.height / 2)
-        drawRoundRect(if (p.dark) Color(0xFF26262A).copy(alpha = 0.85f) else Color.White.copy(alpha = 0.9f), pillAt, pill, round)
-        drawRoundRect(p.accent.copy(alpha = if (p.dark) 0.6f else 0.35f), pillAt + Offset(4.dp.toPx(), 4.dp.toPx()), Size(pill.width * 0.3f, pill.height - 8.dp.toPx()), CornerRadius(pill.height / 2 - 4.dp.toPx()))
-        drawRoundRect(Color.White.copy(alpha = if (p.dark) 0.35f else 1f), pillAt, pill, round, style = Stroke(1.dp.toPx()))
-        if (!p.dark) drawRoundRect(Color.Black.copy(alpha = 0.08f), pillAt, pill, round, style = Stroke(0.5.dp.toPx()))
-    }) {
-        Row(Modifier.padding(start = 12.dp, top = 8.dp), verticalAlignment = Alignment.Top) {
-            Text("Aa", style = GlassLook.type.masthead.copy(fontSize = 30.sp, lineHeight = 34.sp), color = p.ink)
-            Box(Modifier.padding(start = 2.dp, top = 4.dp).size(14.dp).background(p.accent, CircleShape), contentAlignment = Alignment.Center) {
-                Text("©", style = GlassLook.type.label.copy(fontSize = 9.sp, lineHeight = 9.sp), color = p.onAccent)
-            }
-        }
-    }
-}
-
-/** A look's card in Settings when it draws none of its own: its ground, its type, its accent. */
-@Composable
-internal fun DefaultPreview(look: Look, modifier: Modifier) {
-    val p = LocalPalette.current
-    Box(modifier.background(p.canvas)) {
-        look.Backdrop(Modifier.fillMaxSize())
-        Column(Modifier.padding(12.dp)) {
-            Text(look.case.of("Aa"), style = look.type.masthead.copy(fontSize = 34.sp, lineHeight = 36.sp), color = p.ink)
-            Spacer(Modifier.height(8.dp))
-            Box(Modifier.size(36.dp).clip(look.cover(36.dp)).background(p.accent))
-        }
-    }
 }

@@ -67,7 +67,6 @@ private val Tabs = listOf(
 )
 
 /** The whole app: the pages over the look's ground, and the look's dock floating over them. */
-private val Still = androidx.compose.runtime.mutableStateOf(androidx.compose.ui.geometry.Offset.Zero)
 
 @Composable
 fun Shell() {
@@ -87,7 +86,7 @@ fun Shell() {
     val route = nav.currentBackStackEntryAsState().value?.destination?.route
     // A look can be dark while the system is light, or the other way: the status bar follows the look.
     com.verza.ui.kit.BarIcons(light = p.dark)
-    val tilt = if (look is com.verza.ui.look.GlassLook) com.verza.ui.kit.rememberTilt() else Still
+    val tilt = com.verza.ui.kit.rememberTilt()
 
     CompositionLocalProvider(com.verza.ui.kit.LocalTilt provides tilt) {
     Box(Modifier.fillMaxSize().background(p.canvas)) {
