@@ -110,7 +110,7 @@ fun Glassed(ground: Color, modifier: Modifier = Modifier, content: @Composable B
                 .onGloballyPositioned { backdrop.origin = it.positionInRoot() }
                 .drawWithContent {
                     layer.record {
-                        drawRect(ground)
+                        if (ground.alpha > 0f) drawRect(ground)
                         this@drawWithContent.drawContent()
                     }
                     drawLayer(layer)
@@ -266,15 +266,17 @@ private fun glassEffect(width: Float, height: Float, corner: Float, density: Flo
  * [under] seen through fluted glass: vertical flutes [rib] px wide, each showing what's behind it
  * flipped and squeezed by [bend] flutes' worth ([FLUTE]), [shade] how much each one's curve darkens
  * into its seams and catches the light on its left shoulder, [phase] how far they're slid sideways (in
- * flutes). Android 13 and up.
+ * flutes). [sheen] is how much of that light is added as white; with none it only brightens the colour
+ * already there, so the colour keeps its saturation (Now Playing's ground). Android 13 and up.
  */
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.TIRAMISU)
-fun flutes(rib: Float, bend: Float, shade: Float, under: RenderEffect?, phase: Float = 0f): RenderEffect {
+fun flutes(rib: Float, bend: Float, shade: Float, under: RenderEffect?, phase: Float = 0f, sheen: Float = 0.55f): RenderEffect {
     val flute = RuntimeShader(FLUTE).apply {
         setFloatUniform("rib", rib)
         setFloatUniform("bend", bend)
         setFloatUniform("shade", shade)
         setFloatUniform("phase", phase)
+        setFloatUniform("sheen", sheen)
     }
     val effect = RenderEffect.createRuntimeShaderEffect(flute, "content")
     return if (under == null) effect else RenderEffect.createChainEffect(effect, under)
@@ -289,6 +291,7 @@ uniform float rib;
 uniform float bend;
 uniform float shade;
 uniform float phase;
+uniform float sheen;
 
 half4 main(float2 p) {
     float k = p.x / rib + phase;
@@ -297,7 +300,7 @@ half4 main(float2 p) {
     float4 c = float4(content.eval(float2(middle + (u - 0.5) * rib * bend, p.y)));
     float curve = sin(u * 3.14159265);
     float lit = smoothstep(0.12, 0.3, u) * (1.0 - smoothstep(0.3, 0.52, u));
-    c.rgb = c.rgb * (1.0 - shade * (1.0 - curve)) + shade * 0.55 * lit * c.a;
+    c.rgb = c.rgb * (1.0 - shade * (1.0 - curve) + shade * 0.9 * lit) + shade * sheen * lit * c.a;
     return half4(c);
 }
 """

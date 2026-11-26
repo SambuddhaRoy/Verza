@@ -139,7 +139,7 @@ fun PageScreen(id: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
     val p = LocalPalette.current
     val downloaded by graph.library.downloadedIds.collectAsState()
     Glassed(
-        ground = p.canvas,
+        ground = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.fillMaxSize(),
         content = {
             when (val c = content) {

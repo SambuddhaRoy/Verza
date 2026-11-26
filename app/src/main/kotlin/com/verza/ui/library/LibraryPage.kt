@@ -192,7 +192,7 @@ private fun emptyLine(section: String) = when (section) {
 private fun Section(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
     // The way back to the Library, in glass over the page's top, as an album page has.
     Glassed(
-        ground = LocalPalette.current.canvas,
+        ground = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.fillMaxSize(),
         content = {
             Column(Modifier.fillMaxSize()) {

@@ -55,7 +55,7 @@ fun EqualizerPage(onBack: () -> Unit) {
     val loud by s.loudness.flow.collectAsState(initial = false)
     val bands = List(layout.bandCount) { stored.getOrElse(it) { 0 } }
 
-    com.verza.ui.kit.Glassed(p.canvas, Modifier.fillMaxSize(), content = {
+    com.verza.ui.kit.Glassed(androidx.compose.ui.graphics.Color.Transparent, Modifier.fillMaxSize(), content = {
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 52.dp, bottom = 24.dp + LocalDockHeight.current)) {
         item { Text("Equaliser", style = Type.Masthead, color = p.ink, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)) }
         item {

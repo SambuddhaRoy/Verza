@@ -195,16 +195,15 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                                     val ring = visualizer
                                     val side = if (ring) minOf(maxWidth * 0.92f, maxHeight - MeterRoom * 2) else minOf(maxWidth, maxHeight) * 0.96f
-                                    var swell by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
                                     val rest by animateFloatAsState(if (now.playing) 1f else 0.84f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow), label = "rest")
-                                    if (ring && flick.fly.value == 0f) CoverVisualizer(side, look.visualizer(dark, p), now.playing, onBass = { swell = it })
+                                    if (ring && flick.fly.value == 0f) CoverVisualizer(side, look.visualizer(dark, p), now.playing)
                                     // A flick toward the computer sends the cover flying off the top, and the music with it;
                                     // one back toward you brings the computer's down from there.
                                     // A new song's cover settles in with a little bounce.
                                     val settle = remember { androidx.compose.animation.core.Animatable(1f) }
                                     LaunchedEffect(song.id) { settle.snapTo(0.92f); settle.animateTo(1f, com.verza.ui.kit.bouncy()) }
                                     Box(Modifier.graphicsLayer { scaleX = settle.value; scaleY = settle.value }, contentAlignment = Alignment.Center) {
-                                        look.NowPlayingCover(art, side, rest, swell, flick.fly.value, flick.label)
+                                        look.NowPlayingCover(art, side, rest, 0f, flick.fly.value, flick.label)
                                     }
                                 }
                                 Spacer(Modifier.height(18.dp))

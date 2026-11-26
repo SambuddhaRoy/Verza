@@ -148,7 +148,29 @@ object GlassLook : Look("soft", "Soft glass", "One soft material, fluted glass o
     /** The meter under the cover is ink: Now Playing's colour is the cover's own glow. */
     override fun visualizer(np: Palette, page: Palette) = np.ink
 
-    @Composable override fun HomeHero() = PlayerPlate()
+    /**
+     * Behind every page, the playing song's cover flowing through fluted glass as on Now Playing, but
+     * faint and vignetted into the page's colour, so it tints the page without being looked at. Slower
+     * and at fifteen frames a second (`ambient`), and still: the bass is Now Playing's.
+     */
+    @Composable override fun Backdrop(modifier: Modifier) {
+        val p = LocalPalette.current
+        val now by LocalContext.current.graph.player.state.collectAsState()
+        val art = now.song?.art ?: return
+        Box(modifier) {
+            com.verza.ui.nowplaying.FlowingCover(
+                artAt(art, 226), p.dark, Modifier.graphicsLayer { alpha = if (p.dark) 0.2f else 0.2f },
+                react = false, fluted = true, ambient = true,
+            )
+            Box(Modifier.fillMaxSize().drawBehind {
+                val centre = Offset(size.width / 2, size.height * 0.3f)
+                drawRect(Brush.radialGradient(
+                    0f to p.canvas.copy(alpha = 0.15f), 0.3f to p.canvas.copy(alpha = 0.5f), 0.65f to p.canvas.copy(alpha = 0.95f), 1f to p.canvas,
+                    center = centre, radius = maxOf(size.width, size.height) * 0.65f,
+                ))
+            })
+        }
+    }
     /**
      * The cover flowing, seen through fluted glass; stirred by the bass only while the visualiser is
      * off, since with it on the meter under the cover already shows the music.
@@ -258,54 +280,6 @@ internal fun cardTitle(card: com.verza.data.Card) =
 internal fun cardAction(card: com.verza.data.Card, onOpen: (String) -> Unit): () -> Unit {
     val player = LocalContext.current.graph.player
     return { card.song?.let(player::playWithRadio) ?: card.page?.let(onOpen); Unit }
-}
-
-/**
- * Home's one raised object, like a player on a shelf: the song playing (or last played) with its play
- * key, the one key in the song's colour, and under a cut line one sentence of what you've played. (It
- * was three figures in small capitals with the plays counting up: a dashboard's tiles.)
- */
-@Composable
-private fun PlayerPlate() {
-    val graph = LocalContext.current.graph
-    val now by graph.player.state.collectAsState()
-    val recent by graph.library.recent.collectAsState(initial = emptyList())
-    val stats = remember { StatsRepository(graph.db.stats()) }
-    val plays by stats.totalPlays.collectAsState(initial = 0)
-    val days by stats.playDays.collectAsState(initial = emptyList())
-    val artists by remember { stats.topArtists(1) }.collectAsState(initial = emptyList())
-    val streak = com.verza.ui.library.streak(days)
-    val p = LocalPalette.current
-    val song = now.song ?: recent.firstOrNull()
-    val art = RoundedCornerShape(10.dp)
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)
-            .soft(RoundedCornerShape(28.dp), 9.dp).padding(16.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (song?.art != null) AsyncImage(artAt(song.art!!, 226), null, contentScale = ContentScale.Crop, modifier = Modifier.size(88.dp).clip(art).background(p.surfaceHigh))
-            Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                Text(song?.let { com.verza.data.shownTitle(it.title, it.artist) } ?: "Play something and it's here", style = Type.Section.copy(fontSize = 25.sp, lineHeight = 29.sp), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (song != null) Text(song.artist, style = Type.Small.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
-            }
-            if (song != null) SoftKey(
-                if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play",
-                size = 56.dp, face = p.accent, iconModifier = Modifier.popOn(now.playing),
-            ) { if (now.song != null) graph.player.toggle() else graph.player.play(listOf(song)) }
-        }
-        listened(plays, streak, artists.firstOrNull()?.artist)?.let {
-            Etched(Modifier.padding(top = 16.dp, bottom = 12.dp))
-            Text(it, style = Type.Small.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.inkMuted)
-        }
-    }
-}
-
-/** "412 plays, 12 days in a row. Mostly Coldplay lately." Nothing before the first play. */
-internal fun listened(plays: Int, streak: Int, artist: String?): String? {
-    if (plays <= 0) return null
-    val count = if (plays == 1) "1 play" else "%,d plays".format(plays)
-    val run = if (streak >= 2) ", $streak days in a row" else ""
-    return "$count$run." + (artist?.let { " Mostly $it lately." } ?: "")
 }
 
 private val BarHeight = 62.dp

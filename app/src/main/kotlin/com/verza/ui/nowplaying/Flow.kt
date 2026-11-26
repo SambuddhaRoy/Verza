@@ -53,7 +53,7 @@ import kotlin.math.pow
  * blur. Before Android 13 there are no runtime shaders, and the still blur stands in.
  */
 @Composable
-fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier, react: Boolean = true, fluted: Boolean = false) {
+fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier, react: Boolean = true, fluted: Boolean = false, ambient: Boolean = false) {
     val context = LocalContext.current
     val bitmap by produceState<Bitmap?>(null, art) {
         if (art == null) { value = null; return@produceState }
@@ -64,12 +64,12 @@ fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier, rea
         AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = modifier.fillMaxSize().blur(60.dp), alpha = if (dark) 0.45f else 0.35f)
         return
     }
-    Flowing(bitmap!!, dark, modifier, react, fluted)
+    Flowing(bitmap!!, dark, modifier, react, fluted, ambient)
 }
 
 @RequiresApi(33)
 @Composable
-private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Boolean, fluted: Boolean) {
+private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Boolean, fluted: Boolean, ambient: Boolean) {
     val shader = remember { RuntimeShader(FLUID) }
     val lum = remember(bitmap) { brightness(bitmap) }
     remember(bitmap) {
@@ -80,26 +80,32 @@ private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Bo
     var bass by remember { mutableFloatStateOf(0f) }
     // The spectrum is only worked out while something watches it.
     DisposableEffect(react) { if (react) Spectrum.watch(); onDispose { if (react) Spectrum.unwatch() } }
-    // Thirty frames a second while it's on screen; the composition leaving stops it.
-    LaunchedEffect(react) {
+    // Thirty frames a second while it's on screen, fifteen and slower behind the pages (where every
+    // glass pane over it redraws with it); the composition leaving stops it.
+    LaunchedEffect(react, ambient) {
         val start = withFrameNanos { it }
+        val step = if (ambient) 66_000_000L else 33_000_000L
         var last = 0L
         while (true) withFrameNanos { t ->
-            if (t - last >= 33_000_000L) { last = t; time = (t - start) / 1e9f; bass = if (react) bass * 0.6f + Spectrum.bass * 0.4f else 0f }
+            if (t - last >= step) { last = t; time = (t - start) / 1e9f * (if (ambient) 0.6f else 1f); bass = if (react) bass * 0.6f + Spectrum.bass * 0.4f else 0f }
         }
     }
     val brush = remember(shader) { object : ShaderBrush() { override fun createShader(size: Size) = shader } }
     val density = LocalDensity.current.density
     val effect = remember(fluted, density) {
         val blur = android.graphics.RenderEffect.createBlurEffect(24f * density, 24f * density, Shader.TileMode.CLAMP)
-        (if (fluted) com.verza.ui.kit.flutes(22f * density, -1.6f, 0.16f, blur) else blur).asComposeRenderEffect()
+        // No added white in the flutes: they only shade the colour, so it keeps its saturation.
+        (if (fluted) com.verza.ui.kit.flutes(22f * density, -1.6f, 0.14f, blur, sheen = 0f) else blur).asComposeRenderEffect()
     }
     Box(modifier.fillMaxSize().graphicsLayer { renderEffect = effect; clip = true }.drawBehind {
         shader.setFloatUniform("size", size.width, size.height)
         shader.setFloatUniform("time", time * 1.25f)
         shader.setFloatUniform("intensity", 0.9f + bass * 0.9f)
-        shader.setFloatUniform("dim", if (dark) 0.62f - 0.28f * lum else 1f)
-        shader.setFloatUniform("veil", if (dark) 0f else 0.7f + 0.2f * (1f - lum))   // light: washed pale, not grey (a dark cover read murky at 0.72)
+        // Dark: dimmed a little further than it was, the colour kept, so it doesn't pull the eye. Light:
+        // washed toward white about half as hard as it was (0.7 to 0.9 had nearly lost the cover), which
+        // still holds black type at 4.5:1 over a dark cover.
+        shader.setFloatUniform("dim", if (dark) (0.62f - 0.28f * lum) * 0.85f else 0.92f)
+        shader.setFloatUniform("veil", if (dark) 0f else 0.42f + 0.16f * (1f - lum))
         drawRect(brush)
     })
 }
@@ -121,11 +127,11 @@ val MeterRoom = 16.dp + 46.dp + 6.dp
 /**
  * The music as a level meter under the cover, the way a hi-fi's sits under its display: a row of thin
  * bars mirrored about one line, the bass in the middle and the treble out at the edges, jumping up and
- * falling back slowly. Paused, the row rests as dots. [cover] is the cover's side, centred in this box;
- * [onBass] gets how hard the bass hits, for the cover to swell with.
+ * falling back slowly. Paused, the row rests as dots. [cover] is the cover's side, centred in this box.
+ * The cover itself stays still: it used to swell on the bass, which read as shaking.
  */
 @Composable
-fun CoverVisualizer(cover: Dp, color: Color, playing: Boolean, onBass: (Float) -> Unit, modifier: Modifier = Modifier) {
+fun CoverVisualizer(cover: Dp, color: Color, playing: Boolean, modifier: Modifier = Modifier) {
     DisposableEffect(Unit) { Spectrum.watch(); onDispose { Spectrum.unwatch() } }
     val smooth = remember { FloatArray(Spectrum.BANDS) }
     var tick by remember { mutableLongStateOf(0L) }
@@ -138,7 +144,6 @@ fun CoverVisualizer(cover: Dp, color: Color, playing: Boolean, onBass: (Float) -
                     val v = if (playing) Spectrum.bands[i].let { it.pow(1.5f) * (1f + i / smooth.size.toFloat() * 0.5f) }.coerceAtMost(1f) else 0f
                     smooth[i] = if (v > smooth[i]) smooth[i] * 0.25f + v * 0.75f else smooth[i] * 0.86f + v * 0.14f
                 }
-                onBass(if (playing) Spectrum.bass else 0f)
                 tick = t
             }
         }

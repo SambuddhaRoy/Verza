@@ -73,8 +73,8 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
     val p = LocalPalette.current
     // iOS's settings: inset groups on the grey page, the way back in glass over its top.
     Glassed(
-        ground = p.grouped,
-        modifier = Modifier.fillMaxSize().background(p.grouped),
+        ground = androidx.compose.ui.graphics.Color.Transparent,
+        modifier = Modifier.fillMaxSize(),
         content = {
             LazyColumn(contentPadding = PaddingValues(top = 52.dp, bottom = 24.dp + LocalDockHeight.current)) {
                 item { Masthead("Settings") }
