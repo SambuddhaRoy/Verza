@@ -70,3 +70,17 @@ fun Modifier.enter(order: Int = 0): Modifier {
         scaleX = s; scaleY = s
     }
 }
+
+/**
+ * A small physical tick, the kind the system's own keys give ([android.view.HapticFeedbackConstants]):
+ * a key press by default, `CLOCK_TICK` for moving between tabs, `CONFIRM` for something kept (a like).
+ * Nothing happens when the listener has turned touch feedback off; the system checks.
+ */
+@androidx.compose.runtime.Composable
+fun rememberTick(kind: Int = android.view.HapticFeedbackConstants.KEYBOARD_TAP): () -> Unit {
+    val view = androidx.compose.ui.platform.LocalView.current
+    return androidx.compose.runtime.remember(view, kind) { { view.performHapticFeedback(kind); Unit } }
+}
+
+/** A tick for keeping something: `CONFIRM` where there is one (Android 11), else a key press. */
+val ConfirmTick: Int = if (android.os.Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.CONFIRM else android.view.HapticFeedbackConstants.KEYBOARD_TAP

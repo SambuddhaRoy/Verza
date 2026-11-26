@@ -183,7 +183,14 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                     Modifier.fillMaxWidth().height(30.dp).clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
                                         .semantics { role = Role.Button; contentDescription = "Close" },
                                     contentAlignment = Alignment.Center,
-                                ) { Box(Modifier.size(width = 38.dp, height = 5.dp).clip(CircleShape).background(InkFaint.copy(alpha = 0.45f))) }
+                                ) {
+                                    // It stretches and darkens as the page is pulled, toward where letting go closes it.
+                                    Box(Modifier.size(width = 38.dp, height = 5.dp).graphicsLayer {
+                                        val f = (pull.value / shut).coerceIn(0f, 1f)
+                                        scaleX = 1f + 0.8f * f
+                                        alpha = 0.45f + 0.5f * f
+                                    }.clip(CircleShape).background(InkFaint))
+                                }
                                 // The cover leaves room under it for the visualiser's meter, and as much over it.
                                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                                     val ring = visualizer
@@ -208,7 +215,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                     }
                                     Spacer(Modifier.width(12.dp))
                                     val isLiked = song.id in liked
-                                    ChromeButton(if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (isLiked) "Unlike" else "Like", Modifier.popOn(isLiked), size = 40.dp) { graph.like(song, !isLiked) }
+                                    com.verza.ui.kit.LikeButton(isLiked, size = 40.dp) { graph.like(song, !isLiked) }
                                     Spacer(Modifier.width(10.dp))
                                     SongMenu(song, inPlayer = true) { close ->
                                         MenuItem(sleep?.let { "Sleep timer · ${sleepLeft(it)}" } ?: "Sleep timer") { close(); sleepPicker = true }
@@ -309,10 +316,13 @@ private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: 
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val lamp = LocalPalette.current.accent
+    // The lamp springs on and off rather than appearing.
+    val lit by animateFloatAsState(if (on == true) 1f else 0f, com.verza.ui.kit.bouncy(), label = "lamp")
+    val tick = com.verza.ui.kit.rememberTick()
     Box(
-        Modifier.size(size).glass(CircleShape, size / 2, pressed).clickable(source, null, onClick = onClick)
+        Modifier.size(size).glass(CircleShape, size / 2, pressed).clickable(source, null) { tick(); onClick() }
             .semantics { role = Role.Button; contentDescription = label; if (on != null) stateDescription = if (on) "On" else "Off" }
-            .drawBehind { if (on == true) drawCircle(lamp, 2.5.dp.toPx(), Offset(this.size.width / 2, this.size.height - 7.dp.toPx())) },
+            .drawBehind { if (lit > 0.01f) drawCircle(lamp, 2.5.dp.toPx() * lit, Offset(this.size.width / 2, this.size.height - 7.dp.toPx())) },
         contentAlignment = Alignment.Center,
     ) { Icon(icon, null, tint = if (on == false) InkSoft else Ink, modifier = Modifier.size(iconSize)) }
 }
@@ -416,13 +426,14 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
     val drag by animateFloatAsState(if (dragged != null) 1f else 0f, label = "scrub")
     val look = com.verza.ui.look.LocalLook.current
     val palette = LocalPalette.current
+    val grab = com.verza.ui.kit.rememberTick(android.view.HapticFeedbackConstants.CLOCK_TICK)
     Canvas(
         Modifier.fillMaxWidth().height(30.dp)
             .semantics { contentDescription = "Position, ${clock((shown * now.durationMs).toLong())} of ${clock(now.durationMs)}" }
             .pointerInput(Unit) { detectTapGestures { o -> if (duration > 0) seek(((o.x / size.width).coerceIn(0f, 1f) * duration).toLong()) } }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
-                    onDragStart = { o -> dragged = (o.x / size.width).coerceIn(0f, 1f) },
+                    onDragStart = { o -> grab(); dragged = (o.x / size.width).coerceIn(0f, 1f) },
                     onDragEnd = { dragged?.let { if (duration > 0) seek((it * duration).toLong()) }; dragged = null },
                     onDragCancel = { dragged = null },
                 ) { change, _ -> change.consume(); dragged = (change.position.x / size.width).coerceIn(0f, 1f) }

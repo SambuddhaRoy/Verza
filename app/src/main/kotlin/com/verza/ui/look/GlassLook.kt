@@ -209,9 +209,10 @@ internal fun GlassWordButton(text: String, color: Color, modifier: Modifier, ico
     val ink = (if (primary) p.canvas else p.ink).copy(alpha = if (enabled) 1f else 0.4f)
     val source = remember { MutableInteractionSource() }
     val press = pressOf(source)
+    val tick = com.verza.ui.kit.rememberTick()
     Row(
         modifier.heightIn(min = 50.dp).soft(CircleShape, 5.dp, press, face = if (primary) p.ink else null).clip(CircleShape)
-            .clickable(source, null, enabled = enabled, onClick = onClick)
+            .clickable(source, null, enabled = enabled) { tick(); onClick() }
             .semantics { role = Role.Button }.padding(horizontal = 22.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
@@ -356,8 +357,12 @@ private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit)
         launch { left.animateTo(index.toFloat(), if (forward) behind else ahead) }
         launch { right.animateTo(index + 1f, if (forward) ahead else behind) }
     }
+    // One source for every tab: holding any of them presses the capsule's glass, so its flutes move.
+    val source = remember { MutableInteractionSource() }
+    val held by source.collectIsPressedAsState()
+    val tick = com.verza.ui.kit.rememberTick(android.view.HapticFeedbackConstants.CLOCK_TICK)
     Row(
-        Modifier.height(BarHeight).takesTouches().glass(CircleShape, BarHeight / 2).padding(6.dp)
+        Modifier.height(BarHeight).takesTouches().glass(CircleShape, BarHeight / 2, held).padding(6.dp)
             .drawBehind {
                 if (shown.value <= 0f) return@drawBehind
                 val w = size.width / tabs.size
@@ -371,7 +376,7 @@ private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit)
         for (tab in tabs) {
             val on = tab.route == current
             Box(
-                Modifier.size(width = 66.dp, height = BarHeight - 12.dp).clip(CircleShape).clickable { go(tab.route) }
+                Modifier.size(width = 66.dp, height = BarHeight - 12.dp).clip(CircleShape).clickable(source, null) { if (!on) tick(); go(tab.route) }
                     .semantics { role = Role.Tab; selected = on; contentDescription = tab.label },
                 contentAlignment = Alignment.Center,
             ) { Icon(tab.icon, null, tint = if (on) p.ink else p.inkMuted, modifier = Modifier.size(23.dp)) }

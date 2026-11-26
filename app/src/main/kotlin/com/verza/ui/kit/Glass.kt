@@ -26,6 +26,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
@@ -130,8 +133,10 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
     val clear = LocalClearGlass.current
     val layer = rememberGraphicsLayer()
     var at by remember { mutableStateOf(Offset.Zero) }
-    // Pressed, the pane swells and brightens, as Apple's does under a finger.
-    val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow), label = "press")
+    // Pressed, the pane swells and brightens, and its flutes slide and turn over and its rim bends
+    // harder (read in the cache below, so the effect is rebuilt only while the press moves). The spring
+    // is loose, so on letting go the refraction wobbles back like something liquid settling.
+    val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow), label = "press")
     val see = backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     // Frosted in the page's own material, so a pane is the page lifted, not a sheet laid on it.
     val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (clear) (if (p.dark) 0.2f else 0.26f) else if (p.dark) 0.58f else 0.55f)
@@ -140,7 +145,7 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
         .onGloballyPositioned { at = it.positionInRoot() }
         .drawWithCache {
             val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
-            if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density, clear).asComposeRenderEffect()
+            if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density, clear, press).asComposeRenderEffect()
             val stroke = 1.dp.toPx()
             // Lit along the top, fading round the sides, a little light again at the foot.
             val rim = Brush.verticalGradient(
@@ -175,12 +180,56 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
 fun GlassButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 44.dp, tint: Color = LocalPalette.current.ink, stain: Color? = null, iconSize: Dp = size * 0.5f, iconModifier: Modifier = Modifier, inside: (DrawScope.() -> Unit)? = null, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
+    val tick = rememberTick()
     Box(
         modifier.size(size).glass(CircleShape, size / 2, pressed, stain, inside)
-            .clickable(source, null, onClick = onClick)
+            .clickable(source, null) { tick(); onClick() }
             .semantics { role = Role.Button },
         contentAlignment = Alignment.Center,
     ) { Icon(icon, label, tint = tint, modifier = iconModifier.size(iconSize)) }
+}
+
+/** The like's pink, a little deeper by day so the heart holds on a pale ground. */
+fun likePink(dark: Boolean) = if (dark) Color(0xFFFF5C95) else Color(0xFFE5326F)
+
+/**
+ * Like, in glass: held down, the glass fills with pink light and glows past its rim; liking flares the
+ * glow and fades it over most of a second, with a firmer tick. A liked heart is pink.
+ */
+@Composable
+fun LikeButton(liked: Boolean, modifier: Modifier = Modifier, size: Dp = 40.dp, onClick: () -> Unit) {
+    val p = LocalPalette.current
+    val pink = likePink(p.dark)
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val held by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium), label = "held")
+    val flare = remember { androidx.compose.animation.core.Animatable(0f) }
+    var was by remember { mutableStateOf(liked) }
+    androidx.compose.runtime.LaunchedEffect(liked) {
+        if (liked && !was) { flare.snapTo(1f); flare.animateTo(0f, androidx.compose.animation.core.tween(900)) }
+        was = liked
+    }
+    val tick = rememberTick()
+    val confirm = rememberTick(ConfirmTick)
+    Box(
+        modifier.size(size)
+            .drawBehind {
+                val glow = maxOf(held, flare.value)
+                if (glow > 0f) drawCircle(
+                    Brush.radialGradient(listOf(pink.copy(alpha = 0.55f * glow), pink.copy(alpha = 0.18f * glow), Color.Transparent), center, this.size.minDimension * 1.1f),
+                    this.size.minDimension * 1.1f,
+                )
+            }
+            .glass(CircleShape, size / 2, pressed, inside = { drawRect(pink, alpha = 0.5f * maxOf(held, flare.value)) })
+            .clickable(source, null) { if (liked) tick() else confirm(); onClick() }
+            .semantics { role = Role.Button },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (liked) androidx.compose.material.icons.Icons.Rounded.Favorite else androidx.compose.material.icons.Icons.Rounded.FavoriteBorder,
+            if (liked) "Unlike" else "Like", tint = if (liked) pink else p.ink, modifier = Modifier.size(size * 0.5f).popOn(liked),
+        )
+    }
 }
 
 /**
@@ -188,7 +237,7 @@ fun GlassButton(icon: ImageVector, label: String, modifier: Modifier = Modifier,
  * 13 there are no runtime shaders, and a pane is frosted instead (more blur, no flutes).
  */
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
-private fun glassEffect(width: Float, height: Float, corner: Float, density: Float, clear: Boolean): RenderEffect {
+private fun glassEffect(width: Float, height: Float, corner: Float, density: Float, clear: Boolean, press: Float): RenderEffect {
     val fluted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     // Clear glass is barely blurred, so the flowing cover keeps its shape in the flutes; the dock's a
     // little more, so the words on it stay readable over a busy cover.
@@ -200,12 +249,15 @@ private fun glassEffect(width: Float, height: Float, corner: Float, density: Flo
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || width <= 0f || height <= 0f) return vivid
     // Clear glass (Now Playing) shows its flutes fully; the dock's are quieter and wider, since words
     // sit on it and strong stripes cut through them.
-    val ground = if (clear) flutes(6f * density, -1.8f, 0.22f, vivid) else flutes(9f * density, -1.4f, 0.07f, vivid)
+    // Pressed, each flute turns over (bend runs through zero, magnifying, then flips the other way), the
+    // flutes slide half a flute sideways and their curve deepens.
+    val ground = if (clear) flutes(6f * density * (1f - 0.2f * press), -1.8f + 3.4f * press, 0.22f + 0.12f * press, vivid, phase = 0.5f * press)
+        else flutes(9f * density, -1.4f + 2.8f * press, 0.07f + 0.1f * press, vivid, phase = 0.5f * press)
     val lens = RuntimeShader(LENS).apply {
         setFloatUniform("size", width, height)
         setFloatUniform("radius", corner.coerceAtMost(minOf(width, height) / 2f))
         setFloatUniform("band", minOf(corner, 16f * density))
-        setFloatUniform("amount", 9f * density)
+        setFloatUniform("amount", 9f * density * (1f + 0.9f * press))
     }
     return RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(lens, "content"), ground)
 }
@@ -213,14 +265,16 @@ private fun glassEffect(width: Float, height: Float, corner: Float, density: Flo
 /**
  * [under] seen through fluted glass: vertical flutes [rib] px wide, each showing what's behind it
  * flipped and squeezed by [bend] flutes' worth ([FLUTE]), [shade] how much each one's curve darkens
- * into its seams and catches the light on its left shoulder. Android 13 and up.
+ * into its seams and catches the light on its left shoulder, [phase] how far they're slid sideways (in
+ * flutes). Android 13 and up.
  */
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.TIRAMISU)
-fun flutes(rib: Float, bend: Float, shade: Float, under: RenderEffect?): RenderEffect {
+fun flutes(rib: Float, bend: Float, shade: Float, under: RenderEffect?, phase: Float = 0f): RenderEffect {
     val flute = RuntimeShader(FLUTE).apply {
         setFloatUniform("rib", rib)
         setFloatUniform("bend", bend)
         setFloatUniform("shade", shade)
+        setFloatUniform("phase", phase)
     }
     val effect = RenderEffect.createRuntimeShaderEffect(flute, "content")
     return if (under == null) effect else RenderEffect.createChainEffect(effect, under)
@@ -234,9 +288,10 @@ uniform shader content;
 uniform float rib;
 uniform float bend;
 uniform float shade;
+uniform float phase;
 
 half4 main(float2 p) {
-    float k = p.x / rib;
+    float k = p.x / rib + phase;
     float u = fract(k);
     float middle = (floor(k) + 0.5) * rib;
     float4 c = float4(content.eval(float2(middle + (u - 0.5) * rib * bend, p.y)));

@@ -149,9 +149,10 @@ fun SoftKey(icon: ImageVector, label: String, modifier: Modifier = Modifier, siz
     val p = LocalPalette.current
     val source = remember { MutableInteractionSource() }
     val press = pressOf(source)
+    val tick = rememberTick()
     Box(
         modifier.size(size).soft(CircleShape, depth = size * 0.085f, press = press, face = face)
-            .clip(CircleShape).clickable(source, null, onClick = onClick)
+            .clip(CircleShape).clickable(source, null) { tick(); onClick() }
             .semantics { role = Role.Button; contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {

@@ -217,6 +217,10 @@ fun Field(
     keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default,
 ) {
     val p = LocalPalette.current
+    // Typing in it, the well sinks a little deeper.
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by source.collectIsFocusedAsState()
+    val depth by androidx.compose.animation.core.animateDpAsState(if (focused) 7.dp else 4.dp, bouncy(), label = "well")
     androidx.compose.foundation.text.BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -226,9 +230,10 @@ fun Field(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         modifier = modifier,
+        interactionSource = source,
         decorationBox = { inner ->
             Row(
-                Modifier.heightIn(min = 44.dp).soft(shape, 4.dp, inset = true).padding(start = if (leading != null) 10.dp else 14.dp, end = if (trailing != null) 0.dp else 14.dp),
+                Modifier.heightIn(min = 44.dp).soft(shape, depth, inset = true).padding(start = if (leading != null) 10.dp else 14.dp, end = if (trailing != null) 0.dp else 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (leading != null) { leading(); Spacer(Modifier.width(6.dp)) }
@@ -294,9 +299,10 @@ fun LightBarIcons() = BarIcons(light = true)
 @Composable
 fun Switch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: Boolean = true) {
     val p = LocalPalette.current
+    val tick = rememberTick(android.view.HapticFeedbackConstants.CLOCK_TICK)
     androidx.compose.material3.Switch(
         checked = checked,
-        onCheckedChange = onCheckedChange,
+        onCheckedChange = onCheckedChange?.let { change -> { on: Boolean -> tick(); change(on) } },
         enabled = enabled,
         // Content in the knob keeps it full size when off; Material shrinks an empty one.
         thumbContent = { Box(Modifier.size(1.dp)) },
