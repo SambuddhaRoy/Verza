@@ -119,15 +119,18 @@ import kotlinx.coroutines.launch
 
 /**
  * Soft glass: hyper-minimal, after the quiet sites Httpster files under Minimal (Drams' Rams-inspired
- * pages, Middle Name, Heartbeat's drum machine, The Index). The page is one warm material, stone by
- * day and graphite by night; controls are that material raised out of it or pressed into it
- * (`ui/kit/Soft.kt`), and what floats over the pages (the dock, the buttons over a cover) is frosted
- * glass of the same material. Words are few and small: names in a light large face, sections as small
- * capitals on a line cut into the page, figures as figures. Colour is the song's, and it is spent
- * sparingly: the dot by a page's name, the lamp in the chosen tab, the played part of a song, and Home's
- * play key, as Braun's calculators had one orange key. Now Playing's play key is ink.
+ * pages, Middle Name, Mater, Aather). The page is one warm material, stone by day and black at night.
+ * What you press is that material raised out of it and sinking under a finger (`ui/kit/Soft.kt`); what
+ * you look at (covers, groups of rows) lies flat on it; what floats over the pages (the dock, the
+ * buttons over a cover, all of Now Playing's) is fluted glass, ribbed rather than frosted.
+ *
+ * Two faces: Instrument Serif names things (pages, sections, songs), Inter is for reading and pressing.
+ * The song's colour is spent in a few places only: Home's play key, the played part of the mini
+ * player's rim, a toggle that's on. Since 2.7.1,
+ * the spaced-out capitals, the dot after every name, the numbered shelves, the counting figures and the
+ * light that followed the phone's tilt went.
  */
-object GlassLook : Look("soft", "Soft glass", "One soft material, glass over it, and one coloured key") {
+object GlassLook : Look("soft", "Soft glass", "One soft material, fluted glass over it, a serif for names") {
     override fun palette(swatches: List<Color>, dark: Boolean): Palette {
         // Night is pitch black (the listener's ask). A shadow can't show on black, so there a raised
         // surface (cell) is a shade above it and lit at its rim; by day it is the page's own stone.
@@ -155,51 +158,44 @@ object GlassLook : Look("soft", "Soft glass", "One soft material, glass over it,
         com.verza.ui.nowplaying.FlowingCover(art, LocalPalette.current.dark, react = !visualizer, fluted = true)
     }
 
-    private val figures = "tnum, ss01"
+    private val figures = "tnum"
 
-    // Inter. Names large and light (500, tight), sections small capitals spaced out, figures tabular.
+    // Two faces: Instrument Serif for what names things (pages, sections, songs), Inter for everything
+    // you read or press. Five styles in use on a page at most; no spaced-out capitals.
     override val type = Types(
-        masthead = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.Medium, fontSize = 38.sp, lineHeight = 42.sp, letterSpacing = (-0.045).em),
-        section = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-0.025).em),
-        title = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.03).em),
+        masthead = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 46.sp, lineHeight = 50.sp, letterSpacing = (-0.01).em),
+        section = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 27.sp, lineHeight = 32.sp),
+        title = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 34.sp, lineHeight = 38.sp),
         headline = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
         rowTitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
         rowSubtitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 19.sp, letterSpacing = (-0.006).em),
         body = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 23.sp, letterSpacing = (-0.011).em),
         small = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, fontFeatureSettings = figures),
         tab = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 13.sp, letterSpacing = 0.02.em),
-        label = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.11.em, fontFeatureSettings = figures),
+        label = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, fontFeatureSettings = figures),
     )
 }
 
-/** A figure set large, for the plate's counts. */
-private val Figure: TextStyle
-    @Composable get() = Type.Section.copy(fontSize = 26.sp, lineHeight = 30.sp, letterSpacing = (-0.03).em, fontFeatureSettings = "tnum")
-
-/** A page's name, large and light, the song's colour in a dot after it; the dateline over it in small capitals. */
+/** A page's name in the serif; Home's dateline ("Thursday evening") over it, as the Zune's pages had. */
 @Composable
 internal fun GlassMasthead(title: String, modifier: Modifier, dateline: String?, trailing: (@Composable () -> Unit)?) {
     val p = LocalPalette.current
-    Row(modifier.fillMaxWidth().padding(start = 24.dp, end = 18.dp, top = 20.dp, bottom = 10.dp), verticalAlignment = Alignment.Bottom) {
+    Row(modifier.fillMaxWidth().padding(start = 24.dp, end = 18.dp, top = 18.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
-            if (dateline != null) Text(dateline.uppercase(), style = Type.Label, color = p.inkMuted, modifier = Modifier.padding(bottom = 8.dp).semantics { contentDescription = dateline })
-            Row(verticalAlignment = Alignment.Top) {
-                Text(LocalLook.current.case.of(title), style = Type.Masthead, color = p.ink, modifier = Modifier.weight(1f, fill = false).semantics { heading() })
-                Box(Modifier.padding(start = 6.dp, top = 10.dp).size(8.dp).background(p.accent, CircleShape).clearAndSetSemantics { })
-            }
+            if (dateline != null) Text(dateline, style = Type.Small.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.inkMuted)
+            Text(LocalLook.current.case.of(title), style = Type.Masthead, color = p.ink, modifier = Modifier.semantics { heading() })
         }
         trailing?.invoke()
     }
 }
 
-/** Small capitals, then a line cut into the page to the edge: "RECENTLY PLAYED ————". */
+/** A heading inside a page, in the serif: "Recently played". */
 @Composable
 internal fun GlassSectionTitle(text: String, modifier: Modifier) {
-    val p = LocalPalette.current
-    Row(modifier.fillMaxWidth().padding(top = 34.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text.uppercase(), style = Type.Label, color = p.ink, maxLines = 1, modifier = Modifier.semantics { heading(); contentDescription = text })
-        Etched(Modifier.padding(start = 14.dp).weight(1f))
-    }
+    Text(
+        LocalLook.current.case.of(text), style = Type.Section, color = LocalPalette.current.ink, maxLines = 1,
+        modifier = modifier.padding(top = 30.dp, bottom = 10.dp).semantics { heading() },
+    )
 }
 
 /**
@@ -229,31 +225,24 @@ internal fun GlassWordButton(text: String, color: Color, modifier: Modifier, ico
 internal fun GlassHairline(start: Dp) = Etched(Modifier.padding(start = start))
 
 /**
- * A shelf: covers across, each raised a little off the page, numbered under it as an index is. An
- * artist is round and unnumbered, its name centred.
+ * A shelf: covers across, flat on the page like prints laid on a table (shadows are for what you press),
+ * the name under each. An artist is round, its name centred.
  */
 @Composable
 internal fun GlassShelf(section: Section, onOpen: (String) -> Unit) {
     val p = LocalPalette.current
-    // The padding is the shadows' room: a LazyRow cuts off whatever is drawn outside it.
-    LazyRow(contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 16.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        itemsIndexed(section.cards, key = { i, _ -> i }) { i, card ->
+    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        itemsIndexed(section.cards, key = { i, _ -> i }) { _, card ->
             val round = card.page?.startsWith("UC") == true
             val source = remember { MutableInteractionSource() }
-            val shape = if (round) CircleShape else RoundedCornerShape(14.dp)
+            val align = if (round) TextAlign.Center else TextAlign.Start
             Column(
                 Modifier.width(148.dp).squish(source, 0.97f).clickable(source, null, onClick = cardAction(card, onOpen)),
                 horizontalAlignment = if (round) Alignment.CenterHorizontally else Alignment.Start,
             ) {
-                Box(Modifier.size(148.dp).soft(shape, 7.dp)) { Cover(card.art?.let { artAt(it, 544) }, 148.dp, round = round) }
-                Row(Modifier.padding(top = 12.dp)) {
-                    if (!round) Text("%02d".format(i + 1), style = Type.Label, color = p.inkMuted, modifier = Modifier.padding(top = 3.dp, end = 8.dp).clearAndSetSemantics { })
-                    Column(horizontalAlignment = if (round) Alignment.CenterHorizontally else Alignment.Start) {
-                        val align = if (round) TextAlign.Center else TextAlign.Start
-                        Text(cardTitle(card), style = Type.Headline.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align)
-                        Text(card.subtitle.substringBefore(" • "), style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align)
-                    }
-                }
+                Cover(card.art?.let { artAt(it, 544) }, 148.dp, round = round)
+                Text(cardTitle(card), style = Type.Headline.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align, modifier = Modifier.padding(top = 10.dp))
+                Text(card.subtitle.substringBefore(" • "), style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = align)
             }
         }
     }
@@ -271,9 +260,9 @@ internal fun cardAction(card: com.verza.data.Card, onOpen: (String) -> Unit): ()
 }
 
 /**
- * Home's one object, like a player on a shelf: a raised plate holding the song playing (or last
- * played) with the play key, the one coloured key, and under a cut line your figures: plays, days in a
- * row, and who you've played most lately.
+ * Home's one raised object, like a player on a shelf: the song playing (or last played) with its play
+ * key, the one key in the song's colour, and under a cut line one sentence of what you've played. (It
+ * was three figures in small capitals with the plays counting up: a dashboard's tiles.)
  */
 @Composable
 private fun PlayerPlate() {
@@ -287,54 +276,41 @@ private fun PlayerPlate() {
     val streak = com.verza.ui.library.streak(days)
     val p = LocalPalette.current
     val song = now.song ?: recent.firstOrNull()
-    val art = RoundedCornerShape(14.dp)
+    val art = RoundedCornerShape(10.dp)
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp).enter(0)
-            .soft(RoundedCornerShape(30.dp), 9.dp).padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 18.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)
+            .soft(RoundedCornerShape(28.dp), 9.dp).padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(92.dp).soft(art, 5.dp)) {
-                if (song?.art != null) AsyncImage(artAt(song.art!!, 226), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(art))
-            }
+            if (song?.art != null) AsyncImage(artAt(song.art!!, 226), null, contentScale = ContentScale.Crop, modifier = Modifier.size(88.dp).clip(art).background(p.surfaceHigh))
             Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (now.playing) Box(Modifier.padding(end = 7.dp).size(6.dp).background(p.accent, CircleShape))
-                    val state = when { now.playing -> "Now playing"; now.song != null -> "Paused"; song != null -> "Last played"; else -> "Nothing yet" }
-                    Text(state.uppercase(), style = Type.Label, color = p.inkMuted, modifier = Modifier.semantics { contentDescription = state })
-                }
-                Text(song?.let { com.verza.data.shownTitle(it.title, it.artist) } ?: "Play something", style = Type.Headline.copy(fontSize = 18.sp, lineHeight = 23.sp), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                if (song != null) Text(song.artist, style = Type.Small.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(song?.let { com.verza.data.shownTitle(it.title, it.artist) } ?: "Play something and it's here", style = Type.Section.copy(fontSize = 25.sp, lineHeight = 29.sp), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (song != null) Text(song.artist, style = Type.Small.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
             if (song != null) SoftKey(
                 if (now.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (now.playing) "Pause" else "Play",
                 size = 56.dp, face = p.accent, iconModifier = Modifier.popOn(now.playing),
             ) { if (now.song != null) graph.player.toggle() else graph.player.play(listOf(song)) }
         }
-        Etched(Modifier.padding(top = 18.dp, bottom = 16.dp))
-        Row {
-            // The count runs up to its figure when it loads.
-            val shown by animateIntAsState(plays, tween(900), label = "plays")
-            Stat("%,d".format(shown), "Plays", Modifier.weight(1f))
-            Stat("$streak", if (streak == 1) "Day in a row" else "Days in a row", Modifier.weight(1f))
-            Stat(artists.firstOrNull()?.artist ?: "–", "Most lately", Modifier.weight(1.3f))
+        listened(plays, streak, artists.firstOrNull()?.artist)?.let {
+            Etched(Modifier.padding(top = 16.dp, bottom = 12.dp))
+            Text(it, style = Type.Small.copy(fontSize = 14.sp, lineHeight = 19.sp), color = p.inkMuted)
         }
     }
 }
 
-/** A figure over its name in small capitals. */
-@Composable
-private fun Stat(value: String, label: String, modifier: Modifier) {
-    val p = LocalPalette.current
-    Column(modifier.padding(end = 8.dp).semantics(mergeDescendants = true) { contentDescription = "$label: $value" }) {
-        Text(value, style = Figure, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(label.uppercase(), style = Type.Label.copy(fontSize = 10.sp), color = p.inkMuted, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
-    }
+/** "412 plays, 12 days in a row. Mostly Coldplay lately." Nothing before the first play. */
+internal fun listened(plays: Int, streak: Int, artist: String?): String? {
+    if (plays <= 0) return null
+    val count = if (plays == 1) "1 play" else "%,d plays".format(plays)
+    val run = if (streak >= 2) ", $streak days in a row" else ""
+    return "$count$run." + (artist?.let { " Mostly $it lately." } ?: "")
 }
 
 private val BarHeight = 62.dp
 private val PlayerHeight = 64.dp
 
-/** What floats at the foot: how far downloads have got, the playing song, then the tabs, each in frosted glass. */
+/** What floats at the foot: how far downloads have got, the playing song, then the tabs, each in fluted glass. */
 @Composable
 internal fun GlassDock(state: DockState, modifier: Modifier) {
     Column(
@@ -359,9 +335,9 @@ internal fun DownloadsLine(text: String, color: Color = LocalPalette.current.ink
 }
 
 /**
- * The tabs as symbols on a capsule of frosted glass. The chosen one sits in a well pressed into the
- * glass with a lamp of the song's colour under it; moving to another, the well's ends chase it at
- * different speeds, so it stretches toward the new tab and settles there, the way a drop runs.
+ * The tabs as symbols on a capsule of fluted glass. The chosen one sits in a well pressed into the
+ * glass; moving to another, the well's ends chase it at different speeds, so it stretches toward the
+ * new tab and settles there, the way a drop runs.
  */
 @Composable
 private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit) {
@@ -390,7 +366,6 @@ private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit)
                 val path = Path().apply { addRoundRect(RoundRect(well, CornerRadius(well.height / 2))) }
                 drawPath(path, p.canvas.copy(alpha = 0.55f * shown.value))
                 sink(path, 5.dp.toPx(), p, shown.value)
-                drawCircle(p.accent.copy(alpha = shown.value), 2.5.dp.toPx(), Offset(well.center.x, well.bottom - 7.dp.toPx()))
             },
     ) {
         for (tab in tabs) {
@@ -399,7 +374,7 @@ private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit)
                 Modifier.size(width = 66.dp, height = BarHeight - 12.dp).clip(CircleShape).clickable { go(tab.route) }
                     .semantics { role = Role.Tab; selected = on; contentDescription = tab.label },
                 contentAlignment = Alignment.Center,
-            ) { Icon(tab.icon, null, tint = if (on) p.ink else p.inkMuted, modifier = Modifier.size(23.dp).offset(y = if (on) (-2).dp else 0.dp)) }
+            ) { Icon(tab.icon, null, tint = if (on) p.ink else p.inkMuted, modifier = Modifier.size(23.dp)) }
         }
     }
 }
@@ -420,7 +395,7 @@ internal fun playedFraction(now: NowPlaying): androidx.compose.runtime.State<Flo
 }
 
 /**
- * The playing song in a capsule of frosted glass over the tabs, its cover round; a tap raises Now
+ * The playing song in a capsule of fluted glass over the tabs, its cover round; a tap raises Now
  * Playing. The rim fills with the song's colour as it plays, from the top left round.
  */
 @Composable

@@ -86,9 +86,6 @@ fun Shell() {
     val route = nav.currentBackStackEntryAsState().value?.destination?.route
     // A look can be dark while the system is light, or the other way: the status bar follows the look.
     com.verza.ui.kit.BarIcons(light = p.dark)
-    val tilt = com.verza.ui.kit.rememberTilt()
-
-    CompositionLocalProvider(com.verza.ui.kit.LocalTilt provides tilt) {
     Box(Modifier.fillMaxSize().background(p.canvas)) {
         Glassed(
             ground = p.canvas,
@@ -182,6 +179,5 @@ fun Shell() {
             if (updated) com.verza.ui.signin.Tour(onDone = seen)
             else LaunchedEffect(Unit) { seen() }
         }
-    }
     }
 }

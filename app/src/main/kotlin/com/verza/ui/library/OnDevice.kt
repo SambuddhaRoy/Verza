@@ -34,7 +34,7 @@ fun OnDevice(onOpen: (String) -> Unit, onOpenGroup: (String, String, List<com.ve
 
     if (!allowed) {
         // The word under the line, not after the page: placed after it, it was pushed off the screen.
-        Empty("Allow access to play the music on your phone. Verza only reads your files.", Icons.Rounded.PhoneAndroid, action = "allow") { ask.launch(readAudio) }
+        Empty("Allow access to play the music on your phone. Verza only reads your files.", action = "allow") { ask.launch(readAudio) }
         return
     }
     LaunchedEffect(Unit) { graph.phone.scan() }

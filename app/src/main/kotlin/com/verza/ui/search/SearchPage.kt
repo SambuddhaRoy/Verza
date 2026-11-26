@@ -127,7 +127,7 @@ fun SearchPage(onOpen: (String) -> Unit) {
                 state.query.isEmpty() && history.isNotEmpty() -> LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp + LocalDockHeight.current)) {
                     items(history) { q -> ListRow(title = q, subtitle = null, icon = Icons.Rounded.History, onClick = { focus.clearFocus(); model.type(q); model.search() }) }
                 }
-                else -> Empty("Search for any song, album or artist", Icons.Rounded.Search)
+                else -> Empty("Search for any song, album or artist")
             }
         }
     }

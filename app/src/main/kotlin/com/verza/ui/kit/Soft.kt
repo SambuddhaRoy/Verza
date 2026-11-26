@@ -54,7 +54,7 @@ import com.verza.ui.theme.readableOn
  * highlight up there and a shadow down to the right, each a blurred copy of the shape; pressed in, the
  * two fall inside it the other way round. A press moves a control from one to the other.
  *
- * The light doesn't follow the phone's tilt, as the glass's glint does: a room's light stays put.
+ * The light doesn't move: a room's light stays put.
  * Blurred shadows on a hardware canvas need Android 9; below it a surface is its face alone.
  */
 

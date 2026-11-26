@@ -167,7 +167,7 @@ fun ListRow(
         when {
             leading != null -> leading()
             icon != null -> Box(Modifier.padding(vertical = 6.dp).size(48.dp), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = p.accent, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = p.ink, modifier = Modifier.size(24.dp))
             }
             else -> Cover(art, 48.dp, Modifier.padding(vertical = 6.dp), round)
         }
@@ -188,15 +188,13 @@ fun ListRow(
     }
 }
 
-/** Nothing here yet: a quiet symbol over one line saying what to do, and the button that does it. */
+/** Nothing here yet: one line saying what to do, and the button that does it. (No big faded symbol.) */
 @Composable
-fun Empty(text: String, icon: ImageVector = Icons.Rounded.MusicNote, action: String? = null, onAction: () -> Unit = {}) {
+fun Empty(text: String, action: String? = null, onAction: () -> Unit = {}) {
     val p = LocalPalette.current
     Box(Modifier.fillMaxSize().padding(bottom = LocalDockHeight.current), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 40.dp)) {
-            Icon(icon, contentDescription = null, tint = p.inkMuted.copy(alpha = 0.55f), modifier = Modifier.size(52.dp))
-            Spacer(Modifier.height(14.dp))
-            Text(text, style = Type.RowTitle, color = p.inkMuted, textAlign = TextAlign.Center)
+            Text(text, style = Type.Body, color = p.inkMuted, textAlign = TextAlign.Center)
             if (action != null) { Spacer(Modifier.height(16.dp)); Word(action, p.accent, onClick = onAction) }
         }
     }
@@ -245,7 +243,7 @@ fun Field(
 }
 
 /**
- * A group of rows, as iOS's settings have: [title] over it, [content] on a panel raised out of the page.
+ * A group of rows, as iOS's settings have: [title] over it, [content] on a flat panel a shade off the page.
  * Rows inside put a [Hairline] between them.
  */
 @Composable
@@ -254,7 +252,8 @@ fun Group(title: String? = null, modifier: Modifier = Modifier, footer: String? 
     Column(modifier.fillMaxWidth().padding(top = 22.dp)) {
         if (title != null) Text(title.sentence(), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp).semantics { heading() })
         val look = LocalLook.current
-        Column(Modifier.fillMaxWidth().soft(look.group, 7.dp).clip(look.group).then(look.panel?.let { Modifier.border(it, look.group) } ?: Modifier).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
+        // Flat: a group is something you read, and shadows are for what you press.
+        Column(Modifier.fillMaxWidth().clip(look.group).background(if (p.dark) p.cell else p.surface).then(look.panel?.let { Modifier.border(it, look.group) } ?: Modifier).padding(horizontal = 16.dp, vertical = 2.dp), content = content)
         if (footer != null) Text(footer, style = Type.Small, color = p.inkMuted, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
     }
 }

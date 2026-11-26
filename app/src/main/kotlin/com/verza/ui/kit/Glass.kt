@@ -70,51 +70,19 @@ import com.verza.ui.theme.LocalPalette
  * song's. A pane can be [stain]ed with the accent (the selected tab, play and pause), or hold
  * something of the song [inside] it (the mini player holds its cover's colours).
  *
- * Where the light catches the rim there's a thin white glint, with a fainter one opposite. The light
- * follows the phone's tilt ([LocalTilt]): tip it and the glint slides round the edge. (2.5.0's glass
- * split the light into rainbows at the rim; the listener asked for just glass.)
+ * The rim is lit along the top. (2.5.0's glass split the light into rainbows at the rim, and until
+ * 2.7.1 a glint slid round it as the phone tilted; both went, the second as decoration.)
  *
- * Since 2.7.0 (Soft glass) a pane is frosted in the page's own colour rather than white or grey, and
- * lifted off the page by the soft surfaces' two shadows ([raise]) rather than a drop shadow: the page
- * lifted, not a sheet laid on it.
+ * Since 2.7.0 (Soft glass) a pane is tinted with the page's own colour and lifted off the page by the
+ * soft surfaces' two shadows ([raise]) rather than a drop shadow. Since 2.7.1 it is fluted, not frosted:
+ * clear glass ribbed in narrow vertical flutes ([flutes]), texture where there was blur.
  */
 
 /**
- * Glass on this page is fluted (reeded): ribbed in narrow vertical flutes, each a little cylinder lens
- * that flips and squeezes what's behind it, as Now Playing's ground is seen through ([FLUTE]). Now
- * Playing and Lyrics provide it, so their buttons are cut from the same glass.
+ * Glass on this page is clear: Now Playing and Lyrics provide it, so the flowing cover shows through
+ * their buttons' flutes. Elsewhere the glass is tinted with the page, for the words on it.
  */
-val LocalFluted = staticCompositionLocalOf { false }
-
-/** Which way the phone leans, each axis -1 to 1; where the light sits on the glass. */
-val LocalTilt = staticCompositionLocalOf<State<Offset>> { mutableStateOf(Offset.Zero) }
-
-/**
- * The phone's lean from its gravity sensor, smoothed, while the app is in front; still otherwise. Small
- * changes are ignored, so a phone at rest doesn't keep the glass redrawing.
- */
-@Composable
-fun rememberTilt(): State<Offset> {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val tilt = remember { mutableStateOf(Offset.Zero) }
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
-        val sensors = context.getSystemService(android.hardware.SensorManager::class.java)
-        val sensor = sensors?.getDefaultSensor(android.hardware.Sensor.TYPE_GRAVITY) ?: sensors?.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
-        var gx = 0f; var gy = 9.81f * 0.75f
-        val listener = object : android.hardware.SensorEventListener {
-            override fun onSensorChanged(e: android.hardware.SensorEvent) {
-                gx += (e.values[0] - gx) * 0.12f
-                gy += (e.values[1] - gy) * 0.12f
-                val next = Offset((-gx / 9.81f).coerceIn(-1f, 1f), ((0.75f - gy / 9.81f) * 2f).coerceIn(-1f, 1f))
-                if ((next - tilt.value).getDistance() > 0.015f) tilt.value = next
-            }
-            override fun onAccuracyChanged(s: android.hardware.Sensor?, a: Int) {}
-        }
-        if (sensor != null) sensors.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_UI)
-        onPauseOrDispose { sensors?.unregisterListener(listener) }
-    }
-    return tilt
-}
+val LocalClearGlass = staticCompositionLocalOf { false }
 
 /** The content behind a layer of glass, as last drawn. */
 @Stable
@@ -159,24 +127,21 @@ fun Glassed(ground: Color, modifier: Modifier = Modifier, content: @Composable B
 fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Color? = null, inside: (DrawScope.() -> Unit)? = null): Modifier {
     val backdrop = LocalBackdrop.current
     val p = LocalPalette.current
-    val tilt = LocalTilt.current
-    val fluted = LocalFluted.current
+    val clear = LocalClearGlass.current
     val layer = rememberGraphicsLayer()
     var at by remember { mutableStateOf(Offset.Zero) }
     // Pressed, the pane swells and brightens, as Apple's does under a finger.
     val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow), label = "press")
     val see = backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     // Frosted in the page's own material, so a pane is the page lifted, not a sheet laid on it.
-    // Fluted glass is clearer, so its flutes show.
-    val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (fluted) (if (p.dark) 0.2f else 0.26f) else if (p.dark) 0.6f else 0.55f)
+    val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (clear) (if (p.dark) 0.2f else 0.26f) else if (p.dark) 0.58f else 0.55f)
     return this
         .graphicsLayer { val s = 1f + 0.06f * press; scaleX = s; scaleY = s }
         .onGloballyPositioned { at = it.positionInRoot() }
         .drawWithCache {
             val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
-            if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density, fluted).asComposeRenderEffect()
+            if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density, clear).asComposeRenderEffect()
             val stroke = 1.dp.toPx()
-            val glintWidth = 1.6.dp.toPx()
             // Lit along the top, fading round the sides, a little light again at the foot.
             val rim = Brush.verticalGradient(
                 0f to Color.White.copy(alpha = if (p.dark) 0.22f else 0.9f),
@@ -201,25 +166,8 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
                 if (press > 0f) drawPath(path, Color.White.copy(alpha = 0.12f * press))
                 drawPath(path, rim, style = Stroke(stroke))
                 if (!p.dark) drawPath(path, Color.Black.copy(alpha = 0.05f), style = Stroke(stroke / 2))
-                // The glint: the rim lit white near where the light falls, and faintly opposite. Where
-                // the light falls moves as the phone tilts.
-                val t = tilt.value
-                val light = Offset(size.width * (0.28f + 0.4f * t.x).coerceIn(0f, 1f), size.height * (0.45f * t.y).coerceIn(0f, 1f))
-                val reach = maxOf(size.width, size.height) * 0.42f
-                glint(path, Color.White, light, reach, glintWidth, if (p.dark) 0.75f else 0.95f)
-                glint(path, Color.White, Offset(size.width - light.x, size.height - light.y), reach * 0.7f, glintWidth, if (p.dark) 0.35f else 0.6f)
             }
         }
-}
-
-/** [path]'s rim in [brush], kept only within [reach] of [at]: a glint where light catches the edge. */
-private fun DrawScope.glint(path: Path, color: Color, at: Offset, reach: Float, width: Float, alpha: Float) {
-    drawIntoCanvas { canvas ->
-        canvas.saveLayer(androidx.compose.ui.geometry.Rect(Offset(-width, -width), androidx.compose.ui.geometry.Size(size.width + 2 * width, size.height + 2 * width)), androidx.compose.ui.graphics.Paint())
-        drawPath(path, color, alpha = alpha, style = Stroke(width))
-        drawRect(Brush.radialGradient(listOf(Color.White, Color.White.copy(alpha = 0.35f), Color.Transparent), at, reach), Offset(-width, -width), androidx.compose.ui.geometry.Size(size.width + 2 * width, size.height + 2 * width), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
-        canvas.restore()
-    }
 }
 
 /** A round glass button with one symbol: the way back, a page's menu, search. [inside] is drawn into its glass. */
@@ -235,17 +183,24 @@ fun GlassButton(icon: ImageVector, label: String, modifier: Modifier = Modifier,
     ) { Icon(icon, label, tint = tint, modifier = iconModifier.size(iconSize)) }
 }
 
-/** Blur, a lift in saturation, then (on 13 and up) the flutes if [fluted], and the lens at the rim. */
+/**
+ * A little blur and a lift in saturation, then (on 13 and up) the flutes and the lens at the rim. Below
+ * 13 there are no runtime shaders, and a pane is frosted instead (more blur, no flutes).
+ */
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
-private fun glassEffect(width: Float, height: Float, corner: Float, density: Float, fluted: Boolean): RenderEffect {
-    // Fluted glass is clear glass, ribbed: a little blur, not frost.
-    val blurBy = (if (fluted) 4f else 18f) * density
+private fun glassEffect(width: Float, height: Float, corner: Float, density: Float, clear: Boolean): RenderEffect {
+    val fluted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    // Clear glass is barely blurred, so the flowing cover keeps its shape in the flutes; the dock's a
+    // little more, so the words on it stay readable over a busy cover.
+    val blurBy = (if (!fluted) 18f else if (clear) 4f else 9f) * density
     val blur = RenderEffect.createBlurEffect(blurBy, blurBy, android.graphics.Shader.TileMode.CLAMP)
     val vivid = RenderEffect.createColorFilterEffect(
         android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply { setSaturation(1.5f) }), blur,
     )
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || width <= 0f || height <= 0f) return vivid
-    val ground = if (fluted) flutes(6f * density, -1.8f, 0.22f, vivid) else vivid
+    // Clear glass (Now Playing) shows its flutes fully; the dock's are quieter and wider, since words
+    // sit on it and strong stripes cut through them.
+    val ground = if (clear) flutes(6f * density, -1.8f, 0.22f, vivid) else flutes(9f * density, -1.4f, 0.07f, vivid)
     val lens = RuntimeShader(LENS).apply {
         setFloatUniform("size", width, height)
         setFloatUniform("radius", corner.coerceAtMost(minOf(width, height) / 2f))

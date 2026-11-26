@@ -102,7 +102,7 @@ fun LibraryPage(onOpen: (String) -> Unit) {
                         .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(icon, null, tint = p.accent, modifier = Modifier.size(26.dp))
+                    Icon(icon, null, tint = p.ink, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(16.dp))
                     Column(Modifier.weight(1f)) {
                         Row(Modifier.heightIn(min = 54.dp).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {

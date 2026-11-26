@@ -170,7 +170,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
             ground = Color.Black,
             modifier = Modifier.fillMaxSize().takesTouches().graphicsLayer { translationY = pull.value },
             content = { look.NowPlayingBackground(song.art?.let { artAt(it, 226) }) },
-            glass = { CompositionLocalProvider(com.verza.ui.kit.LocalFluted provides true) {
+            glass = { CompositionLocalProvider(com.verza.ui.kit.LocalClearGlass provides true) {
                 look.NowPlayingDecor()
                 BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
                     val pageHeight = maxHeight
