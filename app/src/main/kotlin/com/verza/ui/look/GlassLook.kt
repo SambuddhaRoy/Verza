@@ -61,6 +61,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -128,10 +129,11 @@ import kotlinx.coroutines.launch
  */
 object GlassLook : Look("soft", "Soft glass", "One soft material, glass over it, and one coloured key") {
     override fun palette(swatches: List<Color>, dark: Boolean): Palette {
-        val canvas = if (dark) Color(0xFF1C1C1E) else Color(0xFFE9E7E3)
+        // Night is pitch black (the listener's ask). A shadow can't show on black, so there a raised
+        // surface (cell) is a shade above it and lit at its rim; by day it is the page's own stone.
+        val canvas = if (dark) Color.Black else Color(0xFFE9E7E3)
         val ink = if (dark) Color(0xFFEEEDEA) else Color(0xFF151515)
-        // Rows, groups and menus are the page's own material, set apart by their shadows, not a fill.
-        return Palette.make(canvas, ink, swatches, cell = canvas, grouped = canvas, surface = lerp(canvas, ink, 0.05f))
+        return Palette.make(canvas, ink, swatches, cell = if (dark) Color(0xFF141416) else canvas, grouped = canvas, surface = lerp(canvas, ink, 0.05f))
     }
 
     override fun cover(size: Dp): Shape = RoundedCornerShape(if (size in 1.dp..64.dp) 8.dp else 14.dp)
@@ -144,7 +146,14 @@ object GlassLook : Look("soft", "Soft glass", "One soft material, glass over it,
     override fun visualizer(np: Palette, page: Palette) = np.ink
 
     @Composable override fun HomeHero() = PlayerPlate()
-    @Composable override fun NowPlayingBackground(art: String?) = CoverGlow(art)
+    /**
+     * The cover flowing, seen through fluted glass; stirred by the bass only while the visualiser is
+     * off, since with it on the meter under the cover already shows the music.
+     */
+    @Composable override fun NowPlayingBackground(art: String?) {
+        val visualizer by LocalContext.current.graph.settings.visualizer.flow.collectAsState(initial = true)
+        com.verza.ui.nowplaying.FlowingCover(art, LocalPalette.current.dark, react = !visualizer, fluted = true)
+    }
 
     private val figures = "tnum, ss01"
 
@@ -502,27 +511,28 @@ internal fun GlassNowPlayingCover(art: String?, side: Dp, rest: Float, swell: Fl
 }
 
 /**
- * Play and pause on Now Playing: a larger key in ink, the page's own colours reversed, so it stands
+ * Play and pause on Now Playing: a larger key of the same fluted glass, smoked with ink, so it stands
  * apart from back and on without the song's colour (which the listener wanted off it).
  */
 @Composable
 internal fun GlassPlayButton(playing: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
-    SoftKey(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", size = 84.dp, iconSize = 42.dp, face = p.ink, tint = p.canvas, iconModifier = Modifier.popOn(playing), onClick = onClick)
+    com.verza.ui.kit.GlassButton(
+        if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play",
+        size = 84.dp, iconSize = 42.dp, tint = p.canvas, iconModifier = Modifier.popOn(playing),
+        inside = { drawRect(p.ink, alpha = 0.92f) }, onClick = onClick,
+    )
 }
 
 /**
- * A groove cut into the page, the played part of it in the song's colour, and a bead of the material
- * riding in it at the playhead, larger under the finger.
+ * A thin capsule over the moving ground, the played part in ink, thicker under the finger. (It was a
+ * groove cut into the page, which a moving ground doesn't have.)
  */
 internal fun DrawScope.glassScrubber(shown: Float, dragging: Float, p: Palette) {
-    val h = (6f + 2f * dragging) * density
-    val top = size.height / 2 - h / 2
-    val groove = Path().apply { addRoundRect(RoundRect(Rect(0f, top, size.width, top + h), CornerRadius(h / 2))) }
-    val x = size.width * shown
-    clipRect(right = x) { drawPath(groove, p.accent) }
-    sink(groove, 3f * density, p)
-    val r = (8f + 3f * dragging) * density
-    val bead = Path().apply { addOval(Rect(Offset(x.coerceIn(r, size.width - r), size.height / 2), r)) }
-    raise(bead, p.canvas, 3f * density, p)
+    val h = (5f + 5f * dragging) * density
+    val top = Offset(0f, size.height / 2 - h / 2)
+    val track = Size(size.width, h)
+    val round = CornerRadius(h / 2)
+    drawRoundRect(p.ink.copy(alpha = 0.18f), top, track, round)
+    clipRect(right = size.width * shown) { drawRoundRect(p.ink.copy(alpha = 0.9f), top, track, round) }
 }

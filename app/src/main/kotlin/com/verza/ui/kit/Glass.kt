@@ -79,6 +79,13 @@ import com.verza.ui.theme.LocalPalette
  * lifted, not a sheet laid on it.
  */
 
+/**
+ * Glass on this page is fluted (reeded): ribbed in narrow vertical flutes, each a little cylinder lens
+ * that flips and squeezes what's behind it, as Now Playing's ground is seen through ([FLUTE]). Now
+ * Playing and Lyrics provide it, so their buttons are cut from the same glass.
+ */
+val LocalFluted = staticCompositionLocalOf { false }
+
 /** Which way the phone leans, each axis -1 to 1; where the light sits on the glass. */
 val LocalTilt = staticCompositionLocalOf<State<Offset>> { mutableStateOf(Offset.Zero) }
 
@@ -153,19 +160,21 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
     val backdrop = LocalBackdrop.current
     val p = LocalPalette.current
     val tilt = LocalTilt.current
+    val fluted = LocalFluted.current
     val layer = rememberGraphicsLayer()
     var at by remember { mutableStateOf(Offset.Zero) }
     // Pressed, the pane swells and brightens, as Apple's does under a finger.
     val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow), label = "press")
     val see = backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     // Frosted in the page's own material, so a pane is the page lifted, not a sheet laid on it.
-    val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (p.dark) 0.6f else 0.55f)
+    // Fluted glass is clearer, so its flutes show.
+    val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (fluted) (if (p.dark) 0.2f else 0.26f) else if (p.dark) 0.6f else 0.55f)
     return this
         .graphicsLayer { val s = 1f + 0.06f * press; scaleX = s; scaleY = s }
         .onGloballyPositioned { at = it.positionInRoot() }
         .drawWithCache {
             val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
-            if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density).asComposeRenderEffect()
+            if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density, fluted).asComposeRenderEffect()
             val stroke = 1.dp.toPx()
             val glintWidth = 1.6.dp.toPx()
             // Lit along the top, fading round the sides, a little light again at the foot.
@@ -213,35 +222,75 @@ private fun DrawScope.glint(path: Path, color: Color, at: Offset, reach: Float, 
     }
 }
 
-/** A round glass button with one symbol: the way back, a page's menu, search. */
+/** A round glass button with one symbol: the way back, a page's menu, search. [inside] is drawn into its glass. */
 @Composable
-fun GlassButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 44.dp, tint: Color = LocalPalette.current.ink, stain: Color? = null, iconSize: Dp = size * 0.5f, iconModifier: Modifier = Modifier, onClick: () -> Unit) {
+fun GlassButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 44.dp, tint: Color = LocalPalette.current.ink, stain: Color? = null, iconSize: Dp = size * 0.5f, iconModifier: Modifier = Modifier, inside: (DrawScope.() -> Unit)? = null, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     Box(
-        modifier.size(size).glass(CircleShape, size / 2, pressed, stain)
+        modifier.size(size).glass(CircleShape, size / 2, pressed, stain, inside)
             .clickable(source, null, onClick = onClick)
             .semantics { role = Role.Button },
         contentAlignment = Alignment.Center,
     ) { Icon(icon, label, tint = tint, modifier = iconModifier.size(iconSize)) }
 }
 
-/** Blur, a lift in saturation, then (on 13 and up) the lens at the rim. */
+/** Blur, a lift in saturation, then (on 13 and up) the flutes if [fluted], and the lens at the rim. */
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
-private fun glassEffect(width: Float, height: Float, corner: Float, density: Float): RenderEffect {
-    val blur = RenderEffect.createBlurEffect(18f * density, 18f * density, android.graphics.Shader.TileMode.CLAMP)
+private fun glassEffect(width: Float, height: Float, corner: Float, density: Float, fluted: Boolean): RenderEffect {
+    // Fluted glass is clear glass, ribbed: a little blur, not frost.
+    val blurBy = (if (fluted) 4f else 18f) * density
+    val blur = RenderEffect.createBlurEffect(blurBy, blurBy, android.graphics.Shader.TileMode.CLAMP)
     val vivid = RenderEffect.createColorFilterEffect(
         android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply { setSaturation(1.5f) }), blur,
     )
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || width <= 0f || height <= 0f) return vivid
+    val ground = if (fluted) flutes(6f * density, -1.8f, 0.22f, vivid) else vivid
     val lens = RuntimeShader(LENS).apply {
         setFloatUniform("size", width, height)
         setFloatUniform("radius", corner.coerceAtMost(minOf(width, height) / 2f))
         setFloatUniform("band", minOf(corner, 16f * density))
         setFloatUniform("amount", 9f * density)
     }
-    return RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(lens, "content"), vivid)
+    return RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(lens, "content"), ground)
 }
+
+/**
+ * [under] seen through fluted glass: vertical flutes [rib] px wide, each showing what's behind it
+ * flipped and squeezed by [bend] flutes' worth ([FLUTE]), [shade] how much each one's curve darkens
+ * into its seams and catches the light on its left shoulder. Android 13 and up.
+ */
+@androidx.annotation.RequiresApi(Build.VERSION_CODES.TIRAMISU)
+fun flutes(rib: Float, bend: Float, shade: Float, under: RenderEffect?): RenderEffect {
+    val flute = RuntimeShader(FLUTE).apply {
+        setFloatUniform("rib", rib)
+        setFloatUniform("bend", bend)
+        setFloatUniform("shade", shade)
+    }
+    val effect = RenderEffect.createRuntimeShaderEffect(flute, "content")
+    return if (under == null) effect else RenderEffect.createChainEffect(effect, under)
+}
+
+// A point in a flute shows the point across its flute's middle, scaled by bend (negative flips it,
+// as a convex rib does), so each flute holds a narrow, mirrored slice of what's behind. The curve:
+// dark at the seams, a bright band on the left shoulder where the light catches it.
+private const val FLUTE = """
+uniform shader content;
+uniform float rib;
+uniform float bend;
+uniform float shade;
+
+half4 main(float2 p) {
+    float k = p.x / rib;
+    float u = fract(k);
+    float middle = (floor(k) + 0.5) * rib;
+    float4 c = float4(content.eval(float2(middle + (u - 0.5) * rib * bend, p.y)));
+    float curve = sin(u * 3.14159265);
+    float lit = smoothstep(0.12, 0.3, u) * (1.0 - smoothstep(0.3, 0.52, u));
+    c.rgb = c.rgb * (1.0 - shade * (1.0 - curve)) + shade * 0.55 * lit * c.a;
+    return half4(c);
+}
+"""
 
 // Each point near the rim shows what is a little further in, most at the rim itself: the edge
 // magnifies, the way the thick edge of a lens does.

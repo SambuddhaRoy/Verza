@@ -74,7 +74,7 @@ fun LyricsPage(onClose: () -> Unit) {
     val lyrics by produceState<Lyrics?>(null, song.id) { value = runCatching { graph.lyrics.get(song) }.getOrDefault(Lyrics.None) }
 
     // Over the cover's colours, as Now Playing is, and dark like it whatever the theme.
-    CompositionLocalProvider(com.verza.ui.theme.LocalPalette provides p) { Glassed(
+    CompositionLocalProvider(com.verza.ui.theme.LocalPalette provides p, com.verza.ui.kit.LocalFluted provides true) { Glassed(
         ground = Color.Black,
         modifier = Modifier.fillMaxSize().takesTouches(),
         content = { look.NowPlayingBackground(song.art?.let { artAt(it, 226) }) },

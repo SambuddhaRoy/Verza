@@ -23,8 +23,8 @@ android {
         applicationId = "com.verza"
         minSdk = 26
         targetSdk = 35
-        versionCode = 110
-        versionName = "2.7.0"
+        versionCode = 111
+        versionName = "2.7.1"
         // Chaquopy ships Python per ABI. 3.11 is the newest with a 32-bit build; 3.12+ would drop
         // armeabi-v7a phones, which ran Verza before since it had no native code.
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64") }

@@ -59,7 +59,7 @@ import com.verza.ui.theme.readableOn
  */
 
 /** The page's material lit: the highlight on its upper edges and the shadow under its lower ones. */
-fun Palette.light(): Color = if (dark) Color.White.copy(alpha = 0.09f) else Color.White.copy(alpha = 0.92f)
+fun Palette.light(): Color = if (dark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.92f)
 fun Palette.shade(): Color = if (dark) Color.Black.copy(alpha = 0.66f) else lerp(canvas, Color.Black, 0.4f).copy(alpha = 0.5f)
 
 /** 0 to 1 while [source] is pressed: in quickly, out on the springy [bouncy]. Read it while drawing. */
@@ -109,12 +109,13 @@ fun DrawScope.sink(path: Path, d: Float, p: Palette, down: Float = 1f) {
 
 /**
  * The page's material in [shape], raised [depth] out of the page, or pressed into it as [press] goes
- * to 1 ([inset] keeps it pressed). [face] colours it, the page's own by default.
+ * to 1 ([inset] keeps it pressed). [face] colours it: by default a raised surface's (`cell`), which by
+ * day is the page's own stone and at night a shade above the black, since no shadow shows on black.
  */
 @Composable
 fun Modifier.soft(shape: Shape, depth: Dp = 6.dp, press: State<Float>? = null, inset: Boolean = false, face: Color? = null): Modifier {
     val p = LocalPalette.current
-    val colour = face ?: p.canvas
+    val colour = face ?: p.cell
     return drawWithCache {
         val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
         val d = depth.toPx()
@@ -123,7 +124,8 @@ fun Modifier.soft(shape: Shape, depth: Dp = 6.dp, press: State<Float>? = null, i
             listOf(Color.White.copy(alpha = if (p.dark) 0.04f else 0.2f), Color.Transparent, Color.Black.copy(alpha = if (p.dark) 0.1f else 0.03f)),
             Offset.Zero, Offset(size.width, size.height),
         )
-        val rim = Brush.linearGradient(listOf(p.light(), Color.Transparent), Offset.Zero, Offset(size.width * 0.5f, size.height * 0.5f))
+        // At night the rim is what shows a raised edge, so it's brighter than the highlight.
+        val rim = Brush.linearGradient(listOf(if (p.dark) Color.White.copy(alpha = 0.13f) else p.light(), Color.Transparent), Offset.Zero, Offset(size.width * 0.5f, size.height * 0.5f))
         val line = Stroke(1.dp.toPx())
         onDrawBehind {
             val down = if (inset) 1f else press?.value ?: 0f
@@ -168,6 +170,8 @@ fun Etched(modifier: Modifier = Modifier) {
     val light = p.light()
     Canvas(modifier.fillMaxWidth().height(2.dp)) {
         val w = 1.dp.toPx()
+        // On black a shadow is nothing, so at night it's one faint line.
+        if (p.dark) { drawLine(Color.White.copy(alpha = 0.1f), Offset(0f, w), Offset(size.width, w), w); return@Canvas }
         drawLine(shade, Offset(0f, w / 2), Offset(size.width, w / 2), w)
         drawLine(light, Offset(0f, w * 1.5f), Offset(size.width, w * 1.5f), w)
     }

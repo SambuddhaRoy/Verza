@@ -27,6 +27,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -44,13 +46,14 @@ import kotlin.math.min
 import kotlin.math.pow
 
 /**
- * The cover, blurred and slowly warped with simplex noise, stirred by the bass: the desktop's Now
- * Playing background (renderer.js, drawFluid), the same shader in AGSL. Dark, it's dimmed so white
- * type reads over a white cover; light, it's washed pale for black type. How far follows the cover's
- * brightness. Before Android 13 there are no runtime shaders, and the still blur stands in.
+ * The cover, blurred and slowly warped with simplex noise: the desktop's Now Playing background
+ * (renderer.js, drawFluid), the same shader in AGSL. Dark, it's dimmed so white type reads over a white
+ * cover; light, it's washed pale for black type. How far follows the cover's brightness. [react]: the
+ * bass stirs it. [fluted]: it's seen through fluted glass (`flutes` in Glass.kt), wide flutes over the
+ * blur. Before Android 13 there are no runtime shaders, and the still blur stands in.
  */
 @Composable
-fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier) {
+fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier, react: Boolean = true, fluted: Boolean = false) {
     val context = LocalContext.current
     val bitmap by produceState<Bitmap?>(null, art) {
         if (art == null) { value = null; return@produceState }
@@ -61,12 +64,12 @@ fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier) {
         AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = modifier.fillMaxSize().blur(60.dp), alpha = if (dark) 0.45f else 0.35f)
         return
     }
-    Flowing(bitmap!!, dark, modifier)
+    Flowing(bitmap!!, dark, modifier, react, fluted)
 }
 
 @RequiresApi(33)
 @Composable
-private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier) {
+private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Boolean, fluted: Boolean) {
     val shader = remember { RuntimeShader(FLUID) }
     val lum = remember(bitmap) { brightness(bitmap) }
     remember(bitmap) {
@@ -75,16 +78,23 @@ private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier) {
     }
     var time by remember { mutableFloatStateOf(0f) }
     var bass by remember { mutableFloatStateOf(0f) }
+    // The spectrum is only worked out while something watches it.
+    DisposableEffect(react) { if (react) Spectrum.watch(); onDispose { if (react) Spectrum.unwatch() } }
     // Thirty frames a second while it's on screen; the composition leaving stops it.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(react) {
         val start = withFrameNanos { it }
         var last = 0L
         while (true) withFrameNanos { t ->
-            if (t - last >= 33_000_000L) { last = t; time = (t - start) / 1e9f; bass = bass * 0.6f + Spectrum.bass * 0.4f }
+            if (t - last >= 33_000_000L) { last = t; time = (t - start) / 1e9f; bass = if (react) bass * 0.6f + Spectrum.bass * 0.4f else 0f }
         }
     }
     val brush = remember(shader) { object : ShaderBrush() { override fun createShader(size: Size) = shader } }
-    Box(modifier.fillMaxSize().blur(24.dp).drawBehind {
+    val density = LocalDensity.current.density
+    val effect = remember(fluted, density) {
+        val blur = android.graphics.RenderEffect.createBlurEffect(24f * density, 24f * density, Shader.TileMode.CLAMP)
+        (if (fluted) com.verza.ui.kit.flutes(22f * density, -1.6f, 0.16f, blur) else blur).asComposeRenderEffect()
+    }
+    Box(modifier.fillMaxSize().graphicsLayer { renderEffect = effect; clip = true }.drawBehind {
         shader.setFloatUniform("size", size.width, size.height)
         shader.setFloatUniform("time", time * 1.25f)
         shader.setFloatUniform("intensity", 0.9f + bass * 0.9f)

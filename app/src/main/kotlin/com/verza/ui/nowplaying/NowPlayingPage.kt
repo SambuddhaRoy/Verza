@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import com.verza.ui.kit.ChromeButton
 import com.verza.ui.kit.Glassed
+import com.verza.ui.kit.glass
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -169,7 +170,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
             ground = Color.Black,
             modifier = Modifier.fillMaxSize().takesTouches().graphicsLayer { translationY = pull.value },
             content = { look.NowPlayingBackground(song.art?.let { artAt(it, 226) }) },
-            glass = {
+            glass = { CompositionLocalProvider(com.verza.ui.kit.LocalFluted provides true) {
                 look.NowPlayingDecor()
                 BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
                     val pageHeight = maxHeight
@@ -247,7 +248,7 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                         }
                     }
                 }
-            },
+            } },
         )
     }
 }
@@ -300,26 +301,20 @@ private fun Extras(now: NowPlaying, onLyrics: () -> Unit, onRadio: () -> Unit) {
 }
 
 /**
- * A symbol to press, with no button drawn round it: pressed, a soft disc blooms behind it. [on] lights
- * a lamp under it, for a toggle that is on.
+ * A small round key of the page's glass (fluted on Now Playing) with one symbol. [on] lights a lamp of
+ * the song's colour under the symbol, for a toggle that is on.
  */
 @Composable
-private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: Dp = 48.dp, iconSize: Dp = 24.dp, on: Boolean? = null, onClick: () -> Unit) {
+private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: Dp = 48.dp, iconSize: Dp = 22.dp, on: Boolean? = null, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val bloom by animateFloatAsState(if (pressed) 1f else 0f, spring(stiffness = Spring.StiffnessMedium), label = "bloom")
-    val ink = Ink
     val lamp = LocalPalette.current.accent
     Box(
-        Modifier.size(size).clickable(source, null, onClick = onClick)
+        Modifier.size(size).glass(CircleShape, size / 2, pressed).clickable(source, null, onClick = onClick)
             .semantics { role = Role.Button; contentDescription = label; if (on != null) stateDescription = if (on) "On" else "Off" }
-            .drawBehind {
-                if (bloom > 0f) drawCircle(ink.copy(alpha = 0.08f * bloom), radius = this.size.minDimension / 2 * (0.86f + 0.14f * bloom))
-                // A toggle that's on lights a lamp of the song's colour under its symbol.
-                if (on == true) drawCircle(lamp, 2.5.dp.toPx(), Offset(this.size.width / 2, this.size.height - 5.dp.toPx()))
-            },
+            .drawBehind { if (on == true) drawCircle(lamp, 2.5.dp.toPx(), Offset(this.size.width / 2, this.size.height - 7.dp.toPx())) },
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = if (on == false) InkSoft else Ink, modifier = Modifier.size(iconSize).graphicsLayer { val s = 1f - 0.08f * bloom; scaleX = s; scaleY = s }) }
+    ) { Icon(icon, null, tint = if (on == false) InkSoft else Ink, modifier = Modifier.size(iconSize)) }
 }
 
 /** How long a sleep timer has left, "12:04", or "end of song". Ticks while it's on screen. */
@@ -443,15 +438,15 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
     }
 }
 
-/** Back and on as soft keys, play and pause on the coloured one between. */
+/** Back and on as keys of fluted glass, play and pause on the smoked one between. */
 @Composable
 private fun Transport(now: NowPlaying) {
     val player = LocalContext.current.graph.player
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        com.verza.ui.kit.SoftKey(Icons.Rounded.SkipPrevious, "Previous", size = 62.dp, iconSize = 30.dp, onClick = player::previous)
-        // Play and pause on the one coloured key: the control that matters most.
+        com.verza.ui.kit.GlassButton(Icons.Rounded.SkipPrevious, "Previous", size = 62.dp, iconSize = 30.dp, onClick = player::previous)
+        // Play and pause on the smoked key: the control that matters most.
         com.verza.ui.look.LocalLook.current.PlayButton(now.playing, player::toggle)
-        com.verza.ui.kit.SoftKey(Icons.Rounded.SkipNext, "Next", size = 62.dp, iconSize = 30.dp, onClick = player::next)
+        com.verza.ui.kit.GlassButton(Icons.Rounded.SkipNext, "Next", size = 62.dp, iconSize = 30.dp, onClick = player::next)
     }
 }
 
