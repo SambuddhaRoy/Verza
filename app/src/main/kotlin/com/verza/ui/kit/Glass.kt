@@ -139,13 +139,13 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
     val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow), label = "press")
     val see = backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     // Frosted in the page's own material, so a pane is the page lifted, not a sheet laid on it.
-    val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (clear) (if (p.dark) 0.2f else 0.26f) else if (p.dark) 0.58f else 0.55f)
+    val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (clear) (if (p.dark) 0.22f else 0.34f) else if (p.dark) 0.58f else 0.55f)
     return this
         .graphicsLayer { val s = 1f + 0.06f * press; scaleX = s; scaleY = s }
         .onGloballyPositioned { at = it.positionInRoot() }
         .drawWithCache {
             val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
-            if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density, clear, press).asComposeRenderEffect()
+            if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density, clear, press, p.dark).asComposeRenderEffect()
             val stroke = 1.dp.toPx()
             // Lit along the top, fading round the sides, a little light again at the foot.
             val rim = Brush.verticalGradient(
@@ -237,11 +237,12 @@ fun LikeButton(liked: Boolean, modifier: Modifier = Modifier, size: Dp = 40.dp, 
  * 13 there are no runtime shaders, and a pane is frosted instead (more blur, no flutes).
  */
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
-private fun glassEffect(width: Float, height: Float, corner: Float, density: Float, clear: Boolean, press: Float): RenderEffect {
+private fun glassEffect(width: Float, height: Float, corner: Float, density: Float, clear: Boolean, press: Float, dark: Boolean): RenderEffect {
     val fluted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-    // Clear glass is barely blurred, so the flowing cover keeps its shape in the flutes; the dock's a
-    // little more, so the words on it stay readable over a busy cover.
-    val blurBy = (if (!fluted) 18f else if (clear) 4f else 9f) * density
+    // The dock's glass is blurred 9dp, so the words on it stay readable over a busy cover.
+    // Clear glass (Now Playing's keys) was 4dp and the keys were hard to make out against the flowing
+    // ground, most of all over the pale light one, so it's blurred more there (12dp light, 8dp dark).
+    val blurBy = (if (!fluted) 18f else if (clear) (if (dark) 8f else 12f) else 9f) * density
     val blur = RenderEffect.createBlurEffect(blurBy, blurBy, android.graphics.Shader.TileMode.CLAMP)
     val vivid = RenderEffect.createColorFilterEffect(
         android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply { setSaturation(1.5f) }), blur,
@@ -259,7 +260,10 @@ private fun glassEffect(width: Float, height: Float, corner: Float, density: Flo
         setFloatUniform("band", minOf(corner, 16f * density))
         setFloatUniform("amount", 9f * density * (1f + 0.9f * press))
     }
-    return RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(lens, "content"), ground)
+    // Clear glass is softened again after its flutes, so their stripes don't fight the symbol on the key.
+    val settled = if (clear) (if (dark) 1.5f else 2.5f) * density else 0f
+    val softened = if (settled > 0f) RenderEffect.createBlurEffect(settled, settled, ground, android.graphics.Shader.TileMode.CLAMP) else ground
+    return RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(lens, "content"), softened)
 }
 
 /**
