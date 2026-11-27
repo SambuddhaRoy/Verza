@@ -3,6 +3,7 @@ package com.verza.data.deep
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.net.ConnectivityManager
 import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -22,13 +23,13 @@ import java.nio.ByteOrder
 import java.security.MessageDigest
 
 /**
- * 3D covers (an experiment): a cover with layers, someone standing in front of a scene, moves as the
- * phone tilts, the scene sliding behind them while they hold still, the way iOS 26 turns a photo on
- * the lock screen into a spatial scene. The cover's colours flow out from it to the screen's edges,
- * going out of focus as they go, so it isn't a picture in a frame any more.
+ * 3D covers: a cover with layers, someone standing in front of a scene, moves as the phone tilts, the
+ * scene sliding behind them while they hold still, the way iOS 26 turns a photo on the lock screen into
+ * a spatial scene. Now Playing shows it through a window in its fluted glass, the cover's colours
+ * flowing out from it out of focus until they give way to the flowing ground.
  *
  * The depth comes from Depth Anything V2 Small (Apache-2.0), run on the phone by LiteRT: a 28 MB model
- * downloaded the first time it's turned on, one pinned file checked against its SHA-256. A cover's depth
+ * downloaded once ([fetchUnmetered]), one pinned file checked against its SHA-256. A cover's depth
  * is worked out once and kept (well under a second here, a second or two on a phone); the rest is
  * arithmetic (Layers.kt) and a shader (ui/nowplaying/DeepCover.kt). Covers without layers (graphics,
  * type, a flat picture) stay as they are: [judge] says which.
@@ -48,7 +49,10 @@ class Deep(private val context: Context, private val http: OkHttpClient) {
     private val _model = MutableStateFlow(if (file.length() == SIZE) Model.Ready else Model.Missing)
     val model: StateFlow<Model> = _model
 
-    /** Downloads the model, checked against its digest; a bad or partial download is thrown away. */
+    /**
+     * Downloads the model, checked against its digest; a bad or partial download is thrown away, and so
+     * is one [forget] stops part way.
+     */
     suspend fun fetch() = withContext(Dispatchers.IO) {
         if (_model.value is Model.Fetching || _model.value == Model.Ready) return@withContext
         _model.value = Model.Fetching(0f)
@@ -65,8 +69,10 @@ class Deep(private val context: Context, private val http: OkHttpClient) {
                             val n = input.read(buf); if (n < 0) break
                             out.write(buf, 0, n); digest.update(buf, 0, n); got += n
                             check(got <= SIZE) { "longer than the model" }
+                            val now = _model.value
+                            check(now is Model.Fetching) { "turned off" }
                             val share = (got * 100 / SIZE) / 100f
-                            if ((_model.value as? Model.Fetching)?.share != share) _model.value = Model.Fetching(share)
+                            if (now.share != share) _model.compareAndSet(now, Model.Fetching(share))
                         }
                     }
                 }
@@ -75,14 +81,22 @@ class Deep(private val context: Context, private val http: OkHttpClient) {
             }
         }.isSuccess
         if (!ok) part.delete()
-        _model.value = if (ok) Model.Ready else Model.Failed
+        val now = _model.value
+        if (now is Model.Fetching) _model.compareAndSet(now, if (ok) Model.Ready else Model.Failed)
     }
 
-    /** Turned off: the model and every kept depth go, so trying it costs nothing afterwards. */
+    /**
+     * 3D covers are on from the start, so the model comes down by itself once, the way an update does:
+     * not on a metered network. Turning them on in Settings fetches it on any.
+     */
+    suspend fun fetchUnmetered() {
+        if (!context.getSystemService(ConnectivityManager::class.java).isActiveNetworkMetered) fetch()
+    }
+
+    /** Turned off: the model and every kept depth go (a download under way stops), so it costs nothing afterwards. */
     fun forget() {
-        if (_model.value is Model.Fetching) return
-        file.delete(); kept.deleteRecursively(); last = null
         _model.value = Model.Missing
+        dir.listFiles()?.forEach { it.delete() }; kept.deleteRecursively(); last = null
     }
 
     private val running = Mutex()

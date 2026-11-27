@@ -22,6 +22,7 @@ import com.verza.data.videoIdIn
 import com.verza.ui.Shell
 import com.verza.ui.theme.VerzaTheme
 import com.verza.ui.theme.coverSwatches
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -42,6 +43,8 @@ class MainActivity : ComponentActivity() {
                 withFrameNanos { }
                 graph.player.connect()
                 if (graph.phone.allowed()) graph.scope.launch { runCatching { graph.phone.scan() } }
+                // 3D covers are on from the start: their model comes down by itself, once, off mobile data.
+                if (android.os.Build.VERSION.SDK_INT >= 33 && graph.settings.deepCovers.flow.first()) graph.scope.launch { graph.deep.fetchUnmetered() }
                 graph.downloads.sortEarlier()
                 graph.sync.flush(); graph.updates.check()
             }

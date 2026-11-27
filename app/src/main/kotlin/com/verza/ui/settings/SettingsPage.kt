@@ -223,8 +223,9 @@ private fun AddSource(onDone: () -> Unit) {
 }
 
 /**
- * 3D covers, an experiment (data/deep/Deep.kt). Turning it on fetches the depth model the first time,
- * in the app's scope so leaving Settings doesn't stop it; the row says how far along it is.
+ * 3D covers (data/deep/Deep.kt), on from the start. Turning it on fetches the depth model at once, on
+ * any network, in the app's scope so leaving Settings doesn't stop it; the row says how far along it is.
+ * Off deletes the model, stopping a download under way.
  */
 @Composable
 private fun DeepCovers() {
@@ -235,8 +236,10 @@ private fun DeepCovers() {
     val note = when (val m = model) {
         is com.verza.data.deep.Deep.Model.Fetching -> "Downloading the depth model, ${(m.share * 100).toInt()}%"
         com.verza.data.deep.Deep.Model.Failed -> if (on) "The depth model didn't download. Turn this off and on to try again" else null
+        // On from the start, it waits for Wi-Fi; turned on here, it downloads at once.
+        com.verza.data.deep.Deep.Model.Missing -> if (on) "Its 28 MB depth model downloads on Wi-Fi. Turn this off and on to download it now" else null
         else -> null
-    } ?: "Covers with someone in front of a scene move as you tilt the phone. An experiment: it downloads a 28 MB model, removed again when this is off"
+    } ?: "Covers with someone in front of a scene move as you tilt the phone. Uses a 28 MB model, deleted when this is off"
     Row(
         Modifier.fillMaxWidth().clickable {
             scope.launch {

@@ -95,7 +95,7 @@ private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Bo
     val effect = remember(fluted, density) {
         val blur = android.graphics.RenderEffect.createBlurEffect(24f * density, 24f * density, Shader.TileMode.CLAMP)
         // No added white in the flutes: they only shade the colour, so it keeps its saturation.
-        (if (fluted) com.verza.ui.kit.flutes(22f * density, -1.6f, 0.14f, blur, sheen = 0f) else blur).asComposeRenderEffect()
+        (if (fluted) com.verza.ui.kit.flutes(GroundFlutes.RIB * density, GroundFlutes.BEND, GroundFlutes.SHADE, blur, sheen = 0f) else blur).asComposeRenderEffect()
     }
     Box(modifier.fillMaxSize().graphicsLayer { renderEffect = effect; clip = true }.drawBehind {
         shader.setFloatUniform("size", size.width, size.height)
@@ -108,6 +108,16 @@ private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Bo
         shader.setFloatUniform("veil", if (dark) 0f else 0.42f + 0.16f * (1f - lum))
         drawRect(brush)
     })
+}
+
+/**
+ * The fluted glass over Now Playing's ground: flutes [RIB] dp wide, bent and shaded so. A 3D cover
+ * (DeepCover.kt) draws the same flutes in the same places over its blur, so the two meet unbroken.
+ */
+internal object GroundFlutes {
+    const val RIB = 22f
+    const val BEND = -1.6f
+    const val SHADE = 0.14f
 }
 
 /** How bright a picture is, 0 to 1. */

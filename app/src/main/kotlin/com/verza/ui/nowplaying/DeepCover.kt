@@ -23,10 +23,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.verza.data.deep.Deep
 import com.verza.data.deep.Scene
@@ -40,17 +43,20 @@ class CoverSpot {
 }
 
 /**
- * A 3D cover (data/deep/Deep.kt) as Now Playing's ground: the cover where [spot] says it is, its near
- * things moving with the phone's tilt over what's behind them, its colours flowing out to the screen's
- * edges and going out of focus. Away from the cover it's dimmed (dark) or washed (light) the way the
- * flowing ground is, so the type over it reads; the cover itself keeps its colour.
+ * A 3D cover (data/deep/Deep.kt), drawn over Now Playing's ground as if through a window in its fluted
+ * glass: the cover where [spot] says it is, its near things moving with the phone's tilt over what's
+ * behind them, and its colours flowing out around it, out of focus. Past the window's edge the ground's
+ * flutes come back over that blur, and further out the blur gives way to the ground itself. Away from
+ * the cover it's dimmed (dark) or washed (light) as the ground is, so the type over it reads; the cover
+ * keeps its colour.
  */
 @RequiresApi(33)
 @Composable
 fun DeepCover(scene: Scene, spot: CoverSpot, dark: Boolean, modifier: Modifier = Modifier) {
     val tilt = rememberTilt()
     val shader = remember { RuntimeShader(DEEP) }
-    remember(scene) {
+    val density = LocalDensity.current.density
+    remember(scene, dark, density) {
         fun bitmap(b: android.graphics.Bitmap) = BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply { filterMode = BitmapShader.FILTER_MODE_LINEAR }
         shader.setInputShader("image", bitmap(scene.image))
         // Data, not colour: sampled raw, so a wide-gamut screen's colour management can't bend the depths.
@@ -66,22 +72,36 @@ fun DeepCover(scene: Scene, spot: CoverSpot, dark: Boolean, modifier: Modifier =
         shader.setFloatUniform("band", 0.07f)
         shader.setFloatUniform("dim", if (dark) (0.62f - 0.28f * scene.lum) * 0.85f else 0.92f)
         shader.setFloatUniform("veil", if (dark) 0f else 0.42f + 0.16f * (1f - scene.lum))
+        shader.setFloatUniform("flute", GroundFlutes.RIB * density, GroundFlutes.BEND, GroundFlutes.SHADE)
+        shader.setFloatUniform("hole", HOLE.start, HOLE.endInclusive)
+        shader.setFloatUniform("fade", FADE.start, FADE.endInclusive)
     }
     val brush = remember(shader) { object : ShaderBrush() { override fun createShader(size: Size) = shader } }
     var origin by remember { mutableStateOf(Offset.Zero) }
-    Box(modifier.fillMaxSize().onGloballyPositioned { origin = it.positionInRoot() }.drawBehind {
-        val r = spot.rect
-        if (r.width <= 0f) return@drawBehind
-        val side = r.width * spot.scale()
-        shader.setFloatUniform("cover", r.center.x - side / 2 - origin.x, r.center.y - side / 2 - origin.y, side)
-        val t = tilt.value
-        shader.setFloatUniform("tilt", t.x * REACH, t.y * REACH)
-        drawRect(brush)
-    })
+    // Its own layer, kept between frames: the ground under it moves thirty times a second, and this is
+    // redrawn only when the phone turns or the cover moves.
+    Box(modifier.fillMaxSize().onGloballyPositioned { origin = it.positionInRoot() }
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawBehind {
+            val r = spot.rect
+            if (r.width <= 0f) return@drawBehind
+            val side = r.width * spot.scale()
+            val at = Offset(r.center.x - side / 2 - origin.x, r.center.y - side / 2 - origin.y)
+            shader.setFloatUniform("cover", at.x, at.y, side)
+            val t = tilt.value
+            shader.setFloatUniform("tilt", t.x * REACH, t.y * REACH)
+            // Only as far out as the blur reaches; the ground is everything past it.
+            val out = side * FADE.endInclusive
+            drawRect(brush, at - Offset(out, out), Size(side + 2 * out, side + 2 * out))
+        })
 }
 
 /** How far the eye moves at full tilt, in cover sides per unit of depth: the far wall slides about 3%. */
 private const val REACH = 0.035f
+/** Where the fluted glass comes back over the blur, in cover sides out from the cover: the window's soft edge. */
+private val HOLE = 0.02f..0.14f
+/** Where the blur gives way to the ground under the glass, in cover sides out from the cover. */
+private val FADE = 0.08f..0.5f
 /** The turn of the phone that's full tilt, in radians (10 degrees). */
 private const val FULL = 0.1745f
 
@@ -164,6 +184,11 @@ private class Follower(private val type: Int, private val out: MutableState<Offs
  * them is smooth, so following its depth twice finds where it's seen; where the near layer used to be,
  * the plate stands in. Out from the cover, the colours flowing out of it, which move as the farthest
  * thing does, going out of focus with distance; and the cover's own edge fades into them.
+ *
+ * Past the window's edge (`hole`) the ground's flutes (Flow.kt's, the same width in the same places) come
+ * back over that blur, each showing a mirrored, squeezed slice of what's behind it, shaded into its seams;
+ * and from `fade.x` to `fade.y` the blur thins out, premultiplied, onto the ground under it. The flutes
+ * line up, so where one gives way to the other they run on unbroken: the blur is behind the same glass.
  */
 private const val DEEP = """
 uniform shader image;
@@ -181,18 +206,45 @@ uniform float focus;
 uniform float band;
 uniform float dim;
 uniform float veil;
+uniform float3 flute;
+uniform float2 hole;
+uniform float2 fade;
 
 float4 at(float2 u) { return float4(layers.eval(clamp(u, 0.0, 1.0) * layerSize)); }
 
+// How far outside the cover (negative inside), as a true distance: rounded past its corners, where the
+// larger of the two axes' distances drew a picture frame's mitred corners into the glow.
+float outside(float2 u) {
+  float2 o = max(-u, u - 1.0);
+  return length(max(o, 0.0)) + min(max(o.x, o.y), 0.0);
+}
+
+// The cover's colours flowing out of it at u, out of focus and dimmed (or washed) with distance as the
+// ground is.
+float3 blurAt(float2 u) {
+  float d = outside(u);
+  float2 e = (u + tilt * focus - extBox.xy) / extBox.zw;
+  float3 c = mix(float3(ext.eval(e * extSize).rgb), float3(extFar.eval(e * extSize).rgb), smoothstep(0.0, 0.45, d));
+  return mix(c, mix(c * dim, float3(1.0), veil), smoothstep(0.0, 0.3, d));
+}
+
 half4 main(float2 p) {
   float2 u = (p - cover.xy) / cover.z;
-  // How far outside the cover (negative inside), as a true distance: rounded past its corners, where the
-  // larger of the two axes' distances drew a picture frame's mitred corners into the glow.
-  float2 o = max(-u, u - 1.0);
-  float outside = length(max(o, 0.0)) + min(max(o.x, o.y), 0.0);
-  float2 e = (u + tilt * focus - extBox.xy) / extBox.zw;
-  float3 col = mix(float3(ext.eval(e * extSize).rgb), float3(extFar.eval(e * extSize).rgb), smoothstep(0.0, 0.45, outside));
-  if (outside < 0.0) {
+  float d = outside(u);
+  float shown = 1.0 - smoothstep(fade.x, fade.y, d);
+  if (shown <= 0.0) return half4(0.0);
+  float3 col = blurAt(u);
+  float glass = smoothstep(hole.x, hole.y, d);
+  if (glass > 0.0) {
+    float k = p.x / flute.x;
+    float f = fract(k);
+    float x = (floor(k) + 0.5 + (f - 0.5) * flute.y) * flute.x;
+    float3 c = blurAt(float2((x - cover.x) / cover.z, u.y));
+    float curve = sin(f * 3.14159265);
+    float lit = smoothstep(0.12, 0.3, f) * (1.0 - smoothstep(0.3, 0.52, f));
+    col = mix(col, c * (1.0 - flute.z * (1.0 - curve) + flute.z * 0.9 * lit), glass);
+  }
+  if (d < 0.0) {
     float hit = 0.0;
     float prevL = 1.0;
     float prevGap = -1.0;
@@ -215,9 +267,8 @@ half4 main(float2 p) {
     for (int k = 0; k < 2; k++) { b = u - tilt * (at(b).b - focus); }
     b = clamp(b, 0.0, 1.0);
     float3 back = mix(float3(image.eval(b * imageSize).rgb), float3(plate.eval(b * layerSize).rgb), at(b).g);
-    col = mix(col, mix(back, front, near), smoothstep(0.0, band, -outside));
+    col = mix(col, mix(back, front, near), smoothstep(0.0, band, -d));
   }
-  col = mix(col, mix(col * dim, float3(1.0), veil), smoothstep(0.0, 0.3, outside));
-  return half4(half3(clamp(col, 0.0, 1.0)), 1.0);
+  return half4(half3(clamp(col, 0.0, 1.0) * shown), half(shown));
 }
 """
