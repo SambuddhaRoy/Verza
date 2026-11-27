@@ -73,12 +73,12 @@ import com.verza.ui.theme.LocalPalette
  * song's. A pane can be [stain]ed with the accent (the selected tab, play and pause), or hold
  * something of the song [inside] it (the mini player holds its cover's colours).
  *
- * The rim is lit along the top. (2.5.0's glass split the light into rainbows at the rim, and until
- * 2.7.1 a glint slid round it as the phone tilted; both went, the second as decoration.)
+ * The rim is one even hairline. (2.5.0's glass split the light into rainbows at the rim, until 2.7.1 a
+ * glint slid round it as the phone tilted, and until 2.8.0 it was lit along the top.)
  *
- * Since 2.7.0 (Soft glass) a pane is tinted with the page's own colour and lifted off the page by the
- * soft surfaces' two shadows ([raise]) rather than a drop shadow. Since 2.7.1 it is fluted, not frosted:
- * clear glass ribbed in narrow vertical flutes ([flutes]), texture where there was blur.
+ * A pane is tinted with the page's own colour. Since 2.7.1 it is fluted, not frosted: clear glass ribbed
+ * in narrow vertical flutes ([flutes]), faint until pressed. From 2.7.0 to 2.8.0 panes were also lifted
+ * off the page by two soft shadows, the neumorphic material's; the listener asked for the glass alone.
  */
 
 /**
@@ -140,23 +140,17 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
     val see = backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     // Frosted in the page's own material, so a pane is the page lifted, not a sheet laid on it.
     val tint = p.canvas.copy(alpha = if (!see) 0.96f else if (clear) (if (p.dark) 0.22f else 0.34f) else if (p.dark) 0.58f else 0.55f)
+    // Its edge: one hairline, the same all the way round. Nothing lights it or lifts it off the page.
+    val edge = if (p.dark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.1f)
     return this
         .graphicsLayer { val s = 1f + 0.06f * press; scaleX = s; scaleY = s }
         .onGloballyPositioned { at = it.positionInRoot() }
         .drawWithCache {
             val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
             if (see && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) layer.renderEffect = glassEffect(size.width, size.height, corner.toPx(), density, clear, press, p.dark).asComposeRenderEffect()
-            val stroke = 1.dp.toPx()
-            // Lit along the top, fading round the sides, a little light again at the foot.
-            val rim = Brush.verticalGradient(
-                0f to Color.White.copy(alpha = if (p.dark) 0.22f else 0.9f),
-                0.45f to Color.White.copy(alpha = if (p.dark) 0.04f else 0.3f),
-                1f to Color.White.copy(alpha = if (p.dark) 0.08f else 0.5f),
-            )
-            // Lifted off the page as the soft surfaces are: lit at the top left, shadowed under.
-            val lift = minOf(7.dp.toPx(), minOf(size.width, size.height) * 0.12f)
+            val line = Stroke(1.dp.toPx())
             onDrawBehind {
-                raise(path, p.canvas, lift, p)
+                drawPath(path, p.canvas)
                 if (see) {
                     val shift = backdrop!!.origin - at
                     layer.record { translate(shift.x, shift.y) { drawLayer(backdrop.layer) } }
@@ -164,13 +158,9 @@ fun Modifier.glass(shape: Shape, corner: Dp, pressed: Boolean = false, stain: Co
                 }
                 if (inside != null) clipPath(path) { inside() }
                 drawPath(path, tint)
-                if (stain != null) drawPath(path, Brush.verticalGradient(
-                    0f to stain.copy(alpha = if (p.dark) 0.62f else 0.34f),
-                    1f to stain.copy(alpha = if (p.dark) 0.38f else 0.2f),
-                ))
+                if (stain != null) drawPath(path, stain.copy(alpha = if (p.dark) 0.5f else 0.28f))
                 if (press > 0f) drawPath(path, Color.White.copy(alpha = 0.12f * press))
-                drawPath(path, rim, style = Stroke(stroke))
-                if (!p.dark) drawPath(path, Color.Black.copy(alpha = 0.05f), style = Stroke(stroke / 2))
+                drawPath(path, edge, style = line)
             }
         }
 }
@@ -248,17 +238,17 @@ private fun glassEffect(width: Float, height: Float, corner: Float, density: Flo
         android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply { setSaturation(1.5f) }), blur,
     )
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || width <= 0f || height <= 0f) return vivid
-    // Clear glass (Now Playing) shows its flutes fully; the dock's are quieter and wider, since words
-    // sit on it and strong stripes cut through them.
-    // Pressed, each flute turns over (bend runs through zero, magnifying, then flips the other way), the
-    // flutes slide half a flute sideways and their curve deepens.
-    val ground = if (clear) flutes(6f * density * (1f - 0.2f * press), -1.8f + 3.4f * press, 0.22f + 0.12f * press, vivid, phase = 0.5f * press)
-        else flutes(9f * density, -1.4f + 2.8f * press, 0.07f + 0.1f * press, vivid, phase = 0.5f * press)
+    // At rest the flutes are faint, so a key reads as clear glass; the dock's are wider, since words sit
+    // on it. Pressed, each flute turns over (bend runs through zero, magnifying, then flips the other
+    // way), the flutes slide half a flute sideways and come up strongly: the glass shows itself under
+    // the finger. (Until 2.8.0 they were strong at rest too, and bent by the rim into rings like wood.)
+    val ground = if (clear) flutes(6f * density * (1f - 0.2f * press), -1.8f + 3.4f * press, 0.08f + 0.24f * press, vivid, phase = 0.5f * press)
+        else flutes(9f * density, -1.4f + 2.8f * press, 0.05f + 0.12f * press, vivid, phase = 0.5f * press)
     val lens = RuntimeShader(LENS).apply {
         setFloatUniform("size", width, height)
         setFloatUniform("radius", corner.coerceAtMost(minOf(width, height) / 2f))
-        setFloatUniform("band", minOf(corner, 16f * density))
-        setFloatUniform("amount", 9f * density * (1f + 0.9f * press))
+        setFloatUniform("band", minOf(corner, 12f * density))
+        setFloatUniform("amount", 4f * density * (1f + 2f * press))
     }
     // Clear glass is softened again after its flutes, so their stripes don't fight the symbol on the key.
     val settled = if (clear) (if (dark) 1.5f else 2.5f) * density else 0f

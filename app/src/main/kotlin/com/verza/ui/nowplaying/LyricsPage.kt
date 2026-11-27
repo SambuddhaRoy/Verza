@@ -105,7 +105,7 @@ fun LyricsPage(onClose: () -> Unit) {
                         val color by animateColorAsState(if (i == current) p.ink else p.ink.copy(alpha = 0.34f), label = "line")
                         Text(
                             line.text.ifBlank { "♪" },
-                            style = Type.Title.copy(fontSize = 30.sp, lineHeight = 37.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), color = color,
+                            style = Type.Title.copy(fontSize = 30.sp, lineHeight = 37.sp), color = color,
                             modifier = Modifier.fillMaxWidth().clickable { graph.player.seek(line.timeMs) }.padding(vertical = 8.dp),
                         )
                     }

@@ -157,7 +157,6 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
     if (devices) com.verza.ui.kit.DevicesDialog(onDone = { devices = false })
     BackHandler(onBack = onClose)
     val look = com.verza.ui.look.LocalLook.current
-    val visualizer by graph.settings.visualizer.flow.collectAsState(initial = true)
     // A 3D cover (data/deep/Deep.kt), seen through a window in the ground's fluted glass: when 3D covers
     // are on (they are at first), the model is here and the cover has layers. Not mid-flick: the cover
     // flies on its own then.
@@ -219,12 +218,9 @@ fun NowPlayingPage(flick: FlickState, onClose: () -> Unit, onOpen: (String) -> U
                                         alpha = 0.45f + 0.5f * f
                                     }.clip(CircleShape).background(InkFaint))
                                 }
-                                // The cover leaves room under it for the visualiser's meter, and as much over it.
                                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    val ring = visualizer
-                                    val side = if (ring) minOf(maxWidth * 0.92f, maxHeight - MeterRoom * 2) else minOf(maxWidth, maxHeight) * 0.96f
+                                    val side = minOf(maxWidth, maxHeight) * 0.96f
                                     val rest by animateFloatAsState(if (now.playing) 1f else 0.84f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow), label = "rest")
-                                    if (ring && flick.fly.value == 0f) CoverVisualizer(side, look.visualizer(dark, p), now.playing)
                                     // A flick toward the computer sends the cover flying off the top, and the music with it;
                                     // one back toward you brings the computer's down from there.
                                     // A new song's cover settles in with a little bounce.
@@ -354,7 +350,7 @@ private fun Extras(now: NowPlaying, onLyrics: () -> Unit, finding: Boolean, onDi
  * the song's colour under the symbol, for a toggle that is on.
  */
 @Composable
-private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: Dp = 48.dp, iconSize: Dp = 22.dp, on: Boolean? = null, busy: Boolean = false, onClick: () -> Unit) {
+private fun Glyph(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: Dp = 44.dp, iconSize: Dp = 21.dp, on: Boolean? = null, busy: Boolean = false, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val lamp = LocalPalette.current.accent
@@ -502,10 +498,10 @@ private fun Scrubber(now: NowPlaying, onSeek: (Long) -> Unit) {
 private fun Transport(now: NowPlaying) {
     val player = LocalContext.current.graph.player
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        com.verza.ui.kit.GlassButton(Icons.Rounded.SkipPrevious, "Previous", size = 62.dp, iconSize = 30.dp, onClick = player::previous)
+        com.verza.ui.kit.GlassButton(Icons.Rounded.SkipPrevious, "Previous", size = 56.dp, iconSize = 28.dp, onClick = player::previous)
         // Play and pause on the smoked key: the control that matters most.
         com.verza.ui.look.LocalLook.current.PlayButton(now.playing, player::toggle)
-        com.verza.ui.kit.GlassButton(Icons.Rounded.SkipNext, "Next", size = 62.dp, iconSize = 30.dp, onClick = player::next)
+        com.verza.ui.kit.GlassButton(Icons.Rounded.SkipNext, "Next", size = 56.dp, iconSize = 28.dp, onClick = player::next)
     }
 }
 

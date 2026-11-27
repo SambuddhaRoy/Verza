@@ -104,8 +104,6 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                         Hairline()
                         Toggle("Skip silence", "Skip silent stretches inside a song", s.skipSilence)
                         Hairline()
-                        Toggle("Visualiser", "A level meter under the cover in Now Playing", s.visualizer)
-                        Hairline()
                         if (android.os.Build.VERSION.SDK_INT >= 33) { DeepCovers(); Hairline() }
                         Row(Modifier.fillMaxWidth().clickable(onClick = onEqualizer).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {

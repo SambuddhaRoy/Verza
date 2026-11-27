@@ -6,15 +6,12 @@ import android.graphics.RuntimeShader
 import android.graphics.Shader
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,38 +19,33 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.verza.playback.Spectrum
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 
 /**
  * The cover, blurred and slowly warped with simplex noise: the desktop's Now Playing background
  * (renderer.js, drawFluid), the same shader in AGSL. Dark, it's dimmed so white type reads over a white
- * cover; light, it's washed pale for black type. How far follows the cover's brightness. [react]: the
- * bass stirs it. [fluted]: it's seen through fluted glass (`flutes` in Glass.kt), wide flutes over the
- * blur. Before Android 13 there are no runtime shaders, and the still blur stands in.
+ * cover; light, it's washed pale for black type. How far follows the cover's brightness. [fluted]: it's
+ * seen through fluted glass (`flutes` in Glass.kt), wide flutes over the blur. Before Android 13 there
+ * are no runtime shaders, and the still blur stands in. (Until 2.8.0 the bass could stir it, measured by
+ * playback/Spectrum.kt, which also fed a level meter under the cover; the listener found the meter too
+ * busy, and both went.)
  */
 @Composable
-fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier, react: Boolean = true, fluted: Boolean = false, ambient: Boolean = false) {
+fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier, fluted: Boolean = false, ambient: Boolean = false) {
     val context = LocalContext.current
     val bitmap by produceState<Bitmap?>(null, art) {
         if (art == null) { value = null; return@produceState }
@@ -64,12 +56,12 @@ fun FlowingCover(art: String?, dark: Boolean, modifier: Modifier = Modifier, rea
         AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = modifier.fillMaxSize().blur(60.dp), alpha = if (dark) 0.45f else 0.35f)
         return
     }
-    Flowing(bitmap!!, dark, modifier, react, fluted, ambient)
+    Flowing(bitmap!!, dark, modifier, fluted, ambient)
 }
 
 @RequiresApi(33)
 @Composable
-private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Boolean, fluted: Boolean, ambient: Boolean) {
+private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, fluted: Boolean, ambient: Boolean) {
     val shader = remember { RuntimeShader(FLUID) }
     val lum = remember(bitmap) { brightness(bitmap) }
     remember(bitmap) {
@@ -77,17 +69,14 @@ private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Bo
         shader.setFloatUniform("img", bitmap.width.toFloat(), bitmap.height.toFloat())
     }
     var time by remember { mutableFloatStateOf(0f) }
-    var bass by remember { mutableFloatStateOf(0f) }
-    // The spectrum is only worked out while something watches it.
-    DisposableEffect(react) { if (react) Spectrum.watch(); onDispose { if (react) Spectrum.unwatch() } }
     // Thirty frames a second while it's on screen, fifteen and slower behind the pages (where every
     // glass pane over it redraws with it); the composition leaving stops it.
-    LaunchedEffect(react, ambient) {
+    LaunchedEffect(ambient) {
         val start = withFrameNanos { it }
         val step = if (ambient) 66_000_000L else 33_000_000L
         var last = 0L
         while (true) withFrameNanos { t ->
-            if (t - last >= step) { last = t; time = (t - start) / 1e9f * (if (ambient) 0.6f else 1f); bass = if (react) bass * 0.6f + Spectrum.bass * 0.4f else 0f }
+            if (t - last >= step) { last = t; time = (t - start) / 1e9f * (if (ambient) 0.6f else 1f) }
         }
     }
     val brush = remember(shader) { object : ShaderBrush() { override fun createShader(size: Size) = shader } }
@@ -100,7 +89,7 @@ private fun Flowing(bitmap: Bitmap, dark: Boolean, modifier: Modifier, react: Bo
     Box(modifier.fillMaxSize().graphicsLayer { renderEffect = effect; clip = true }.drawBehind {
         shader.setFloatUniform("size", size.width, size.height)
         shader.setFloatUniform("time", time * 1.25f)
-        shader.setFloatUniform("intensity", 0.9f + bass * 0.9f)
+        shader.setFloatUniform("intensity", 0.9f)
         // Dark: dimmed a little further than it was, the colour kept, so it doesn't pull the eye. Light:
         // washed toward white about half as hard as it was (0.7 to 0.9 had nearly lost the cover), which
         // still holds black type at 4.5:1 over a dark cover.
@@ -129,57 +118,6 @@ private fun brightness(b: Bitmap): Float {
         sum += (0.2126f * ((c shr 16) and 255) + 0.7152f * ((c shr 8) and 255) + 0.0722f * (c and 255)) / 255f; n++
     }
     return if (n == 0) 0.5f else sum / n
-}
-
-/** How much room the meter takes under the cover: its gap, its tallest bar, and a little air. */
-val MeterRoom = 16.dp + 46.dp + 6.dp
-
-/**
- * The music as a level meter under the cover, the way a hi-fi's sits under its display: a row of thin
- * bars mirrored about one line, the bass in the middle and the treble out at the edges, jumping up and
- * falling back slowly. Paused, the row rests as dots. [cover] is the cover's side, centred in this box.
- * The cover itself stays still: it used to swell on the bass, which read as shaking.
- */
-@Composable
-fun CoverVisualizer(cover: Dp, color: Color, playing: Boolean, modifier: Modifier = Modifier) {
-    DisposableEffect(Unit) { Spectrum.watch(); onDispose { Spectrum.unwatch() } }
-    val smooth = remember { FloatArray(Spectrum.BANDS) }
-    var tick by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(playing) {
-        var last = 0L
-        while (true) withFrameNanos { t ->
-            if (t - last >= 33_000_000L) {
-                last = t
-                for (i in smooth.indices) {
-                    val v = if (playing) Spectrum.bands[i].let { it.pow(1.5f) * (1f + i / smooth.size.toFloat() * 0.5f) }.coerceAtMost(1f) else 0f
-                    smooth[i] = if (v > smooth[i]) smooth[i] * 0.25f + v * 0.75f else smooth[i] * 0.86f + v * 0.14f
-                }
-                tick = t
-            }
-        }
-    }
-    val density = LocalDensity.current
-    Canvas(modifier.fillMaxSize()) {
-        tick   // redraw each tick
-        val side = with(density) { cover.toPx() }
-        val columns = 29
-        val step = side / columns
-        val width = step * 0.4f
-        val tallest = 46.dp.toPx()
-        val line = size.height / 2 + side / 2 + 16.dp.toPx() + tallest / 2
-        val left = size.width / 2 - side / 2 + step / 2
-        val middle = columns / 2
-        for (i in 0 until columns) {
-            val from = abs(i - middle).toFloat() / middle
-            val v = smooth[min(smooth.size - 1, (from * (smooth.size - 1)).toInt())]
-            val h = max(width, v * tallest)
-            val x = left + i * step
-            drawLine(
-                color.copy(alpha = 0.22f + 0.7f * min(1f, v * 1.6f)),
-                Offset(x, line - h / 2 + width / 2), Offset(x, line + h / 2 - width / 2), width, StrokeCap.Round,
-            )
-        }
-    }
 }
 
 private const val FLUID = """

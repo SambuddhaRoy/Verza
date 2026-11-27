@@ -1,6 +1,5 @@
 package com.verza.ui.library
 
-import com.verza.ui.kit.soft
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp

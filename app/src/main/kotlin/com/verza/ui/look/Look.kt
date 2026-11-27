@@ -25,9 +25,10 @@ import com.verza.ui.theme.artCorner
  * page names itself and its sections, its buttons, how a shelf of covers sits, the dock, and how Now
  * Playing shows the song. LocalLook carries it everywhere, and the pages are drawn through it.
  *
- * There is one now, Soft glass (GlassLook.kt), and the defaults here are its. There were fourteen
- * (2.5.0's history has them), then two; Gen Z went at 2.6.1, and at 2.7.0 Liquid glass became Soft
- * glass. The seam stays: a second look is one object again.
+ * There is one now, Glass (GlassLook.kt), and the defaults here are its. There were fourteen (2.5.0's
+ * history has them), then two; Gen Z went at 2.6.1, at 2.7.0 Liquid glass became Soft glass, and at
+ * 2.8.0 Soft glass lost its soft material and became Glass. The seam stays: a second look is one
+ * object again.
  */
 
 /** The text styles a look sets. [label] is its small voice: a caption, a tag, often mono. */
@@ -129,9 +130,6 @@ abstract class Look(val id: String, val name: String, val note: String) {
     @Composable open fun Dock(state: DockState, modifier: Modifier) = GlassDock(state, modifier)
 
     // Now Playing.
-
-    /** The visualiser's colour on Now Playing, whose palette is [np]: the page's accent by default. */
-    open fun visualizer(np: Palette, page: Palette): Color = page.accent
 
     /** Now Playing's colours, made from the page's. */
     open fun nowPlaying(page: Palette): Palette = page.overMedia()

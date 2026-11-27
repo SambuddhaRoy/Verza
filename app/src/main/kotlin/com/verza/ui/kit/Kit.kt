@@ -99,7 +99,7 @@ fun Word(text: String, color: Color = LocalPalette.current.ink, modifier: Modifi
 fun ChromeButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 44.dp, tint: Color = LocalPalette.current.ink, stain: Color? = null, iconSize: Dp = size * 0.5f, onClick: () -> Unit) =
     LocalLook.current.ChromeButton(icon, label, modifier, size, tint, stain, iconSize, onClick)
 
-/** A round button with one symbol, raised out of the page (glass is for the controls over it); it sinks when pressed. */
+/** A round button with one symbol in a page: a flat circle of faint ink (glass is for the controls over the page). */
 @Composable
 fun IconCircle(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 40.dp, tint: Color = LocalPalette.current.ink, onClick: () -> Unit) {
     val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -107,7 +107,7 @@ fun IconCircle(icon: ImageVector, label: String, modifier: Modifier = Modifier, 
         modifier.size(48.dp).clip(CircleShape).clickable(source, null, onClick = onClick).semantics { role = Role.Button; contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.size(size).soft(CircleShape, 4.dp, pressOf(source)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(size).squish(source, 0.92f).background(LocalPalette.current.fill, CircleShape), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.55f))
         }
     }
@@ -201,7 +201,8 @@ fun Empty(text: String, action: String? = null, onAction: () -> Unit = {}) {
 }
 
 /**
- * A text field: the words in a well pressed into the page. Every field in the app is one.
+ * A text field: the words on a flat panel of faint ink. Every field in the app is one. (It was a well
+ * pressed into the page.)
  */
 @Composable
 fun Field(
@@ -217,10 +218,6 @@ fun Field(
     keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default,
 ) {
     val p = LocalPalette.current
-    // Typing in it, the well sinks a little deeper.
-    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val focused by source.collectIsFocusedAsState()
-    val depth by androidx.compose.animation.core.animateDpAsState(if (focused) 7.dp else 4.dp, bouncy(), label = "well")
     androidx.compose.foundation.text.BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -230,10 +227,9 @@ fun Field(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         modifier = modifier,
-        interactionSource = source,
         decorationBox = { inner ->
             Row(
-                Modifier.heightIn(min = 44.dp).soft(shape, depth, inset = true).padding(start = if (leading != null) 10.dp else 14.dp, end = if (trailing != null) 0.dp else 14.dp),
+                Modifier.heightIn(min = 44.dp).background(p.fill, shape).padding(start = if (leading != null) 10.dp else 14.dp, end = if (trailing != null) 0.dp else 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (leading != null) { leading(); Spacer(Modifier.width(6.dp)) }

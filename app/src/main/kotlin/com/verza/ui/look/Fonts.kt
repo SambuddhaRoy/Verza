@@ -24,14 +24,9 @@ private fun family(res: Int, vararg weights: Int, axes: () -> Array<FontVariatio
     FontFamily(weights.map { variable(res, it, *axes()) })
 
 object Fonts {
-    // Inter has an optical-size axis (14 to 32): titles use the 32 end, so a large title isn't body text zoomed in.
+    // Inter has an optical-size axis (14 to 32): names and headings use the 32 end, bold, so a large
+    // title is drawn for its size rather than body text zoomed in. (Until 2.8.0 they were serifs,
+    // Instrument Serif and Newsreader; the listener asked for a bold sans.)
     val InterText = family(R.font.inter_variable, 400, 500, 600, 700) { arrayOf(FontVariation.Setting("opsz", 14f)) }
     val InterDisplay = family(R.font.inter_variable, 400, 500, 600, 700, 800, 900) { arrayOf(FontVariation.Setting("opsz", 32f)) }
-    /** Names and headings: a narrow editorial serif, so the large type isn't Inter set big. */
-    val Serif = FontFamily(Font(R.font.instrument_serif))
-    /**
-     * Songs' and records' names: a serif with a real bold (Instrument Serif has none), at its display
-     * optical size, so the song's name reads over Now Playing's moving ground.
-     */
-    val TitleSerif = family(R.font.newsreader, 500, 600, 700) { arrayOf(FontVariation.Setting("opsz", 48f)) }
 }

@@ -98,16 +98,10 @@ import com.verza.data.mixes.StatsRepository
 import com.verza.graph
 import com.verza.playback.NowPlaying
 import com.verza.ui.kit.Cover
-import com.verza.ui.kit.Etched
-import com.verza.ui.kit.SoftKey
 import com.verza.ui.kit.bouncy
 import com.verza.ui.kit.enter
 import com.verza.ui.kit.glass
 import com.verza.ui.kit.popOn
-import com.verza.ui.kit.pressOf
-import com.verza.ui.kit.raise
-import com.verza.ui.kit.sink
-import com.verza.ui.kit.soft
 import com.verza.ui.kit.squish
 import com.verza.ui.kit.takesTouches
 import com.verza.ui.theme.LocalPalette
@@ -118,21 +112,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Soft glass: hyper-minimal, after the quiet sites Httpster files under Minimal (Drams' Rams-inspired
- * pages, Middle Name, Mater, Aather). The page is one warm material, stone by day and black at night.
- * What you press is that material raised out of it and sinking under a finger (`ui/kit/Soft.kt`); what
- * you look at (covers, groups of rows) lies flat on it; what floats over the pages (the dock, the
- * buttons over a cover, all of Now Playing's) is fluted glass, ribbed rather than frosted.
+ * Glass: hyper-minimal, after the quiet sites Httpster files under Minimal (Drams' Rams-inspired pages,
+ * Middle Name, Mater, Aather). The page is one flat material, stone by day and black at night. What
+ * floats over the pages (the dock, the buttons over a cover, all of Now Playing's) is fluted glass, its
+ * flutes faint until pressed; everything else is flat: covers, groups of rows, and the buttons in a
+ * page, which are a pill of faint ink (or solid ink, for the one to press).
  *
- * Two faces: Instrument Serif names pages and sections, Inter is for reading and pressing; a song's or a
- * record's name is set in Newsreader bold, a serif with the weight Instrument Serif lacks (2.7.3, asked
- * for to make the song's name easier to read).
+ * One face, Inter: bold at its display size for what names things (pages, sections, songs, records),
+ * its text size for reading and pressing. Until 2.8.0 this was Soft glass: controls were the page's
+ * material raised out of it and sinking under a finger (neumorphism), names were serifs, and a level
+ * meter sat under the cover. The listener asked for the glass alone, a bold sans, and less going on.
  * The song's colour is spent in a few places only: Home's play key, the played part of the mini
  * player's rim, a toggle that's on. Since 2.7.1,
  * the spaced-out capitals, the dot after every name, the numbered shelves, the counting figures and the
  * light that followed the phone's tilt went.
  */
-object GlassLook : Look("soft", "Soft glass", "One soft material, fluted glass over it, a serif for names") {
+object GlassLook : Look("soft", "Glass", "Flat pages, fluted glass over them, one bold sans") {
     override fun palette(swatches: List<Color>, dark: Boolean): Palette {
         // Night is pitch black (the listener's ask). A shadow can't show on black, so there a raised
         // surface (cell) is a shade above it and lit at its rim; by day it is the page's own stone.
@@ -147,23 +142,17 @@ object GlassLook : Look("soft", "Soft glass", "One soft material, fluted glass o
     /** Now Playing is the page's material too, whatever the theme; the cover brings the colour. */
     override fun nowPlaying(page: Palette) = page
 
-    /** The meter under the cover is ink: Now Playing's colour is the cover's own glow. */
-    override fun visualizer(np: Palette, page: Palette) = np.ink
-
     /**
      * Behind every page, the playing song's cover flowing through fluted glass as on Now Playing, but
-     * faint and vignetted into the page's colour, so it tints the page without being looked at. Slower
-     * and at fifteen frames a second (`ambient`), and still: the bass is Now Playing's.
+     * faint and vignetted into the page's colour, so it tints the page without being looked at. Slower,
+     * and at fifteen frames a second (`ambient`).
      */
     @Composable override fun Backdrop(modifier: Modifier) {
         val p = LocalPalette.current
         val now by LocalContext.current.graph.player.state.collectAsState()
         val art = now.song?.art ?: return
         Box(modifier) {
-            com.verza.ui.nowplaying.FlowingCover(
-                artAt(art, 226), p.dark, Modifier.graphicsLayer { alpha = if (p.dark) 0.2f else 0.2f },
-                react = false, fluted = true, ambient = true,
-            )
+            com.verza.ui.nowplaying.FlowingCover(artAt(art, 226), p.dark, Modifier.graphicsLayer { alpha = 0.2f }, fluted = true, ambient = true)
             Box(Modifier.fillMaxSize().drawBehind {
                 val centre = Offset(size.width / 2, size.height * 0.3f)
                 drawRect(Brush.radialGradient(
@@ -173,23 +162,18 @@ object GlassLook : Look("soft", "Soft glass", "One soft material, fluted glass o
             })
         }
     }
-    /**
-     * The cover flowing, seen through fluted glass; stirred by the bass only while the visualiser is
-     * off, since with it on the meter under the cover already shows the music.
-     */
-    @Composable override fun NowPlayingBackground(art: String?) {
-        val visualizer by LocalContext.current.graph.settings.visualizer.flow.collectAsState(initial = true)
-        com.verza.ui.nowplaying.FlowingCover(art, LocalPalette.current.dark, react = !visualizer, fluted = true)
-    }
+    /** The cover flowing, seen through fluted glass, slowly. (It used to stir with the bass when the meter was off.) */
+    @Composable override fun NowPlayingBackground(art: String?) =
+        com.verza.ui.nowplaying.FlowingCover(art, LocalPalette.current.dark, fluted = true)
 
     private val figures = "tnum"
 
-    // Two faces: Instrument Serif for what names things (pages, sections, songs), Inter for everything
-    // you read or press. Five styles in use on a page at most; no spaced-out capitals.
+    // One face: Inter bold at its display size for what names things (pages, sections, songs), at its
+    // text size for everything you read or press. Five styles on a page at most; no spaced-out capitals.
     override val type = Types(
-        masthead = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 46.sp, lineHeight = 50.sp, letterSpacing = (-0.01).em),
-        section = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 27.sp, lineHeight = 32.sp),
-        title = TextStyle(fontFamily = Fonts.TitleSerif, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 37.sp, letterSpacing = (-0.012).em),
+        masthead = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-0.022).em),
+        section = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-0.016).em),
+        title = TextStyle(fontFamily = Fonts.InterDisplay, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp, letterSpacing = (-0.02).em),
         headline = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
         rowTitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = (-0.011).em),
         rowSubtitle = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 19.sp, letterSpacing = (-0.006).em),
@@ -223,8 +207,8 @@ internal fun GlassSectionTitle(text: String, modifier: Modifier) {
 }
 
 /**
- * A raised pill of the page's material with its words; pressed, it sinks into the page. The one to
- * press ([color] the accent) is ink, so it reads first without spending the song's colour.
+ * A flat pill with its words, of faint ink; the one to press ([color] the accent) is solid ink, so it
+ * reads first without spending the song's colour. It gives a little under the finger.
  */
 @Composable
 internal fun GlassWordButton(text: String, color: Color, modifier: Modifier, icon: ImageVector?, enabled: Boolean, onClick: () -> Unit) {
@@ -232,12 +216,11 @@ internal fun GlassWordButton(text: String, color: Color, modifier: Modifier, ico
     val primary = color == p.accent
     val ink = (if (primary) p.canvas else p.ink).copy(alpha = if (enabled) 1f else 0.4f)
     val source = remember { MutableInteractionSource() }
-    val press = pressOf(source)
     val tick = com.verza.ui.kit.rememberTick()
     Row(
-        modifier.heightIn(min = 50.dp).soft(CircleShape, 5.dp, press, face = if (primary) p.ink else null).clip(CircleShape)
+        modifier.heightIn(min = 46.dp).squish(source, 0.96f).clip(CircleShape).background(if (primary) p.ink else p.fill)
             .clickable(source, null, enabled = enabled) { tick(); onClick() }
-            .semantics { role = Role.Button }.padding(horizontal = 22.dp),
+            .semantics { role = Role.Button }.padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -246,8 +229,10 @@ internal fun GlassWordButton(text: String, color: Color, modifier: Modifier, ico
     }
 }
 
+/** The line between rows: one hairline. (It was cut into the page, a shadow over a highlight.) */
 @Composable
-internal fun GlassHairline(start: Dp) = Etched(Modifier.padding(start = start))
+internal fun GlassHairline(start: Dp) =
+    Box(Modifier.padding(start = start).fillMaxWidth().height(0.5.dp).background(LocalPalette.current.line))
 
 /**
  * A shelf: covers across, flat on the page like prints laid on a table (shadows are for what you press),
@@ -312,9 +297,9 @@ internal fun DownloadsLine(text: String, color: Color = LocalPalette.current.ink
 }
 
 /**
- * The tabs as symbols on a capsule of fluted glass. The chosen one sits in a well pressed into the
- * glass; moving to another, the well's ends chase it at different speeds, so it stretches toward the
- * new tab and settles there, the way a drop runs.
+ * The tabs as symbols on a capsule of fluted glass. The chosen one sits on a pill of faint ink; moving
+ * to another, the pill's ends chase it at different speeds, so it stretches toward the new tab and
+ * settles there, the way a drop runs.
  */
 @Composable
 private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit) {
@@ -344,9 +329,7 @@ private fun GlassTabBar(tabs: List<Tab>, current: String?, go: (String) -> Unit)
                 val w = size.width / tabs.size
                 val inset = 2.dp.toPx()
                 val well = Rect(left.value * w + inset, inset, right.value * w - inset, size.height - inset)
-                val path = Path().apply { addRoundRect(RoundRect(well, CornerRadius(well.height / 2))) }
-                drawPath(path, p.canvas.copy(alpha = 0.55f * shown.value))
-                sink(path, 5.dp.toPx(), p, shown.value)
+                drawRoundRect(p.fill, well.topLeft, well.size, CornerRadius(well.height / 2), alpha = shown.value)
             },
     ) {
         for (tab in tabs) {
@@ -440,42 +423,21 @@ internal fun PlayPauseNext(now: NowPlaying, tint: Color, size: Dp = 30.dp) {
     IconButton(onClick = player::next) { Icon(Icons.Rounded.SkipNext, "Next", tint = tint, modifier = Modifier.size(size)) }
 }
 
-/**
- * Now Playing's ground: the page's material, with the cover's colours glowing behind where the cover
- * sits and gone by the controls, so the keys stand on plain material as soft surfaces need.
- */
-@Composable
-private fun CoverGlow(art: String?) {
-    val p = LocalPalette.current
-    val colours = coverSwatches(art).ifEmpty { listOf(p.accent) }
-    Canvas(Modifier.fillMaxSize()) {
-        drawRect(p.canvas)
-        val strength = if (p.dark) 0.3f else 0.34f
-        val spots = listOf(Offset(0.25f, 0.22f), Offset(0.8f, 0.3f), Offset(0.55f, 0.08f))
-        for ((i, at) in spots.withIndex()) {
-            val c = colours[i % colours.size]
-            val centre = Offset(size.width * at.x, size.height * at.y)
-            val r = size.width * 0.75f
-            drawCircle(Brush.radialGradient(listOf(c.copy(alpha = strength), Color.Transparent), centre, r), r, centre)
-        }
-    }
-}
-
 @Composable
 internal fun GlassNowPlayingCover(art: String?, side: Dp, rest: Float, swell: Float, fly: Float, label: String?) {
     com.verza.ui.nowplaying.FlyingCover(art, side, swell, fly, label, Modifier.graphicsLayer { scaleX = rest; scaleY = rest })
 }
 
 /**
- * Play and pause on Now Playing: a larger key of the same fluted glass, smoked with ink, so it stands
- * apart from back and on without the song's colour (which the listener wanted off it).
+ * Play and pause on Now Playing: a larger key of the same glass, smoked with ink, so it stands apart
+ * from back and on without the song's colour (which the listener wanted off it).
  */
 @Composable
 internal fun GlassPlayButton(playing: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
     com.verza.ui.kit.GlassButton(
         if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play",
-        size = 84.dp, iconSize = 42.dp, tint = p.canvas, iconModifier = Modifier.popOn(playing),
+        size = 74.dp, iconSize = 36.dp, tint = p.canvas, iconModifier = Modifier.popOn(playing),
         inside = { drawRect(p.ink, alpha = 0.92f) }, onClick = onClick,
     )
 }

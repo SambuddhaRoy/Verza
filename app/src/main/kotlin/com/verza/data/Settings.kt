@@ -44,8 +44,6 @@ class Settings(private val context: Context) {
     val onboarded = bool("onboarding_completed", false)
     val resumeOnOpen = bool("resume_on_open", true)
     val skipSilence = bool("skip_silence", false)
-    /** The level meter under the cover in Now Playing. */
-    val visualizer = bool("visualizer", true)
     /** 3D covers (data/deep/Deep.kt): a cover with layers moves as the phone tilts. On at first; off deletes the model. */
     val deepCovers = bool("deep_covers", true)
     /** A flick of the phone toward the computer plays there; one back toward you brings the computer's music here. */
