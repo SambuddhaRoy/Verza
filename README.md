@@ -33,7 +33,7 @@ Verza isn't on Google Play, so Play Protect hasn't seen the file before and offe
 ## What it does
 
 - **The whole catalogue**, full length, in the background, on the lock screen, over Bluetooth and in Android Auto.
-- **3D covers.** A cover with someone in front of a scene gets depth, worked out on the phone. Tilt the phone and the scene slides behind them while they hold still.
+- **3D covers.** A cover with someone in front of a scene gets depth, worked out on the phone. Tilt the phone and the scene slides behind them while they hold still. Android 13 and up.
 - **Downloads in lossless.** Turn it on and a download becomes a FLAC from Soulseek, where people share their own rips; Verza makes the account for you. A file much smaller than the other copies of the same song is an MP3 dressed up as a FLAC, and Verza skips it. Downloads land in `Music/Verza`, filed by artist and album, as ordinary files any player can open.
 - **Lyrics** that follow the song, line by line.
 - **Home made from what you play**: recently played, mixes that start from an artist you've had on lately, and discovery radio for artists you haven't heard. **Your Sound** names your genre and plays it.
