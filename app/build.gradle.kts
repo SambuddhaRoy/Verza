@@ -31,9 +31,9 @@ android {
     }
 
     // An APK per ABI as well as the universal one: Python and LiteRT are native, so the universal APK
-    // carries three copies of each and a phone uses one (68 MB against about 42 for arm64-v8a alone).
-    // The updater takes the one for its ABI; a 2.8.0 install takes the first .apk a release lists, so the
-    // universal one is uploaded first.
+    // carries three copies of each and a phone uses one (68 MB against 39 for arm64-v8a alone).
+    // The updater takes the one for its ABI. A 2.8.0 install takes the first .apk a release lists, and
+    // GitHub lists them by name, so the universal one is "-all": it sorts before every ABI's.
     splits {
         abi {
             isEnable = true
@@ -66,7 +66,7 @@ android {
         outputs.all {
             val out = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val abi = out.filters.find { it.filterType == "ABI" }?.identifier
-            out.outputFileName = "Verza-v${variant.versionName}${abi?.let { "-$it" } ?: ""}.apk"
+            out.outputFileName = "Verza-v${variant.versionName}-${abi ?: "all"}.apk"
         }
     }
 
