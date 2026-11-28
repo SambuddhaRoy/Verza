@@ -30,6 +30,10 @@ Download the APK from the [latest release](https://github.com/SambuddhaRoy/Verza
 
 Verza isn't on Google Play, so Play Protect hasn't seen the file before and offers to scan it. Let it, then install. You also allow your browser or file manager to install apps, once. After that Verza fetches its own updates from GitHub.
 
+Or let [Obtainium](https://github.com/ImranR98/Obtainium) install it and keep it up to date from the releases here:
+
+[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="54">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/SambuddhaRoy/Verza)
+
 ## What it does
 
 - **The whole catalogue**, full length, in the background, on the lock screen, over Bluetooth and in Android Auto.

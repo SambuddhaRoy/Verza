@@ -1,0 +1,6 @@
+3D covers, and a quieter look.
+
+- 3D covers: tilt your phone in Now Playing and the scene moves behind the person on the cover. Android 13 and up; a 28 MB model downloads once over Wi-Fi.
+- Plain glass buttons, with ribs that show only when pressed.
+- Page names, headings and lyrics in a bold sans.
+- The visualiser under the cover is gone.

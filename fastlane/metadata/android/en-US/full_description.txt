@@ -1,0 +1,14 @@
+<p>Verza plays the YouTube Music catalogue without ads or a subscription. Sign in and your likes, playlists and Home come with you; skip it and everything except your account's library still works. There is no Verza server and no Verza account, and nothing is tracked.</p>
+
+<ul>
+<li><b>The whole catalogue</b>, full length, in the background, on the lock screen, over Bluetooth and in Android Auto.</li>
+<li><b>3D covers.</b> A cover with someone in front of a scene gets depth, worked out on the phone. Tilt the phone and the scene slides behind them while they hold still. Android 13 and up.</li>
+<li><b>Downloads in lossless.</b> Turn it on and a download becomes a FLAC from Soulseek, where people share their own rips; Verza makes the account for you. Downloads land in Music/Verza, filed by artist and album, as ordinary files any player can open.</li>
+<li><b>Lyrics</b> that follow the song, line by line.</li>
+<li><b>Home made from what you play</b>: recently played, mixes that start from an artist you've had on lately, and discovery radio for artists you haven't heard. <b>Your Sound</b> names your genre and plays it.</li>
+<li><b>The music already on your phone</b> sits in the Library and plays in the same queue.</li>
+<li><b>Flick it over.</b> With Verza on your computer, flick the phone toward the screen and the song carries on there, at the same second, queue and all.</li>
+<li>An equaliser, a sleep timer that fades out, skip silence, home-screen widgets, a quick-settings tile, ListenBrainz's weekly mixes, and two themes: pitch black, and stone.</li>
+</ul>
+
+<p>Verza is one person's project, built in the open. It is not affiliated with or endorsed by Google or YouTube.</p>
