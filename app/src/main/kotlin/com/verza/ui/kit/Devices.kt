@@ -62,8 +62,8 @@ fun Devices() {
 
     Column {
         if (paired.isEmpty() && found.isEmpty()) Text(
-            "Verza on your computer can show here what it's playing, be controlled from here, and take over what this phone plays. " +
-                "Turn on Verza Connect in its Settings, under devices, with this phone on the same Wi-Fi.",
+            "Control Verza on your computer from here, and move music between them. " +
+                "Turn on Verza Connect in its Settings, under Devices. Both need to be on the same Wi-Fi.",
             style = Type.Body, color = p.inkMuted, modifier = Modifier.padding(bottom = 8.dp),
         )
         for (computer in paired) {
@@ -132,7 +132,7 @@ private fun AddComputer(computer: Connect.Computer, onDone: () -> Unit) {
         title = { Text(if (byAddress) "Add a computer" else "Add ${computer.name}") },
         text = {
             Column {
-                Text("In Verza on the computer, open Settings, then devices, and choose Show code.", style = Type.Body)
+                Text("On your computer, open Verza's Settings, go to Devices and choose Show code.", style = Type.Body)
                 if (byAddress) Field(address, { address = it; problem = null }, placeholder = "Address, like 192.168.1.20",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), modifier = Modifier.padding(top = 12.dp))
                 Field(code, { code = it.filter(Char::isDigit).take(6); problem = null }, placeholder = "Code",

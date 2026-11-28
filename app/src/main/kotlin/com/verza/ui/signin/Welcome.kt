@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.verza.data.phone.PhoneMusic
+import com.verza.R
 import com.verza.graph
 import com.verza.ui.kit.Word
 import com.verza.ui.kit.takesTouches
@@ -64,9 +65,10 @@ fun Welcome(account: Boolean, onSignIn: () -> Unit) {
 
         when (step) {
             0 -> {
-                Heading("verza", "YouTube Music without the ads, your own music and lossless sources alongside it.")
+                Shot(R.drawable.onboard_welcome_dark, R.drawable.onboard_welcome_light, Modifier.padding(bottom = 28.dp))
+                Heading("verza", "All of YouTube Music. No ads.")
                 Text(
-                    "Sign in to bring your likes, playlists and Home from your YouTube Music account. You can do it later in Settings.",
+                    "Sign in to bring your likes, playlists and Home. Or do it later in Settings.",
                     style = Type.Body, color = p.inkMuted,
                 )
                 Words {
@@ -76,18 +78,19 @@ fun Welcome(account: Boolean, onSignIn: () -> Unit) {
                 }
             }
             1 -> {
-                Heading("downloads", "Any song, album or playlist can be saved to play with no connection. Settings can change this later.")
+                Shot(R.drawable.onboard_downloads_dark, R.drawable.onboard_downloads_light, Modifier.padding(bottom = 28.dp))
+                Heading("downloads", "Download any song, album or playlist and listen offline. You can change this later in Settings.")
                 Lossless()
                 Words {
                     Word("next", p.accent) { if (graph.phone.allowed()) finish() else step = 2 }
                 }
             }
             else -> {
-                Heading("your music", "Play the music already on this phone, with your downloads, alongside everything else.")
+                Shot(R.drawable.onboard_music_dark, R.drawable.onboard_music_light, Modifier.padding(bottom = 28.dp))
+                Heading("your music", "Play the music already on your phone, right alongside everything else.")
                 Text(
-                    "Your own files show up in Library under on device, and start a radio or join a playlist like any song. " +
-                        "When a song you have comes up anywhere, in a radio, a playlist or a mix, it plays from the file: no data, " +
-                        "and a lossless file plays lossless. Verza never changes your own files.",
+                    "Your songs show up in Library under On this phone. When a song you have comes up anywhere, Verza plays your file. " +
+                        "It uses no data, and lossless stays lossless. Verza never changes your files.",
                     style = Type.Body, color = p.inkMuted,
                 )
                 Words {

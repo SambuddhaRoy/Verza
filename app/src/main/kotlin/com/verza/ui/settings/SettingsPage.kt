@@ -94,32 +94,32 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                 }
                 item {
                     Group("Playback", Modifier.padding(horizontal = 16.dp)) {
-                        Choice("Audio quality", "How much of YouTube's stream to fetch", listOf("HIGH" to "Best", "MEDIUM" to "Medium", "LOW" to "Data saver"), quality) {
+                        Choice("Audio quality", "Higher sounds better and uses more data", listOf("HIGH" to "Best", "MEDIUM" to "Medium", "LOW" to "Data saver"), quality) {
                             scope.launch { s.quality.set(it) }
                         }
                         Hairline()
-                        Choice("Fade between songs", "Fade out at the end of a song and in at the start of the next", listOf(0 to "Off", 3 to "3s", 6 to "6s", 12 to "12s"), fade) {
+                        Choice("Fade between songs", "Blend each song into the next", listOf(0 to "Off", 3 to "3s", 6 to "6s", 12 to "12s"), fade) {
                             scope.launch { s.fadeSeconds.set(it) }
                         }
                         Hairline()
-                        Toggle("Skip silence", "Skip silent stretches inside a song", s.skipSilence)
+                        Toggle("Skip silence", "Skip the quiet parts in a song", s.skipSilence)
                         Hairline()
                         if (android.os.Build.VERSION.SDK_INT >= 33) { DeepCovers(); Hairline() }
                         Row(Modifier.fillMaxWidth().clickable(onClick = onEqualizer).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Equaliser", style = Type.RowTitle, color = p.ink)
-                                Text("Bands, presets, bass and loudness", style = Type.Small, color = p.inkMuted)
+                                Text("Shape the sound with bands and presets", style = Type.Small, color = p.inkMuted)
                             }
                             Icon(Icons.Rounded.ChevronRight, null, tint = p.inkMuted)
                         }
                         Hairline()
-                        Toggle("Resume on open", "Open where you left off", s.resumeOnOpen)
+                        Toggle("Resume on open", "Pick up where you left off", s.resumeOnOpen)
                     }
                 }
                 item {
                     Group(
                         "Lossless sources", Modifier.padding(horizontal = 16.dp),
-                        footer = "A server that serves songs as FLAC. When it has the one you play, you hear it lossless instead of YouTube's stream.",
+                        footer = "Add your own music server. When it has the song, you hear it in lossless.",
                     ) {
                         for ((i, source) in sources.withIndex()) {
                             // Only the host: the rest of a link can be a password.
@@ -135,18 +135,18 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                         Row(Modifier.fillMaxWidth().clickable { adding = true }.padding(vertical = 12.dp)) { Text("Add a source", style = Type.RowTitle, color = p.accent) }
                         if (sources.isNotEmpty()) {
                             Hairline()
-                            Toggle("Use on mobile data", "A lossless song is roughly 30 MB, several times YouTube's", s.sourcesOnMobileData)
+                            Toggle("Use on mobile data", "A lossless song uses about 30 MB", s.sourcesOnMobileData)
                         }
                     }
                 }
                 item { Group("Downloads", Modifier.padding(horizontal = 16.dp)) { Lossless() } }
                 item {
-                    Group("Devices", Modifier.padding(horizontal = 16.dp), footer = "A computer added here shares its playlists and liked songs with this phone, and this phone's with it, whenever it's in reach. Nothing is ever taken away on either side.") {
+                    Group("Devices", Modifier.padding(horizontal = 16.dp), footer = "Your playlists and likes stay in sync with your computers. Nothing is ever deleted.") {
                         com.verza.ui.kit.Devices()
                         Hairline()
-                        Toggle("Flick to move music", "Flick the phone toward the computer and the music moves there; flick it back toward you and the computer's comes here", s.flick)
+                        Toggle("Flick to move music", "Flick your phone toward your computer to move the music there. Flick back to bring it home.", s.flick)
                         Hairline()
-                        Toggle("Ask which to keep", "When a flick brings the computer's music here while this phone plays, choose which to keep. Off, the one brought in wins", s.flickAsk)
+                        Toggle("Ask which to keep", "When you flick music here while something's playing, choose which to keep", s.flickAsk)
                     }
                 }
                 item { Group("Your library", Modifier.padding(horizontal = 16.dp)) { LibraryFile() } }
@@ -240,12 +240,12 @@ private fun DeepCovers() {
     val on by graph.settings.deepCovers.flow.collectAsState(initial = false)
     val model by graph.deep.model.collectAsState()
     val note = when (val m = model) {
-        is com.verza.data.deep.Deep.Model.Fetching -> "Downloading the depth model, ${(m.share * 100).toInt()}%"
-        com.verza.data.deep.Deep.Model.Failed -> if (on) "The depth model didn't download. Turn this off and on to try again" else null
+        is com.verza.data.deep.Deep.Model.Fetching -> "Downloading 3D covers, ${(m.share * 100).toInt()}%"
+        com.verza.data.deep.Deep.Model.Failed -> if (on) "3D covers didn't download. Turn this off and on to try again." else null
         // On from the start, it waits for Wi-Fi; turned on here, it downloads at once.
-        com.verza.data.deep.Deep.Model.Missing -> if (on) "Its 28 MB depth model downloads on Wi-Fi. Turn this off and on to download it now" else null
+        com.verza.data.deep.Deep.Model.Missing -> if (on) "Downloads on Wi-Fi (28 MB). Turn this off and on to get it now." else null
         else -> null
-    } ?: "Covers with someone in front of a scene move as you tilt the phone. Uses a 28 MB model, deleted when this is off"
+    } ?: "See album covers in 3D as you tilt your phone. Uses a 28 MB download."
     Row(
         Modifier.fillMaxWidth().clickable {
             scope.launch {
@@ -318,7 +318,7 @@ private fun ListenBrainz() {
         }
         TextButton(onClick = { scope.launch { graph.mixPrefs.listenBrainzUser.set(""); graph.mixes.rebuildListenBrainz() } }) { Text("Disconnect") }
     } else Column(Modifier.padding(vertical = 4.dp)) {
-        Text("A ListenBrainz username brings its weekly mixes to Home, Spotify listening included.", style = Type.Body, color = p.inkMuted)
+        Text("Get your weekly ListenBrainz mixes on Home, Spotify listening included.", style = Type.Body, color = p.inkMuted)
         Row(verticalAlignment = Alignment.CenterVertically) {
             com.verza.ui.kit.Field(typed, { typed = it; note = null }, placeholder = "Username", modifier = Modifier.weight(1f))
             TextButton(enabled = typed.isNotBlank(), onClick = {
@@ -354,7 +354,7 @@ private fun SpotifyFollow() {
     Column(Modifier.padding(vertical = 8.dp)) {
         Text("Spotify mixes", style = Type.RowTitle, color = p.ink)
         Text(
-            "Paste a link to your Discover Weekly, Release Radar, a Daily Mix or any Spotify playlist (Share, then Copy link). It's kept fresh on Home and plays from YouTube Music. No Spotify account needed.",
+            "Paste a link to any Spotify playlist, like Discover Weekly or a Daily Mix. It stays up to date on Home. No Spotify account needed.",
             style = Type.RowSubtitle, color = p.inkMuted, modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
         )
         for (id in ids) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -433,7 +433,7 @@ internal fun Lossless() {
         graph.settings.soulseekUser.set(who)
         graph.settings.losslessDownloads.set(true)
         own = false
-        note = if (made) "Lossless is on. Songs come from Soulseek, a network of people sharing their music, and Verza made you an account there." else null
+        note = if (made) "Lossless is on. Songs come from Soulseek, where people share their music. Verza set up an account for you." else null
         return true
     }
 
@@ -455,8 +455,7 @@ internal fun Lossless() {
             Column(Modifier.weight(1f).padding(end = 12.dp)) {
                 Text("Download in lossless", style = Type.RowTitle, color = p.ink)
                 Text(
-                    "FLAC, exactly what's on the record: about 30 MB a song, where a regular download is 4. Worth it on wired " +
-                        "headphones or a DAC. A song nobody shares downloads as regular instead.",
+                    "Save songs as FLAC, as good as the original recording. About 30 MB a song.",
                     style = Type.RowSubtitle, color = p.inkMuted,
                 )
             }
