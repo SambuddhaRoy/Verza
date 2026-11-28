@@ -1,0 +1,5 @@
+- A smaller download: most phones now get a 39 MB app instead of 68 MB.
+- Welcome screens show the real app.
+- Shorter, clearer wording throughout.
+- Star Verza on GitHub from Settings.
+- Fixed the player bar showing the new song twice when songs change.

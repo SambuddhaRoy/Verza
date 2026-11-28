@@ -1,72 +1,55 @@
-# Privacy Policy
+# Privacy policy
 
-_Last updated: 2026-09-01_
+_Last updated: 28 November 2026_
 
-Verza is an open-source, unofficial YouTube Music client for Android. It has **no backend of its own** — there are no Verza servers, no Verza accounts, **no analytics, no tracking, no advertising, and no automatic crash/usage telemetry**. Nothing about how you use the app is ever sent to the developer, and a crash report reaches anyone only if you choose to send it yourself.
+Verza is an independent YouTube Music player for Android. It has no servers of its own, no Verza account, no analytics, no ads and no tracking. Nothing about how you use the app is sent to the developer.
 
-This document explains exactly what data the app handles, where it goes, and what stays on your device.
+## What leaves your phone
 
-## What leaves your device, and to whom
+Verza only contacts these services, and only for the feature you're using.
 
-Verza only talks to the third parties below, and only to deliver the feature you're using. None of these requests include an identifier that ties the request to *you* as a Verza user.
-
-| Destination | When | What is sent |
+| Service | When | What it gets |
 |---|---|---|
-| **YouTube / Google** (InnerTube API + NewPipeExtractor) | Search, browse, playback, and — only if you sign in — your personalised feed/library | Your search terms and the IDs of content you open. **If (and only if) you sign in**, requests to Google also carry your Google account cookie, so Google can return your personalised data and register your likes. This is sent **only to Google**. |
-| **Apple — iTunes Search API** | To fetch real cover art for a track | The track's **title and artist**, as an anonymous search query. No account, device, or user identifier. |
-| **LRCLIB** (`lrclib.net`) | To fetch synced/plain lyrics | The track's **title, artist, and duration**, anonymously. |
-| **Google Fonts** | First launch, to load the app's typefaces | A standard font request (no personal data). |
+| YouTube and Google | Search, browsing and playback | What you search for and the songs you open. If you sign in, your Google sign-in goes with these requests, and only to Google. |
+| LRCLIB | Lyrics | The song's title, artist and length. |
+| MusicBrainz and iTunes | Covers, tags and genres | The song's title and artist. |
+| Hugging Face | Once, if 3D covers are on | A download of the 28 MB model. Nothing is sent. |
+| GitHub | Checking for updates | A request for the latest release. |
+| Soulseek | Only if you turn on lossless downloads | Searches for songs you download, and the account Verza makes for you. |
+| ListenBrainz | Only if you connect it | Your ListenBrainz username. |
+| Your computer | Only if you pair it | What's playing, your queue, playlists and likes, over your own Wi-Fi. |
 
-> Because album-art and lyrics lookups send a track's title/artist to Apple and LRCLIB respectively, those two services can observe *that some anonymous client requested metadata for a given song*. They receive no account, no device ID, and nothing linking the request to you. If you prefer to avoid even this, you can play without lyrics and the artwork will fall back to YouTube's own thumbnail.
+None of these requests carry anything that identifies you, apart from your Google sign-in where noted. Everything except Soulseek and your own Wi-Fi uses HTTPS.
 
-All network traffic uses HTTPS.
+## What stays on your phone
 
-## What stays on your device
+- Your likes, playlists, play history and listening stats.
+- Your settings and your queue.
+- Your downloads, saved in `Music/Verza` as ordinary audio files.
 
-The following never leaves your phone (except via your own Android backup, subject to the exclusions below):
+Verza turns off Android's app backup, so none of this goes into a cloud backup.
 
-- **Liked songs, playlists, play history, and listening stats** — stored in a local Room database.
-- **Preferences and the saved playback queue** — stored in DataStore.
-- **Downloads** — written to the folder you choose, `Music/Verza` by default, as ordinary audio
-  files any other player can read.
-- **The last crash, if there has been one** — see below.
+## Your sign-in
 
-### Crash reports
+Signing in is optional. If you do, the YouTube Music cookie is encrypted with a key kept in the Android Keystore, sent only to Google, and deleted when you sign out.
 
-If Verza closes unexpectedly it writes the error and your Android version to a file on your device.
-Nothing is sent anywhere on its own. A row appears in **Settings → Help** offering to share it, and it
-goes only where you send it. It contains the stack trace, the app version and the device model — no
-account details, and nothing about what you listen to.
+## Permissions
 
-### Your account credential
+- **Music and audio** lets Verza play the music already on your phone. Decline it and everything else works.
+- **Notifications** shows what's playing and download progress.
+- **Install apps** lets Verza install its own updates. Android asks you each time.
+- **Wi-Fi state** helps Verza find your computer on the same network.
 
-If you choose to sign in, the YouTube Music session cookie is:
+Verza never uses the microphone.
 
-- **Encrypted at rest** with an AES-256/GCM key held in the device's **Android Keystore** (the key is non-exportable and hardware-backed where supported);
-- **Excluded from cloud backup and device-to-device transfer**, so it can't be lifted from a backup;
-- **Sent only to Google**, never to any other host;
-- **Removed** when you sign out.
-
-Sign-in is entirely optional — search, browse, playback, downloads, lyrics, and all local features work without an account.
-
-## Microphone permission (`RECORD_AUDIO`)
-
-Verza requests the microphone permission **only if you turn on the optional "Sound reactivity" glow** in Settings → Background glow. When enabled, the app uses Android's `Visualizer` API to read a low-resolution frequency snapshot of **the music it is already playing** — purely to animate the background glow.
-
-- It does **not** record from the microphone.
-- It does **not** capture, store, or transmit any audio.
-- The permission is requested only at the moment you enable the feature; decline it and everything else in the app works normally. You can revoke it anytime in Android system settings.
-
-Android surfaces this capability as a "Microphone" permission because the `Visualizer` API is governed by `RECORD_AUDIO`, even though no microphone input is used.
-
-## Children's privacy
+## Children
 
 Verza collects no personal data from anyone, including children.
 
 ## Changes
 
-Any changes to this policy will be committed to this file in the repository, so the history is publicly auditable.
+Changes to this policy are made in this file, so its history is public.
 
 ## Contact
 
-Questions or concerns: open an issue at <https://github.com/SambuddhaRoy/Verza/issues>.
+Open an issue at <https://github.com/SambuddhaRoy/Verza/issues>.
