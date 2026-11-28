@@ -270,9 +270,6 @@ class ListenBrainzRepository(
         /** A mix needs this many songs that resolved on YouTube Music to be worth a card. */
         private const val MIN_TRACKS = 5
 
-        /** A username ListenBrainz could have, so nothing else reaches the URL. */
-        val USERNAME = Regex("^[\\w.-]{1,64}$")
-
         /**
          * The newest live playlist of each weekly or daily kind, and the newest year of each yearly
          * kind. ListenBrainz keeps old weeks in the list and stops making new ones for someone who

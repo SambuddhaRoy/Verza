@@ -30,6 +30,19 @@ android {
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64") }
     }
 
+    // An APK per ABI as well as the universal one: Python and LiteRT are native, so the universal APK
+    // carries three copies of each and a phone uses one (68 MB against about 42 for arm64-v8a alone).
+    // The updater takes the one for its ABI; a 2.8.0 install takes the first .apk a release lists, so the
+    // universal one is uploaded first.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
     signingConfigs {
         if (keystoreFile.exists()) create("release") {
             storeFile = rootProject.file(keystore.getProperty("storeFile"))
@@ -51,7 +64,9 @@ android {
     applicationVariants.all {
         val variant = this
         outputs.all {
-            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName = "Verza-v${variant.versionName}.apk"
+            val out = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val abi = out.filters.find { it.filterType == "ABI" }?.identifier
+            out.outputFileName = "Verza-v${variant.versionName}${abi?.let { "-$it" } ?: ""}.apk"
         }
     }
 

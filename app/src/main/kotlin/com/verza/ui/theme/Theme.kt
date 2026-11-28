@@ -58,8 +58,6 @@ object Type {
     val Small: TextStyle @Composable @ReadOnlyComposable get() = LocalLook.current.type.small
     /** A tab's label. */
     val Tab: TextStyle @Composable @ReadOnlyComposable get() = LocalLook.current.type.tab
-    /** The look's small voice: a caption, a tag. */
-    val Label: TextStyle @Composable @ReadOnlyComposable get() = LocalLook.current.type.label
 }
 
 /** The colours in a cover, for [Palette.from]. */

@@ -175,6 +175,14 @@ fun SettingsPage(onBack: () -> Unit, onSignIn: () -> Unit, onEqualizer: () -> Un
                                 Text(checked ?: "Verza ${BuildConfig.VERSION_NAME}", style = Type.Small, color = p.inkMuted)
                             }
                         }
+                        Hairline()
+                        val links = androidx.compose.ui.platform.LocalUriHandler.current
+                        Row(Modifier.fillMaxWidth().clickable { links.openUri("https://github.com/SambuddhaRoy/Verza") }.padding(vertical = 10.dp)) {
+                            Column {
+                                Text("Star Verza on GitHub", style = Type.RowTitle, color = p.ink)
+                                Text("It helps other people find it", style = Type.Small, color = p.inkMuted)
+                            }
+                        }
                     }
                 }
             }

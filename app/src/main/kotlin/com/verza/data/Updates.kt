@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -53,8 +54,11 @@ class Updates(private val context: Context, private val http: OkHttpClient) {
         val o = json.parseToJsonElement(body).jsonObject
         val version = o["tag_name"]?.jsonPrimitive?.contentOrNull.orEmpty().removePrefix("v")
         if (!isNewer(version, BuildConfig.VERSION_NAME)) return null
-        // A release with only source archives isn't installable.
-        val apk = o["assets"]?.jsonArray?.map { it.jsonObject }?.firstOrNull { it["name"]?.jsonPrimitive?.contentOrNull.orEmpty().endsWith(".apk") } ?: return null
+        // A release with only source archives isn't installable. Since 2.8.1 a release carries an APK per
+        // ABI (Verza-v2.8.1-arm64-v8a.apk) beside the universal one: take this phone's, or the universal.
+        val assets = o["assets"]?.jsonArray?.map { it.jsonObject }.orEmpty()
+        val pick = pickApk(assets.map { it.name }, Build.SUPPORTED_ABIS.toList()) ?: return null
+        val apk = assets.first { it.name == pick }
         return Release(version, o["body"]?.jsonPrimitive?.contentOrNull.orEmpty().trim(), apk["browser_download_url"]!!.jsonPrimitive.content, apk["size"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0)
     }
 
@@ -121,3 +125,12 @@ class InstallResult : BroadcastReceiver() {
         }
     }
 }
+
+private val JsonObject.name get() = this["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+
+private val ABI_APK = Regex(".*-(armeabi-v7a|arm64-v8a|x86_64|x86)[.]apk$")
+
+/** Of a release's files, the APK for the first of [abis] that has one, else the universal APK. */
+internal fun pickApk(names: List<String>, abis: List<String>): String? =
+    abis.firstNotNullOfOrNull { abi -> names.firstOrNull { it.endsWith("-$abi.apk") } }
+        ?: names.firstOrNull { it.endsWith(".apk") && !it.matches(ABI_APK) }

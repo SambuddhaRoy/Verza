@@ -40,7 +40,7 @@ class Streams(private val http: OkHttpClient, private val quality: () -> Quality
     private fun once(videoId: String, m4a: Boolean): Stream? {
         val extractor = ServiceList.YouTube.getStreamExtractor("https://www.youtube.com/watch?v=$videoId")
         extractor.fetchPage()
-        val audio = runCatching { extractor.audioStreams }.getOrDefault(emptyList()).filter { it.content != null }
+        val audio = runCatching { extractor.audioStreams }.getOrDefault(emptyList())
         val progressive = audio.filter { it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP }
         val pool = when {
             m4a && progressive.any { it.isMp4() } -> progressive.filter { it.isMp4() }

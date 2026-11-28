@@ -31,7 +31,7 @@ import com.verza.ui.theme.artCorner
  * object again.
  */
 
-/** The text styles a look sets. [label] is its small voice: a caption, a tag, often mono. */
+/** The text styles a look sets. */
 @Immutable
 data class Types(
     val masthead: TextStyle,
@@ -43,7 +43,6 @@ data class Types(
     val body: TextStyle,
     val small: TextStyle,
     val tab: TextStyle,
-    val label: TextStyle,
 )
 
 /** How a look sets the words that name things: pages, sections, buttons, tabs. */

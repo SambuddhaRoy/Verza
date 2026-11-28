@@ -21,23 +21,6 @@ object DiscoveryRadio {
         artist.substringBefore(',').trim().lowercase()
 
     /**
-     * Seeds for the next hop, chosen at RANDOM among artists not yet branched through.
-     *
-     * Picking the *first* distinct-artist tracks (the obvious approach) makes the whole walk
-     * deterministic — YouTube's radio for an id never changes — so every Discovery run explored the
-     * identical slice of the graph and only the shuffle order differed. Randomising the frontier is
-     * what makes each run take a different path outward.
-     */
-    fun frontier(tracks: List<MusicItem>, branched: Set<String>, limit: Int = 3): List<String> =
-        tracks
-            .filter { it.id.isNotEmpty() && it.id !in branched && primaryArtist(it.artist).isNotEmpty() }
-            .groupBy { primaryArtist(it.artist) }
-            .values
-            .shuffled()
-            .take(limit)
-            .map { group -> group.random().id }
-
-    /**
      * Dedupe [pool], drop the seed, anything already heard, and anything a previous run already
      * offered ([served]); then order unknown artists first, each tier shuffled. Capped at [cap].
      */

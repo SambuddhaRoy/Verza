@@ -35,7 +35,6 @@ data class HomeItem(
     val browseId: String? = null,
     val playlistId: String? = null,
 ) {
-    val isSong: Boolean get() = videoId != null
     val artist: String get() = subtitle.substringBefore(" • ").trim()
 
     fun toCard(): Card = Card(

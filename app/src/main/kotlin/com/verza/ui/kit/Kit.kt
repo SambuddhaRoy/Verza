@@ -287,10 +287,6 @@ fun BarIcons(light: Boolean) {
     }
 }
 
-/** Light bar icons, for the pages that are dark whatever the look. */
-@Composable
-fun LightBarIcons() = BarIcons(light = true)
-
 /** A switch as iOS draws one: a white knob the same size on or off, the track the accent when on. */
 @Composable
 fun Switch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: Boolean = true) {

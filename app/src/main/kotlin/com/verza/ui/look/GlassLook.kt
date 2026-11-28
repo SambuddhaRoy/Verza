@@ -180,7 +180,6 @@ object GlassLook : Look("soft", "Glass", "Flat pages, fluted glass over them, on
         body = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 23.sp, letterSpacing = (-0.011).em),
         small = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, fontFeatureSettings = figures),
         tab = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 13.sp, letterSpacing = 0.02.em),
-        label = TextStyle(fontFamily = Fonts.InterText, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, fontFeatureSettings = figures),
     )
 }
 
@@ -397,15 +396,15 @@ private fun GlassMiniPlayer(now: NowPlaying, onOpen: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AnimatedContent(
-            song.id, label = "song", modifier = Modifier.weight(1f),
+            song, label = "song", modifier = Modifier.weight(1f), contentKey = { it.id },
             transitionSpec = { (slideInVertically(bouncy()) { it } + fadeIn()) togetherWith (slideOutVertically { -it } + fadeOut()) },
-        ) { _ ->
+        ) { shown ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Cover(song.art?.let { artAt(it, 226) }, 48.dp, round = true)
+                Cover(shown.art?.let { artAt(it, 226) }, 48.dp, round = true)
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(com.verza.data.shownTitle(song.title, song.artist), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(song.artist, style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(com.verza.data.shownTitle(shown.title, shown.artist), style = Type.Headline.copy(fontSize = 15.sp, lineHeight = 20.sp), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(shown.artist, style = Type.Small, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

@@ -40,10 +40,7 @@ data class CuratedMix(
     val subtitle: String,
     val items: List<HomeItem>,
     val generatedAt: Long,
-) {
-    /** The directly-playable songs in this mix (for a "Play all"). */
-    val playableSongs: List<HomeItem> get() = items.filter { it.videoId != null }
-}
+)
 
 private val Context.mixesStore by preferencesDataStore(name = "verza_mixes")
 
