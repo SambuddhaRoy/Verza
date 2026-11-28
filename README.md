@@ -2,17 +2,17 @@
 
 # Verza
 
-**A music player for Android. YouTube Music without the ads, downloads in lossless, and one accent colour taken from the cover of whatever is playing.**
+**A music player for Android. YouTube Music without the ads, covers that move in 3D, downloads in lossless, and lyrics in time.**
 
 [![Download](https://img.shields.io/github/v/release/SambuddhaRoy/Verza?style=for-the-badge&label=Download%20APK&color=d6246e)](https://github.com/SambuddhaRoy/Verza/releases/latest)
 [![Android 8+](https://img.shields.io/badge/Android-8.0%2B-333333?style=for-the-badge&logo=android&logoColor=white)](https://github.com/SambuddhaRoy/Verza/releases/latest)
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-333333?style=for-the-badge)](LICENSE)
 
-<img src="docs/home.webp" alt="Home: recently played, then songs because you listened to Radiohead" width="260"/>
+<img src="docs/now-playing.webp" alt="Now Playing: Flower Boy's cover in 3D, seen through a window in fluted glass over an orange background made from the same cover" width="260"/>
 &nbsp;
-<img src="docs/now-playing.webp" alt="Now Playing, with the song's spectrum drawn around the cover" width="260"/>
+<img src="docs/search.webp" alt="Search: Tyler, The Creator's songs, his artist page and covers, with the player floating above a glass dock" width="260"/>
 &nbsp;
-<img src="docs/lyrics.webp" alt="Lyrics, in the light theme" width="260"/>
+<img src="docs/lyrics.webp" alt="Lyrics of Viva La Vida in the light theme, the line being sung in bold" width="260"/>
 
 **[Website](https://sambuddharoy.github.io/Verza-Next-releases/)** · **[Verza for Windows and Linux](https://github.com/SambuddhaRoy/Verza-Next-releases)**
 
@@ -33,16 +33,17 @@ Verza isn't on Google Play, so Play Protect hasn't seen the file before and offe
 ## What it does
 
 - **The whole catalogue**, full length, in the background, on the lock screen, over Bluetooth and in Android Auto.
+- **3D covers.** A cover with someone in front of a scene gets depth, worked out on the phone. Tilt the phone and the scene slides behind them while they hold still.
 - **Downloads in lossless.** Turn it on and a download becomes a FLAC from Soulseek, where people share their own rips; Verza makes the account for you. A file much smaller than the other copies of the same song is an MP3 dressed up as a FLAC, and Verza skips it. Downloads land in `Music/Verza`, filed by artist and album, as ordinary files any player can open.
 - **Lyrics** that follow the song, line by line.
 - **Home made from what you play**: recently played, mixes that start from an artist you've had on lately, and discovery radio for artists you haven't heard. **Your Sound** names your genre and plays it.
 - **The music already on your phone** sits in the Library and plays in the same queue.
 - **Flick it over.** With Verza on your computer, flick the phone toward the screen and the song carries on there, at the same second, queue and all. Flick it back and it returns to your pocket. The two talk over your Wi-Fi and to nobody else.
-- An **equaliser** with as many bands as the phone has, a sleep timer that fades out, skip silence, five home-screen widgets and a quick-settings tile, ListenBrainz's weekly mixes, and a light and a dark theme.
+- An **equaliser** with as many bands as the phone has, a sleep timer that fades out, skip silence, five home-screen widgets and a quick-settings tile, ListenBrainz's weekly mixes, and two themes: pitch black, and stone.
 
 ## The design
 
-A true black or true white page, a page's name set very large and light, buttons that are just the word, and one accent colour. When a song starts, Verza takes the strongest hue on its cover and adjusts it until text in that colour reads at 4.5:1 against the page. The spectrum around the cover is read from the player's own output, so Verza never asks for the microphone.
+Flat pages, pitch black at night and stone by day, with the playing cover flowing faintly behind them through fluted glass. What floats over the page, the dock and the player's keys, is clear glass ribbed in vertical flutes. Names are set in a bold sans, and everything else is plain. When a song starts, Verza takes the strongest hue on its cover and adjusts it until text in that colour reads at 4.5:1 against the page, then spends it in a few places only: the dock's rim, a switch that's on, the playing row.
 
 The desktop app copies this design, so the two look and work alike.
 
